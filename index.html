@@ -259,27 +259,24 @@ select option{background:white;}
   <div class="lu-header">
     <button class="lu-back" onclick="tutupLanjut()">←</button>
     <h2>Lanjut Pendaftaran</h2>
-    <p>Masukkan kode atau cari berdasarkan data</p>
+    <p>Cari data atau masukkan kode pendaftaran</p>
   </div>
   <div class="lu-body">
     <div class="lu-tabs">
-      <button class="lu-tab active" onclick="gatiTab('tabKode',this)">🔑 Punya Kode</button>
-      <button class="lu-tab" onclick="gatiTab('tabCari',this)">🔍 Cari Data</button>
+      <button class="lu-tab active" onclick="gatiTab('tabCari',this)">🔍 Cari Data</button>
+      <button class="lu-tab" onclick="gatiTab('tabKode',this)">🔑 Punya Kode</button>
     </div>
-    <div class="lu-panel active" id="tabKode">
-      <div class="info-box"><strong>Masukkan kode pendaftaran</strong> yang Anda terima setelah mengisi Tahap 1. Contoh: <strong>CQ-2026-XXXX</strong></div>
+
+    <!-- TAB CARI: nama + tanggal lahir -->
+    <div class="lu-panel active" id="tabCari">
+      <div class="info-box"><strong>Masukkan nama siswa dan tanggal lahir</strong> untuk melanjutkan pengisian data.</div>
       <div class="field-group">
-        <label class="fl">Kode Pendaftaran</label>
-        <input type="text" id="inputKode" placeholder="CQ-2026-XXXX" style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-size:15px" oninput="this.value=this.value.toUpperCase()" maxlength="12">
+        <label class="fl">Nama Lengkap Siswa</label>
+        <input type="text" id="cariNama" placeholder="Nama lengkap sesuai pendaftaran" oninput="formatNama(this)">
       </div>
-      <div class="lu-error" id="errorKode"></div>
-      <button class="btn-hijau" onclick="masukDenganKode()">Masuk ke Tahap 2 →</button>
-    </div>
-    <div class="lu-panel" id="tabCari">
-      <div class="info-box"><strong>Lupa kode?</strong> Ketik nama siswa atau nomor HP orang tua.</div>
       <div class="field-group">
-        <label class="fl">Nama Siswa atau No. HP Orang Tua</label>
-        <input type="text" id="cariQuery" placeholder="Nama siswa, No. HP, atau email orang tua" maxlength="50">
+        <label class="fl">Tanggal Lahir Siswa</label>
+        <input type="date" id="cariTglLahir">
       </div>
       <div class="lu-error" id="errorCari"></div>
       <button class="btn-hijau" onclick="cariData()">Cari Data 🔍</button>
@@ -287,6 +284,17 @@ select option{background:white;}
         <div style="font-size:11px;font-weight:600;color:var(--teks-mid);margin-bottom:8px">Hasil Ditemukan:</div>
         <div id="hasilCariList"></div>
       </div>
+    </div>
+
+    <!-- TAB KODE: fallback -->
+    <div class="lu-panel" id="tabKode">
+      <div class="info-box"><strong>Masukkan kode pendaftaran</strong> yang Anda terima setelah mengisi Tahap 1. Contoh: <strong>CQ-2026-XXXX</strong></div>
+      <div class="field-group">
+        <label class="fl">Kode Pendaftaran</label>
+        <input type="text" id="inputKode" placeholder="CQ-2026-XXXX" style="text-transform:uppercase;letter-spacing:2px;font-weight:700;font-size:15px" oninput="this.value=this.value.toUpperCase()" maxlength="12">
+      </div>
+      <div class="lu-error" id="errorKode"></div>
+      <button class="btn-hijau" onclick="masukDenganKode()">Masuk ke Tahap 2 →</button>
     </div>
   </div>
 </div>
@@ -362,6 +370,12 @@ select option{background:white;}
       <label class="fl">Tanggal Lahir <span class="req">*</span></label>
       <input type="date" id="tanggalLahir" max="2021-05-01">
     </div>
+  </div>
+  <div class="field-group">
+    <label class="fl">Asal TK / RA <span class="opt">(opsional)</span></label>
+    <input type="text" id="asalTkT1" placeholder="Contoh: RA Bilal Bin Rabah" oninput="formatNama(this)">
+    <label class="cb-belum" onclick="toggleBelum('asalTkT1','cb_asal_tk_t1')"><div class="cb-box"></div><input type="checkbox" id="cb_asal_tk_t1"><span>Tidak TK / Belum ada</span></label>
+    <div class="fn">Digunakan untuk data pengelompokan kelas. Bisa dilengkapi nanti di Tahap 2.</div>
   </div>
   <!-- Pindahan -->
   <div id="dataPindahan" style="display:none">
@@ -1353,6 +1367,7 @@ async function submitTahap1() {
   showLoading('Menyimpan data Tahap 1...');
   document.getElementById('btnNext').disabled=true;
   try {
+    const cbTkT1 = document.getElementById('cb_asal_tk_t1');
     const data = {
       tipe: getVal('tipe') || tipeSiswa,
       email_wali: getVal('emailWali'),
@@ -1361,6 +1376,7 @@ async function submitTahap1() {
       jenis_kelamin: getVal('jenisKelamin'),
       tempat_lahir: getVal('tempatLahir'),
       tanggal_lahir: getVal('tanggalLahir')||null,
+      asal_tk: cbTkT1?.checked ? null : (getVal('asalTkT1')||null),
       nisn: tipeSiswa==='pindahan'?getVal('nisnSiswa'):null,
       masuk_kelas: tipeSiswa==='pindahan'?getVal('masukKelas'):null,
       nama_sd_asal: tipeSiswa==='pindahan'?getVal('namaSDasal'):null,
@@ -1408,6 +1424,18 @@ async function submitTahap1() {
     document.getElementById('kodeDisplay').textContent = nomorPendaftaran;
     document.getElementById('kodeFinal').textContent = nomorPendaftaran;
     localStorage.setItem('kode_ppdb', nomorPendaftaran);
+
+    // Sync Tahap 1 ke Google Sheets langsung (non-blocking)
+    setLoadingText('Menyinkronkan ke Sheets...');
+    try {
+      await fetch(AS_URL, {
+        method:'POST',
+        body:JSON.stringify({action:'saveData', data:{
+          ...row,
+          nomor_pendaftaran: nomorPendaftaran,
+        }})
+      });
+    } catch(e) { console.warn('Sheets sync Tahap 1 gagal (non-fatal):', e); }
 
     hideLoading();
     // Maju ke success tahap 1
@@ -1615,60 +1643,44 @@ async function masukDenganKode() {
 }
 
 async function cariData() {
-  const query=document.getElementById('cariQuery').value.trim();
-  const errEl=document.getElementById('errorCari');
-  const hasilDiv=document.getElementById('hasilCari');
+  const nama = document.getElementById('cariNama').value.trim();
+  const tgl  = document.getElementById('cariTglLahir').value.trim();
+  const errEl = document.getElementById('errorCari');
+  const hasilDiv = document.getElementById('hasilCari');
   errEl.style.display='none'; hasilDiv.style.display='none';
-  if (!query) { errEl.textContent='Masukkan nama atau No. HP.'; errEl.style.display='block'; return; }
+
+  if (!nama) { errEl.textContent='Masukkan nama siswa.'; errEl.style.display='block'; return; }
+  if (!tgl)  { errEl.textContent='Masukkan tanggal lahir siswa.'; errEl.style.display='block'; return; }
+
   showLoading('Mencari...');
   try {
-    const isHP=/^[0-9+]/.test(query);
-    let rows=[];
-    // Coba berbagai kemungkinan nama kolom (data lama vs baru)
-    const sel='select=id,nomor_pendaftaran,nama_lengkap,status,no_hp_ayah,no_hp_ibu,tipe';
+    const sel='select=id,nomor_pendaftaran,nama_lengkap,tanggal_lahir,status,tipe';
     const headers={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
     const base=`${SB_URL}/rest/v1/pendaftaran`;
+    const qNama=encodeURIComponent(nama);
+    const qTgl=encodeURIComponent(tgl);
 
-    if (isHP || query.includes('@')) {
-      if (query.includes('@')) {
-        // Cari by email
-        const q=encodeURIComponent(query);
-        const queries = await Promise.all([
-          fetch(`${base}?email_ayah=ilike.*${q}*&${sel}`,{headers}).then(r=>r.json()).catch(()=>[]),
-          fetch(`${base}?email_wali=ilike.*${q}*&${sel}`,{headers}).then(r=>r.json()).catch(()=>[]),
-        ]);
-        const seen=new Set();
-        rows=queries.flat().filter(r=>r&&r.id&&(seen.has(r.id)?false:seen.add(r.id)));
-      } else {
-        // Normalisasi HP — ambil 8 digit terakhir supaya cocok berbagai format
-        const clean=query.replace(/[\s\-\+]/g,'');
-        const short=clean.replace(/^(62|0)/,'');
-        const last8=short.slice(-8);
-        const queries = await Promise.all([
-          fetch(`${base}?no_hp_ayah=ilike.*${encodeURIComponent(last8)}*&${sel}`,{headers}).then(r=>r.json()).catch(()=>[]),
-          fetch(`${base}?no_hp_ibu=ilike.*${encodeURIComponent(last8)}*&${sel}`,{headers}).then(r=>r.json()).catch(()=>[]),
-        ]);
-        const seen=new Set();
-        rows=queries.flat().filter(r=>r&&r.id&&(seen.has(r.id)?false:seen.add(r.id)));
-      }
-    } else {
-      // Cari nama — coba nama_lengkap dan nama_panggilan
-      const q=encodeURIComponent(query);
-      const queries = await Promise.all([
-        fetch(`${base}?nama_lengkap=ilike.*${q}*&${sel}`,{headers}).then(r=>r.json()).catch(()=>[]),
-        fetch(`${base}?nama_panggilan=ilike.*${q}*&${sel}`,{headers}).then(r=>r.json()).catch(()=>[]),
-      ]);
-      const seen=new Set();
-      rows=queries.flat().filter(r=>r&&r.id&&(seen.has(r.id)?false:seen.add(r.id)));
-    }
-
+    // Cari berdasarkan nama (ilike) + tanggal_lahir (exact)
+    const res = await fetch(`${base}?nama_lengkap=ilike.*${qNama}*&tanggal_lahir=eq.${qTgl}&${sel}`,{headers});
+    const rows = await res.json();
     hideLoading();
-    if (!rows||!rows.length) {
-      errEl.textContent='Data tidak ditemukan. Coba ketik nama lengkap atau nomor HP yang didaftarkan.';
+
+    if (!rows || !rows.length) {
+      errEl.textContent='Data tidak ditemukan. Pastikan nama dan tanggal lahir sesuai dengan yang didaftarkan, atau gunakan tab Kode Pendaftaran.';
       errEl.style.display='block'; return;
     }
+
+    if (rows.length === 1) {
+      // Langsung masuk
+      bukaT2DariRow(rows[0]);
+      return;
+    }
+
+    // Lebih dari 1 hasil — tampilkan pilihan, minta konfirmasi
     hasilDiv.style.display='block';
-    document.getElementById('hasilCariList').innerHTML=rows.map(r=>`
+    document.getElementById('hasilCariList').innerHTML = `
+      <div class="info-box" style="margin-bottom:10px">⚠️ Ditemukan ${rows.length} data dengan nama dan tanggal lahir yang sama. Pilih data yang sesuai, atau masukkan kode pendaftaran untuk memastikan.</div>
+      ${rows.map(r=>`
       <div class="hasil-card">
         <div style="font-weight:700;font-size:14px;color:var(--hijau);margin-bottom:3px">${r.nama_lengkap||'—'}</div>
         <div style="font-size:11px;color:var(--teks-light);margin-bottom:8px">
@@ -1681,7 +1693,8 @@ async function cariData() {
         ${r.status!=='tahap2_selesai'
           ?`<button class="btn-hijau" style="margin:0" onclick='bukaT2DariRow(${JSON.stringify(r)})'>Lanjut Isi Tahap 2 →</button>`
           :'<div style="font-size:12px;color:var(--hijau-mid);text-align:center;padding:4px">Data sudah lengkap 🎉</div>'}
-      </div>`).join('');
+      </div>`).join('')}
+    `;
   } catch(e) {
     hideLoading();
     errEl.textContent='Gagal terhubung. Periksa koneksi internet.';
