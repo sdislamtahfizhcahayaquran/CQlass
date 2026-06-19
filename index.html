@@ -373,7 +373,7 @@ select option{background:white;}
   </div>
   <div class="field-group">
     <label class="fl">Asal TK / RA <span class="opt">(opsional)</span></label>
-    <input type="text" id="asalTkT1" placeholder="Contoh: RA Bilal Bin Rabah" oninput="formatNama(this)">
+    <input type="text" id="asalTkT1" placeholder="Contoh: TK Islam Tahfizh Cahaya Qur'an" oninput="formatNama(this)">
     <label class="cb-belum" onclick="toggleBelum('asalTkT1','cb_asal_tk_t1')"><div class="cb-box"></div><input type="checkbox" id="cb_asal_tk_t1"><span>Tidak TK / Belum ada</span></label>
     <div class="fn">Digunakan untuk data pengelompokan kelas. Bisa dilengkapi nanti di Tahap 2.</div>
   </div>
@@ -600,10 +600,10 @@ select option{background:white;}
   <div class="field-row-3">
     <div class="field-group"><label class="fl">Anak ke- <span class="req">*</span></label><input type="number" id="anak_ke" placeholder="1" min="1" inputmode="numeric"></div>
     <div class="field-group"><label class="fl">Sdra. Kandung <span class="req">*</span></label><input type="number" id="saudara_kandung" placeholder="0" min="0" inputmode="numeric"></div>
-    <div class="field-group"><label class="fl">Sdra. Tiri <span class="req">*</span></label><input type="number" id="saudara_tiri" placeholder="0" min="0" inputmode="numeric"></div>
+    <div class="field-group"><label class="fl">Sdra. Tiri <span class="opt">(opsional)</span></label><input type="number" id="saudara_tiri" placeholder="0" min="0" inputmode="numeric"></div>
   </div>
   <div class="field-row">
-    <div class="field-group"><label class="fl">Sdra. Angkat <span class="req">*</span></label><input type="number" id="saudara_angkat" placeholder="0" min="0" inputmode="numeric"></div>
+    <div class="field-group"><label class="fl">Sdra. Angkat <span class="opt">(opsional)</span></label><input type="number" id="saudara_angkat" placeholder="0" min="0" inputmode="numeric"></div>
     <div class="field-group"><label class="fl">Status Anak <span class="req">*</span></label><select id="status_anak"><option value="Anak kandung">Anak kandung</option><option value="Anak tiri">Anak tiri</option><option value="Anak angkat">Anak angkat</option></select></div>
   </div>
   <div class="field-row">
@@ -663,7 +663,7 @@ select option{background:white;}
   <div class="info-box">ℹ️ Wajib diisi. Jika data belum tersedia, centang <strong>"Belum ada"</strong> pada masing-masing field.</div>
   <div class="field-group">
     <label class="fl">Nama TK / RA Asal <span class="req">*</span></label>
-    <input type="text" id="asal_tk" placeholder="Contoh: RA Bilal Bin Rabah" oninput="formatNama(this)">
+    <input type="text" id="asal_tk" placeholder="Contoh: TK Islam Tahfizh Cahaya Qur'an" oninput="formatNama(this)">
     <label class="cb-belum" onclick="toggleBelum('asal_tk','cb_asal_tk')"><div class="cb-box"></div><input type="checkbox" id="cb_asal_tk"><span>Belum ada / Tidak TK</span></label>
   </div>
   <div class="field-row">
@@ -1035,7 +1035,7 @@ const RULES = {
   },
   2: [{id:'namaAyah',label:'Nama Ayah'},{id:'tempatLahirAyah',label:'Tempat Lahir Ayah'},{id:'tglLahirAyah',label:'Tanggal Lahir Ayah'},{id:'hpAyah',label:'No. HP Ayah'},{id:'namaIbu',label:'Nama Ibu'},{id:'tempatLahirIbu',label:'Tempat Lahir Ibu'},{id:'tglLahirIbu',label:'Tanggal Lahir Ibu'},{id:'hpIbu',label:'No. HP Ibu'}],
   3: [{name:'kemampuanBaca',label:'Kemampuan Baca'},{name:'caBaca',label:'Membaca Latin'},{name:'caTulis',label:'Menulis'},{name:'caHitung',label:'Berhitung'},{name:'adabMandiri',label:'Kemandirian'},{name:'adabEmosi',label:'Pengendalian Emosi'},{name:'adabSosial',label:'Kemampuan Sosial'},{name:'adabPatuh',label:'Kepatuhan'},{name:'engLevel',label:'Bahasa Inggris'},{name:'arabLevel',label:'Bahasa Arab'},{id:'juzHafalan',label:'Hafalan Qur\'an'},{id:'catatanTahsin',label:'Catatan Bacaan'}],
-  4: [{id:'nik_siswa',label:'NIK Siswa'},{id:'anak_ke',label:'Anak ke-'},{id:'saudara_kandung',label:'Saudara Kandung'},{id:'saudara_tiri',label:'Saudara Tiri'},{id:'saudara_angkat',label:'Saudara Angkat'},{id:'bahasa_sehari',label:'Bahasa Sehari-hari'},{id:'jarak_sekolah',label:'Jarak Sekolah'},{id:'transportasi',label:'Transportasi'}],
+  4: [{id:'nik_siswa',label:'NIK Siswa'},{id:'anak_ke',label:'Anak ke-'},{id:'saudara_kandung',label:'Saudara Kandung'},{id:'bahasa_sehari',label:'Bahasa Sehari-hari'},{id:'jarak_sekolah',label:'Jarak Sekolah'},{id:'transportasi',label:'Transportasi'}],
   5: () => {
     const tkFields = [];
     ['asal_tk','tgl_ijazah_tk','no_ijazah_tk','lama_belajar_tk'].forEach((fid,i) => {
@@ -1426,9 +1426,8 @@ async function submitTahap1() {
     localStorage.setItem('kode_ppdb', nomorPendaftaran);
 
     // Sync Tahap 1 ke Google Sheets langsung (non-blocking)
-    setLoadingText('Menyinkronkan ke Sheets...');
     try {
-      await fetch(AS_URL, {
+      fetch(AS_URL, {
         method:'POST',
         body:JSON.stringify({action:'saveData', data:{
           ...row,
