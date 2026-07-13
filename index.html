@@ -29,28 +29,23 @@ button{margin-left:208px;width:calc(100% - 208px);height:58px;border:0;border-ra
 @media(max-width:1050px){
 nav{display:none}
 .layout{display:flex;flex-direction:column;max-width:820px;gap:14px;padding-bottom:28px;overflow:hidden}
-.side{display:block;width:100%;height:230px;overflow:hidden;position:relative}
-.layout>.side:first-child{order:1;margin-bottom:-8px}
+.side{display:block;width:100%;height:150px;overflow:hidden;position:relative;pointer-events:none}
+.layout>.side:first-child{order:1;margin-bottom:-4px}
 .card{order:2;width:100%}
-.layout>.items{order:3;height:185px;margin-top:-8px}
-.mosque{left:4%;top:8px;width:185px;opacity:.24}
-.kids{height:225px;bottom:0;gap:0}
-.kids img{max-height:220px;max-width:42%}
-.kids .girl{margin-left:-22px}
-.items .cup{width:82px;left:10%;bottom:55px}
-.items .bag{width:128px;right:10%;bottom:28px}
-.items .book{width:190px;right:calc(50% - 95px);bottom:-2px}
+.layout>.items{display:none}
+.mosque{left:50%;transform:translateX(-50%);top:8px;width:240px;opacity:.16}
+.kids{display:none}
 }
 @media(max-width:700px){
 header{padding:12px 16px}.brand{gap:10px}.brand img{width:58px;height:58px}.brand h1{font-size:20px;line-height:1.15}.brand p{font-size:12px}
 .hero{padding:24px 14px 8px}.hero h2{font-size:34px;line-height:1.12}.hero p{font-size:16px}.hero p br{display:none}.orn{font-size:18px;letter-spacing:3px}
 .layout{padding:0 12px 24px;gap:10px}
-.side{height:170px}.layout>.side:first-child{margin-bottom:-4px}.mosque{width:135px;left:0;top:10px}.kids{height:168px}.kids img{max-height:166px;max-width:44%}.kids .girl{margin-left:-18px}
+.side{height:118px}.layout>.side:first-child{margin-bottom:-2px}.mosque{width:180px;left:50%;transform:translateX(-50%);top:8px;opacity:.13}
 .card{padding:22px 17px;border-radius:18px}.row{grid-template-columns:1fr;gap:7px}.radios{grid-template-columns:repeat(2,1fr)}button{margin-left:0;width:100%}.status{margin-left:0}
-.layout>.items{height:132px;margin-top:-4px}.items .cup{width:58px;left:8%;bottom:42px}.items .bag{width:94px;right:7%;bottom:19px}.items .book{width:138px;right:calc(50% - 69px);bottom:0}
 }
+
 @media(max-width:390px){
-.brand h1{font-size:18px}.hero h2{font-size:30px}.side{height:152px}.kids{height:150px}.kids img{max-height:148px}.layout>.items{height:118px}
+.brand h1{font-size:18px}.hero h2{font-size:30px}.side{height:96px}.mosque{width:150px;top:8px;opacity:.11}
 }
 </style>
 </head>
