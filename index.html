@@ -1544,7 +1544,8 @@
   <script>
     const state = {
       initialData: null,
-      selectedEkskul: null
+      selectedEkskul: null,
+      initialTimeout: null
     };
 
     const elements = {
@@ -1589,10 +1590,22 @@
 
 
     function loadInitialData() {
-      showLoading("Memuat data pendaftaran...");
+      clearAlert();
+
+      elements.submitButton.disabled = true;
+      elements.submitButton.textContent = "Memuat data...";
+
+      state.initialTimeout = window.setTimeout(() => {
+        showAlert(
+          "Data belum selesai dimuat. Periksa koneksi lalu muat ulang halaman.",
+          "error"
+        );
+      }, 15000);
 
       google.script.run
         .withSuccessHandler(data => {
+          window.clearTimeout(state.initialTimeout);
+
           state.initialData = data;
 
           elements.schoolName.textContent =
@@ -1603,10 +1616,16 @@
 
           populateClasses(data.kelas || []);
           populateEkskul(data.ekskul || []);
-          hideLoading();
+
+          elements.submitButton.textContent = "Simpan Pendaftaran";
+          updateSubmitState();
         })
-        .withFailureHandler(handleError)
-        .getInitialData();
+        .withFailureHandler(error => {
+          window.clearTimeout(state.initialTimeout);
+          elements.submitButton.textContent = "Simpan Pendaftaran";
+          handleError(error);
+        })
+        .getInitialData(false);
     }
 
 
@@ -1649,44 +1668,38 @@
       const selectedClass = elements.kelas.value;
 
       elements.siswa.innerHTML =
-        '<option value="">Memuat nama siswa...</option>';
+        '<option value="">Pilih nama siswa</option>';
 
-      elements.siswa.disabled = true;
-
-      if (!selectedClass) {
+      if (!selectedClass || !state.initialData) {
         elements.siswa.innerHTML =
           '<option value="">Pilih kelas terlebih dahulu</option>';
 
+        elements.siswa.disabled = true;
         updateSubmitState();
         return;
       }
 
-      showLoading("Memuat nama siswa...");
+      const students =
+        state.initialData.studentsByClass &&
+        state.initialData.studentsByClass[selectedClass]
+          ? state.initialData.studentsByClass[selectedClass]
+          : [];
 
-      google.script.run
-        .withSuccessHandler(students => {
-          elements.siswa.innerHTML =
-            '<option value="">Pilih nama siswa</option>';
+      students.forEach(student => {
+        const option = document.createElement("option");
+        option.value = student.nis;
+        option.textContent = student.nama;
+        elements.siswa.appendChild(option);
+      });
 
-          students.forEach(student => {
-            const option = document.createElement("option");
-            option.value = student.nis;
-            option.textContent = student.nama;
-            elements.siswa.appendChild(option);
-          });
+      elements.siswa.disabled = students.length === 0;
 
-          elements.siswa.disabled = students.length === 0;
+      if (students.length === 0) {
+        elements.siswa.innerHTML =
+          '<option value="">Tidak ada siswa pada kelas ini</option>';
+      }
 
-          if (students.length === 0) {
-            elements.siswa.innerHTML =
-              '<option value="">Tidak ada siswa pada kelas ini</option>';
-          }
-
-          hideLoading();
-          updateSubmitState();
-        })
-        .withFailureHandler(handleError)
-        .getStudentsByClass(selectedClass);
+      updateSubmitState();
     }
 
 
@@ -1695,24 +1708,20 @@
 
       const selectedName = elements.ekskul.value;
 
-      if (!selectedName) {
+      if (!selectedName || !state.initialData) {
         state.selectedEkskul = null;
         renderEkskulDetail();
         updateSubmitState();
         return;
       }
 
-      showLoading("Memeriksa sisa kuota...");
+      state.selectedEkskul =
+        (state.initialData.ekskul || []).find(
+          item => item.nama === selectedName
+        ) || null;
 
-      google.script.run
-        .withSuccessHandler(detail => {
-          state.selectedEkskul = detail;
-          renderEkskulDetail();
-          hideLoading();
-          updateSubmitState();
-        })
-        .withFailureHandler(handleError)
-        .getEkskulDetail(selectedName);
+      renderEkskulDetail();
+      updateSubmitState();
     }
 
 
@@ -1952,10 +1961,17 @@
       google.script.run
         .withSuccessHandler(data => {
           state.initialData = data;
+
+          populateClasses(data.kelas || []);
           populateEkskul(data.ekskul || []);
+
+          elements.kelas.value = "";
+          elements.siswa.innerHTML =
+            '<option value="">Pilih kelas terlebih dahulu</option>';
+          elements.siswa.disabled = true;
         })
         .withFailureHandler(() => {})
-        .getInitialData();
+        .getInitialData(true);
     }
 
 
