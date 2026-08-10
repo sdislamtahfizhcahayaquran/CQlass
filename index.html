@@ -1283,6 +1283,18 @@
   @media(max-width:900px){.wd-kpis{grid-template-columns:repeat(2,1fr)}.wd-grid-2,.wd-leader-grid{grid-template-columns:1fr}}
   @media(max-width:560px){.wd-hero{padding:21px 19px}.wd-hero-top{flex-direction:column}.wd-title{font-size:23px}.wd-kpis{grid-template-columns:1fr 1fr;gap:9px}.wd-kpi{padding:14px;min-height:105px}.wd-card{padding:16px}.wd-chart-wrap{gap:4px;height:180px}.wd-bar-label{font-size:8px}}
 
+
+  /* ===== DASHBOARD LINE CHART V4 ===== */
+  .wd-line-chart{width:100%;min-height:250px;color:var(--primary);overflow:hidden}
+  .wd-line-chart svg{width:100%;height:auto;display:block;overflow:visible}
+  .wd-gridline{stroke:var(--border);stroke-width:1;stroke-dasharray:4 6;opacity:.72}
+  .wd-axis-text{fill:var(--muted);font-size:10px;font-family:Inter,system-ui,sans-serif}
+  .wd-area{fill:url(#wdAreaGrad);stroke:none}
+  .wd-line{fill:none;stroke:var(--primary);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 4px 8px rgba(10,110,110,.12))}
+  .wd-point circle{fill:#fff;stroke:var(--primary);stroke-width:3;transition:r .15s ease,fill .15s ease}
+  .wd-point:hover circle{r:7;fill:var(--primary-light)}
+  .wd-line-caption{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--muted);padding:0 6px 2px}
+  .wd-line-caption strong{color:var(--primary-dark);font-weight:700}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -4298,11 +4310,27 @@ function wdIcon(name){
 
 function renderWDAttendanceChart(list){
   if(!list?.length) return '<div class="wd-empty">Belum ada data kehadiran untuk periode ini.</div>';
-  return `<div class="wd-chart-wrap">${list.map(x=>{
-    const h=Math.max(4,Math.min(100,Number(x.persentaseHadir)||0));
-    const label=String(x.tanggal||'').slice(8,10);
-    return `<div class="wd-bar-col" title="${escapeHtml(x.tanggal)} — ${h}% hadir"><div class="wd-bar-value">${h}%</div><div class="wd-bar" style="height:${h}%"></div><div class="wd-bar-label">${label}</div></div>`;
-  }).join('')}</div>`;
+  const W=760,H=240,padL=44,padR=18,padT=22,padB=38;
+  const innerW=W-padL-padR, innerH=H-padT-padB;
+  const vals=list.map(x=>Math.max(0,Math.min(100,Number(x.persentaseHadir)||0)));
+  const minRaw=Math.min(...vals), maxRaw=Math.max(...vals);
+  const yMin=Math.max(0,Math.floor((minRaw-5)/5)*5), yMax=Math.min(100,Math.max(yMin+10,Math.ceil((maxRaw+3)/5)*5));
+  const x=i=>padL+(list.length===1?innerW/2:(i/(list.length-1))*innerW);
+  const y=v=>padT+innerH-((v-yMin)/(yMax-yMin))*innerH;
+  const pts=list.map((d,i)=>`${x(i).toFixed(1)},${y(vals[i]).toFixed(1)}`).join(' ');
+  const area=`${padL},${padT+innerH} ${pts} ${padL+innerW},${padT+innerH}`;
+  const ticks=[]; for(let i=0;i<=4;i++) ticks.push(yMin+(yMax-yMin)*i/4);
+  return `<div class="wd-line-chart">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik tren kehadiran siswa">
+      <defs><linearGradient id="wdAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="currentColor" stop-opacity=".20"/><stop offset="100%" stop-color="currentColor" stop-opacity=".02"/></linearGradient></defs>
+      ${ticks.map(t=>`<g><line x1="${padL}" y1="${y(t)}" x2="${W-padR}" y2="${y(t)}" class="wd-gridline"/><text x="${padL-9}" y="${y(t)+4}" text-anchor="end" class="wd-axis-text">${Math.round(t)}%</text></g>`).join('')}
+      <polygon points="${area}" class="wd-area"/>
+      <polyline points="${pts}" class="wd-line"/>
+      ${list.map((d,i)=>`<g class="wd-point"><circle cx="${x(i)}" cy="${y(vals[i])}" r="5"/><title>${escapeHtml(d.tanggal||'')} — ${vals[i]}% hadir</title></g>`).join('')}
+      ${list.map((d,i)=>`<text x="${x(i)}" y="${H-14}" text-anchor="middle" class="wd-axis-text">${String(d.tanggal||'').slice(8,10)}</text>`).join('')}
+    </svg>
+    <div class="wd-line-caption"><span>Hari</span><strong>Tren kehadiran 14 hari terakhir</strong></div>
+  </div>`;
 }
 
 function renderWDRankList(list, showClass){
