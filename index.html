@@ -1224,6 +1224,65 @@
     .login-card{padding:28px 20px;}
     .bell-panel{ width:260px; right:-40px; }
   }
+
+
+  /* ===== DASHBOARD WALAS V3 — FAST + PREMIUM ===== */
+  .wd-shell{display:flex;flex-direction:column;gap:18px;}
+  .wd-hero{position:relative;overflow:hidden;border-radius:22px;padding:26px 28px;color:#fff;background:linear-gradient(135deg,#064A4A 0%,#0A6E6E 58%,#2E8B8B 100%);box-shadow:0 16px 42px rgba(6,74,74,.22);}
+  .wd-hero:before,.wd-hero:after{content:"";position:absolute;border-radius:50%;pointer-events:none;}
+  .wd-hero:before{width:230px;height:230px;right:-70px;top:-100px;background:rgba(255,255,255,.08);}
+  .wd-hero:after{width:150px;height:150px;right:120px;bottom:-110px;border:28px solid rgba(255,255,255,.06);}
+  .wd-hero-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;position:relative;z-index:1;}
+  .wd-eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.74;margin-bottom:8px;}
+  .wd-title{font-size:27px;line-height:1.15;font-weight:800;letter-spacing:-.03em;}
+  .wd-sub{font-size:13px;line-height:1.6;opacity:.8;margin-top:8px;}
+  .wd-date-pill{flex-shrink:0;padding:9px 13px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(255,255,255,.1);font-size:11.5px;font-weight:700;backdrop-filter:blur(8px);}
+  .wd-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+  .wd-kpi{position:relative;overflow:hidden;background:#fff;border:1px solid rgba(10,110,110,.12);border-radius:17px;padding:17px 18px;box-shadow:0 8px 24px rgba(10,110,110,.07);min-height:112px;}
+  .wd-kpi.clickable{cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;}
+  .wd-kpi.clickable:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(10,110,110,.12);border-color:rgba(10,110,110,.3);}
+  .wd-kpi-icon{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--primary);margin-bottom:10px;}
+  .wd-kpi-icon svg{width:18px;height:18px;}
+  .wd-kpi-value{font-size:25px;font-weight:850;letter-spacing:-.035em;color:var(--primary-dark);line-height:1;}
+  .wd-kpi-label{font-size:11.5px;color:var(--muted);font-weight:650;margin-top:6px;}
+  .wd-kpi-note{font-size:10.5px;color:var(--muted);margin-top:5px;}
+  .wd-kpi.danger .wd-kpi-icon{background:#FDF0EC;color:var(--danger);}.wd-kpi.danger .wd-kpi-value{color:var(--danger);}
+  .wd-kpi.success .wd-kpi-icon{background:#EAF5F0;color:var(--success);}.wd-kpi.success .wd-kpi-value{color:var(--success);}
+  .wd-grid-2{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:18px;align-items:stretch;}
+  .wd-card{background:#fff;border:1px solid rgba(10,110,110,.13);border-radius:18px;padding:20px;box-shadow:0 8px 28px rgba(10,110,110,.065);min-width:0;}
+  .wd-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:17px;}
+  .wd-card-title{font-size:15px;font-weight:800;color:var(--primary-dark);letter-spacing:-.01em;}
+  .wd-card-sub{font-size:10.8px;color:var(--muted);margin-top:4px;line-height:1.45;}
+  .wd-chip{font-size:10px;font-weight:750;padding:5px 9px;border-radius:999px;background:var(--primary-light);color:var(--primary-dark);white-space:nowrap;}
+  .wd-chart-wrap{height:210px;display:flex;align-items:flex-end;gap:7px;padding-top:14px;border-bottom:1px solid var(--border);}
+  .wd-bar-col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;}
+  .wd-bar-value{font-size:9.5px;color:var(--primary-dark);font-weight:800;}
+  .wd-bar{width:min(28px,75%);min-height:4px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#2E8B8B 0%,#0A6E6E 100%);box-shadow:0 5px 13px rgba(10,110,110,.16);transition:height .45s cubic-bezier(.2,.7,.2,1);}
+  .wd-bar-label{font-size:8.8px;color:var(--muted);white-space:nowrap;}
+  .wd-attendance-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;font-size:10.5px;color:var(--muted);}
+  .wd-attendance-legend b{color:var(--text);}
+  .wd-report-ring{width:116px;height:116px;border-radius:50%;display:grid;place-items:center;margin:10px auto 16px;background:conic-gradient(var(--primary) calc(var(--pct)*1%),#E5EEEE 0);position:relative;}
+  .wd-report-ring:after{content:"";position:absolute;width:86px;height:86px;border-radius:50%;background:#fff;}
+  .wd-report-ring strong{position:relative;z-index:1;font-size:23px;color:var(--primary-dark);}
+  .wd-status-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--border);font-size:11.5px;}
+  .wd-status-pill{padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800}.wd-status-pill.ok{background:#EAF5F0;color:var(--success)}.wd-status-pill.no{background:#FDF0EC;color:var(--danger)}
+  .wd-leader-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .wd-tabs{display:flex;gap:4px;padding:4px;background:var(--bg);border-radius:11px;}
+  .wd-tab{border:0;background:transparent;padding:7px 10px;border-radius:8px;font:700 10.5px inherit;color:var(--muted);cursor:pointer}.wd-tab.active{background:#fff;color:var(--primary-dark);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .wd-rank-list{display:flex;flex-direction:column;}
+  .wd-rank-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(200,221,221,.65);}
+  .wd-rank-row:last-child{border-bottom:0}.wd-medal{width:27px;height:27px;border-radius:9px;display:grid;place-items:center;background:var(--bg);font-size:10px;font-weight:850;color:var(--primary-dark)}
+  .wd-medal.r1{background:#FFF4C8;color:#8A6800}.wd-medal.r2{background:#EEF1F4;color:#5F6870}.wd-medal.r3{background:#F5E1D2;color:#86512E}
+  .wd-rank-name{font-size:12.3px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wd-rank-meta{font-size:9.8px;color:var(--muted);margin-top:2px}.wd-rank-score{font-size:11.5px;font-weight:850;color:var(--success);white-space:nowrap}
+  .wd-discipline-row{display:grid;grid-template-columns:30px minmax(0,1fr) 72px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(200,221,221,.65)}
+  .wd-progress{height:7px;border-radius:999px;background:#E7EFEF;overflow:hidden;margin-top:5px}.wd-progress>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2D8F6F,#0A6E6E)}
+  .wd-discipline-pct{text-align:right;font-size:11px;font-weight:850;color:var(--primary-dark)}
+  .wd-esc-drawer{display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:10px}.wd-esc-drawer.open{display:block;animation:wdFade .18s ease-out}@keyframes wdFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .wd-esc-card{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 11px;border:1px solid #EECFC6;background:#FFF8F5;border-radius:11px;margin-top:7px}.wd-esc-card strong{font-size:11.8px}.wd-esc-card span{font-size:9.8px;color:var(--muted)}.wd-esc-points{font-size:11px;font-weight:850;color:var(--danger);white-space:nowrap}
+  .wd-empty{padding:24px 10px;text-align:center;color:var(--muted);font-size:11.5px}.wd-skeleton{height:420px;border-radius:20px;background:linear-gradient(90deg,#eef4f4 25%,#f8fbfb 37%,#eef4f4 63%);background-size:400% 100%;animation:wdShimmer 1.2s infinite}@keyframes wdShimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+  @media(max-width:900px){.wd-kpis{grid-template-columns:repeat(2,1fr)}.wd-grid-2,.wd-leader-grid{grid-template-columns:1fr}}
+  @media(max-width:560px){.wd-hero{padding:21px 19px}.wd-hero-top{flex-direction:column}.wd-title{font-size:23px}.wd-kpis{grid-template-columns:1fr 1fr;gap:9px}.wd-kpi{padding:14px;min-height:105px}.wd-card{padding:16px}.wd-chart-wrap{gap:4px;height:180px}.wd-bar-label{font-size:8px}}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -1441,7 +1500,7 @@
 // ==========================================================
 // KONFIGURASI — WAJIB DIISI SESUAI DEPLOYMENT ANDA
 // ==========================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv2Wf3ZEIa7gjEvONJwAMdQeg1HNzwI0fWhbKV5E6twoHMNKmVl3pDtCG05tf1Kc9sXw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtjvwo5LkVGBxzDEqoVKPrOTRCmSKPaIE7rx4gn1INb4mNnMQG-PXsCJxnGWuMbjGnWA/exec';
 const APP_SECRET = 'MUss8dN31aFfnLE1sk81o1pqh1Xtf6L2KTA5JLVU';
 
 const AVATAR_FILE_IDS = Object.freeze({
@@ -1903,8 +1962,8 @@ const MODULE_GROUPS = [
   }
 ];
 
-// Dashboard terpisah dari grup dropdown, hanya untuk kesiswaan/pimpinan.
-const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['kesiswaan','pimpinan'], built: true, render: renderDashboard };
+// Dashboard utama untuk Walas, Kesiswaan, dan Pimpinan.
+const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderDashboard };
 
 function findModuleByIdV2(id) {
   if (id === 'dashboard') return DASHBOARD_MODULE;
@@ -4098,145 +4157,182 @@ async function submitMoodPilih(mood){
 }
 
 /* ==========================================================
-   MODUL: DASHBOARD KERJA HARIAN (V2 — widget baru + balapan lama)
+   MODUL: DASHBOARD WALAS V3 — 1 REQUEST, RINGAN, RESPONSIF
    ========================================================== */
 let dashboardLoadToken = 0;
+let wdLastData = null;
 
 function renderDashboard(content){
   const requestToken = ++dashboardLoadToken;
+  const kelasLabel = currentUser.role === 'walas' ? (currentUser.kelas || 'Kelas') : 'Seluruh Sekolah';
   content.innerHTML = `
-    <div class="page-title">Dashboard</div>
-    <div class="page-sub">Ringkasan performa sekolah hari ini.</div>
-    <div id="dash-widgets"><div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat ringkasan...</div></div>
-    <div id="dash-body" style="margin-top:24px;"></div>
-  `;
-  loadDashboardWidgets();
-  loadDashboard(requestToken);
-}
-
-async function loadDashboardWidgets(){
-  const el = document.getElementById('dash-widgets');
-  if(!el) return;
-
-  const [lbRes, chartRes, escRes] = await Promise.all([
-    callApi('getLeaderboardReward', {}),
-    callApi('getGrafikAbsensi', {}),
-    callApi('getEskalasiKedisiplinan', {})
-  ]);
-
-  el.innerHTML = `
-    <div class="rekap-grid" style="grid-template-columns:1fr 1fr;">
-      <div class="card">
-        <div class="card-title">Leaderboard Sekolah</div>
-        <div id="lb-sekolah"></div>
+    <div id="wd-root" class="wd-shell">
+      <div class="wd-hero">
+        <div class="wd-hero-top">
+          <div>
+            <div class="wd-eyebrow">Dashboard Kelas</div>
+            <div class="wd-title">Assalamu'alaikum, ${escapeHtml(currentUser.nama || 'Wali Kelas')} 👋</div>
+            <div class="wd-sub">Pantau ${escapeHtml(kelasLabel)} tanpa perlu membuka banyak menu.</div>
+          </div>
+          <div class="wd-date-pill" id="wd-date">Hari ini</div>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-title">Kelas Terbaik</div>
-        <div id="lb-kelas-terbaik"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Tren Kehadiran (14 Hari Terakhir)</div>
-      <div id="chart-absensi"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Perlu Eskalasi ke Kesiswaan (&ge; ${escRes.ambang || 50} poin)</div>
-      <div id="esc-list"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Top 5 per Kelas</div>
-      <select id="lb-kelas-select" class="pekan-select" style="margin-bottom:12px;"></select>
-      <div id="lb-per-kelas"></div>
-    </div>
-  `;
-
-  renderLeaderboardSekolah(lbRes.terbaikSekolah);
-  renderKelasTerbaik(lbRes.kelasTerbaik);
-  renderChartAbsensi(chartRes.data || []);
-  renderEskalasiList(escRes.data || []);
-  setupLeaderboardKelasSelect(lbRes.perKelas || {});
+      <div class="wd-skeleton"></div>
+    </div>`;
+  loadDashboardWalasFast(requestToken);
 }
 
-function renderLeaderboardSekolah(top){
-  const el = document.getElementById('lb-sekolah');
-  if(!el) return;
-  if(!top){ el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="icon">—</div>Belum ada data reward.</div>`; return; }
-  el.innerHTML = `
-    <div class="lb-hero">
-      <div class="lb-hero-name">${escapeHtml(top.nama)}</div>
-      <div class="lb-hero-meta">${escapeHtml(top.kelas)}</div>
-      <div class="lb-hero-poin">${top.totalPoin} poin reward</div>
-    </div>
-  `;
-}
-
-function renderKelasTerbaik(kt){
-  const el = document.getElementById('lb-kelas-terbaik');
-  if(!el) return;
-  if(!kt){ el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="icon">—</div>Belum ada data.</div>`; return; }
-  el.innerHTML = `
-    <div class="lb-hero">
-      <div class="lb-hero-name">${escapeHtml(kt.kelas)}</div>
-      <div class="lb-hero-meta">Rata-rata poin reward per siswa</div>
-      <div class="lb-hero-poin">${kt.rataPoin} poin/siswa</div>
-    </div>
-  `;
-}
-
-function renderChartAbsensi(data){
-  const el = document.getElementById('chart-absensi');
-  if(!el) return;
-  if(!data.length){ el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="icon">—</div>Belum ada data absensi.</div>`; return; }
-  const bars = data.map(d => {
-    const tgl = d.tanggal.slice(5).replace('-', '/'); // MM/DD ringkas
-    return `
-      <div class="chart-mini-bar-wrap">
-        <div class="chart-mini-value">${d.persentaseHadir}%</div>
-        <div class="chart-mini-bar" style="height:${Math.max(4, d.persentaseHadir)}%"></div>
-        <div class="chart-mini-label">${tgl}</div>
-      </div>
-    `;
-  }).join('');
-  el.innerHTML = `<div class="chart-mini">${bars}</div>`;
-}
-
-function renderEskalasiList(data){
-  const el = document.getElementById('esc-list');
-  if(!el) return;
-  if(!data.length){ el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="icon">—</div>Tidak ada siswa yang perlu dieskalasi saat ini.</div>`; return; }
-  el.innerHTML = data.map(s => `
-    <div class="esc-item">
-      <div><strong>${escapeHtml(s.nama)}</strong> — ${escapeHtml(s.kelas)} <span style="color:var(--muted)">(NIS ${escapeHtml(s.nis)})</span></div>
-      <div class="esc-poin">${s.totalPoin} poin</div>
-    </div>
-  `).join('');
-}
-
-function setupLeaderboardKelasSelect(perKelas){
-  const select = document.getElementById('lb-kelas-select');
-  if(!select) return;
-  const kelasList = Object.keys(perKelas).sort();
-  if(kelasList.length === 0){
-    select.innerHTML = '<option>Belum ada data</option>';
-    document.getElementById('lb-per-kelas').innerHTML = `<div class="empty-state" style="padding:20px"><div class="icon">—</div>Belum ada data.</div>`;
-    return;
+async function loadDashboardWalasFast(requestToken){
+  const root = document.getElementById('wd-root');
+  if(!root) return;
+  try{
+    const res = await callApi('getDashboardWalas', {
+      username: currentUser.username, kelas: currentUser.kelas || '', role: currentUser.role
+    });
+    if(requestToken !== dashboardLoadToken || activeModule !== 'dashboard' || !document.getElementById('wd-root')) return;
+    if(!res.success) throw new Error(res.error || 'dashboard_gagal');
+    wdLastData = res;
+    renderDashboardWalasData(res);
+  }catch(err){
+    root.innerHTML += `<div class="card"><div class="empty-state"><div class="icon">—</div>Dashboard belum dapat dimuat.<br><span style="font-size:11px">${escapeHtml(err.message || '')}</span></div></div>`;
+    root.querySelector('.wd-skeleton')?.remove();
   }
-  select.innerHTML = kelasList.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
-  select.onchange = () => renderLeaderboardKelas(perKelas[select.value] || []);
-  renderLeaderboardKelas(perKelas[kelasList[0]] || []);
 }
 
-function renderLeaderboardKelas(list){
-  const el = document.getElementById('lb-per-kelas');
-  if(!el) return;
-  if(!list.length){ el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="icon">—</div>Belum ada data reward untuk kelas ini.</div>`; return; }
-  el.innerHTML = list.map((s, i) => `
-    <div class="lb-row">
-      <div class="lb-rank">${i+1}</div>
-      <div style="flex:1"><strong>${escapeHtml(s.nama)}</strong> <span class="siswa-nis">NIS ${escapeHtml(s.nis)}</span></div>
-      <div style="font-weight:700;color:var(--success)">${s.totalPoin} poin</div>
+function renderDashboardWalasData(d){
+  const root = document.getElementById('wd-root');
+  if(!root) return;
+  const k = d.kehadiran || {};
+  const wajib = d.wajibLapor || {};
+  const esc = d.eskalasi || {count:0,data:[]};
+  const rank = d.reward || {kelas:[],sekolah:[]};
+  const kelasTertib = d.kelasTertib || [];
+  const tanggalText = d.meta?.tanggalLabel || d.meta?.tanggal || '';
+  const scope = d.meta?.scopeLabel || (currentUser.kelas || 'Sekolah');
+
+  root.innerHTML = `
+    <div class="wd-hero">
+      <div class="wd-hero-top">
+        <div>
+          <div class="wd-eyebrow">${currentUser.role === 'walas' ? 'Dashboard Wali Kelas' : 'Dashboard Sekolah'}</div>
+          <div class="wd-title">${escapeHtml(scope)}</div>
+          <div class="wd-sub">Ringkasan penting yang perlu dilihat hari ini — cepat, fokus, dan siap ditindaklanjuti.</div>
+        </div>
+        <div class="wd-date-pill">${escapeHtml(tanggalText)}</div>
+      </div>
     </div>
-  `).join('');
+
+    <div class="wd-kpis">
+      <div class="wd-kpi success">
+        <div class="wd-kpi-icon">${wdIcon('users')}</div>
+        <div class="wd-kpi-value">${Number(k.persentaseHadir || 0).toFixed(1).replace('.0','')}%</div>
+        <div class="wd-kpi-label">Kehadiran bulan ini</div>
+        <div class="wd-kpi-note">${k.hadir || 0} hadir dari ${k.total || 0} catatan</div>
+      </div>
+      <div class="wd-kpi ${wajib.sudahHariIni ? 'success' : 'danger'}">
+        <div class="wd-kpi-icon">${wdIcon('check')}</div>
+        <div class="wd-kpi-value">${wajib.sudahHariIni ? 'Sudah' : 'Belum'}</div>
+        <div class="wd-kpi-label">Wajib lapor hari ini</div>
+        <div class="wd-kpi-note">Kepatuhan bulan ini ${wajib.persentase || 0}%</div>
+      </div>
+      <div class="wd-kpi">
+        <div class="wd-kpi-icon">${wdIcon('star')}</div>
+        <div class="wd-kpi-value">${rank.kelas?.[0]?.totalPoin || 0}</div>
+        <div class="wd-kpi-label">Poin reward tertinggi kelas</div>
+        <div class="wd-kpi-note">${escapeHtml(rank.kelas?.[0]?.nama || 'Belum ada reward')}</div>
+      </div>
+      <div class="wd-kpi danger clickable" onclick="toggleWDEskalasi()" role="button" tabindex="0">
+        <div class="wd-kpi-icon">${wdIcon('alert')}</div>
+        <div class="wd-kpi-value">${esc.count || 0}</div>
+        <div class="wd-kpi-label">Eskalasi ke Kesiswaan</div>
+        <div class="wd-kpi-note">Klik untuk melihat siswa ›</div>
+      </div>
+    </div>
+
+    <div class="wd-grid-2">
+      <div class="wd-card">
+        <div class="wd-card-head"><div><div class="wd-card-title">Kehadiran Siswa</div><div class="wd-card-sub">Persentase hadir per hari, 14 hari sekolah terakhir.</div></div><span class="wd-chip">${escapeHtml(scope)}</span></div>
+        <div id="wd-attendance-chart">${renderWDAttendanceChart(k.trend || [])}</div>
+        <div class="wd-attendance-legend"><span><b>${k.hadir||0}</b> Hadir</span><span><b>${k.sakit||0}</b> Sakit</span><span><b>${k.izin||0}</b> Izin</span><span><b>${k.alfa||0}</b> Alfa</span></div>
+      </div>
+      <div class="wd-card">
+        <div class="wd-card-head"><div><div class="wd-card-title">Kepatuhan Wajib Lapor</div><div class="wd-card-sub">Hari kerja yang sudah dicek melalui modul Kedisiplinan.</div></div></div>
+        <div class="wd-report-ring" style="--pct:${Math.max(0,Math.min(100,wajib.persentase||0))}"><strong>${wajib.persentase||0}%</strong></div>
+        <div class="wd-status-line"><span>Hari kerja berjalan</span><b>${wajib.hariWajib || 0} hari</b></div>
+        <div class="wd-status-line"><span>Laporan tercatat</span><b>${wajib.hariLapor || 0} hari</b></div>
+        <div class="wd-status-line"><span>Status hari ini</span><span class="wd-status-pill ${wajib.sudahHariIni?'ok':'no'}">${wajib.sudahHariIni?'TERLAPOR':'BELUM'}</span></div>
+      </div>
+    </div>
+
+    <div class="wd-leader-grid">
+      <div class="wd-card">
+        <div class="wd-card-head"><div><div class="wd-card-title">Leaderboard Reward</div><div class="wd-card-sub">10 siswa dengan poin positif tertinggi.</div></div>
+          <div class="wd-tabs"><button class="wd-tab active" id="wd-tab-kelas" onclick="switchWDLeaderboard('kelas')">Kelas Saya</button><button class="wd-tab" id="wd-tab-sekolah" onclick="switchWDLeaderboard('sekolah')">Sekolah</button></div>
+        </div>
+        <div id="wd-leader-list">${renderWDRankList(rank.kelas || [], false)}</div>
+      </div>
+      <div class="wd-card">
+        <div class="wd-card-head"><div><div class="wd-card-title">Kelas Paling Tertib</div><div class="wd-card-sub">Berdasarkan kelengkapan wajib lapor — data kosong tidak dianggap tertib.</div></div><span class="wd-chip">Bulan ini</span></div>
+        <div>${renderWDDisciplineRanking(kelasTertib)}</div>
+      </div>
+    </div>
+
+    <div class="wd-card" id="wd-escalation-box">
+      <div class="wd-card-head">
+        <div><div class="wd-card-title">Eskalasi ke Kesiswaan</div><div class="wd-card-sub">Hanya siswa yang sudah mencapai ambang eskalasi ${esc.ambang || 50} poin.</div></div>
+        <button class="btn btn-sm btn-primary-light" onclick="toggleWDEskalasi()">${esc.count || 0} siswa · Lihat detail</button>
+      </div>
+      <div class="wd-esc-drawer" id="wd-esc-drawer">${renderWDEskalasiCards(esc.data || [])}</div>
+    </div>
+  `;
+}
+
+function wdIcon(name){
+  const p={
+    users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12a9 9 0 1 1-5.3-8.2"/></svg>',
+    star:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  }; return p[name]||'';
+}
+
+function renderWDAttendanceChart(list){
+  if(!list?.length) return '<div class="wd-empty">Belum ada data kehadiran untuk periode ini.</div>';
+  return `<div class="wd-chart-wrap">${list.map(x=>{
+    const h=Math.max(4,Math.min(100,Number(x.persentaseHadir)||0));
+    const label=String(x.tanggal||'').slice(8,10);
+    return `<div class="wd-bar-col" title="${escapeHtml(x.tanggal)} — ${h}% hadir"><div class="wd-bar-value">${h}%</div><div class="wd-bar" style="height:${h}%"></div><div class="wd-bar-label">${label}</div></div>`;
+  }).join('')}</div>`;
+}
+
+function renderWDRankList(list, showClass){
+  if(!list?.length) return '<div class="wd-empty">Belum ada data reward.</div>';
+  return `<div class="wd-rank-list">${list.slice(0,10).map((s,i)=>`<div class="wd-rank-row"><div class="wd-medal ${i<3?'r'+(i+1):''}">${i+1}</div><div><div class="wd-rank-name">${escapeHtml(s.nama||'-')}</div><div class="wd-rank-meta">${showClass?escapeHtml(s.kelas||''):('NIS '+escapeHtml(s.nis||'-'))}</div></div><div class="wd-rank-score">${s.totalPoin||0} poin</div></div>`).join('')}</div>`;
+}
+
+function switchWDLeaderboard(mode){
+  if(!wdLastData) return;
+  document.getElementById('wd-tab-kelas')?.classList.toggle('active',mode==='kelas');
+  document.getElementById('wd-tab-sekolah')?.classList.toggle('active',mode==='sekolah');
+  const el=document.getElementById('wd-leader-list');
+  if(el) el.innerHTML=renderWDRankList(wdLastData.reward?.[mode]||[],mode==='sekolah');
+}
+
+function renderWDDisciplineRanking(list){
+  if(!list?.length) return '<div class="wd-empty">Belum ada data wajib lapor bulan ini.</div>';
+  return list.slice(0,10).map((x,i)=>`<div class="wd-discipline-row"><div class="wd-medal ${i<3?'r'+(i+1):''}">${i+1}</div><div><div class="wd-rank-name">${escapeHtml(x.kelas||'-')}</div><div class="wd-progress"><span style="width:${Math.max(0,Math.min(100,x.persentase||0))}%"></span></div><div class="wd-rank-meta">${x.hariLapor||0}/${x.hariWajib||0} hari lapor${x.dataCukup?'':' · data belum cukup'}</div></div><div class="wd-discipline-pct">${x.persentase||0}%</div></div>`).join('');
+}
+
+function toggleWDEskalasi(){
+  const el=document.getElementById('wd-esc-drawer');
+  if(!el) return;
+  el.classList.toggle('open');
+  if(el.classList.contains('open')) document.getElementById('wd-escalation-box')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function renderWDEskalasiCards(list){
+  if(!list?.length) return '<div class="wd-empty">Alhamdulillah, tidak ada siswa yang perlu dieskalasi saat ini.</div>';
+  return list.map(s=>`<div class="wd-esc-card"><div><strong>${escapeHtml(s.nama||'-')}</strong><br><span>${escapeHtml(s.kelas||'')} · NIS ${escapeHtml(s.nis||'-')} · ${s.jumlahKejadian||0} kejadian</span></div><div class="wd-esc-points">${s.totalPoin||0} poin</div></div>`).join('');
 }
 
 function formatTanggalDashboard(tanggalYmd){
