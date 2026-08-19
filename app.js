@@ -76,16 +76,28 @@ async function hashPassword(username, password){
    ========================================================== */
 async function callApi(action, params={}){
   const body = JSON.stringify({ action, secret: APP_SECRET, ...params });
+  const controller = new AbortController();
+  const timeoutMs = action === 'login' ? 12000 : 20000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   let res;
   try{
     res = await fetch(APPS_SCRIPT_URL, {
       method:'POST',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body,
-      redirect:'follow'
+      redirect:'follow',
+      signal:controller.signal
     });
   }catch(networkErr){
-    throw new Error('Tidak dapat terhubung ke backend Google Apps Script. Periksa koneksi dan URL deployment.');
+    if(networkErr?.name === 'AbortError'){
+      throw new Error(action === 'login'
+        ? 'Server login terlalu lama merespons. Silakan coba sekali lagi.'
+        : 'Server terlalu lama merespons. Silakan coba lagi.');
+    }
+    throw new Error('Tidak dapat terhubung ke backend Google Apps Script. Periksa koneksi dan deployment.');
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const raw = await res.text();
@@ -95,7 +107,7 @@ async function callApi(action, params={}){
   }catch(parseErr){
     const looksHtml = /^\s*<!doctype|^\s*<html/i.test(raw || '');
     if(looksHtml){
-      throw new Error('Backend mengembalikan halaman HTML, bukan JSON. Atur deployment Web App menjadi Execute as: Me dan Who has access: Anyone, lalu salin URL /exec terbaru ke APPS_SCRIPT_URL.');
+      throw new Error('Backend mengembalikan halaman HTML, bukan JSON. Pastikan URL Web App /exec dan deployment aktif.');
     }
     throw new Error('Respons backend bukan JSON yang valid. Status HTTP: ' + res.status + '.');
   }
@@ -148,12 +160,22 @@ document.addEventListener('keydown', (event) => {
 /* ==========================================================
    TAMPIL/SEMBUNYIKAN KATA SANDI (login)
    ========================================================== */
-document.getElementById('toggle-pass').addEventListener('click', () => {
+function toggleLoginPassword(){
   const input = document.getElementById('login-password');
-  const isHidden = input.type === 'password';
-  input.type = isHidden ? 'text' : 'password';
-  document.getElementById('toggle-pass').setAttribute('aria-label', isHidden ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
-});
+  const btn = document.getElementById('toggle-pass');
+  const icon = document.getElementById('toggle-pass-icon');
+  if(!input || !btn || !icon) return;
+
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.setAttribute('aria-label', show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
+  btn.setAttribute('aria-pressed', String(show));
+
+  icon.innerHTML = show
+    ? '<path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 4.2A10.5 10.5 0 0 1 12 4c7 0 10 8 10 8a15 15 0 0 1-2.1 3.1"/><path d="M6.6 6.6C3.8 8.5 2 12 2 12s3 8 10 8a9.8 9.8 0 0 0 5.4-1.6"/>'
+    : '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>';
+}
+document.getElementById('toggle-pass')?.addEventListener('click', toggleLoginPassword);
 
 /* ==========================================================
    AUTH & SESSION
@@ -183,7 +205,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       errEl.style.display = 'block';
     }
   } catch(err){
-    errEl.textContent = 'Gagal terhubung ke server. Cek koneksi internet.';
+    errEl.textContent = err?.message || 'Gagal terhubung ke server. Cek koneksi internet.';
     errEl.style.display = 'block';
   } finally {
     btn.disabled = false;
@@ -192,6 +214,10 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 });
 
 function logout(){
+  if(bellIntervalId){
+    clearInterval(bellIntervalId);
+    bellIntervalId = null;
+  }
   sessionStorage.removeItem('kesiswaan_user');
   currentUser = null;
   document.getElementById('app-screen').style.display = 'none';
@@ -479,6 +505,8 @@ let activeModule = 'dashboard';
 let pendingKeterlambatanCount = 0;
 let openGroupId = null;
 
+let bellIntervalId = null;
+
 function enterApp(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
@@ -489,17 +517,33 @@ function enterApp(){
   renderSidebar();
   setActiveModule(activeModule);
 
+  // UI tampil dahulu; request non-kritis ditunda agar login terasa cepat.
   if(currentUser.role === 'walas'){
-    refreshPendingKeterlambatanBadge();
-    refreshBellNotif();
-    setInterval(refreshBellNotif, 120000); // refresh tiap 2 menit, ringan karena backend pakai tail+cache.
+    setTimeout(() => {
+      if(currentUser?.role === 'walas') refreshBellNotif();
+    }, 900);
+
+    if(!bellIntervalId){
+      bellIntervalId = setInterval(() => {
+        if(currentUser?.role === 'walas') refreshBellNotif();
+      }, 300000);
+    }
   }
 
-  callApi('logAktivitas', {
-    username: currentUser.username, nama: currentUser.nama,
-    kelas: currentUser.kelas || '', modul: 'Login', aksi: 'login'
-  });
-  checkAndShowMoodModal();
+  setTimeout(() => {
+    if(currentUser) checkAndShowMoodModal();
+  }, 1600);
+
+  setTimeout(() => {
+    if(!currentUser) return;
+    callApi('logAktivitas', {
+      username: currentUser.username,
+      nama: currentUser.nama,
+      kelas: currentUser.kelas || '',
+      modul: 'Login',
+      aksi: 'login'
+    }).catch(()=>{});
+  }, 2200);
 }
 
 async function refreshPendingKeterlambatanBadge(){
@@ -1311,7 +1355,8 @@ async function loadLeggerSetup(){
     }
   }catch(err){
     if(token !== legerState.loadingToken || activeModule !== 'leger') return;
-    main.innerHTML = `<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message || 'Gagal memuat Legger Nilai.')}</div>`;
+    const msg = String(err.message || 'Gagal memuat Legger Nilai.');
+    main.innerHTML = `<div class="empty-state"><div class="icon">—</div>${escapeHtml(msg)}</div>`;
   }
 }
 
