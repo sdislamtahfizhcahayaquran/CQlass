@@ -1344,3 +1344,21 @@
     .lg-sticky-name{min-width:150px;max-width:170px;}
   }
 
+
+
+/* ===== FINAL FIX: LOGIN EYE + CLICK AREA ===== */
+.toggle-pass{
+  position:relative;
+  z-index:4;
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
+  padding:0;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.toggle-pass svg{
+  width:18px;
+  height:18px;
+  pointer-events:none;
+}
