@@ -3680,78 +3680,81 @@ async function pollCetakRaporStatus(){
 /* ==========================================================
    MODUL: LAPORAN GURU BULANAN
    ========================================================== */
-let laporanGuruState = { kelas:null, bulan:new Date().getMonth()+1, tahun:new Date().getFullYear(), requestId:null };
+function _lgDefaultTanggalMulai(){
+  const d = new Date(); d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0,10);
+}
+function _lgDefaultTanggalSelesai(){
+  return new Date().toISOString().slice(0,10);
+}
+
+let laporanGuruState = { kelas:null, tanggalMulai:_lgDefaultTanggalMulai(), tanggalSelesai:_lgDefaultTanggalSelesai() };
 
 function renderLaporanGuru(content){
   const isWalas = currentUser.role === 'walas';
   content.innerHTML = `
     <div class="page-title">Laporan Guru Bulanan</div>
-    <div class="page-sub">Buat laporan bulanan kelas dari data yang sudah diinput di sistem.</div>
+    <div class="page-sub">Buat laporan kelas (format Excel) dari data yang sudah diinput di sistem, untuk rentang tanggal yang dipilih.</div>
     ${!isWalas ? `<div class="card"><div class="card-title">Pilih Kelas</div><input type="text" id="lg-kelas-input" placeholder="Ketik nama kelas persis" style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;"></div>` : ''}
     <div class="card">
-      <div class="card-title">Pilih Bulan</div>
-      <div style="display:flex;gap:10px;">
-        <select id="lg-bulan" class="pekan-select"></select>
-        <select id="lg-tahun" class="pekan-select"></select>
+      <div class="card-title">Pilih Rentang Tanggal</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input type="date" id="lg-tanggal-mulai" class="pekan-select" value="${laporanGuruState.tanggalMulai}">
+        <span style="color:var(--muted);font-size:13px;">s.d.</span>
+        <input type="date" id="lg-tanggal-selesai" class="pekan-select" value="${laporanGuruState.tanggalSelesai}">
       </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px;">Contoh: 24 Juli s.d. 25 Agustus.</div>
     </div>
     <div class="card">
-      <button class="btn" id="lg-mulai-btn" onclick="mulaiLaporanGuru()">Buat Laporan Bulan Ini</button>
+      <button class="btn" id="lg-mulai-btn" onclick="mulaiLaporanGuru()">Buat &amp; Unduh Laporan (Excel)</button>
       <div id="lg-status-area" style="margin-top:16px;"></div>
     </div>
   `;
-  const bulanSelect = document.getElementById('lg-bulan');
-  NAMA_BULAN.forEach((nm,i) => { if(i>0) bulanSelect.innerHTML += `<option value="${i}" ${i===laporanGuruState.bulan?'selected':''}>${nm}</option>`; });
-  const tahunSelect = document.getElementById('lg-tahun');
-  const skrg = new Date().getFullYear();
-  for(let t=skrg-1;t<=skrg+1;t++) tahunSelect.innerHTML += `<option value="${t}" ${t===laporanGuruState.tahun?'selected':''}>${t}</option>`;
 
   if(isWalas){ laporanGuruState.kelas = currentUser.kelas; }
   else { document.getElementById('lg-kelas-input').addEventListener('change', e => { laporanGuruState.kelas = e.target.value.trim(); }); }
+}
+
+function _lgUnduhBase64Xlsx(filename, base64, mimeType){
+  const byteChars = atob(base64);
+  const byteNumbers = new Array(byteChars.length);
+  for(let i=0;i<byteChars.length;i++) byteNumbers[i] = byteChars.charCodeAt(i);
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename || 'Laporan Guru.xlsx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 async function mulaiLaporanGuru(){
   const btn = document.getElementById('lg-mulai-btn');
   const statusArea = document.getElementById('lg-status-area');
   if(!laporanGuruState.kelas){ showToast('Pilih kelas terlebih dahulu', true); return; }
-  laporanGuruState.bulan = Number(document.getElementById('lg-bulan').value);
-  laporanGuruState.tahun = Number(document.getElementById('lg-tahun').value);
 
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Memulai...';
-  statusArea.innerHTML = '';
+  laporanGuruState.tanggalMulai = document.getElementById('lg-tanggal-mulai').value;
+  laporanGuruState.tanggalSelesai = document.getElementById('lg-tanggal-selesai').value;
+  if(!laporanGuruState.tanggalMulai || !laporanGuruState.tanggalSelesai){ showToast('Pilih tanggal mulai dan selesai', true); return; }
+  if(laporanGuruState.tanggalMulai > laporanGuruState.tanggalSelesai){ showToast('Tanggal mulai harus sebelum tanggal selesai', true); return; }
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Sedang diproses...';
+  statusArea.innerHTML = `<div style="font-size:13px;color:var(--muted)"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Sedang membuat laporan, mohon tunggu...</div>`;
   try{
     const res = await callApi('requestLaporanGuruBulanan', {
-      kelas: laporanGuruState.kelas, bulan: laporanGuruState.bulan, tahun: laporanGuruState.tahun,
+      kelas: laporanGuruState.kelas,
+      tanggalMulai: laporanGuruState.tanggalMulai,
+      tanggalSelesai: laporanGuruState.tanggalSelesai,
       requestedBy: currentUser.nama, requestedByUsername: currentUser.username
     });
-    if(!res.success){ statusArea.innerHTML = `<div class="ms-alert">${escapeHtml(res.error || 'Gagal memulai proses.')}</div>`; return; }
-    laporanGuruState.requestId = res.requestId;
-    statusArea.innerHTML = `<div style="font-size:13px;color:var(--muted)"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Sedang diproses...</div>`;
-    pollLaporanGuruStatus();
-  } finally { btn.disabled = false; btn.textContent = 'Buat Laporan Bulan Ini'; }
-}
+    if(!res.success){ statusArea.innerHTML = `<div class="ms-alert"><strong>Gagal.</strong><br>${escapeHtml(res.error || 'Gagal membuat laporan.')}</div>`; return; }
 
-async function pollLaporanGuruStatus(){
-  if(!laporanGuruState.requestId) return;
-  const statusArea = document.getElementById('lg-status-area');
-  if(!statusArea) return;
-  const res = await callApi('getLaporanGuruRequestStatus', { requestId: laporanGuruState.requestId });
-  if(!res.success){ statusArea.innerHTML = `<div class="ms-alert">Gagal cek status: ${escapeHtml(res.error||'')}</div>`; return; }
-  const status = res.data.Status;
-  if(status === 'Selesai'){
-    const dikirimKe = res.data.DikirimKe || '';
-    const infoKirim = dikirimKe && dikirimKe.indexOf('Link publik') === -1
-      ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;">Sudah dikirim ke: ${escapeHtml(dikirimKe)} — cek folder "Shared with me" di Drive.</div>`
-      : `<div style="font-size:12px;color:var(--warn);margin-top:8px;">Email guru tidak ditemukan di sheet Walas — file pakai link publik biasa. Lengkapi kolom "Email Google" untuk kelas ini supaya lain kali langsung terkirim.</div>`;
-    statusArea.innerHTML = `
-      <div style="background:#EAF5F0;border:1px solid #C8E6D6;border-radius:10px;padding:14px 16px;font-size:13px;color:var(--success);">Laporan berhasil dibuat.</div>
-      <a href="${escapeHtml(res.data.OutputURL)}" target="_blank" class="btn" style="display:inline-block;text-decoration:none;text-align:center;margin-top:12px;width:auto;padding:12px 24px;">Buka Google Sheets</a>
-      ${infoKirim}
-    `;
-  } else if(status === 'Gagal'){
-    statusArea.innerHTML = `<div class="ms-alert"><strong>Gagal.</strong><br>${escapeHtml(res.data.PesanError||'')}</div>`;
-  } else {
-    setTimeout(pollLaporanGuruStatus, 3000);
+    _lgUnduhBase64Xlsx(res.filename, res.base64, res.mimeType);
+    statusArea.innerHTML = `<div style="background:#EAF5F0;border:1px solid #C8E6D6;border-radius:10px;padding:14px 16px;font-size:13px;color:var(--success);">Laporan berhasil dibuat dan sedang diunduh: ${escapeHtml(res.filename||'')}</div>`;
+  } catch(err){
+    statusArea.innerHTML = `<div class="ms-alert"><strong>Gagal.</strong><br>${escapeHtml(err.message || String(err))}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Buat & Unduh Laporan (Excel)';
   }
 }
 
