@@ -76,7 +76,7 @@ async function callApi(action, params={}){
   }
 
   if(!data.success && action !== 'login' && action !== 'gantiPassword' && action !== 'gantiUsername'){
-    showToast(data.error || 'Terjadi kesalahan', true);
+    showToast('Terjadi kendala. Silakan hubungi admin.', true);
   }
   return data;
 }
@@ -527,7 +527,7 @@ const MODULE_GROUPS = [
   {
     id: 'info', label: 'Info', roles: ['walas','kesiswaan','pimpinan'],
     items: [
-      { id: 'ekskul', label: 'Ekskul', roles: ['walas','kesiswaan','pimpinan'], built: false }
+      { id: 'ekskul', label: 'Ekskul', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderEkskulRekap }
     ]
   },
   {
@@ -3613,7 +3613,7 @@ function renderCetakRapor(content){
   const isWalas = currentUser.role === 'walas';
   content.innerHTML = `
     <div class="page-title">Cetak Rapor</div>
-    <div class="page-sub">Generate rapor 1 kelas sekaligus jadi 1 file PDF siap cetak.</div>
+    <div class="page-sub">Generate PDF masing-masing siswa dan unduh semua rapor kelas dalam 1 file ZIP.</div>
 
     ${!isWalas ? `
     <div class="card">
@@ -3661,57 +3661,33 @@ async function mulaiCetakRapor(){
   if(!raporState.kelas){ showToast('Pilih kelas terlebih dahulu', true); return; }
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Memulai...';
-  statusArea.innerHTML = '';
+  btn.innerHTML = '<span class="spinner"></span>Membuat rapor...';
+  statusArea.innerHTML = `<div style="font-size:13px;color:var(--muted)"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Menyiapkan PDF setiap siswa dan ZIP kelas...</div>`;
 
   try{
-    const res = await callApi('requestCetakRaporKelas', {
-      kelas: raporState.kelas, periode: periodeKodeRapor(), requestedBy: currentUser.nama, requestedByUsername: currentUser.username
+    const res = await callApi('generateRaporPTSKelasZip', {
+      kelas: raporState.kelas,
+      periode: periodeKodeRapor(),
+      requestedBy: currentUser.nama,
+      requestedByUsername: currentUser.username
     });
     if(!res.success){
-      const pesanMap = {
-        belum_siap_generate_pdf: 'Sistem rapor belum lengkap disiapkan (ada sheet/pengaturan yang belum diisi admin).',
-        template_belum_diisi: 'Template rapor belum diatur oleh admin.'
-      };
-      statusArea.innerHTML = `<div class="ms-alert">${escapeHtml(pesanMap[res.error] || res.error)}</div>`;
+      statusArea.innerHTML = `<div class="ms-alert">Terjadi kendala. Silakan hubungi admin.</div>`;
       return;
     }
-    raporState.requestId = res.requestId;
-    statusArea.innerHTML = `<div style="font-size:13px;color:var(--muted)"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Sedang diproses, mohon tunggu (biasanya 1-3 menit tergantung jumlah siswa)...</div>`;
-    pollCetakRaporStatus();
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Mulai Cetak Rapor Kelas';
-  }
-}
-
-async function pollCetakRaporStatus(){
-  if(!raporState.requestId) return;
-  const statusArea = document.getElementById('rp-status-area');
-  if(!statusArea) return; // user sudah pindah modul, hentikan polling.
-
-  const res = await callApi('getRaporPTSRequestStatus', { requestId: raporState.requestId });
-  if(!res.success){
-    statusArea.innerHTML = `<div class="ms-alert">Gagal mengecek status: ${escapeHtml(res.error || '')}</div>`;
-    return;
-  }
-  const status = res.data.Status;
-  if(status === 'Selesai'){
-    const dikirimKe = res.data.DikirimKe || '';
-    const infoKirim = dikirimKe && dikirimKe.indexOf('Link publik') === -1
-      ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;">Sudah dikirim ke: ${escapeHtml(dikirimKe)} — cek folder "Shared with me" di Drive.</div>`
-      : `<div style="font-size:12px;color:var(--warn);margin-top:8px;">Email guru tidak ditemukan di sheet Walas — file pakai link publik biasa. Lengkapi kolom "Email Google" supaya lain kali langsung terkirim.</div>`;
     statusArea.innerHTML = `
       <div style="background:#EAF5F0;border:1px solid #C8E6D6;border-radius:10px;padding:14px 16px;font-size:13px;color:var(--success);">
-        Rapor kelas berhasil dibuat.
+        ${Number(res.count||0)} rapor siswa berhasil dibuat.
       </div>
-      <a href="${escapeHtml(res.data.OutputURL)}" target="_blank" class="btn" style="display:inline-block;text-decoration:none;text-align:center;margin-top:12px;width:auto;padding:12px 24px;">Buka / Download PDF</a>
-      ${infoKirim}
-    `;
-  } else if(status === 'Gagal'){
-    statusArea.innerHTML = `<div class="ms-alert"><strong>Gagal membuat rapor.</strong><br>${escapeHtml(res.data.PesanError || 'Kesalahan tidak diketahui.')}</div>`;
-  } else {
-    setTimeout(pollCetakRaporStatus, 3000);
+      <a href="${escapeHtml(res.downloadUrl)}" target="_blank" class="btn"
+         style="display:inline-block;text-decoration:none;text-align:center;margin-top:12px;width:auto;padding:12px 24px;">
+         Download Semua (ZIP)
+      </a>`;
+  }catch(err){
+    statusArea.innerHTML = `<div class="ms-alert">Terjadi kendala. Silakan hubungi admin.</div>`;
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Mulai Cetak Rapor Kelas';
   }
 }
 
@@ -4183,4 +4159,89 @@ async function loadDashboard(requestToken){
     `;
     list.appendChild(row);
   });
+}
+
+
+/* ==========================================================
+   CQLASS — REKAP EKSKUL WALAS (READ ONLY)
+   Tampilan memakai komponen CSS yang sudah ada.
+   ========================================================== */
+async function renderEkskulRekap(content){
+  const kelas = currentUser.role === 'walas' ? (currentUser.kelas || '') : '';
+  content.innerHTML = `
+    <div class="page-title">Rekap Ekskul</div>
+    <div class="page-sub">Rekap peserta, kehadiran, dan nilai ekstrakurikuler siswa.</div>
+    ${currentUser.role !== 'walas' ? `
+      <div class="card">
+        <div class="card-title">Pilih Kelas</div>
+        <div style="display:flex;gap:10px;max-width:620px;">
+          <input id="ek-rekap-kelas" type="text" placeholder="Contoh: 5A Banin"
+            style="flex:1;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
+          <button class="btn btn-sm" style="width:auto;" onclick="loadEkskulRekapAdmin()">Tampilkan</button>
+        </div>
+      </div>` : ''}
+    <div id="ek-rekap-body"></div>`;
+  if(kelas) loadEkskulRekap(kelas);
+}
+
+function loadEkskulRekapAdmin(){
+  const kelas=(document.getElementById('ek-rekap-kelas')?.value||'').trim();
+  if(!kelas){ showToast('Isi kelas terlebih dahulu.',true); return; }
+  loadEkskulRekap(kelas);
+}
+
+async function loadEkskulRekap(kelas){
+  const body=document.getElementById('ek-rekap-body');
+  if(!body)return;
+  body.innerHTML=`<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Memuat rekap ekskul...</div>`;
+  try{
+    const res=await callApi('getRekapEkskulWalas',{kelas});
+    if(!res.success) throw new Error();
+    const rows=res.data||[];
+    if(!rows.length){
+      body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;
+      return;
+    }
+
+    const grouped={};
+    rows.forEach(r=>{
+      const k=r.namaEkskul||'Ekskul';
+      if(!grouped[k]) grouped[k]=[];
+      grouped[k].push(r);
+    });
+
+    body.innerHTML=Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'id')).map(nama=>{
+      const list=grouped[nama];
+      return `<div class="card">
+        <div class="card-title">${escapeHtml(nama)} <span style="font-size:11px;color:var(--muted);font-weight:500">(${list.length} siswa)</span></div>
+        <div style="overflow:auto">
+          <table class="lg-table" style="min-width:760px">
+            <thead><tr>
+              <th>No</th><th style="text-align:left;min-width:210px">Nama Siswa</th><th>Kelas</th>
+              <th>Hadir</th><th>Total</th><th>Kehadiran</th>
+              <th>Keikutsertaan</th><th>Kemampuan</th><th style="text-align:left;min-width:220px">Deskripsi</th>
+            </tr></thead>
+            <tbody>
+              ${list.map((r,i)=>{
+                const pct=r.totalPertemuan?Math.round((r.hadir||0)*100/r.totalPertemuan):0;
+                return `<tr>
+                  <td>${i+1}</td>
+                  <td style="text-align:left"><strong>${escapeHtml(r.nama||'-')}</strong><div class="siswa-nis">NIS ${escapeHtml(r.nis||'-')}</div></td>
+                  <td>${escapeHtml(r.kelas||'-')}</td>
+                  <td>${Number(r.hadir||0)}</td>
+                  <td>${Number(r.totalPertemuan||0)}</td>
+                  <td>${pct}%</td>
+                  <td>${escapeHtml(r.predikatKeikutsertaan||r.nilaiKeikutsertaan||'-')}</td>
+                  <td>${escapeHtml(r.predikatKemampuan||r.nilaiKemampuan||'-')}</td>
+                  <td style="text-align:left">${escapeHtml(r.deskripsi||'-')}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Terjadi kendala. Silakan hubungi admin.</div>`;
+  }
 }
