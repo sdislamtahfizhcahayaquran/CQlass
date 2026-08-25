@@ -40,7 +40,7 @@ async function hashPassword(username, password){
 async function callApi(action, params={}){
   const body = JSON.stringify({ action, secret: APP_SECRET, ...params });
   const controller = new AbortController();
-  const timeoutMs = action === 'login' ? 12000 : 20000;
+  const timeoutMs = action === 'login' ? 25000 : 20000;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res;
