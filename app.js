@@ -3607,13 +3607,29 @@ async function loadRwRekap(){
 /* ==========================================================
    MODUL: CETAK RAPOR (AKADEMIK)
    ========================================================== */
-let raporState = { kelas:null, semester:'1', jenisPeriode:'PTS', requestId:null, polling:false };
+let raporState = {
+  kelas:null,
+  semester:'1',
+  jenisPeriode:'PTS',
+  mode:'kelas',
+  siswa:[],
+  selectedNis:''
+};
 
 function renderCetakRapor(content){
   const isWalas = currentUser.role === 'walas';
+  raporState = {
+    kelas:isWalas ? (currentUser.kelas||'') : null,
+    semester:'1',
+    jenisPeriode:'PTS',
+    mode:'kelas',
+    siswa:[],
+    selectedNis:''
+  };
+
   content.innerHTML = `
     <div class="page-title">Cetak Rapor</div>
-    <div class="page-sub">Generate PDF masing-masing siswa dan unduh semua rapor kelas dalam 1 file ZIP.</div>
+    <div class="page-sub">Download rapor per siswa atau seluruh siswa dalam satu kelas.</div>
 
     ${!isWalas ? `
     <div class="card">
@@ -3637,16 +3653,38 @@ function renderCetakRapor(content){
     </div>
 
     <div class="card">
-      <button class="btn" id="rp-mulai-btn" onclick="mulaiCetakRapor()">Mulai Cetak Rapor Kelas</button>
+      <div class="card-title">Pilih Jenis Download</div>
+      <div class="kd-mode-toggle" style="margin-bottom:0">
+        <button type="button" id="rp-mode-kelas" class="kd-mode-btn active" onclick="setRaporMode('kelas')">
+          Seluruh Kelas<br><span style="font-size:11px;font-weight:400">Download semua siswa dalam ZIP</span>
+        </button>
+        <button type="button" id="rp-mode-siswa" class="kd-mode-btn" onclick="setRaporMode('siswa')">
+          Per Siswa<br><span style="font-size:11px;font-weight:400">Pilih satu siswa lalu download PDF</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card" id="rp-siswa-card" style="display:none">
+      <div class="card-title">Pilih Siswa</div>
+      <select id="rp-siswa-select" class="pekan-select" style="width:100%;max-width:520px">
+        <option value="">— pilih siswa —</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <button class="btn" id="rp-mulai-btn" onclick="mulaiCetakRapor()">Download Semua Rapor (ZIP)</button>
       <div id="rp-status-area" style="margin-top:16px;"></div>
     </div>
   `;
 
-  if(isWalas){
-    raporState.kelas = currentUser.kelas;
-  } else {
-    document.getElementById('rp-kelas-input').addEventListener('change', e => { raporState.kelas = e.target.value.trim(); });
+  if(!isWalas){
+    document.getElementById('rp-kelas-input').addEventListener('change', async e => {
+      raporState.kelas = e.target.value.trim();
+      if(raporState.mode === 'siswa') await loadRaporSiswa();
+    });
   }
+
+  checkRaporReadiness();
 }
 
 function periodeKodeRapor(){
@@ -3655,39 +3693,118 @@ function periodeKodeRapor(){
   return 'S' + semester + '_' + jenis;
 }
 
+async function setRaporMode(mode){
+  raporState.mode = mode;
+  document.getElementById('rp-mode-kelas')?.classList.toggle('active', mode === 'kelas');
+  document.getElementById('rp-mode-siswa')?.classList.toggle('active', mode === 'siswa');
+  document.getElementById('rp-siswa-card').style.display = mode === 'siswa' ? 'block' : 'none';
+
+  const btn = document.getElementById('rp-mulai-btn');
+  btn.textContent = mode === 'siswa' ? 'Download Rapor Siswa (PDF)' : 'Download Semua Rapor (ZIP)';
+
+  if(mode === 'siswa') await loadRaporSiswa();
+}
+
+async function loadRaporSiswa(){
+  const select = document.getElementById('rp-siswa-select');
+  if(!select) return;
+  select.innerHTML = '<option value="">Memuat siswa...</option>';
+
+  if(!raporState.kelas){
+    select.innerHTML = '<option value="">Pilih kelas terlebih dahulu</option>';
+    return;
+  }
+
+  try{
+    const res = await callApi('getRaporPTSStudents', { kelas:raporState.kelas });
+    const siswa = res.success ? (res.data || []) : [];
+    raporState.siswa = siswa;
+    select.innerHTML = '<option value="">— pilih siswa —</option>' +
+      siswa.map(s => `<option value="${escapeHtml(s.nis)}">${escapeHtml(s.nama)} — ${escapeHtml(s.nis)}</option>`).join('');
+  }catch(e){
+    select.innerHTML = '<option value="">Data siswa belum tersedia</option>';
+  }
+}
+
+async function checkRaporReadiness(){
+  const area=document.getElementById('rp-status-area');
+  if(!raporState.kelas || !area) return;
+  try{
+    const res=await callApi('getRaporPTSReadiness',{kelas:raporState.kelas});
+    if(res.success && !res.ready){
+      area.innerHTML=`
+        <div style="background:#FFF8E5;border:1px solid #E8D69B;border-radius:10px;padding:13px 15px;font-size:12.5px;color:#7F681A;">
+          Template Rapor PTS belum dikonfigurasi oleh admin.
+        </div>`;
+    }else{
+      area.innerHTML='';
+    }
+  }catch(e){}
+}
+
 async function mulaiCetakRapor(){
   const btn = document.getElementById('rp-mulai-btn');
   const statusArea = document.getElementById('rp-status-area');
-  if(!raporState.kelas){ showToast('Pilih kelas terlebih dahulu', true); return; }
+
+  if(!raporState.kelas){
+    showToast('Pilih kelas terlebih dahulu', true);
+    return;
+  }
+
+  let nis = '';
+  if(raporState.mode === 'siswa'){
+    nis = document.getElementById('rp-siswa-select')?.value || '';
+    if(!nis){
+      showToast('Pilih siswa terlebih dahulu', true);
+      return;
+    }
+  }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Membuat rapor...';
-  statusArea.innerHTML = `<div style="font-size:13px;color:var(--muted)"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Menyiapkan PDF setiap siswa dan ZIP kelas...</div>`;
+  statusArea.innerHTML = `<div style="font-size:13px;color:var(--muted)"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Menyiapkan file rapor...</div>`;
 
   try{
-    const res = await callApi('generateRaporPTSKelasZip', {
-      kelas: raporState.kelas,
-      periode: periodeKodeRapor(),
-      requestedBy: currentUser.nama,
-      requestedByUsername: currentUser.username
-    });
+    const readiness = await callApi('getRaporPTSReadiness',{kelas:raporState.kelas});
+    if(!readiness.success || !readiness.ready){
+      statusArea.innerHTML = `<div class="ms-alert">Template Rapor PTS belum dikonfigurasi. Silakan hubungi admin.</div>`;
+      return;
+    }
+
+    const action = raporState.mode === 'siswa' ? 'generateRaporPTSSiswa' : 'generateRaporPTSKelasZip';
+    const params = {
+      kelas:raporState.kelas,
+      periode:periodeKodeRapor(),
+      requestedBy:currentUser.nama,
+      requestedByUsername:currentUser.username
+    };
+    if(raporState.mode === 'siswa') params.nis = nis;
+
+    const res = await callApi(action, params);
     if(!res.success){
       statusArea.innerHTML = `<div class="ms-alert">Terjadi kendala. Silakan hubungi admin.</div>`;
       return;
     }
+
+    const label = raporState.mode === 'siswa'
+      ? `Rapor siswa berhasil dibuat: ${escapeHtml(res.fileName||'')}`
+      : `${Number(res.count||0)} rapor siswa berhasil dibuat.`;
+
     statusArea.innerHTML = `
       <div style="background:#EAF5F0;border:1px solid #C8E6D6;border-radius:10px;padding:14px 16px;font-size:13px;color:var(--success);">
-        ${Number(res.count||0)} rapor siswa berhasil dibuat.
+        ${label}
       </div>
       <a href="${escapeHtml(res.downloadUrl)}" target="_blank" class="btn"
          style="display:inline-block;text-decoration:none;text-align:center;margin-top:12px;width:auto;padding:12px 24px;">
-         Download Semua (ZIP)
+         ${raporState.mode === 'siswa' ? 'Download PDF' : 'Download ZIP'}
       </a>`;
   }catch(err){
     statusArea.innerHTML = `<div class="ms-alert">Terjadi kendala. Silakan hubungi admin.</div>`;
   }finally{
     btn.disabled = false;
-    btn.textContent = 'Mulai Cetak Rapor Kelas';
+    btn.textContent = raporState.mode === 'siswa'
+      ? 'Download Rapor Siswa (PDF)'
+      : 'Download Semua Rapor (ZIP)';
   }
 }
 
