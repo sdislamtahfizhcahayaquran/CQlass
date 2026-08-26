@@ -40,7 +40,16 @@ async function hashPassword(username, password){
 async function callApi(action, params={}){
   const body = JSON.stringify({ action, secret: APP_SECRET, ...params });
   const controller = new AbortController();
-  const timeoutMs = action === 'login' ? 25000 : 20000;
+
+  // Action berat memang membutuhkan waktu lebih lama di Apps Script.
+  // Jangan timeout 20 detik untuk pembuatan PDF/ZIP/XLSX.
+  const timeoutByAction = {
+    login: 25000,
+    generateRaporPTSSiswa: 120000,
+    generateRaporPTSKelasZip: 360000,
+    requestLaporanGuruBulanan: 180000
+  };
+  const timeoutMs = timeoutByAction[action] || 30000;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res;
@@ -3605,50 +3614,104 @@ async function loadRwRekap(){
 }
 
 /* ==========================================================
-   MODUL: CETAK RAPOR (AKADEMIK)
+   MODUL: CETAK RAPOR (AKADEMIK) — FINAL
+   - Range data custom: Absensi + Reward + Kedisiplinan
+   - Tanggal cetak custom
+   - Tanggal Hijriah opsional
+   - Per siswa / seluruh kelas
    ========================================================== */
+
+function rpTodayYmd(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function rpDefaultStartYmd(){
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
 let raporState = {
   kelas:null,
   semester:'1',
   jenisPeriode:'PTS',
   mode:'kelas',
   siswa:[],
-  selectedNis:''
+  selectedNis:'',
+  tanggalMulai:rpDefaultStartYmd(),
+  tanggalSelesai:rpTodayYmd(),
+  tanggalCetak:rpTodayYmd(),
+  tanggalCetakHijri:''
 };
 
 function renderCetakRapor(content){
   const isWalas = currentUser.role === 'walas';
+
   raporState = {
     kelas:isWalas ? (currentUser.kelas||'') : null,
     semester:'1',
     jenisPeriode:'PTS',
     mode:'kelas',
     siswa:[],
-    selectedNis:''
+    selectedNis:'',
+    tanggalMulai:raporState.tanggalMulai || rpDefaultStartYmd(),
+    tanggalSelesai:raporState.tanggalSelesai || rpTodayYmd(),
+    tanggalCetak:raporState.tanggalCetak || rpTodayYmd(),
+    tanggalCetakHijri:raporState.tanggalCetakHijri || ''
   };
 
   content.innerHTML = `
     <div class="page-title">Cetak Rapor</div>
-    <div class="page-sub">Download rapor per siswa atau seluruh siswa dalam satu kelas.</div>
+    <div class="page-sub">Atur periode data, tanggal cetak, lalu download rapor per siswa atau seluruh kelas.</div>
 
     ${!isWalas ? `
     <div class="card">
       <div class="card-title">Pilih Kelas</div>
-      <input type="text" id="rp-kelas-input" placeholder="Ketik nama kelas persis"
+      <input type="text" id="rp-kelas-input" placeholder="Ketik nama kelas persis, contoh: 3A Banat"
         style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
     </div>` : ''}
 
     <div class="card">
-      <div class="card-title">Pilih Periode</div>
+      <div class="card-title">Periode Rapor</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <select id="rp-semester" class="pekan-select">
-          <option value="1">Semester 1</option>
-          <option value="2">Semester 2</option>
+        <select id="rp-semester" class="pekan-select" onchange="raporState.semester=this.value">
+          <option value="1" ${raporState.semester==='1'?'selected':''}>Semester 1</option>
+          <option value="2" ${raporState.semester==='2'?'selected':''}>Semester 2</option>
         </select>
-        <select id="rp-jenis" class="pekan-select">
-          <option value="PTS">Tengah Semester</option>
-          <option value="PAS">Akhir Semester</option>
+        <select id="rp-jenis" class="pekan-select" onchange="raporState.jenisPeriode=this.value">
+          <option value="PTS" ${raporState.jenisPeriode==='PTS'?'selected':''}>Tengah Semester (PTS)</option>
+          <option value="PAS" ${raporState.jenisPeriode==='PAS'?'selected':''}>Akhir Semester (PAS)</option>
         </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Rentang Data Rapor</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Mulai</label>
+          <input type="date" id="rp-tanggal-mulai" class="pekan-select" style="width:100%" value="${escapeHtml(raporState.tanggalMulai)}">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Selesai</label>
+          <input type="date" id="rp-tanggal-selesai" class="pekan-select" style="width:100%" value="${escapeHtml(raporState.tanggalSelesai)}">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Cetak Rapor</label>
+          <input type="date" id="rp-tanggal-cetak" class="pekan-select" style="width:100%" value="${escapeHtml(raporState.tanggalCetak)}">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Hijriah <span style="font-weight:400;color:var(--muted)">(opsional)</span></label>
+          <input type="text" id="rp-tanggal-hijri" placeholder="Contoh: 12 Rabiul Awal 1448 AH"
+            style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-family:inherit;"
+            value="${escapeHtml(raporState.tanggalCetakHijri)}">
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:9px;">
+        Rentang tanggal digunakan untuk Absensi, Reward, dan Kedisiplinan. Nilai akademik dan Tahfizh mengikuti data PTS/PAS yang tersimpan.
       </div>
     </div>
 
@@ -3666,7 +3729,7 @@ function renderCetakRapor(content){
 
     <div class="card" id="rp-siswa-card" style="display:none">
       <div class="card-title">Pilih Siswa</div>
-      <select id="rp-siswa-select" class="pekan-select" style="width:100%;max-width:520px">
+      <select id="rp-siswa-select" class="pekan-select" style="width:100%;max-width:620px">
         <option value="">— pilih siswa —</option>
       </select>
     </div>
@@ -3678,8 +3741,10 @@ function renderCetakRapor(content){
   `;
 
   if(!isWalas){
-    document.getElementById('rp-kelas-input').addEventListener('change', async e => {
+    const kelasInput = document.getElementById('rp-kelas-input');
+    kelasInput?.addEventListener('change', async e => {
       raporState.kelas = e.target.value.trim();
+      await checkRaporReadiness();
       if(raporState.mode === 'siswa') await loadRaporSiswa();
     });
   }
@@ -3688,19 +3753,45 @@ function renderCetakRapor(content){
 }
 
 function periodeKodeRapor(){
-  const semester = document.getElementById('rp-semester').value;
-  const jenis = document.getElementById('rp-jenis').value;
+  const semester = document.getElementById('rp-semester')?.value || raporState.semester || '1';
+  const jenis = document.getElementById('rp-jenis')?.value || raporState.jenisPeriode || 'PTS';
   return 'S' + semester + '_' + jenis;
+}
+
+function syncRaporDateState(){
+  raporState.tanggalMulai = document.getElementById('rp-tanggal-mulai')?.value || '';
+  raporState.tanggalSelesai = document.getElementById('rp-tanggal-selesai')?.value || '';
+  raporState.tanggalCetak = document.getElementById('rp-tanggal-cetak')?.value || '';
+  raporState.tanggalCetakHijri = document.getElementById('rp-tanggal-hijri')?.value.trim() || '';
+}
+
+function validateRaporDates(){
+  syncRaporDateState();
+  if(!raporState.tanggalMulai || !raporState.tanggalSelesai){
+    showToast('Tanggal mulai dan tanggal selesai wajib dipilih.', true);
+    return false;
+  }
+  if(raporState.tanggalMulai > raporState.tanggalSelesai){
+    showToast('Tanggal mulai tidak boleh setelah tanggal selesai.', true);
+    return false;
+  }
+  if(!raporState.tanggalCetak){
+    showToast('Tanggal cetak rapor wajib dipilih.', true);
+    return false;
+  }
+  return true;
 }
 
 async function setRaporMode(mode){
   raporState.mode = mode;
   document.getElementById('rp-mode-kelas')?.classList.toggle('active', mode === 'kelas');
   document.getElementById('rp-mode-siswa')?.classList.toggle('active', mode === 'siswa');
-  document.getElementById('rp-siswa-card').style.display = mode === 'siswa' ? 'block' : 'none';
+
+  const card = document.getElementById('rp-siswa-card');
+  if(card) card.style.display = mode === 'siswa' ? 'block' : 'none';
 
   const btn = document.getElementById('rp-mulai-btn');
-  btn.textContent = mode === 'siswa' ? 'Download Rapor Siswa (PDF)' : 'Download Semua Rapor (ZIP)';
+  if(btn) btn.textContent = mode === 'siswa' ? 'Download Rapor Siswa (PDF)' : 'Download Semua Rapor (ZIP)';
 
   if(mode === 'siswa') await loadRaporSiswa();
 }
@@ -3708,38 +3799,53 @@ async function setRaporMode(mode){
 async function loadRaporSiswa(){
   const select = document.getElementById('rp-siswa-select');
   if(!select) return;
-  select.innerHTML = '<option value="">Memuat siswa...</option>';
 
   if(!raporState.kelas){
     select.innerHTML = '<option value="">Pilih kelas terlebih dahulu</option>';
     return;
   }
 
+  select.disabled = true;
+  select.innerHTML = '<option value="">Memuat siswa...</option>';
+
   try{
+    // Sumber ini ringan dan sama dengan daftar siswa aplikasi.
     const res = await callApi('getRaporPTSStudents', { kelas:raporState.kelas });
-    const siswa = res.success ? (res.data || []) : [];
-    raporState.siswa = siswa;
+    if(!res.success) throw new Error(res.error || 'Gagal memuat siswa.');
+
+    raporState.siswa = (res.data || []).slice().sort((a,b) =>
+      String(a.nama||'').localeCompare(String(b.nama||''),'id')
+    );
+
     select.innerHTML = '<option value="">— pilih siswa —</option>' +
-      siswa.map(s => `<option value="${escapeHtml(s.nis)}">${escapeHtml(s.nama)} — ${escapeHtml(s.nis)}</option>`).join('');
-  }catch(e){
+      raporState.siswa.map(s =>
+        `<option value="${escapeHtml(String(s.nis))}">${escapeHtml(s.nama)} — ${escapeHtml(String(s.nis))}</option>`
+      ).join('');
+  }catch(err){
     select.innerHTML = '<option value="">Data siswa belum tersedia</option>';
+    showToast(err.message || 'Gagal memuat siswa.', true);
+  }finally{
+    select.disabled = false;
   }
 }
 
 async function checkRaporReadiness(){
-  const area=document.getElementById('rp-status-area');
-  if(!raporState.kelas || !area) return;
+  const area = document.getElementById('rp-status-area');
+  if(!area || !raporState.kelas) return;
+
   try{
-    const res=await callApi('getRaporPTSReadiness',{kelas:raporState.kelas});
+    const res = await callApi('getRaporPTSReadiness',{kelas:raporState.kelas});
     if(res.success && !res.ready){
-      area.innerHTML=`
+      area.innerHTML = `
         <div style="background:#FFF8E5;border:1px solid #E8D69B;border-radius:10px;padding:13px 15px;font-size:12.5px;color:#7F681A;">
-          Template Rapor PTS belum dikonfigurasi oleh admin.
+          Template Rapor belum siap. Silakan hubungi admin.
         </div>`;
     }else{
-      area.innerHTML='';
+      area.innerHTML = '';
     }
-  }catch(e){}
+  }catch(e){
+    // readiness non-kritis, tombol download tetap dapat dicoba
+  }
 }
 
 async function mulaiCetakRapor(){
@@ -3747,59 +3853,90 @@ async function mulaiCetakRapor(){
   const statusArea = document.getElementById('rp-status-area');
 
   if(!raporState.kelas){
-    showToast('Pilih kelas terlebih dahulu', true);
+    showToast('Pilih kelas terlebih dahulu.', true);
     return;
   }
+  if(!validateRaporDates()) return;
 
   let nis = '';
   if(raporState.mode === 'siswa'){
     nis = document.getElementById('rp-siswa-select')?.value || '';
     if(!nis){
-      showToast('Pilih siswa terlebih dahulu', true);
+      showToast('Pilih siswa terlebih dahulu.', true);
       return;
     }
   }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Membuat rapor...';
-  statusArea.innerHTML = `<div style="font-size:13px;color:var(--muted)"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Menyiapkan file rapor...</div>`;
+
+  const loadingText = raporState.mode === 'siswa'
+    ? 'Menyiapkan PDF siswa. Mohon tunggu...'
+    : 'Membuat seluruh PDF dan ZIP. Proses kelas memang lebih lama, jangan tutup halaman ini.';
+
+  statusArea.innerHTML = `
+    <div style="font-size:13px;color:var(--muted)">
+      <span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>
+      ${loadingText}
+    </div>`;
 
   try{
     const readiness = await callApi('getRaporPTSReadiness',{kelas:raporState.kelas});
     if(!readiness.success || !readiness.ready){
-      statusArea.innerHTML = `<div class="ms-alert">Template Rapor PTS belum dikonfigurasi. Silakan hubungi admin.</div>`;
+      statusArea.innerHTML = `<div class="ms-alert">Template Rapor belum siap. Silakan hubungi admin.</div>`;
       return;
     }
 
-    const action = raporState.mode === 'siswa' ? 'generateRaporPTSSiswa' : 'generateRaporPTSKelasZip';
+    const action = raporState.mode === 'siswa'
+      ? 'generateRaporPTSSiswa'
+      : 'generateRaporPTSKelasZip';
+
     const params = {
-      kelas:raporState.kelas,
-      periode:periodeKodeRapor(),
-      requestedBy:currentUser.nama,
-      requestedByUsername:currentUser.username
+      kelas: raporState.kelas,
+      periode: periodeKodeRapor(),
+
+      // Range yang dibaca backend untuk absensi/reward/kedisiplinan
+      tanggalMulai: raporState.tanggalMulai,
+      tanggalSelesai: raporState.tanggalSelesai,
+
+      // Tanggal yang dicetak pada halaman 2
+      tanggalCetak: raporState.tanggalCetak,
+      tanggalCetakHijri: raporState.tanggalCetakHijri,
+
+      requestedBy: currentUser.nama,
+      requestedByUsername: currentUser.username
     };
+
     if(raporState.mode === 'siswa') params.nis = nis;
 
     const res = await callApi(action, params);
     if(!res.success){
-      statusArea.innerHTML = `<div class="ms-alert">Terjadi kendala. Silakan hubungi admin.</div>`;
+      const msg = res.error || 'Terjadi kendala saat membuat rapor.';
+      statusArea.innerHTML = `<div class="ms-alert"><strong>Gagal membuat rapor.</strong><br>${escapeHtml(msg)}</div>`;
       return;
     }
 
     const label = raporState.mode === 'siswa'
-      ? `Rapor siswa berhasil dibuat: ${escapeHtml(res.fileName||'')}`
-      : `${Number(res.count||0)} rapor siswa berhasil dibuat.`;
+      ? `Rapor berhasil dibuat: ${escapeHtml(res.fileName || '')}`
+      : `${Number(res.count || 0)} rapor siswa berhasil dibuat dalam ZIP.`;
 
     statusArea.innerHTML = `
       <div style="background:#EAF5F0;border:1px solid #C8E6D6;border-radius:10px;padding:14px 16px;font-size:13px;color:var(--success);">
-        ${label}
+        ${label}<br>
+        <span style="font-size:12px;color:var(--muted)">
+          Data: ${escapeHtml(raporState.tanggalMulai)} s.d. ${escapeHtml(raporState.tanggalSelesai)}
+          · Tanggal cetak: ${escapeHtml(raporState.tanggalCetak)}
+        </span>
       </div>
-      <a href="${escapeHtml(res.downloadUrl)}" target="_blank" class="btn"
+      <a href="${escapeHtml(res.downloadUrl)}" target="_blank" rel="noopener" class="btn"
          style="display:inline-block;text-decoration:none;text-align:center;margin-top:12px;width:auto;padding:12px 24px;">
          ${raporState.mode === 'siswa' ? 'Download PDF' : 'Download ZIP'}
       </a>`;
   }catch(err){
-    statusArea.innerHTML = `<div class="ms-alert">Terjadi kendala. Silakan hubungi admin.</div>`;
+    statusArea.innerHTML = `
+      <div class="ms-alert"><strong>Gagal.</strong><br>
+      ${escapeHtml(err.message || String(err))}
+      </div>`;
   }finally{
     btn.disabled = false;
     btn.textContent = raporState.mode === 'siswa'
