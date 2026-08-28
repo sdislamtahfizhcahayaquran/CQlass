@@ -6,6 +6,7 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93
 const AUTH_URL = `${SUPABASE_URL}/functions/v1/auth-user`;
 const DASHBOARD_MASTER_URL = `${SUPABASE_URL}/functions/v1/dashboard-master`;
 const ATTENDANCE_URL = `${SUPABASE_URL}/functions/v1/attendance`;
+const STUDENT_POINTS_URL = `${SUPABASE_URL}/functions/v1/student-points`;
 
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
@@ -2922,967 +2923,379 @@ async function submitPjBLForm(){
 }
 
 /* ==========================================================
-   MODUL: KEDISIPLINAN
+   MODUL: KEDISIPLINAN & REWARD — SUPABASE
+   Berdasarkan Tata Tertib Siswa & Orang Tua/Wali CQ
    ========================================================== */
-let kdState = {
-  kelas:null, jenjang:null, tab:'riwayat', inputMode:'pelanggaran',
-  tanggal:'', siswa:[], masterList:[],
-  pelanggaranTerpilih:null, siswaTerpilihIds:{},
-  siswaTerpilih:null, pelanggaranTerpilihMap:{},
-  keterlambatanPending:[], keterlambatanTerpilih:{}
+
+const POINT_STATUS = {
+  violationClassId: '',
+  rewardClassId: '',
+  violationStudentId: '',
+  rewardStudentId: '',
+  violationMasters: [],
+  rewardMasters: [],
+  classes: [],
+  violationStudents: [],
+  rewardStudents: []
 };
 
-function todayStrKD(){
-  const d = new Date();
-  const pad = n => n.toString().padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-
-function getJenjangSDSMPClient(kelasFull){
-  const m = (kelasFull || '').toString().trim().match(/^(\d+)/);
-  if(!m) return null;
-  const angka = parseInt(m[1], 10);
-  return angka <= 6 ? 'SD' : 'SMP';
-}
-
-function renderKedisiplinan(content){
-  const isWalas = currentUser.role === 'walas';
-  kdState.tanggal = kdState.tanggal || todayStrKD();
-
-  content.innerHTML = `
-    <div class="page-title">Kedisiplinan &amp; Poin Pelanggaran</div>
-    <div class="page-sub">Catat pelanggaran siswa dan pantau akumulasi poin per kelas.</div>
-
-    ${!isWalas ? `
-    <div class="card">
-      <div class="card-title">Pilih Kelas</div>
-      <input type="text" id="kd-kelas-input" placeholder="Ketik nama kelas persis, contoh: 1 Banin A"
-        style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
-    </div>` : ''}
-
-    <div id="kd-body"></div>
-  `;
-
-  if(isWalas){
-    kdState.kelas = currentUser.kelas;
-    loadKedisiplinanKelas();
-  } else {
-    document.getElementById('kd-kelas-input').addEventListener('change', (e) => {
-      kdState.kelas = e.target.value.trim();
-      loadKedisiplinanKelas();
-    });
-  }
-}
-
-async function loadKedisiplinanKelas(){
-  if(!kdState.kelas) return;
-  kdState.jenjang = getJenjangSDSMPClient(kdState.kelas);
-
-  const body = document.getElementById('kd-body');
-  body.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat data...</div>`;
-
-  const [siswaRes, masterRes] = await Promise.all([
-    callApi('getSiswaByKelas', { kelas: kdState.kelas }),
-    callApi('getMasterPelanggaran', { jenjang: kdState.jenjang })
-  ]);
-  kdState.siswa = siswaRes.data || [];
-  kdState.masterList = masterRes.data || [];
-
-  await loadKdKeterlambatanPending();
-
-  renderKedisiplinanShell();
-
-  if(currentUser.role === 'walas' && kdState.kelas === currentUser.kelas){
-    const logKey = 'log_kedisiplinan_' + todayStrKD() + '_' + currentUser.username;
-    if(!sessionStorage.getItem(logKey)){
-      callApi('logAktivitas', {
-        username: currentUser.username, nama: currentUser.nama,
-        kelas: currentUser.kelas, modul: 'Kedisiplinan', aksi: 'buka'
-      });
-      sessionStorage.setItem(logKey, '1');
+function injectStudentPointStyles(){
+  if(document.getElementById('student-point-style')) return;
+  const s = document.createElement('style');
+  s.id = 'student-point-style';
+  s.textContent = `
+    .pt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .pt-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .pt-control{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;background:#fff;font:inherit;color:var(--text);outline:none}
+    .pt-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(8,126,124,.10)}
+    .pt-label{display:block;font-size:11px;font-weight:900;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.03em}
+    .pt-stat-grid{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:10px;margin:14px 0}
+    .pt-stat{border:1px solid var(--border);background:#fff;border-radius:14px;padding:14px}
+    .pt-stat strong{display:block;font-size:24px;color:var(--primary);line-height:1.1}
+    .pt-stat span{font-size:11px;color:var(--muted);font-weight:800}
+    .pt-pill{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:10.5px;font-weight:900;align-items:center;gap:5px}
+    .pt-pill.ringan{background:#eef8f2;color:#397752}.pt-pill.sedang{background:#fff6de;color:#9a6c00}.pt-pill.berat{background:#ffe9e4;color:#b54c37}
+    .pt-pill.reward{background:#e9f7f6;color:var(--primary)}
+    .pt-rule-box{padding:12px;border-radius:12px;background:#f7fbfb;border:1px solid var(--border);font-size:12px;line-height:1.55}
+    .pt-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    .pt-table{width:100%;border-collapse:collapse;min-width:760px}
+    .pt-table th,.pt-table td{padding:10px 11px;border-bottom:1px solid var(--border);text-align:left;font-size:12px;vertical-align:top}
+    .pt-table th{background:#f5fafa;font-size:10.5px;text-transform:uppercase;color:var(--muted);letter-spacing:.03em}
+    .pt-table tr:last-child td{border-bottom:0}
+    .pt-action-row{display:flex;gap:9px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:14px}
+    .pt-danger{color:#b54c37;font-weight:800}.pt-muted{color:var(--muted)}
+    .pt-alert{padding:12px 14px;border-radius:12px;background:#fff5f1;border:1px solid #f4c8bc;color:#a44935;font-size:12px;line-height:1.5}
+    .pt-good{padding:12px 14px;border-radius:12px;background:#edf9f7;border:1px solid #c8e9e4;color:#176f69;font-size:12px;line-height:1.5}
+    .pt-master-meta{font-size:11px;color:var(--muted);margin-top:5px}
+    @media(max-width:900px){
+      .pt-grid,.pt-grid-3{grid-template-columns:1fr}
+      .pt-stat-grid{grid-template-columns:repeat(2,1fr)}
     }
-  }
-}
-
-async function loadKdKeterlambatanPending(){
-  const res = await callApi('getKeterlambatanBelumDicatat', { kelas: kdState.kelas });
-  const list = res.data || [];
-  kdState.keterlambatanPending = list.filter(r => !r.sudahDicatat)
-    .sort((a,b) => (a.tanggal||'').localeCompare(b.tanggal||''));
-  kdState.keterlambatanTerpilih = {};
-  kdState.keterlambatanPending.forEach(r => { kdState.keterlambatanTerpilih[r.tanggal + '|' + r.nis] = true; });
-}
-
-function renderKedisiplinanShell(){
-  const body = document.getElementById('kd-body');
-
-  if(kdState.siswa.length === 0){
-    body.innerHTML = `<div class="empty-state"><div class="icon">—</div>Belum ada data siswa untuk kelas ini di sheet Siswa.</div>`;
-    return;
-  }
-  if(kdState.masterList.length === 0){
-    body.innerHTML = `<div class="empty-state"><div class="icon">—</div>Sheet "MasterPelanggaran" belum terisi untuk jenjang ${kdState.jenjang || '-'}. Import master_pelanggaran.csv dulu.</div>`;
-    return;
-  }
-
-  body.innerHTML = `
-    <div id="kd-notif-area"></div>
-    <div class="kd-tabs">
-      <button class="kd-tab ${kdState.tab==='riwayat'?'active':''}" onclick="switchKdTab('riwayat')">Riwayat &amp; Rekap Poin</button>
-      <button class="kd-tab ${kdState.tab==='input'?'active':''}" onclick="switchKdTab('input')">+ Input Pelanggaran</button>
-      <button class="kd-tab ${kdState.tab==='bulanan'?'active':''}" onclick="switchKdTab('bulanan')">Rekap Bulanan</button>
-    </div>
-    <div id="kd-tab-content"></div>
   `;
-  renderKdNotifKeterlambatan();
-  renderKdTabContent();
+  document.head.appendChild(s);
 }
 
-function renderKdNotifKeterlambatan(){
-  const area = document.getElementById('kd-notif-area');
-  if(!area) return;
-
-  if(!kdState.keterlambatanPending || kdState.keterlambatanPending.length === 0){
-    area.innerHTML = '';
-    return;
-  }
-
-  const jumlah = kdState.keterlambatanPending.length;
-  area.innerHTML = `
-    <div class="kd-notif-card">
-      <div class="kd-notif-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Keterlambatan Belum Dikonfirmasi — ${jumlah} siswa</div>
-      <div id="kd-notif-list"></div>
-      <button class="btn" id="kd-notif-konfirmasi-btn" style="margin-top:12px;background:var(--danger);"
-        onclick="submitKonfirmasiKeterlambatan()">Konfirmasi Terpilih Jadi Poin</button>
-    </div>
-  `;
-
-  const list = document.getElementById('kd-notif-list');
-  kdState.keterlambatanPending.forEach(r => {
-    const key = r.tanggal + '|' + r.nis;
-    const row = document.createElement('label');
-    row.className = 'kd-notif-row';
-    row.innerHTML = `
-      <input type="checkbox" ${kdState.keterlambatanTerpilih[key] ? 'checked' : ''} onchange="kdState.keterlambatanTerpilih['${key}'] = this.checked">
-      <div><div class="siswa-name">${escapeHtml(r.nama)}</div><div class="siswa-nis">NIS ${escapeHtml(r.nis)} • ${formatTanggalIndo(r.tanggal)}</div></div>
-      <span class="menit">telat ${r.menitTerlambat} menit</span>
-    `;
-    list.appendChild(row);
-  });
-}
-
-function formatTanggalIndo(tglStr){
-  if(!tglStr) return '-';
-  const [y, m, d] = tglStr.split('-').map(Number);
-  const nama = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-  return `${d} ${nama[m] || ''} ${y}`;
-}
-
-async function submitKonfirmasiKeterlambatan(){
-  const btn = document.getElementById('kd-notif-konfirmasi-btn');
-  const listSiswa = kdState.keterlambatanPending.filter(r => kdState.keterlambatanTerpilih[r.tanggal + '|' + r.nis]);
-  if(listSiswa.length === 0){
-    showToast('Pilih minimal 1 siswa', true);
-    return;
-  }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
+async function studentPointsRequest(action, payload={}, timeoutMs=30000){
+  const token = getAuthToken();
+  if(!token) throw new Error('Sesi login tidak ditemukan.');
+  const c = new AbortController();
+  const timer = setTimeout(()=>c.abort(), timeoutMs);
   try{
-    const res = await callApi('konfirmasiKeterlambatanJadiPoin', {
-      kelas: kdState.kelas,
-      dicatatOleh: currentUser.nama,
-      listSiswa: listSiswa.map(r => ({ nis: r.nis, nama: r.nama, tanggal: r.tanggal }))
+    const r = await fetch(STUDENT_POINTS_URL,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_PUBLISHABLE_KEY,
+        'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'x-session-token':token
+      },
+      body:JSON.stringify({action,...payload}),
+      signal:c.signal
     });
-    if(res.success){
-      showToast(`Keterlambatan ${listSiswa.length} siswa berhasil dijadikan poin`);
-      await loadKdKeterlambatanPending();
-      renderKdNotifKeterlambatan();
-      if(kdState.tab === 'riwayat') renderKdRiwayat();
-      if(currentUser.role === 'walas') refreshPendingKeterlambatanBadge();
+    const raw = await r.text();
+    let data={};
+    try{data=raw?JSON.parse(raw):{}}catch(_){throw new Error(`Respons server poin bukan JSON (HTTP ${r.status}).`)}
+    if(!r.ok || data.success===false){
+      const msgs={
+        session_invalid:'Sesi login tidak valid. Silakan login kembali.',
+        session_expired:'Sesi login berakhir. Silakan login kembali.',
+        edit_window_closed:'Data sudah melewati batas edit 7 hari.',
+        future_date_not_allowed:'Tanggal kejadian tidak boleh melebihi hari ini.',
+        student_not_in_class:'Siswa tidak terdaftar pada kelas tersebut.',
+        invalid_master:'Jenis pelanggaran/reward tidak valid.',
+        do_violation:'Pelanggaran berkategori DO harus ditangani sesuai kebijakan sekolah.',
+      };
+      throw new Error(msgs[data.error] || data.message || data.error || `Gagal memproses data poin (HTTP ${r.status}).`);
     }
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Konfirmasi Terpilih Jadi Poin';
-  }
+    return data;
+  }catch(e){
+    if(e?.name==='AbortError') throw new Error('Server poin terlalu lama merespons.');
+    throw e;
+  }finally{clearTimeout(timer)}
 }
 
-function switchKdTab(tab){
-  kdState.tab = tab;
-  renderKedisiplinanShell();
+function pointToday(){
+  return jakartaTodayISO ? jakartaTodayISO() : new Date().toISOString().slice(0,10);
 }
 
-function renderKdTabContent(){
-  if(kdState.tab === 'riwayat') renderKdRiwayat();
-  else if(kdState.tab === 'bulanan') renderKdBulanan();
-  else renderKdInput();
+async function loadPointBootstrap(){
+  const res = await studentPointsRequest('bootstrap');
+  POINT_STATUS.classes = res.classes || [];
+  POINT_STATUS.violationMasters = res.violation_masters || [];
+  POINT_STATUS.rewardMasters = res.reward_masters || [];
+  return res;
 }
 
-async function renderKdRiwayat(){
-  const c = document.getElementById('kd-tab-content');
-  c.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat rekap...</div>`;
+function pointClassOptions(selected=''){
+  return `<option value="">— Pilih kelas —</option>` + POINT_STATUS.classes.map(c =>
+    `<option value="${escapeHtml(c.id)}" ${c.id===selected?'selected':''}>${escapeHtml(c.name)}</option>`
+  ).join('');
+}
 
-  const [rekapRes, riwayatRes] = await Promise.all([
-    callApi('getRekapPoinKelas', { kelas: kdState.kelas }),
-    callApi('getRiwayatPelanggaran', { kelas: kdState.kelas })
-  ]);
-  const rekap = rekapRes.data || [];
-  const riwayat = riwayatRes.data || [];
+function pointStudentOptions(students, selected=''){
+  return `<option value="">— Pilih siswa —</option>` + students.map(s =>
+    `<option value="${escapeHtml(s.id)}" ${s.id===selected?'selected':''}>${escapeHtml(s.name)}</option>`
+  ).join('');
+}
 
-  c.innerHTML = `
-    <div class="card">
-      <div class="card-title">Rekap Total Poin — ${escapeHtml(kdState.kelas)}</div>
-      ${rekap.length === 0 ? '<div class="empty-state"><div class="icon">—</div>Belum ada data siswa.</div>' : '<div id="kd-rekap-list"></div>'}
+function violationMasterOptions(){
+  const groups = ['Ringan','Sedang','Berat'];
+  return `<option value="">— Pilih jenis pelanggaran —</option>` +
+    groups.map(cat=>{
+      const list=POINT_STATUS.violationMasters.filter(x=>x.category===cat);
+      if(!list.length)return '';
+      return `<optgroup label="${cat}">${list.map(x=>{
+        const p=x.consequence_code==='DO'?'DO':`${x.points} poin`;
+        return `<option value="${escapeHtml(x.id)}">${escapeHtml(x.violation_name)} — ${p}</option>`;
+      }).join('')}</optgroup>`;
+    }).join('');
+}
+
+function rewardMasterOptions(){
+  const groups = ['Kebaikan Kecil','Kebaikan Sedang','Kebaikan Besar'];
+  return `<option value="">— Pilih bentuk penghargaan —</option>` +
+    groups.map(cat=>{
+      const list=POINT_STATUS.rewardMasters.filter(x=>x.category===cat);
+      if(!list.length)return '';
+      return `<optgroup label="${cat}">${list.map(x=>
+        `<option value="${escapeHtml(x.id)}">${escapeHtml(x.reward_name)} — ${x.points} poin reward</option>`
+      ).join('')}</optgroup>`;
+    }).join('');
+}
+
+function pointSummaryHtml(s){
+  const next = s?.intervention?.next || null;
+  const current = s?.intervention?.current || null;
+  const hasDO = Boolean(s?.has_do_violation);
+  return `
+    ${hasDO?`<div class="pt-alert"><b>PERINGATAN:</b> terdapat pelanggaran berkategori <b>DO</b>. Konsekuensi tidak dapat dihapus oleh poin reward dan harus diproses sesuai kebijakan sekolah.</div>`:''}
+    <div class="pt-stat-grid">
+      <div class="pt-stat"><strong>${s?.violation_total||0}</strong><span>Total Poin Pelanggaran</span></div>
+      <div class="pt-stat"><strong>${s?.eligible_violation_total||0}</strong><span>Ringan + Sedang</span></div>
+      <div class="pt-stat"><strong>${s?.heavy_violation_total||0}</strong><span>Pelanggaran Berat</span></div>
+      <div class="pt-stat"><strong>${s?.effective_reward_total||0}</strong><span>Reward Berlaku</span></div>
+      <div class="pt-stat"><strong>${s?.balance||0}</strong><span>Saldo Poin</span></div>
     </div>
-    <div class="card">
-      <div class="card-title">Riwayat Pelanggaran (terbaru dulu)</div>
-      ${riwayat.length === 0 ? '<div class="empty-state"><div class="icon">—</div>Belum ada pelanggaran tercatat untuk kelas ini.</div>' : '<div id="kd-riwayat-list"></div>'}
+    <div class="${current?'pt-alert':'pt-good'}">
+      ${current
+        ? `<b>Status Pembinaan:</b> ${escapeHtml(current.stage)} — ${escapeHtml(current.action)}`
+        : `<b>Status Pembinaan:</b> Belum mencapai ambang panggilan 50 poin.`
+      }
+      ${next?`<br><span class="pt-muted">Ambang berikutnya: ${next.points} poin — ${escapeHtml(next.stage)}.</span>`:''}
     </div>
   `;
+}
 
-  if(rekap.length > 0){
-    const rekapList = document.getElementById('kd-rekap-list');
-    rekap.forEach(s => {
-      const cls = s.totalPoin >= 100 ? 'tinggi' : (s.totalPoin >= 50 ? 'sedang' : 'aman');
-      const row = document.createElement('div');
-      row.className = 'kd-rekap-row';
-      row.innerHTML = `
-        <div><div class="siswa-name">${escapeHtml(s.nama)}</div><div class="siswa-nis">NIS ${escapeHtml(s.nis)} • ${s.jumlahPelanggaran} pelanggaran</div></div>
-        <div class="kd-rekap-total ${cls}">${s.totalPoin} poin</div>
-      `;
-      rekapList.appendChild(row);
-    });
+async function pointLoadStudents(classId, kind){
+  if(!classId) return;
+  const res=await studentPointsRequest('students',{class_id:classId});
+  if(kind==='violation'){
+    POINT_STATUS.violationStudents=res.students||[];
+    document.getElementById('kd-student').innerHTML=pointStudentOptions(POINT_STATUS.violationStudents);
+    document.getElementById('kd-student-area').style.display='block';
+  }else{
+    POINT_STATUS.rewardStudents=res.students||[];
+    document.getElementById('rw-student').innerHTML=pointStudentOptions(POINT_STATUS.rewardStudents);
+    document.getElementById('rw-student-area').style.display='block';
   }
+}
 
-  if(riwayat.length > 0){
-    const riwayatList = document.getElementById('kd-riwayat-list');
-    riwayat.forEach(r => {
-      const kategoriClass = r.kategori === 'Berat' ? 'kd-poin-berat' : (r.kategori === 'Sedang' ? 'kd-poin-sedang' : 'kd-poin-ringan');
-      const row = document.createElement('div');
-      row.className = 'kd-riwayat-row';
-      row.innerHTML = `
-        <div class="kd-riwayat-head">
-          <div>
-            <div class="siswa-name">${escapeHtml(r.nama)} <span class="siswa-nis">(NIS ${escapeHtml(r.nis)})</span></div>
-            <div style="font-size:12.5px;margin-top:2px;">${escapeHtml(r.pelanggaran)}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px;">${escapeHtml(r.tanggal)} • dicatat oleh ${escapeHtml(r.dicatatOleh || '-')}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <span class="kd-poin-badge ${kategoriClass}">${r.poin} poin</span><br>
-            <button class="kd-riwayat-del" onclick="hapusRiwayatKd('${escapeHtml(r.id)}')">Hapus</button>
-          </div>
+async function pointLoadProfile(studentId, kind){
+  if(!studentId) return;
+  const res=await studentPointsRequest('profile',{student_id:studentId});
+  const target=document.getElementById(kind==='violation'?'kd-profile':'rw-profile');
+  if(target) target.innerHTML=pointSummaryHtml(res.summary);
+}
+
+async function pointLoadHistory(studentId, kind){
+  if(!studentId) return;
+  const res=await studentPointsRequest('history',{student_id:studentId});
+  const el=document.getElementById(kind==='violation'?'kd-history':'rw-history');
+  if(!el)return;
+  const rows = kind==='violation' ? (res.violations||[]) : (res.rewards||[]);
+  if(!rows.length){
+    el.innerHTML=`<div class="pt-muted" style="padding:18px;text-align:center">Belum ada riwayat.</div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div class="pt-table-wrap"><table class="pt-table">
+      <thead><tr>
+        <th>Tanggal</th><th>${kind==='violation'?'Pelanggaran':'Penghargaan'}</th><th>Kategori</th><th>Poin</th><th>Catatan</th><th>Pencatat</th><th>Aksi</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map(r=>`
+        <tr>
+          <td>${escapeHtml(r.date)}</td>
+          <td>${escapeHtml(r.name)}</td>
+          <td><span class="pt-pill ${kind==='violation'?String(r.category).toLowerCase():'reward'}">${escapeHtml(r.category)}</span></td>
+          <td><b>${r.consequence_code==='DO'?'DO':r.points}</b></td>
+          <td>${escapeHtml(r.note||'-')}</td>
+          <td>${escapeHtml(r.recorded_by||'-')}</td>
+          <td>${r.editable?`<button class="btn btn-sm" onclick="deletePointRecord('${kind}','${r.id}','${studentId}')">Hapus</button>`:'<span class="pt-muted">Terkunci</span>'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+async function deletePointRecord(kind,id,studentId){
+  if(!confirm('Hapus data ini? Data tetap tersimpan sebagai audit (soft delete).')) return;
+  try{
+    await studentPointsRequest('delete_record',{record_type:kind,record_id:id});
+    showToast('Data berhasil dihapus');
+    await pointLoadProfile(studentId,kind);
+    await pointLoadHistory(studentId,kind);
+  }catch(e){showToast(e.message||'Gagal menghapus data',true)}
+}
+
+/* ======================== KEDISIPLINAN ======================== */
+async function renderKedisiplinan(content){
+  injectStudentPointStyles();
+  content.innerHTML=`
+    <div class="page-title">Kedisiplinan & Poin Pelanggaran</div>
+    <div class="page-sub">Pencatatan sesuai BAB VIII Tata Tertib Siswa Cahaya Qur'an.</div>
+    <div id="kd-loading" class="card"><span class="spinner"></span> Memuat master tata tertib...</div>
+  `;
+  try{
+    await loadPointBootstrap();
+    content.innerHTML=`
+      <div class="page-title">Kedisiplinan & Poin Pelanggaran</div>
+      <div class="page-sub">Poin otomatis mengikuti jenis pelanggaran resmi sekolah.</div>
+
+      <div class="card">
+        <div class="pt-grid">
+          <div><label class="pt-label">Kelas</label><select id="kd-class" class="pt-control" onchange="POINT_STATUS.violationClassId=this.value;pointLoadStudents(this.value,'violation')">${pointClassOptions()}</select></div>
+          <div id="kd-student-area" style="display:none"><label class="pt-label">Siswa</label><select id="kd-student" class="pt-control" onchange="POINT_STATUS.violationStudentId=this.value;pointLoadProfile(this.value,'violation');pointLoadHistory(this.value,'violation')"></select></div>
         </div>
-      `;
-      riwayatList.appendChild(row);
-    });
-  }
-}
+      </div>
 
-async function hapusRiwayatKd(id){
-  if(!confirm('Hapus catatan pelanggaran ini?')) return;
-  const res = await callApi('hapusPelanggaran', { id });
-  if(res.success){
-    showToast('Catatan berhasil dihapus');
-    renderKdRiwayat();
-  }
-}
+      <div id="kd-profile"></div>
 
-function renderKdInput(){
-  const c = document.getElementById('kd-tab-content');
-  c.innerHTML = `
-    <div class="card">
-      <div class="card-title">Tanggal Kejadian</div>
-      <input type="date" id="kd-tanggal-input" value="${kdState.tanggal}"
-        style="padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;"
-        onchange="kdState.tanggal = this.value">
-    </div>
-
-    <div class="kd-mode-toggle">
-      <button class="kd-mode-btn ${kdState.inputMode==='pelanggaran'?'active':''}" onclick="setKdInputMode('pelanggaran')">
-        1 Pelanggaran → Banyak Siswa<br><span style="font-weight:400;font-size:11px;">Pilih jenis pelanggaran dulu, lalu centang siswanya</span>
-      </button>
-      <button class="kd-mode-btn ${kdState.inputMode==='siswa'?'active':''}" onclick="setKdInputMode('siswa')">
-        1 Siswa → Banyak Pelanggaran<br><span style="font-weight:400;font-size:11px;">Cari siswa dulu, lalu tambahkan pelanggarannya</span>
-      </button>
-    </div>
-
-    <div id="kd-input-body"></div>
-  `;
-  if(kdState.inputMode === 'pelanggaran') renderKdModePelanggaran();
-  else renderKdModeSiswa();
-}
-
-function setKdInputMode(mode){
-  kdState.inputMode = mode;
-  kdState.pelanggaranTerpilih = null;
-  kdState.siswaTerpilihIds = {};
-  kdState.siswaTerpilih = null;
-  kdState.pelanggaranTerpilihMap = {};
-  renderKdInput();
-}
-
-function renderKdModePelanggaran(){
-  const body = document.getElementById('kd-input-body');
-
-  if(!kdState.pelanggaranTerpilih){
-    body.innerHTML = `
       <div class="card">
-        <div class="card-title">Langkah 1: Cari Jenis Pelanggaran</div>
-        <input type="text" class="kd-search-input" id="kd-cari-pelanggaran" placeholder="Ketik minimal 1 huruf, contoh: terlambat"
-          oninput="filterKdPelanggaran(this.value)" autocomplete="off">
-        <div class="kd-search-results" id="kd-hasil-pelanggaran"></div>
+        <div class="card-title">Catat Pelanggaran</div>
+        <div class="pt-grid-3">
+          <div><label class="pt-label">Tanggal Kejadian</label><input id="kd-date" type="date" max="${pointToday()}" value="${pointToday()}" class="pt-control"></div>
+          <div style="grid-column:span 2"><label class="pt-label">Jenis Pelanggaran</label><select id="kd-master" class="pt-control" onchange="showViolationMasterInfo(this.value)">${violationMasterOptions()}</select></div>
+        </div>
+        <div id="kd-master-info" style="margin-top:12px"></div>
+        <div style="margin-top:12px"><label class="pt-label">Catatan / Kronologi Singkat</label><textarea id="kd-note" class="pt-control" rows="3" placeholder="Tuliskan fakta kejadian secara singkat dan objektif."></textarea></div>
+        <div class="pt-action-row"><button id="kd-save" class="btn" onclick="saveViolation()">Simpan Pelanggaran</button></div>
       </div>
-    `;
-    return;
-  }
 
-  const p = kdState.pelanggaranTerpilih;
-  const kategoriClass = p.kategori === 'Berat' ? 'kd-poin-berat' : (p.kategori === 'Sedang' ? 'kd-poin-sedang' : 'kd-poin-ringan');
-  const terpilihCount = Object.keys(kdState.siswaTerpilihIds).filter(k => kdState.siswaTerpilihIds[k]).length;
-
-  body.innerHTML = `
-    <div class="card">
-      <div class="card-title">Pelanggaran Terpilih</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <div><strong>${escapeHtml(p.pelanggaran)}</strong> <span class="kd-poin-badge ${kategoriClass}">${p.poin} poin</span></div>
-        <button class="btn btn-outline btn-sm" onclick="kdState.pelanggaranTerpilih=null; renderKdModePelanggaran();">Ganti</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Langkah 2: Centang Siswa yang Melakukan Pelanggaran Ini (${terpilihCount} dipilih)</div>
-      <div id="kd-daftar-siswa-check"></div>
-      <button class="btn" id="kd-submit-pelanggaran-btn" style="margin-top:14px;" onclick="submitKdModePelanggaran()">Simpan Pelanggaran</button>
-    </div>
-  `;
-
-  const list = document.getElementById('kd-daftar-siswa-check');
-  kdState.siswa.forEach(s => {
-    const row = document.createElement('label');
-    row.className = 'kd-siswa-checkrow';
-    row.innerHTML = `
-      <input type="checkbox" ${kdState.siswaTerpilihIds[s.nis] ? 'checked' : ''} onchange="toggleKdSiswa('${escapeHtml(s.nis)}', this.checked)">
-      <div><div class="siswa-name">${escapeHtml(s.nama)}</div><div class="siswa-nis">NIS ${escapeHtml(s.nis)}</div></div>
-    `;
-    list.appendChild(row);
-  });
-}
-
-function filterKdPelanggaran(query){
-  const hasil = document.getElementById('kd-hasil-pelanggaran');
-  const q = query.trim().toLowerCase();
-  if(q.length < 1){ hasil.innerHTML = ''; return; }
-
-  const matches = kdState.masterList.filter(p => p.pelanggaran.toLowerCase().includes(q));
-  if(matches.length === 0){
-    hasil.innerHTML = `<div class="kd-search-item">Tidak ditemukan</div>`;
-    return;
-  }
-  hasil.innerHTML = '';
-  matches.slice(0, 30).forEach(p => {
-    const item = document.createElement('div');
-    item.className = 'kd-search-item';
-    item.innerHTML = `<span>${escapeHtml(p.pelanggaran)}</span><span class="kd-item-sub">${escapeHtml(p.kategori)} • ${p.poin} poin</span>`;
-    item.onclick = () => { kdState.pelanggaranTerpilih = p; renderKdModePelanggaran(); };
-    hasil.appendChild(item);
-  });
-}
-
-function toggleKdSiswa(nis, checked){
-  kdState.siswaTerpilihIds[nis] = checked;
-}
-
-async function submitKdModePelanggaran(){
-  const btn = document.getElementById('kd-submit-pelanggaran-btn');
-  const listSiswa = kdState.siswa.filter(s => kdState.siswaTerpilihIds[s.nis]);
-  if(listSiswa.length === 0){
-    showToast('Pilih minimal 1 siswa', true);
-    return;
-  }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
-  try{
-    const res = await callApi('submitPelanggaranBanyakSiswa', {
-      kelas: kdState.kelas,
-      tanggal: kdState.tanggal,
-      pelanggaran: kdState.pelanggaranTerpilih.pelanggaran,
-      kategori: kdState.pelanggaranTerpilih.kategori,
-      poin: kdState.pelanggaranTerpilih.poin,
-      dicatatOleh: currentUser.nama,
-      listSiswa
-    });
-    if(res.success){
-      showToast(`Pelanggaran dicatat untuk ${res.count} siswa`);
-      kdState.pelanggaranTerpilih = null;
-      kdState.siswaTerpilihIds = {};
-      kdState.tab = 'riwayat';
-      renderKedisiplinanShell();
-    }
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan Pelanggaran';
-  }
-}
-
-function renderKdModeSiswa(){
-  const body = document.getElementById('kd-input-body');
-
-  if(!kdState.siswaTerpilih){
-    body.innerHTML = `
       <div class="card">
-        <div class="card-title">Langkah 1: Cari Siswa</div>
-        <input type="text" class="kd-search-input" id="kd-cari-siswa" placeholder="Ketik minimal 1 huruf nama siswa"
-          oninput="filterKdSiswa(this.value)" autocomplete="off">
-        <div class="kd-search-results" id="kd-hasil-siswa"></div>
+        <div class="card-title">Riwayat Pelanggaran Siswa</div>
+        <div id="kd-history"><div class="pt-muted">Pilih siswa untuk melihat riwayat.</div></div>
       </div>
     `;
-    return;
+  }catch(e){
+    content.innerHTML += `<div class="card pt-alert">${escapeHtml(e.message||'Gagal memuat modul kedisiplinan.')}</div>`;
   }
-
-  const s = kdState.siswaTerpilih;
-  const daftar = Object.values(kdState.pelanggaranTerpilihMap);
-
-  body.innerHTML = `
-    <div class="card">
-      <div class="card-title">Siswa Terpilih</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <div><strong>${escapeHtml(s.nama)}</strong> <span class="siswa-nis">NIS ${escapeHtml(s.nis)}</span></div>
-        <button class="btn btn-outline btn-sm" onclick="kdState.siswaTerpilih=null; renderKdModeSiswa();">Ganti</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Langkah 2: Tambahkan Jenis Pelanggaran</div>
-      <input type="text" class="kd-search-input" id="kd-cari-pelanggaran2" placeholder="Ketik minimal 1 huruf, contoh: seragam"
-        oninput="filterKdPelanggaran2(this.value)" autocomplete="off">
-      <div class="kd-search-results" id="kd-hasil-pelanggaran2"></div>
-
-      <div style="margin-top:10px;">
-        ${daftar.length === 0 ? '<div style="font-size:12.5px;color:var(--muted)">Belum ada pelanggaran ditambahkan.</div>' : ''}
-        <div id="kd-chip-list"></div>
-      </div>
-
-      <button class="btn" id="kd-submit-siswa-btn" style="margin-top:14px;" onclick="submitKdModeSiswa()" ${daftar.length===0?'disabled':''}>Simpan Pelanggaran</button>
-    </div>
-  `;
-
-  const chipList = document.getElementById('kd-chip-list');
-  daftar.forEach((p, idx) => {
-    const chip = document.createElement('span');
-    chip.className = 'kd-chip';
-    chip.innerHTML = `${escapeHtml(p.pelanggaran)} (${p.poin} poin) <button onclick="hapusKdChip(${idx})">&times;</button>`;
-    chipList.appendChild(chip);
-  });
 }
 
-function filterKdSiswa(query){
-  const hasil = document.getElementById('kd-hasil-siswa');
-  const q = query.trim().toLowerCase();
-  if(q.length < 1){ hasil.innerHTML = ''; return; }
-
-  const matches = kdState.siswa.filter(s => s.nama.toLowerCase().includes(q));
-  if(matches.length === 0){
-    hasil.innerHTML = `<div class="kd-search-item">Tidak ditemukan</div>`;
-    return;
-  }
-  hasil.innerHTML = '';
-  matches.slice(0, 30).forEach(s => {
-    const item = document.createElement('div');
-    item.className = 'kd-search-item';
-    item.innerHTML = `<span>${escapeHtml(s.nama)}</span><span class="kd-item-sub">NIS ${escapeHtml(s.nis)}</span>`;
-    item.onclick = () => { kdState.siswaTerpilih = s; renderKdModeSiswa(); };
-    hasil.appendChild(item);
-  });
+function showViolationMasterInfo(id){
+  const m=POINT_STATUS.violationMasters.find(x=>x.id===id);
+  const el=document.getElementById('kd-master-info');
+  if(!m){el.innerHTML='';return}
+  const p=m.consequence_code==='DO'?'DO':`${m.points} poin`;
+  el.innerHTML=`<div class="pt-rule-box"><span class="pt-pill ${String(m.category).toLowerCase()}">${escapeHtml(m.category)}</span> &nbsp;<b>${escapeHtml(p)}</b><div class="pt-master-meta">${escapeHtml(m.violation_name)}</div>${m.consequence_code==='DO'?'<div class="pt-alert" style="margin-top:8px">Pelanggaran ini berkategori DO. Reward tidak menghapus konsekuensinya.</div>':''}</div>`;
 }
 
-function filterKdPelanggaran2(query){
-  const hasil = document.getElementById('kd-hasil-pelanggaran2');
-  const q = query.trim().toLowerCase();
-  if(q.length < 1){ hasil.innerHTML = ''; return; }
-
-  const matches = kdState.masterList.filter(p => p.pelanggaran.toLowerCase().includes(q));
-  if(matches.length === 0){
-    hasil.innerHTML = `<div class="kd-search-item">Tidak ditemukan</div>`;
-    return;
-  }
-  hasil.innerHTML = '';
-  matches.slice(0, 30).forEach((p) => {
-    const item = document.createElement('div');
-    item.className = 'kd-search-item';
-    item.innerHTML = `<span>${escapeHtml(p.pelanggaran)}</span><span class="kd-item-sub">${escapeHtml(p.kategori)} • ${p.poin} poin</span>`;
-    item.onclick = () => {
-      kdState.pelanggaranTerpilihMap[p.pelanggaran] = p;
-      renderKdModeSiswa();
-    };
-    hasil.appendChild(item);
-  });
-}
-
-function hapusKdChip(idx){
-  const keys = Object.keys(kdState.pelanggaranTerpilihMap);
-  delete kdState.pelanggaranTerpilihMap[keys[idx]];
-  renderKdModeSiswa();
-}
-
-async function submitKdModeSiswa(){
-  const btn = document.getElementById('kd-submit-siswa-btn');
-  const listPelanggaran = Object.values(kdState.pelanggaranTerpilihMap);
-  if(listPelanggaran.length === 0){
-    showToast('Tambahkan minimal 1 pelanggaran', true);
-    return;
-  }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
+async function saveViolation(){
+  const studentId=POINT_STATUS.violationStudentId;
+  const masterId=document.getElementById('kd-master')?.value||'';
+  const date=document.getElementById('kd-date')?.value||'';
+  const note=(document.getElementById('kd-note')?.value||'').trim();
+  if(!POINT_STATUS.violationClassId||!studentId||!masterId){showToast('Pilih kelas, siswa, dan jenis pelanggaran.',true);return}
+  const btn=document.getElementById('kd-save');btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
   try{
-    const res = await callApi('submitPelanggaranSiswa', {
-      kelas: kdState.kelas,
-      tanggal: kdState.tanggal,
-      nis: kdState.siswaTerpilih.nis,
-      nama: kdState.siswaTerpilih.nama,
-      dicatatOleh: currentUser.nama,
-      listPelanggaran
+    const res=await studentPointsRequest('save_violation',{
+      class_id:POINT_STATUS.violationClassId,student_id:studentId,master_id:masterId,date,note
     });
-    if(res.success){
-      showToast(`${res.count} pelanggaran dicatat untuk ${kdState.siswaTerpilih.nama}`);
-      kdState.siswaTerpilih = null;
-      kdState.pelanggaranTerpilihMap = {};
-      kdState.tab = 'riwayat';
-      renderKedisiplinanShell();
-    }
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan Pelanggaran';
-  }
+    showToast(res.message||'Pelanggaran berhasil disimpan');
+    document.getElementById('kd-note').value='';
+    document.getElementById('kd-master').value='';
+    document.getElementById('kd-master-info').innerHTML='';
+    await pointLoadProfile(studentId,'violation');
+    await pointLoadHistory(studentId,'violation');
+  }catch(e){showToast(e.message||'Gagal menyimpan pelanggaran',true)}
+  finally{btn.disabled=false;btn.innerHTML=old}
 }
 
-/* ---------- TAB: REKAP BULANAN ---------- */
-const NAMA_BULAN = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-
-let kdBulananState = { bulan: new Date().getMonth()+1, tahun: new Date().getFullYear(), sort:'nama', data:[], ringkasan:null };
-
-async function renderKdBulanan(){
-  const c = document.getElementById('kd-tab-content');
-  c.innerHTML = `
-    <div class="card">
-      <div class="card-title">Pilih Periode</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-        <select id="kd-bulan-select" class="pekan-select"></select>
-        <select id="kd-tahun-select" class="pekan-select"></select>
-        <select id="kd-sort-select" class="pekan-select">
-          <option value="nama">Nama (A-Z)</option>
-          <option value="poin-desc">Poin Terbanyak</option>
-          <option value="poin-asc">Poin Terendah</option>
-          <option value="terbaru">Pelanggaran Terbaru</option>
-          <option value="terlama">Pelanggaran Terlama</option>
-        </select>
-        <button class="btn btn-sm" id="kd-muat-btn" style="width:auto;">Muat Data</button>
-      </div>
-    </div>
-    <div id="kd-bulanan-body"></div>
-  `;
-
-  const bulanSelect = document.getElementById('kd-bulan-select');
-  NAMA_BULAN.forEach((nm, i) => { if(i>0) bulanSelect.innerHTML += `<option value="${i}" ${i===kdBulananState.bulan?'selected':''}>${nm}</option>`; });
-
-  const tahunSelect = document.getElementById('kd-tahun-select');
-  const tahunSekarang = new Date().getFullYear();
-  for(let t = tahunSekarang - 1; t <= tahunSekarang + 1; t++){
-    tahunSelect.innerHTML += `<option value="${t}" ${t===kdBulananState.tahun?'selected':''}>${t}</option>`;
-  }
-  document.getElementById('kd-sort-select').value = kdBulananState.sort;
-
-  document.getElementById('kd-muat-btn').onclick = loadKdBulanan;
-  loadKdBulanan();
-}
-
-async function loadKdBulanan(){
-  kdBulananState.bulan = Number(document.getElementById('kd-bulan-select').value);
-  kdBulananState.tahun = Number(document.getElementById('kd-tahun-select').value);
-  kdBulananState.sort = document.getElementById('kd-sort-select').value;
-
-  const body = document.getElementById('kd-bulanan-body');
-  body.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat data...</div>`;
-
-  const res = await callApi('getRekapBulananKelas', { kelas: kdState.kelas, bulan: kdBulananState.bulan, tahun: kdBulananState.tahun });
-  if(!res.success){ body.innerHTML = `<div class="empty-state"><div class="icon">—</div>Gagal memuat data.</div>`; return; }
-
-  kdBulananState.data = res.data;
-  kdBulananState.ringkasan = res.ringkasan;
-  renderKdBulananTable();
-}
-
-function sortKdBulananData(data, sortMode){
-  const arr = [...data];
-  if(sortMode === 'nama') arr.sort((a,b) => a.nama.localeCompare(b.nama));
-  else if(sortMode === 'poin-desc') arr.sort((a,b) => b.totalPoin - a.totalPoin);
-  else if(sortMode === 'poin-asc') arr.sort((a,b) => a.totalPoin - b.totalPoin);
-  else if(sortMode === 'terbaru') arr.sort((a,b) => (b.tanggalTerakhir||'').localeCompare(a.tanggalTerakhir||''));
-  else if(sortMode === 'terlama') arr.sort((a,b) => (a.tanggalTerakhir||'').localeCompare(b.tanggalTerakhir||''));
-  return arr;
-}
-
-function renderKdBulananTable(){
-  const body = document.getElementById('kd-bulanan-body');
-  const sorted = sortKdBulananData(kdBulananState.data, kdBulananState.sort);
-  const r = kdBulananState.ringkasan;
-
-  body.innerHTML = `
-    <div class="card">
-      <div class="card-title">${escapeHtml(kdState.kelas)} — ${NAMA_BULAN[kdBulananState.bulan]} ${kdBulananState.tahun}</div>
-      <div id="kd-bulanan-list"></div>
-      <div style="margin-top:16px;padding-top:14px;border-top:2px solid var(--border);font-size:13.5px;">
-        <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Total Poin Kelas</span><strong>${r.totalPoinKelas}</strong></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Rata-rata Poin per Siswa</span><strong>${r.rataPoinSiswa}</strong></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Rata-rata Jumlah Pelanggaran per Siswa</span><strong>${r.rataKejadianSiswa}</strong></div>
-      </div>
-      <button class="btn" style="margin-top:16px;" onclick="downloadKdBulananExcel()">Download Excel</button>
-    </div>
-  `;
-
-  const list = document.getElementById('kd-bulanan-list');
-  if(sorted.length === 0){
-    list.innerHTML = `<div class="empty-state"><div class="icon">—</div>Belum ada data siswa.</div>`;
-    return;
-  }
-  sorted.forEach(s => {
-    const row = document.createElement('div');
-    row.className = 'kd-rekap-row';
-    row.innerHTML = `
-      <div><div class="siswa-name">${escapeHtml(s.nama)}</div><div class="siswa-nis">Ringan ${s.ringan} • Sedang ${s.sedang} • Berat ${s.berat}</div></div>
-      <div class="kd-rekap-total ${s.totalPoin>=100?'tinggi':(s.totalPoin>=50?'sedang':'aman')}">${s.totalPoin} poin</div>
-    `;
-    list.appendChild(row);
-  });
-}
-
-function downloadKdBulananExcel(){
-  const r = kdBulananState.ringkasan;
-  const dataAlfabetis = sortKdBulananData(kdBulananState.data, 'nama');
-
-  const rows = [
-    ["SD Islam Tahfizh Cahaya Qur'an"],
-    ['Laporan Kedisiplinan Bulanan'],
-    [`Kelas: ${kdState.kelas}`],
-    [`Periode: ${NAMA_BULAN[kdBulananState.bulan]} ${kdBulananState.tahun}`],
-    [],
-    ['Nama Siswa', 'Ringan', 'Sedang', 'Berat', 'Total Poin']
-  ];
-  dataAlfabetis.forEach(s => rows.push([s.nama, s.ringan, s.sedang, s.berat, s.totalPoin]));
-  rows.push([]);
-  rows.push(['Total Poin Kelas', '', '', '', r.totalPoinKelas]);
-  rows.push(['Rata-rata Poin per Siswa', '', '', '', r.rataPoinSiswa]);
-  rows.push(['Rata-rata Jumlah Pelanggaran per Siswa', '', '', '', r.rataKejadianSiswa]);
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:28},{wch:8},{wch:8},{wch:8},{wch:12}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
-  XLSX.writeFile(wb, `Rekap_Kedisiplinan_${kdState.kelas.replace(/\s+/g,'_')}_${kdBulananState.bulan}-${kdBulananState.tahun}.xlsx`);
-}
-
-/* ==========================================================
-   MODUL: REWARD SISWA
-   ========================================================== */
-let rwState = {
-  kelas:null, jenjang:null, inputMode:'reward',
-  tanggal:'', siswa:[], masterList:[],
-  rewardTerpilih:null, siswaTerpilihIds:{},
-  siswaTerpilih:null, rewardTerpilihMap:{}
-};
-
-function renderReward(content){
-  const isWalas = currentUser.role === 'walas';
-  rwState.tanggal = rwState.tanggal || todayStrKD();
-
-  content.innerHTML = `
+/* =========================== REWARD =========================== */
+async function renderReward(content){
+  injectStudentPointStyles();
+  content.innerHTML=`
     <div class="page-title">Reward Siswa</div>
-    <div class="page-sub">Catat penghargaan/poin positif untuk siswa.</div>
-
-    ${!isWalas ? `
-    <div class="card">
-      <div class="card-title">Pilih Kelas</div>
-      <input type="text" id="rw-kelas-input" placeholder="Ketik nama kelas persis"
-        style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
-    </div>` : ''}
-
-    <div id="rw-body"></div>
+    <div class="page-sub">Penghargaan sesuai BAB IX Tata Tertib Siswa Cahaya Qur'an.</div>
+    <div class="card"><span class="spinner"></span> Memuat master reward...</div>
   `;
-
-  if(isWalas){
-    rwState.kelas = currentUser.kelas;
-    loadRewardKelas();
-  } else {
-    document.getElementById('rw-kelas-input').addEventListener('change', (e) => {
-      rwState.kelas = e.target.value.trim();
-      loadRewardKelas();
-    });
-  }
-}
-
-async function loadRewardKelas(){
-  if(!rwState.kelas) return;
-  rwState.jenjang = getJenjangSDSMPClient(rwState.kelas);
-  const body = document.getElementById('rw-body');
-  body.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat data...</div>`;
-
-  const [siswaRes, masterRes] = await Promise.all([
-    callApi('getSiswaByKelas', { kelas: rwState.kelas }),
-    callApi('getMasterReward', { jenjang: rwState.jenjang })
-  ]);
-  rwState.siswa = siswaRes.data || [];
-  rwState.masterList = masterRes.data || [];
-  renderRewardShell();
-}
-
-function renderRewardShell(){
-  const body = document.getElementById('rw-body');
-  if(rwState.siswa.length === 0){
-    body.innerHTML = `<div class="empty-state"><div class="icon">—</div>Belum ada data siswa untuk kelas ini.</div>`;
-    return;
-  }
-  if(rwState.masterList.length === 0){
-    body.innerHTML = `<div class="empty-state"><div class="icon">—</div>Sheet "MasterReward" belum terisi untuk jenjang ${escapeHtml(rwState.jenjang || '-')}.</div>`;
-    return;
-  }
-
-  body.innerHTML = `
-    <div class="card">
-      <div class="card-title">Tanggal</div>
-      <input type="date" id="rw-tanggal-input" value="${rwState.tanggal}"
-        style="padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;"
-        onchange="rwState.tanggal = this.value">
-    </div>
-
-    <div class="kd-mode-toggle">
-      <button class="kd-mode-btn ${rwState.inputMode==='reward'?'active':''}" onclick="setRwInputMode('reward')">
-        1 Reward → Banyak Siswa<br><span style="font-weight:400;font-size:11px;">Pilih jenis reward dulu, lalu centang siswanya</span>
-      </button>
-      <button class="kd-mode-btn ${rwState.inputMode==='siswa'?'active':''}" onclick="setRwInputMode('siswa')">
-        1 Siswa → Banyak Reward<br><span style="font-weight:400;font-size:11px;">Cari siswa dulu, lalu tambahkan rewardnya</span>
-      </button>
-    </div>
-
-    <div id="rw-input-body"></div>
-    <div class="card" style="margin-top:20px;">
-      <div class="card-title">Rekap Poin Reward — ${escapeHtml(rwState.kelas)}</div>
-      <div id="rw-rekap-list"></div>
-    </div>
-  `;
-  if(rwState.inputMode === 'reward') renderRwModeReward();
-  else renderRwModeSiswa();
-  loadRwRekap();
-}
-
-function setRwInputMode(mode){
-  rwState.inputMode = mode;
-  rwState.rewardTerpilih = null;
-  rwState.siswaTerpilihIds = {};
-  rwState.siswaTerpilih = null;
-  rwState.rewardTerpilihMap = {};
-  renderRewardShell();
-}
-
-function renderRwModeReward(){
-  const body = document.getElementById('rw-input-body');
-  if(!rwState.rewardTerpilih){
-    body.innerHTML = `
-      <div class="card">
-        <div class="card-title">Langkah 1: Cari Jenis Reward</div>
-        <input type="text" class="kd-search-input" id="rw-cari-reward" placeholder="Ketik minimal 1 huruf"
-          oninput="filterRwReward(this.value)" autocomplete="off">
-        <div class="kd-search-results" id="rw-hasil-reward"></div>
-      </div>
-    `;
-    return;
-  }
-  const r = rwState.rewardTerpilih;
-  const terpilihCount = Object.keys(rwState.siswaTerpilihIds).filter(k => rwState.siswaTerpilihIds[k]).length;
-  body.innerHTML = `
-    <div class="card">
-      <div class="card-title">Reward Terpilih</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <div><strong>${escapeHtml(r.nama)}</strong> <span class="kd-poin-badge" style="background:var(--success)">${r.poin} poin</span></div>
-        <button class="btn btn-outline btn-sm" onclick="rwState.rewardTerpilih=null; renderRwModeReward();">Ganti</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Langkah 2: Centang Siswa Penerima (${terpilihCount} dipilih)</div>
-      <div id="rw-daftar-siswa-check"></div>
-      <button class="btn" id="rw-submit-reward-btn" style="margin-top:14px;" onclick="submitRwModeReward()">Simpan Reward</button>
-    </div>
-  `;
-  const list = document.getElementById('rw-daftar-siswa-check');
-  rwState.siswa.forEach(s => {
-    const row = document.createElement('label');
-    row.className = 'kd-siswa-checkrow';
-    row.innerHTML = `
-      <input type="checkbox" ${rwState.siswaTerpilihIds[s.nis] ? 'checked' : ''} onchange="rwState.siswaTerpilihIds['${escapeHtml(s.nis)}'] = this.checked">
-      <div><div class="siswa-name">${escapeHtml(s.nama)}</div><div class="siswa-nis">NIS ${escapeHtml(s.nis)}</div></div>
-    `;
-    list.appendChild(row);
-  });
-}
-
-function filterRwReward(query){
-  const hasil = document.getElementById('rw-hasil-reward');
-  const q = query.trim().toLowerCase();
-  if(q.length < 1){ hasil.innerHTML = ''; return; }
-  const matches = rwState.masterList.filter(r => r.nama.toLowerCase().includes(q));
-  hasil.innerHTML = matches.length === 0 ? `<div class="kd-search-item">Tidak ditemukan</div>` : '';
-  matches.slice(0, 30).forEach(r => {
-    const item = document.createElement('div');
-    item.className = 'kd-search-item';
-    item.innerHTML = `<span>${escapeHtml(r.nama)}</span><span class="kd-item-sub">${escapeHtml(r.kategori)} • ${r.poin} poin</span>`;
-    item.onclick = () => { rwState.rewardTerpilih = r; renderRwModeReward(); };
-    hasil.appendChild(item);
-  });
-}
-
-async function submitRwModeReward(){
-  const btn = document.getElementById('rw-submit-reward-btn');
-  const listSiswa = rwState.siswa.filter(s => rwState.siswaTerpilihIds[s.nis]);
-  if(listSiswa.length === 0){ showToast('Pilih minimal 1 siswa', true); return; }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
   try{
-    const res = await callApi('submitRewardBanyakSiswa', {
-      kelas: rwState.kelas, tanggal: rwState.tanggal,
-      kodeReward: rwState.rewardTerpilih.kode, namaReward: rwState.rewardTerpilih.nama,
-      kategori: rwState.rewardTerpilih.kategori, poin: rwState.rewardTerpilih.poin,
-      dicatatOleh: currentUser.nama, listSiswa
-    });
-    if(res.success){
-      showToast(`Reward dicatat untuk ${res.count} siswa`);
-      rwState.rewardTerpilih = null;
-      rwState.siswaTerpilihIds = {};
-      renderRewardShell();
-    }
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan Reward';
-  }
-}
+    if(!POINT_STATUS.classes.length) await loadPointBootstrap();
+    content.innerHTML=`
+      <div class="page-title">Reward Siswa</div>
+      <div class="page-sub">Reward diverifikasi guru dan otomatis dihitung sesuai batas pengurangan poin sekolah.</div>
 
-function renderRwModeSiswa(){
-  const body = document.getElementById('rw-input-body');
-  if(!rwState.siswaTerpilih){
-    body.innerHTML = `
       <div class="card">
-        <div class="card-title">Langkah 1: Cari Siswa</div>
-        <input type="text" class="kd-search-input" id="rw-cari-siswa" placeholder="Ketik minimal 1 huruf nama siswa"
-          oninput="filterRwSiswa(this.value)" autocomplete="off">
-        <div class="kd-search-results" id="rw-hasil-siswa"></div>
+        <div class="pt-grid">
+          <div><label class="pt-label">Kelas</label><select id="rw-class" class="pt-control" onchange="POINT_STATUS.rewardClassId=this.value;pointLoadStudents(this.value,'reward')">${pointClassOptions()}</select></div>
+          <div id="rw-student-area" style="display:none"><label class="pt-label">Siswa</label><select id="rw-student" class="pt-control" onchange="POINT_STATUS.rewardStudentId=this.value;pointLoadProfile(this.value,'reward');pointLoadHistory(this.value,'reward')"></select></div>
+        </div>
+      </div>
+
+      <div id="rw-profile"></div>
+
+      <div class="card">
+        <div class="pt-rule-box">
+          <b>Aturan Reward:</b> maksimal pengurangan yang berlaku <b>20 poin per siswa per bulan</b>, tidak ditabung ke bulan berikutnya, saldo tidak boleh negatif, dan reward hanya mengurangi pelanggaran <b>Ringan & Sedang</b>. Pelanggaran Berat/DO tetap memiliki konsekuensi.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Catat Penghargaan</div>
+        <div class="pt-grid-3">
+          <div><label class="pt-label">Tanggal</label><input id="rw-date" type="date" max="${pointToday()}" value="${pointToday()}" class="pt-control"></div>
+          <div style="grid-column:span 2"><label class="pt-label">Bentuk Penghargaan</label><select id="rw-master" class="pt-control" onchange="showRewardMasterInfo(this.value)">${rewardMasterOptions()}</select></div>
+        </div>
+        <div id="rw-master-info" style="margin-top:12px"></div>
+        <div style="margin-top:12px"><label class="pt-label">Catatan / Bukti Singkat</label><textarea id="rw-note" class="pt-control" rows="3" placeholder="Tuliskan keterangan singkat."></textarea></div>
+        <div class="pt-action-row"><button id="rw-save" class="btn" onclick="saveRewardSupabase()">Simpan Reward</button></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Riwayat Reward Siswa</div>
+        <div id="rw-history"><div class="pt-muted">Pilih siswa untuk melihat riwayat.</div></div>
       </div>
     `;
-    return;
+  }catch(e){
+    content.innerHTML += `<div class="card pt-alert">${escapeHtml(e.message||'Gagal memuat modul reward.')}</div>`;
   }
-  const s = rwState.siswaTerpilih;
-  const daftar = Object.values(rwState.rewardTerpilihMap);
-  body.innerHTML = `
-    <div class="card">
-      <div class="card-title">Siswa Terpilih</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <div><strong>${escapeHtml(s.nama)}</strong> <span class="siswa-nis">NIS ${escapeHtml(s.nis)}</span></div>
-        <button class="btn btn-outline btn-sm" onclick="rwState.siswaTerpilih=null; renderRwModeSiswa();">Ganti</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Langkah 2: Tambahkan Jenis Reward</div>
-      <input type="text" class="kd-search-input" id="rw-cari-reward2" placeholder="Ketik minimal 1 huruf"
-        oninput="filterRwReward2(this.value)" autocomplete="off">
-      <div class="kd-search-results" id="rw-hasil-reward2"></div>
-      <div style="margin-top:10px;">
-        ${daftar.length === 0 ? '<div style="font-size:12.5px;color:var(--muted)">Belum ada reward ditambahkan.</div>' : ''}
-        <div id="rw-chip-list"></div>
-      </div>
-      <button class="btn" id="rw-submit-siswa-btn" style="margin-top:14px;" onclick="submitRwModeSiswa()" ${daftar.length===0?'disabled':''}>Simpan Reward</button>
-    </div>
-  `;
-  const chipList = document.getElementById('rw-chip-list');
-  daftar.forEach((r, idx) => {
-    const chip = document.createElement('span');
-    chip.className = 'kd-chip';
-    chip.innerHTML = `${escapeHtml(r.nama)} (${r.poin} poin) <button onclick="hapusRwChip(${idx})">&times;</button>`;
-    chipList.appendChild(chip);
-  });
 }
 
-function filterRwSiswa(query){
-  const hasil = document.getElementById('rw-hasil-siswa');
-  const q = query.trim().toLowerCase();
-  if(q.length < 1){ hasil.innerHTML = ''; return; }
-  const matches = rwState.siswa.filter(s => s.nama.toLowerCase().includes(q));
-  hasil.innerHTML = matches.length === 0 ? `<div class="kd-search-item">Tidak ditemukan</div>` : '';
-  matches.slice(0, 30).forEach(s => {
-    const item = document.createElement('div');
-    item.className = 'kd-search-item';
-    item.innerHTML = `<span>${escapeHtml(s.nama)}</span><span class="kd-item-sub">NIS ${escapeHtml(s.nis)}</span>`;
-    item.onclick = () => { rwState.siswaTerpilih = s; renderRwModeSiswa(); };
-    hasil.appendChild(item);
-  });
+function showRewardMasterInfo(id){
+  const m=POINT_STATUS.rewardMasters.find(x=>x.id===id);
+  const el=document.getElementById('rw-master-info');
+  if(!m){el.innerHTML='';return}
+  el.innerHTML=`<div class="pt-rule-box"><span class="pt-pill reward">${escapeHtml(m.category)}</span> &nbsp;<b>${m.points} poin reward</b><div class="pt-master-meta">${escapeHtml(m.reward_name)}</div></div>`;
 }
 
-function filterRwReward2(query){
-  const hasil = document.getElementById('rw-hasil-reward2');
-  const q = query.trim().toLowerCase();
-  if(q.length < 1){ hasil.innerHTML = ''; return; }
-  const matches = rwState.masterList.filter(r => r.nama.toLowerCase().includes(q));
-  hasil.innerHTML = matches.length === 0 ? `<div class="kd-search-item">Tidak ditemukan</div>` : '';
-  matches.slice(0, 30).forEach(r => {
-    const item = document.createElement('div');
-    item.className = 'kd-search-item';
-    item.innerHTML = `<span>${escapeHtml(r.nama)}</span><span class="kd-item-sub">${escapeHtml(r.kategori)} • ${r.poin} poin</span>`;
-    item.onclick = () => { rwState.rewardTerpilihMap[r.nama] = r; renderRwModeSiswa(); };
-    hasil.appendChild(item);
-  });
-}
-
-function hapusRwChip(idx){
-  const keys = Object.keys(rwState.rewardTerpilihMap);
-  delete rwState.rewardTerpilihMap[keys[idx]];
-  renderRwModeSiswa();
-}
-
-async function submitRwModeSiswa(){
-  const btn = document.getElementById('rw-submit-siswa-btn');
-  const listReward = Object.values(rwState.rewardTerpilihMap);
-  if(listReward.length === 0){ showToast('Tambahkan minimal 1 reward', true); return; }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
+async function saveRewardSupabase(){
+  const studentId=POINT_STATUS.rewardStudentId;
+  const masterId=document.getElementById('rw-master')?.value||'';
+  const date=document.getElementById('rw-date')?.value||'';
+  const note=(document.getElementById('rw-note')?.value||'').trim();
+  if(!POINT_STATUS.rewardClassId||!studentId||!masterId){showToast('Pilih kelas, siswa, dan bentuk penghargaan.',true);return}
+  const btn=document.getElementById('rw-save');btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
   try{
-    const res = await callApi('submitRewardSiswa', {
-      kelas: rwState.kelas, tanggal: rwState.tanggal,
-      nis: rwState.siswaTerpilih.nis, nama: rwState.siswaTerpilih.nama,
-      dicatatOleh: currentUser.nama,
-      listReward: listReward.map(r => ({ kode:r.kode, nama:r.nama, kategori:r.kategori, poin:r.poin }))
+    const res=await studentPointsRequest('save_reward',{
+      class_id:POINT_STATUS.rewardClassId,student_id:studentId,master_id:masterId,date,note
     });
-    if(res.success){
-      showToast(`${res.count} reward dicatat untuk ${rwState.siswaTerpilih.nama}`);
-      rwState.siswaTerpilih = null;
-      rwState.rewardTerpilihMap = {};
-      renderRewardShell();
-    }
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan Reward';
-  }
-}
-
-async function loadRwRekap(){
-  const res = await callApi('getRekapRewardKelas', { kelas: rwState.kelas });
-  const list = document.getElementById('rw-rekap-list');
-  if(!list) return;
-  const data = res.data || [];
-  if(data.length === 0){ list.innerHTML = `<div class="empty-state"><div class="icon">—</div>Belum ada data.</div>`; return; }
-  list.innerHTML = '';
-  data.forEach(s => {
-    const row = document.createElement('div');
-    row.className = 'kd-rekap-row';
-    row.innerHTML = `
-      <div><div class="siswa-name">${escapeHtml(s.nama)}</div><div class="siswa-nis">NIS ${escapeHtml(s.nis)} • ${s.jumlahReward} reward</div></div>
-      <div class="kd-rekap-total aman">${s.totalPoin} poin</div>
-    `;
-    list.appendChild(row);
-  });
+    showToast(res.message||'Reward berhasil disimpan');
+    document.getElementById('rw-note').value='';
+    document.getElementById('rw-master').value='';
+    document.getElementById('rw-master-info').innerHTML='';
+    await pointLoadProfile(studentId,'reward');
+    await pointLoadHistory(studentId,'reward');
+  }catch(e){showToast(e.message||'Gagal menyimpan reward',true)}
+  finally{btn.disabled=false;btn.innerHTML=old}
 }
 
 /* ==========================================================
