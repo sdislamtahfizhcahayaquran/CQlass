@@ -3770,13 +3770,13 @@ async function submitMoodPilih(mood){
 }
 
 /* ==========================================================
-   DASHBOARD ROLE V4 — WALAS / GURU / KABID / PIMPINAN / ADMIN
-   - Tidak menampilkan statistik master kepada guru
-   - Reminder tugas harian
-   - Kabid/Pimpinan melihat guru yang belum mengerjakan
-   - Eskalasi Kesiswaan + tidak hadir 3 hari berturut-turut
-   - Leaderboard hanya dari data yang benar-benar terisi
-   - Inline SVG, tanpa emoji
+   DASHBOARD ROLE V5 — MOTIVATIF, LIVE, ROLE-AWARE
+   - Guru/Walas: tugas harian + grafik + Top 5 siswa kelas
+   - Kabid Kesiswaan: monitoring guru + eskalasi + Top 5 sekolah
+   - Pimpinan: ringkasan lintas bidang + leaderboard
+   - Admin: master/system only
+   - Leaderboard hanya memakai data yang benar-benar terisi
+   - Semua ikon SVG inline, tanpa emoji
    ========================================================== */
 let dashboardLoadToken = 0;
 let roleDashboardCache = null;
@@ -3794,6 +3794,8 @@ function rdIcon(name,size=18){
     chart:`<svg ${a}><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 4-7"/></svg>`,
     book:`<svg ${a}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4v15.5"/><path d="M20 22V6a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 6.5"/></svg>`,
     database:`<svg ${a}><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>`,
+    trophy:`<svg ${a}><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4a2 2 0 0 0 2 4h1"/><path d="M17 6h3a2 2 0 0 1-2 4h-1"/></svg>`,
+    star:`<svg ${a}><path d="m12 2 3 6 6.5.9-4.7 4.6 1.1 6.5-5.9-3.1L6.1 20l1.1-6.5L2.5 8.9 9 8Z"/></svg>`,
     arrow:`<svg ${a}><path d="m9 18 6-6-6-6"/></svg>`
   };
   return m[name]||m.check;
@@ -3803,22 +3805,24 @@ function injectRoleDashboardStyles(){
   if(document.getElementById('role-dashboard-style')) return;
   const s=document.createElement('style');s.id='role-dashboard-style';
   s.textContent=`
-    .rd-shell{max-width:1320px;margin:0 auto}
-    .rd-hero{background:linear-gradient(110deg,#075b59,#118783);border-radius:22px;padding:25px 28px;color:#fff;position:relative;overflow:hidden;margin-bottom:18px}
-    .rd-hero:after{content:"";position:absolute;width:260px;height:260px;border:42px solid rgba(255,255,255,.06);border-radius:50%;right:-70px;top:-90px}
-    .rd-eyebrow{font-size:11px;letter-spacing:.12em;font-weight:900;text-transform:uppercase;opacity:.8}.rd-title{font-size:30px;font-weight:900;line-height:1.15;margin-top:7px}.rd-sub{font-size:13px;opacity:.84;margin-top:7px}
-    .rd-kpis{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px;margin-bottom:16px}.rd-kpi{background:#fff;border:1px solid var(--border);border-radius:15px;padding:15px;min-height:105px}
-    .rd-kpi-icon{width:36px;height:36px;border-radius:11px;background:#eaf7f6;color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:8px}.rd-kpi strong{display:block;font-size:25px;line-height:1.05;color:#075b59}.rd-kpi span{font-size:11px;font-weight:800;color:var(--muted)}.rd-kpi small{display:block;font-size:10.5px;color:var(--muted);margin-top:5px}
-    .rd-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.rd-grid3{display:grid;grid-template-columns:1.1fr 1fr .8fr;gap:14px;margin-bottom:14px}
-    .rd-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:17px}.rd-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:13px}.rd-card-title{font-size:14px;font-weight:900}.rd-card-sub{font-size:10.8px;color:var(--muted);margin-top:3px;line-height:1.4}
-    .rd-task{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border)}.rd-task:last-child{border-bottom:0}.rd-task-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center}.rd-task.done .rd-task-icon{background:#eaf8f1;color:#2c7a4b}.rd-task.pending .rd-task-icon{background:#fff1ed;color:#bd543e}.rd-task-main{flex:1;min-width:0}.rd-task-name{font-size:12px;font-weight:850}.rd-task-meta{font-size:10.5px;color:var(--muted);margin-top:2px}.rd-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:9.5px;font-weight:900}.rd-badge.done{background:#eaf8f1;color:#2c7a4b}.rd-badge.pending{background:#fff1ed;color:#bd543e}
-    .rd-list-row{display:grid;grid-template-columns:32px 1fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}.rd-list-row:last-child{border-bottom:0}.rd-rank{width:28px;height:28px;border-radius:9px;background:#edf6f6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:var(--primary)}.rd-name{font-size:11.5px;font-weight:850}.rd-meta{font-size:10px;color:var(--muted);margin-top:2px}.rd-score{font-size:12px;font-weight:900;color:#075b59}
-    .rd-alert-row{padding:10px 11px;border:1px solid #f1c8bd;background:#fff8f5;border-radius:11px;margin-bottom:8px}.rd-alert-row:last-child{margin-bottom:0}.rd-alert-title{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:900;color:#a44935}.rd-alert-sub{font-size:10.3px;color:#7b5d56;margin-top:4px;line-height:1.45}
-    .rd-pending-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);align-items:center}.rd-pending-row:last-child{border-bottom:0}.rd-pending-main{min-width:0}.rd-pending-name{font-size:11.5px;font-weight:850}.rd-pending-meta{font-size:10px;color:var(--muted);margin-top:2px}
-    .rd-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px}.rd-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.rd-quick button{border:1px solid var(--border);background:#fff;border-radius:11px;padding:11px;font:inherit;font-size:10.5px;font-weight:850;color:var(--text);cursor:pointer;display:flex;gap:7px;align-items:center;justify-content:center}.rd-quick button:hover{border-color:var(--primary);color:var(--primary)}
-    .rd-progress{height:7px;background:#edf3f3;border-radius:999px;overflow:hidden;margin-top:7px}.rd-progress span{display:block;height:100%;background:var(--primary);border-radius:999px}
+    .rd-shell{max-width:1380px;margin:0 auto}
+    .rd-hero{background:linear-gradient(115deg,#075b59,#118783);border-radius:22px;padding:25px 28px;color:#fff;position:relative;overflow:hidden;margin-bottom:16px}
+    .rd-hero:after{content:"";position:absolute;width:270px;height:270px;border:44px solid rgba(255,255,255,.06);border-radius:50%;right:-70px;top:-95px}
+    .rd-eyebrow{font-size:10.5px;letter-spacing:.13em;font-weight:900;text-transform:uppercase;opacity:.8}.rd-title{font-size:29px;font-weight:900;line-height:1.15;margin-top:7px}.rd-sub{font-size:12.5px;opacity:.86;margin-top:7px}
+    .rd-kpis{display:grid;grid-template-columns:repeat(5,minmax(135px,1fr));gap:11px;margin-bottom:14px}.rd-kpi{background:#fff;border:1px solid var(--border);border-radius:15px;padding:14px;min-height:105px}
+    .rd-kpi-icon{width:35px;height:35px;border-radius:11px;background:#eaf7f6;color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:8px}.rd-kpi strong{display:block;font-size:24px;line-height:1.05;color:#075b59}.rd-kpi span{font-size:10.5px;font-weight:800;color:var(--muted)}.rd-kpi small{display:block;font-size:10px;color:var(--muted);margin-top:5px}
+    .rd-grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}.rd-grid3{display:grid;grid-template-columns:1.2fr 1fr .9fr;gap:13px;margin-bottom:13px}
+    .rd-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px}.rd-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}.rd-card-title{font-size:13.5px;font-weight:900}.rd-card-sub{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+    .rd-task{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}.rd-task:last-child{border-bottom:0}.rd-task-icon{width:33px;height:33px;border-radius:10px;display:flex;align-items:center;justify-content:center}.rd-task.done .rd-task-icon{background:#eaf8f1;color:#2c7a4b}.rd-task.pending .rd-task-icon{background:#fff1ed;color:#bd543e}.rd-task-main{flex:1;min-width:0}.rd-task-name{font-size:11.7px;font-weight:850}.rd-task-meta{font-size:10.2px;color:var(--muted);margin-top:2px}
+    .rd-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:9.2px;font-weight:900}.rd-badge.done{background:#eaf8f1;color:#2c7a4b}.rd-badge.pending{background:#fff1ed;color:#bd543e}
+    .rd-list-row{display:grid;grid-template-columns:32px 1fr auto;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}.rd-list-row:last-child{border-bottom:0}.rd-rank{width:28px;height:28px;border-radius:9px;background:#edf6f6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:var(--primary)}.rd-rank.top{background:#fff7dc;color:#946b00}.rd-name{font-size:11.3px;font-weight:850}.rd-meta{font-size:9.8px;color:var(--muted);margin-top:2px}.rd-score{font-size:11.5px;font-weight:900;color:#075b59}
+    .rd-alert-row{padding:10px 11px;border:1px solid #f1c8bd;background:#fff8f5;border-radius:11px;margin-bottom:8px}.rd-alert-row:last-child{margin-bottom:0}.rd-alert-title{display:flex;align-items:center;gap:7px;font-size:11.2px;font-weight:900;color:#a44935}.rd-alert-sub{font-size:10.1px;color:#7b5d56;margin-top:4px;line-height:1.45}
+    .rd-pending-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center}.rd-pending-row:last-child{border-bottom:0}.rd-pending-name{font-size:11.2px;font-weight:850}.rd-pending-meta{font-size:9.9px;color:var(--muted);margin-top:2px}
+    .rd-empty{padding:19px;text-align:center;color:var(--muted);font-size:10.7px}.rd-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.rd-quick button{border:1px solid var(--border);background:#fff;border-radius:11px;padding:10px;font:inherit;font-size:10.3px;font-weight:850;color:var(--text);cursor:pointer;display:flex;gap:7px;align-items:center;justify-content:center}.rd-quick button:hover{border-color:var(--primary);color:var(--primary)}
+    .rd-chart{width:100%;height:190px;display:block}.rd-chart-label{font-size:9px;fill:#7a8f8e}.rd-chart-line{fill:none;stroke:#0b7d79;stroke-width:3}.rd-chart-area{fill:rgba(11,125,121,.08)}.rd-chart-dot{fill:#0b7d79}.rd-chart-grid{stroke:#e8efef;stroke-width:1}
+    .rd-bar-wrap{display:flex;align-items:end;gap:10px;height:155px;padding:8px 4px 0}.rd-bar-item{flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center;height:100%;gap:5px}.rd-bar{width:min(34px,75%);border-radius:8px 8px 3px 3px;background:#0b7d79;min-height:3px}.rd-bar.alt{background:#d9775d}.rd-bar-label{font-size:9px;color:var(--muted);white-space:nowrap}.rd-bar-value{font-size:9px;font-weight:850;color:var(--text)}
     @media(max-width:1050px){.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-grid3{grid-template-columns:1fr}.rd-grid2{grid-template-columns:1fr}}
-    @media(max-width:650px){.rd-kpis{grid-template-columns:repeat(2,1fr)}.rd-title{font-size:23px}.rd-hero{padding:20px}.rd-quick{grid-template-columns:1fr}}
+    @media(max-width:650px){.rd-kpis{grid-template-columns:repeat(2,1fr)}.rd-title{font-size:22px}.rd-hero{padding:19px}.rd-quick{grid-template-columns:1fr}.rd-chart{height:160px}}
   `;
   document.head.appendChild(s);
 }
@@ -3841,10 +3845,9 @@ async function roleDashboardRequest(action='dashboard',payload={},timeoutMs=2200
 function renderDashboard(content){
   injectRoleDashboardStyles();
   const token=++dashboardLoadToken;
-  content.innerHTML=`<div class="rd-shell" id="rd-root"><div class="rd-card"><span class="spinner"></span> Memuat dashboard sesuai tupoksi...</div></div>`;
+  content.innerHTML=`<div class="rd-shell" id="rd-root"><div class="rd-card"><span class="spinner"></span> Memuat dashboard...</div></div>`;
   loadRoleDashboard(token);
 }
-
 async function loadRoleDashboard(requestToken,force=false){
   const root=document.getElementById('rd-root');if(!root)return;
   try{
@@ -3857,94 +3860,110 @@ async function loadRoleDashboard(requestToken,force=false){
     root.innerHTML=`<div class="rd-card"><div class="rd-alert-row"><div class="rd-alert-title">${rdIcon('alert',16)} Dashboard belum dapat dimuat</div><div class="rd-alert-sub">${escapeHtml(e.message||'Terjadi kendala')}</div></div></div>`;
   }
 }
-
 function rdGreeting(role){
   const map={walas:'Dashboard Wali Kelas',guru:'Dashboard Guru',kesiswaan:'Dashboard Kabid Kesiswaan',pimpinan:'Dashboard Pimpinan',admin:'Dashboard Admin',akademik:'Dashboard Kabid Akademik',tahfizh:'Dashboard Kabid Tahfizh',kegiatan:'Dashboard Kabid Kegiatan'};
   return map[role]||'Dashboard';
 }
 function rdTasks(tasks=[]){
-  if(!tasks.length)return '<div class="rd-empty">Tidak ada tugas harian yang diwajibkan dari modul yang sudah terhubung.</div>';
-  return tasks.map(x=>`<div class="rd-task ${x.done?'done':'pending'}"><div class="rd-task-icon">${rdIcon(x.done?'check':'clock',17)}</div><div class="rd-task-main"><div class="rd-task-name">${escapeHtml(x.label)}</div><div class="rd-task-meta">${escapeHtml(x.detail||'')}</div></div><span class="rd-badge ${x.done?'done':'pending'}">${x.done?'SELESAI':'BELUM'}</span>${(!x.done&&x.can_mark)?`<button class="btn btn-sm" onclick="rdCompleteTask('${escapeHtml(x.code)}','${escapeHtml(x.scope_ref||'')}')">Tandai Sudah</button>`:''}</div>`).join('');
+  if(!tasks.length)return '<div class="rd-empty">Belum ada tugas harian yang terhubung untuk role ini.</div>';
+  return tasks.map(x=>`<div class="rd-task ${x.done?'done':'pending'}"><div class="rd-task-icon">${rdIcon(x.done?'check':'clock',16)}</div><div class="rd-task-main"><div class="rd-task-name">${escapeHtml(x.label)}</div><div class="rd-task-meta">${escapeHtml(x.detail||'')}</div></div><span class="rd-badge ${x.done?'done':'pending'}">${x.done?'SELESAI':'BELUM'}</span>${(!x.done&&x.can_mark)?`<button class="btn btn-sm" onclick="rdCompleteTask('${escapeHtml(x.code)}','${escapeHtml(x.scope_ref||'')}')">Tandai Sudah</button>`:''}</div>`).join('');
 }
 async function rdCompleteTask(code,scopeRef){
   try{await roleDashboardRequest('complete_task',{task_code:code,scope_ref:scopeRef});roleDashboardCache=null;showToast('Tugas ditandai selesai');await loadRoleDashboard(dashboardLoadToken,true)}
   catch(e){showToast(e.message||'Gagal memperbarui tugas',true)}
 }
-function rdLeaderboard(list=[]){
-  if(!list.length)return '<div class="rd-empty">Belum ada data yang cukup. Siswa/kelas tanpa input tidak dimasukkan.</div>';
-  return list.slice(0,5).map((x,i)=>`<div class="rd-list-row"><div class="rd-rank">${i+1}</div><div><div class="rd-name">${escapeHtml(x.name)}</div><div class="rd-meta">${escapeHtml(x.meta||'')}</div></div><div class="rd-score">${Number(x.score||0).toLocaleString('id-ID')}</div></div>`).join('');
+function rdLeaderboard(list=[],empty='Belum ada data yang cukup untuk leaderboard.'){
+  if(!list.length)return `<div class="rd-empty">${escapeHtml(empty)}</div>`;
+  return list.slice(0,5).map((x,i)=>`<div class="rd-list-row"><div class="rd-rank ${i<3?'top':''}">${i+1}</div><div><div class="rd-name">${escapeHtml(x.name)}</div><div class="rd-meta">${escapeHtml(x.meta||'')}</div></div><div class="rd-score">${Number(x.score||0).toLocaleString('id-ID')}</div></div>`).join('');
 }
 function rdAlerts(list=[]){
   if(!list.length)return '<div class="rd-empty">Tidak ada eskalasi aktif dari data yang tersedia.</div>';
-  return list.slice(0,12).map(x=>`<div class="rd-alert-row"><div class="rd-alert-title">${rdIcon('alert',15)} ${escapeHtml(x.title)}</div><div class="rd-alert-sub">${escapeHtml(x.detail||'')}</div></div>`).join('');
+  return list.slice(0,12).map(x=>`<div class="rd-alert-row"><div class="rd-alert-title">${rdIcon('alert',14)} ${escapeHtml(x.title)}</div><div class="rd-alert-sub">${escapeHtml(x.detail||'')}</div></div>`).join('');
 }
 function rdPendingTeachers(list=[]){
-  if(!list.length)return '<div class="rd-empty">Semua tugas yang terhubung sudah dikerjakan.</div>';
-  return list.slice(0,20).map(x=>`<div class="rd-pending-row"><div class="rd-pending-main"><div class="rd-pending-name">${escapeHtml(x.teacher_name)}</div><div class="rd-pending-meta">${escapeHtml(x.class_name||'')} · ${escapeHtml((x.pending||[]).join(', '))}</div></div><span class="rd-badge pending">${x.pending?.length||0} belum</span></div>`).join('');
+  if(!list.length)return '<div class="rd-empty">Semua tugas yang sudah terhubung selesai dikerjakan.</div>';
+  return list.slice(0,20).map(x=>`<div class="rd-pending-row"><div><div class="rd-pending-name">${escapeHtml(x.teacher_name)}</div><div class="rd-pending-meta">${escapeHtml(x.class_name||'')} · ${escapeHtml((x.pending||[]).join(', '))}</div></div><span class="rd-badge pending">${x.pending?.length||0} belum</span></div>`).join('');
+}
+function rdLineChart(points=[]){
+  if(!points.length)return '<div class="rd-empty">Grafik akan muncul setelah ada data kehadiran.</div>';
+  const W=620,H=180,P=28,max=100,min=0;
+  const xs=points.map((_,i)=>P+(i*(W-2*P))/Math.max(1,points.length-1));
+  const ys=points.map(p=>H-P-((Number(p.value||0)-min)/(max-min))*(H-2*P));
+  const line=xs.map((x,i)=>`${i?'L':'M'} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(' ');
+  const area=`M ${xs[0]} ${H-P} `+xs.map((x,i)=>`L ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(' ')+` L ${xs[xs.length-1]} ${H-P} Z`;
+  return `<svg class="rd-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${[25,50,75,100].map(v=>{const y=H-P-(v/100)*(H-2*P);return `<line class="rd-chart-grid" x1="${P}" y1="${y}" x2="${W-P}" y2="${y}"/><text class="rd-chart-label" x="2" y="${y+3}">${v}%</text>`}).join('')}
+    <path class="rd-chart-area" d="${area}"/><path class="rd-chart-line" d="${line}"/>
+    ${xs.map((x,i)=>`<circle class="rd-chart-dot" cx="${x}" cy="${ys[i]}" r="3"/><text class="rd-chart-label" x="${x-11}" y="${H-7}">${escapeHtml(points[i].label||'')}</text>`).join('')}
+  </svg>`;
+}
+function rdPointBars(v=0,r=0){
+  const max=Math.max(1,v,r),vh=Math.max(3,Math.round((v/max)*120)),rh=Math.max(3,Math.round((r/max)*120));
+  return `<div class="rd-bar-wrap">
+    <div class="rd-bar-item"><div class="rd-bar-value">${v}</div><div class="rd-bar alt" style="height:${vh}px"></div><div class="rd-bar-label">Pelanggaran</div></div>
+    <div class="rd-bar-item"><div class="rd-bar-value">${r}</div><div class="rd-bar" style="height:${rh}px"></div><div class="rd-bar-label">Reward</div></div>
+  </div>`;
 }
 
 function renderRoleDashboard(d){
   const root=document.getElementById('rd-root');if(!root)return;
   const role=d.role||currentUser.role||'guru', name=currentUser?.nama||currentUser?.username||'Pengguna';
-  const date=d.date_label||'Hari ini';
+  const s=d.summary||{},scope=d.scope_label||'',tasks=d.tasks||[];
 
   if(role==='admin'){
     const c=d.master_counts||{};
-    root.innerHTML=`<div class="rd-hero"><div class="rd-eyebrow">Dashboard Admin</div><div class="rd-title">Pengelolaan Sistem CQlass</div><div class="rd-sub">Master data, akun, dan kesehatan sinkronisasi. Data Kesiswaan bukan fokus dashboard Admin.</div></div>
+    root.innerHTML=`<div class="rd-hero"><div class="rd-eyebrow">Dashboard Admin</div><div class="rd-title">Pengelolaan Sistem CQlass</div><div class="rd-sub">Master data, akun, dan kesehatan sistem.</div></div>
     <div class="rd-kpis">
       <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('users')}</div><strong>${c.students||0}</strong><span>Siswa</span><small>Master aktif</small></div>
       <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('users')}</div><strong>${c.teachers||0}</strong><span>Guru</span><small>Master guru</small></div>
       <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('home')}</div><strong>${c.classes||0}</strong><span>Kelas</span><small>Rombel</small></div>
       <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('book')}</div><strong>${c.subjects||0}</strong><span>Mapel</span><small>Master mapel</small></div>
-      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('database')}</div><strong>${c.accounts||0}</strong><span>Akun Login</span><small>Akun CQlass</small></div>
-    </div>
-    <div class="rd-card"><div class="rd-card-title">Status Sistem</div><div class="rd-good" style="margin-top:10px">Dashboard Admin hanya menampilkan data sistem/master. Dashboard Kabid dan Pimpinan menangani monitoring operasional sesuai tupoksi.</div></div>`;
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('database')}</div><strong>${c.accounts||0}</strong><span>Akun</span><small>Akun login CQlass</small></div>
+    </div>`;
     return;
   }
 
-  const s=d.summary||{}, scope=d.scope_label||'', tasks=d.tasks||[];
   root.innerHTML=`
     <div class="rd-hero">
       <div class="rd-eyebrow">${escapeHtml(rdGreeting(role))}</div>
       <div class="rd-title">Assalamu'alaikum, ${escapeHtml(name)}</div>
-      <div class="rd-sub">${escapeHtml(scope)} · ${escapeHtml(date)}</div>
+      <div class="rd-sub">${escapeHtml(scope)} · ${escapeHtml(d.date_label||'Hari ini')}</div>
     </div>
 
     <div class="rd-kpis">
       <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('users')}</div><strong>${s.students||0}</strong><span>${role==='walas'?'Siswa Kelas':'Siswa dalam Scope'}</span><small>${escapeHtml(scope)}</small></div>
-      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('check')}</div><strong>${s.attendance_pct==null?'-':String(s.attendance_pct).replace('.',',')+'%'}</strong><span>Kehadiran Hari Ini</span><small>${s.attendance_filled?'Sudah ada input':'Belum ada input'}</small></div>
-      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('alert')}</div><strong>${s.violation_points_month||0}</strong><span>Poin Pelanggaran Bulan Ini</span><small>Dari data yang sudah diinput</small></div>
-      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('gift')}</div><strong>${s.reward_points_month||0}</strong><span>Poin Reward Bulan Ini</span><small>Dari data yang sudah diinput</small></div>
-      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('alert')}</div><strong>${s.escalation_count||0}</strong><span>Perlu Penanganan</span><small>Termasuk absen 3 hari berturut-turut</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('check')}</div><strong>${s.attendance_pct==null?'-':String(s.attendance_pct).replace('.',',')+'%'}</strong><span>Kehadiran Hari Ini</span><small>${s.attendance_filled?'Sudah ada input':'Belum ada input hari ini'}</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('gift')}</div><strong>${s.reward_points_month||0}</strong><span>Reward Bulan Ini</span><small>Data yang sudah diinput</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('alert')}</div><strong>${s.violation_points_month||0}</strong><span>Pelanggaran Bulan Ini</span><small>Data yang sudah diinput</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('alert')}</div><strong>${s.escalation_count||0}</strong><span>Perlu Penanganan</span><small>Termasuk absen 3 hari berturut</small></div>
+    </div>
+
+    <div class="rd-grid2">
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">${rdIcon('chart',16)} Tren Kehadiran</div><div class="rd-card-sub">10 hari sekolah terakhir yang sudah mempunyai input Morning Talk.</div></div></div>${rdLineChart(d.attendance_trend||[])}</div>
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">${rdIcon('chart',16)} Perilaku Bulan Ini</div><div class="rd-card-sub">Perbandingan poin Reward dan Pelanggaran dari data yang terisi.</div></div></div>${rdPointBars(s.violation_points_month||0,s.reward_points_month||0)}</div>
     </div>
 
     ${role==='walas'||role==='guru'?`
-      <div class="rd-grid2">
-        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Tugas Hari Ini</div><div class="rd-card-sub">Yang belum dikerjakan tetap muncul sebagai reminder.</div></div></div>${rdTasks(tasks)}</div>
-        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Aksi Cepat</div><div class="rd-card-sub">Langsung ke pekerjaan utama.</div></div></div><div class="rd-quick">
-          ${role==='walas'?`<button onclick="setActiveModule('absensi')">${rdIcon('check',15)} Morning Talk</button>`:''}
-          <button onclick="setActiveModule('kedisiplinan')">${rdIcon('alert',15)} Kedisiplinan</button>
-          <button onclick="setActiveModule('reward')">${rdIcon('gift',15)} Reward</button>
-        </div></div>
-      </div>`:''}
+    <div class="rd-grid2">
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Tugas Hari Ini</div><div class="rd-card-sub">Reminder tetap muncul sampai tugas selesai.</div></div></div>${rdTasks(tasks)}</div>
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Aksi Cepat</div><div class="rd-card-sub">Masuk langsung ke pekerjaan utama.</div></div></div><div class="rd-quick">
+        ${role==='walas'?`<button onclick="setActiveModule('absensi')">${rdIcon('check',15)} Morning Talk</button>`:''}
+        <button onclick="setActiveModule('kedisiplinan')">${rdIcon('alert',15)} Kedisiplinan</button>
+        <button onclick="setActiveModule('reward')">${rdIcon('gift',15)} Reward</button>
+      </div></div>
+    </div>`:''}
 
     ${role==='kesiswaan'||role==='pimpinan'?`
-      <div class="rd-grid2">
-        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Guru/Walas Belum Mengerjakan</div><div class="rd-card-sub">Monitoring tugas harian yang sudah terhubung ke CQlass.</div></div><span class="rd-badge pending">${d.pending_teachers?.length||0} guru</span></div>${rdPendingTeachers(d.pending_teachers||[])}</div>
-        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Info Eskalasi ${role==='kesiswaan'?'Kesiswaan':''}</div><div class="rd-card-sub">Pelanggaran berat, tahap pembinaan, dan siswa tidak hadir 3 hari sekolah berturut-turut.</div></div></div>${rdAlerts(d.escalations||[])}</div>
-      </div>`:''}
-
     <div class="rd-grid2">
-      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Leaderboard Siswa Teladan</div><div class="rd-card-sub">Hanya siswa yang memiliki input Reward/Pelanggaran pada periode ini.</div></div><span class="rd-badge done">Bulan ini</span></div>${rdLeaderboard(d.student_leaderboard||[])}</div>
-      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Leaderboard Kelas Teladan</div><div class="rd-card-sub">Kelas tanpa data input tidak dimasukkan ke ranking.</div></div><span class="rd-badge done">Bulan ini</span></div>${rdLeaderboard(d.class_leaderboard||[])}</div>
-    </div>
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Guru/Walas Belum Mengerjakan</div><div class="rd-card-sub">Hanya tugas yang sudah terhubung ke CQlass.</div></div><span class="rd-badge pending">${d.pending_teachers?.length||0} guru</span></div>${rdPendingTeachers(d.pending_teachers||[])}</div>
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Info Eskalasi ${role==='kesiswaan'?'Kesiswaan':''}</div><div class="rd-card-sub">Pelanggaran berat/DO, ambang pembinaan, dan tidak hadir 3 hari sekolah berturut-turut.</div></div></div>${rdAlerts(d.escalations||[])}</div>
+    </div>`:''}
 
-    ${role==='pimpinan'?`<div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Ringkasan Lintas Bidang</div><div class="rd-card-sub">Bagian yang belum terhubung ke Supabase tidak dibuat seolah-olah sudah terisi.</div></div></div>
-      <div class="rd-grid3">
-        <div class="rd-good"><b>Kesiswaan</b><br>${s.escalation_count||0} eskalasi aktif · ${d.pending_teachers?.length||0} walas memiliki tugas tertunda.</div>
-        <div class="rd-good"><b>Akademik</b><br>Reminder nilai/TP akan aktif setelah transaksi akademik dipindahkan ke Supabase.</div>
-        <div class="rd-good"><b>Tahfizh & Kegiatan</b><br>Dashboard bidang akan mengikuti data transaksi masing-masing, bukan data dummy.</div>
-      </div></div>`:''}
+    <div class="rd-grid3">
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">${rdIcon('star',16)} 5 Siswa Inspiratif ${role==='walas'?'di Kelas Saya':'Sekolah'}</div><div class="rd-card-sub">Hanya siswa yang memiliki data input valid pada periode berjalan.</div></div></div>${rdLeaderboard(role==='walas'?(d.class_student_leaderboard||[]):(d.student_leaderboard||[]),'Belum ada input yang cukup untuk menampilkan siswa inspiratif.')}</div>
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">${rdIcon('trophy',16)} 5 Kelas Inspiratif</div><div class="rd-card-sub">Kelas tanpa aktivitas input tidak dimasukkan. Skor mempertimbangkan data yang tersedia dan kelengkapan input.</div></div></div>${rdLeaderboard(d.class_leaderboard||[],'Belum ada cukup kelas dengan data input untuk membentuk Top 5.')}</div>
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">${rdIcon('star',16)} 5 Siswa Inspiratif Sekolah</div><div class="rd-card-sub">Untuk motivasi positif; tidak menampilkan ranking terbawah.</div></div></div>${rdLeaderboard(d.student_leaderboard||[],'Belum ada data siswa sekolah yang cukup.')}</div>
+    </div>
   `;
 }
 
