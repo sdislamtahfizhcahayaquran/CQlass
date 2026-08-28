@@ -2958,6 +2958,8 @@ function pointSvg(name, size=18){
     list:`<svg ${attrs}><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>`,
     chart:`<svg ${attrs}><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 4-7"/></svg>`,
     check:`<svg ${attrs}><path d="m20 6-11 11-5-5"/></svg>`,
+    search:`<svg ${attrs}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>`,
+    down:`<svg ${attrs}><path d="m6 9 6 6 6-6"/></svg>`,
     chevron:`<svg ${attrs}><path d="m9 18 6-6-6-6"/></svg>`
   };
   return p[name]||p.check;
@@ -2982,7 +2984,9 @@ function injectPointV2Styles(){
   .pv2-choice:last-child{border-bottom:0}.pv2-choice:hover{background:#f8fbfb}
   .pv2-choice input{margin-top:3px;accent-color:var(--primary)}
   .pv2-choice-main{flex:1;min-width:0}.pv2-choice-title{font-size:12px;font-weight:800;line-height:1.4}
-  .pv2-choice-meta{font-size:10.5px;color:var(--muted);margin-top:3px}
+  .pv2-choice-meta{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--muted);margin-top:5px;flex-wrap:wrap}
+  .pv2-meta-tag{display:inline-flex;padding:3px 7px;border-radius:999px;background:#eef7f6;color:#3f6866;font-weight:800}
+  .pv2-meta-dot{opacity:.55}.pv2-meta-score{font-weight:800;color:#5c7775}
   .pv2-count{display:inline-flex;align-items:center;gap:5px;background:#e9f7f6;color:var(--primary);padding:5px 9px;border-radius:999px;font-size:10.5px;font-weight:900}
   .pv2-stat-grid{display:grid;grid-template-columns:repeat(5,minmax(105px,1fr));gap:10px}
   .pv2-stat{background:#fff;border:1px solid var(--border);border-radius:13px;padding:13px}
@@ -2993,8 +2997,8 @@ function injectPointV2Styles(){
   .pv2-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.pv2-pill.ringan{background:#eef8f2;color:#397752}.pv2-pill.sedang{background:#fff6de;color:#956800}.pv2-pill.berat{background:#ffe9e4;color:#b54c37}.pv2-pill.reward{background:#e9f7f6;color:#176f69}
   .pv2-alert{padding:12px 13px;border-radius:11px;background:#fff3ef;border:1px solid #f2c8bc;color:#a34835;font-size:11.5px;line-height:1.5}
   .pv2-good{padding:12px 13px;border-radius:11px;background:#edf9f7;border:1px solid #c9e9e4;color:#176f69;font-size:11.5px;line-height:1.5}
-  .pv2-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap;margin-top:13px}
-  .pv2-btn-icon{display:inline-flex;align-items:center;gap:7px}.pv2-mini{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--text)}
+  .pv2-actions{display:flex;justify-content:center;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  .pv2-btn-icon{display:inline-flex;align-items:center;justify-content:center;gap:8px}.pv2-actions .btn{min-width:220px;text-align:center}.pv2-mini{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--text)}
   .pv2-mini:hover{border-color:var(--primary);color:var(--primary)}
   .pv2-escalation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .pv2-escalation-card{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
@@ -3005,6 +3009,7 @@ function injectPointV2Styles(){
   .pv2-type-wrap{position:relative}
   .pv2-type-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;background:#fff}
   .pv2-type-trigger span{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .pv2-type-trigger>svg{flex:0 0 auto;color:var(--muted)}
   .pv2-type-trigger small{font-size:10px;color:var(--muted);font-weight:600}
   .pv2-type-picker{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--border);border-radius:13px;padding:9px;box-shadow:0 14px 34px rgba(20,60,58,.14)}
   .pv2-type-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:10px}
@@ -3134,7 +3139,7 @@ function pv2MasterList(kind,listId,badgeId){
     const score=kind==='violation'?(m.consequence_code==='DO'?'DO':`${m.points} poin`):`${m.points} poin`;
     return `<label class="pv2-choice" data-search="${escapeHtml((name+' '+m.category).toLowerCase())}">
       <input type="checkbox" value="${escapeHtml(m.id)}" onchange="pv2SelectedCount('${listId}','${badgeId}')">
-      <span class="pv2-choice-main"><span class="pv2-choice-title">${escapeHtml(name)}</span><span class="pv2-choice-meta">${escapeHtml(m.category)} · ${escapeHtml(score)}</span></span>
+      <span class="pv2-choice-main"><span class="pv2-choice-title">${escapeHtml(name)}</span><span class="pv2-choice-meta"><span class="pv2-meta-tag">${escapeHtml(m.category)}</span><span class="pv2-meta-dot">•</span><span class="pv2-meta-score">${escapeHtml(score)}</span></span></span>
     </label>`;
   }).join('');
 }
@@ -3175,6 +3180,25 @@ function pv2PickTypeMaster(kind,id,name,score){
   pv2ToggleTypePicker(kind,false);
 }
 
+function pv2SingleStudentList(kind,students){
+  return students.map(s=>`<button type="button" class="pv2-type-option pv2-student-option" data-search="${escapeHtml(String(s.name||'').toLowerCase())}" onclick="pv2PickSingleStudent('${kind}','${escapeHtml(s.id)}','${escapeHtml(s.name)}')"><span><b>${escapeHtml(s.name)}</b></span></button>`).join('');
+}
+function pv2ToggleStudentPicker(kind,force){
+  const box=document.getElementById(`pv2-student-picker-${kind}`);if(!box)return;
+  const open=typeof force==='boolean'?force:box.hidden;box.hidden=!open;
+  if(open){const input=document.getElementById(`pv2-student-search-${kind}`);if(input){input.focus();input.select()}}
+}
+function pv2FilterSingleStudent(kind){
+  const q=(document.getElementById(`pv2-student-search-${kind}`)?.value||'').toLowerCase().trim();
+  document.querySelectorAll(`#pv2-student-list-${kind} .pv2-student-option`).forEach(el=>{el.style.display=(el.dataset.search||'').includes(q)?'flex':'none'});
+}
+async function pv2PickSingleStudent(kind,id,name){
+  const hidden=document.getElementById(`pv2-student-single-${kind}`),label=document.getElementById(`pv2-student-label-${kind}`);
+  if(hidden)hidden.value=id;if(label)label.innerHTML=`<b>${escapeHtml(name)}</b>`;
+  pv2ToggleStudentPicker(kind,false);
+  await pv2ChooseStudent(kind,id);
+}
+
 async function pv2RenderWorkspace(kind){
   const root=document.getElementById(`pv2-root-${kind}`);if(!root)return;
   const b=POINT_V2.boot||{};
@@ -3197,12 +3221,19 @@ async function pv2RenderWorkspace(kind){
       </div>
       <div class="pv2-grid" style="margin-top:13px">
         ${pv2ClassControl(kind)}
-        ${mode==='student'?`<div><label class="pv2-label">Siswa</label><select class="pv2-control" onchange="pv2ChooseStudent('${kind}',this.value)">
-          <option value="">— Pilih siswa —</option>${students.map(s=>`<option value="${escapeHtml(s.id)}" ${sid===s.id?'selected':''}>${escapeHtml(s.name)}</option>`).join('')}
-        </select></div>`:`<div class="pv2-type-wrap"><label class="pv2-label">Jenis ${title}</label>
+        ${mode==='student'?`<div class="pv2-type-wrap"><label class="pv2-label">Siswa</label>
+          <input type="hidden" id="pv2-student-single-${kind}" value="${escapeHtml(sid||'')}">
+          <button type="button" class="pv2-control pv2-type-trigger" onclick="pv2ToggleStudentPicker('${kind}')">
+            <span id="pv2-student-label-${kind}">${sid?`<b>${escapeHtml(students.find(x=>x.id===sid)?.name||'Pilih siswa')}</b>`:'— Pilih / cari siswa —'}</span>${pointSvg('down',16)}
+          </button>
+          <div class="pv2-type-picker" id="pv2-student-picker-${kind}" hidden>
+            <input class="pv2-control pv2-search" id="pv2-student-search-${kind}" placeholder="Ketik nama siswa..." oninput="pv2FilterSingleStudent('${kind}')">
+            <div class="pv2-type-list" id="pv2-student-list-${kind}">${pv2SingleStudentList(kind,students)}</div>
+          </div>
+        </div>`:`<div class="pv2-type-wrap"><label class="pv2-label">Jenis ${title}</label>
           <input type="hidden" id="pv2-type-master-${kind}" value="">
           <button type="button" class="pv2-control pv2-type-trigger" onclick="pv2ToggleTypePicker('${kind}')">
-            <span id="pv2-type-label-${kind}">— Pilih / cari ${title.toLowerCase()} —</span>${pointSvg('search',16)}
+            <span id="pv2-type-label-${kind}">— Pilih / cari ${title.toLowerCase()} —</span>${pointSvg('down',16)}
           </button>
           <div class="pv2-type-picker" id="pv2-type-picker-${kind}" hidden>
             <input class="pv2-control pv2-search" id="pv2-type-search-${kind}" placeholder="Ketik untuk mencari ${title.toLowerCase()}..." oninput="pv2FilterTypeMaster('${kind}')">
