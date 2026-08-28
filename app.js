@@ -710,12 +710,48 @@ function todayStrMasalah(){
   return `${y}-${m}-${d}`;
 }
 
+
+function injectMasalahV55Styles(){
+  if(document.getElementById('ms-v55-style')) return;
+  const s=document.createElement('style');s.id='ms-v55-style';
+  s.textContent=`
+    .ms-v55-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .ms-v55-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#eaf7f6;color:var(--primary);font-size:10px;font-weight:900}
+    .ms-v55-picker{position:relative}
+    .ms-v55-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:#fff;cursor:pointer}
+    .ms-v55-pop{position:absolute;z-index:50;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--border);border-radius:13px;padding:9px;box-shadow:0 14px 34px rgba(20,60,58,.14)}
+    .ms-v55-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+    .ms-v55-option{width:100%;border:0;border-bottom:1px solid var(--border);background:#fff;padding:10px 12px;text-align:left;cursor:pointer;font:inherit;font-size:11.5px;font-weight:800;color:var(--text)}
+    .ms-v55-option:last-child{border-bottom:0}.ms-v55-option:hover{background:#eff9f8}
+    .ms-v55-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .ms-v55-filters{display:flex;gap:8px;flex-wrap:wrap}.ms-v55-filters input,.ms-v55-filters select{min-width:190px}
+    .ms-v55-save{display:flex;justify-content:center;margin-top:16px}.ms-v55-save .btn{min-width:220px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .ms-v55-note{background:#f7fbfb;border:1px solid var(--border);border-radius:11px;padding:10px 12px;font-size:10.5px;color:var(--muted);line-height:1.5}
+    @media(max-width:700px){.ms-v55-filters{width:100%}.ms-v55-filters input,.ms-v55-filters select{width:100%;min-width:0}}
+  `;
+  document.head.appendChild(s);
+}
+function msV55ToggleStudent(force){
+  const box=document.getElementById('ms-v55-student-pop');if(!box)return;
+  const open=typeof force==='boolean'?force:box.hidden;box.hidden=!open;
+  if(open){const q=document.getElementById('ms-v55-student-search');if(q){q.focus();q.select()}}
+}
+function msV55FilterStudent(){
+  const q=(document.getElementById('ms-v55-student-search')?.value||'').toLowerCase().trim();
+  document.querySelectorAll('#ms-v55-student-list .ms-v55-option').forEach(el=>el.style.display=(el.dataset.search||'').includes(q)?'block':'none');
+}
+function msV55PickStudent(nis,nama){
+  const hidden=document.getElementById('ms-siswa'),label=document.getElementById('ms-v55-student-label');
+  if(hidden)hidden.value=nis;if(label)label.innerHTML=`<b>${escapeHtml(nama)}</b>`;
+  msV55ToggleStudent(false);
+}
 function renderMasalahSiswa(content){
+  injectMasalahV55Styles();
   const isWalas = currentUser.role === 'walas';
   masalahState.analisisAI = null;
   content.innerHTML = `
     <div class="page-title">Catatan Masalah Siswa</div>
-    <div class="page-sub">Pilih siswa, ceritakan kejadian secara faktual, lalu sistem akan memberikan rekomendasi penanganan berbasis data.</div>
+    <div class="page-sub">Catat kejadian siswa secara faktual, susun tindak lanjut, dan simpan riwayat penanganan.</div>
 
     ${!isWalas ? `
       <div class="card">
@@ -778,14 +814,19 @@ function renderMasalahTab(){
 
 function renderFormMasalah(){
   const area = document.getElementById('ms-tab-content');
-  const siswaOptions = masalahState.siswa.map(s => `<option value="${escapeHtml(s.nis)}">${escapeHtml(s.nama)} — ${escapeHtml(s.nis)}</option>`).join('');
+  const siswaButtons = masalahState.siswa.map(s => `<button type="button" class="ms-v55-option" data-search="${escapeHtml(String(s.nama||'').toLowerCase())}" onclick="msV55PickStudent('${escapeHtml(s.nis)}','${escapeHtml(s.nama)}')">${escapeHtml(s.nama)}</button>`).join('');
   area.innerHTML = `
     <div class="card">
-      <div class="card-title">Laporan Naratif Walas</div>
-      <div class="ms-grid">
-        <div class="ms-field">
+      <div class="ms-v55-head"><div><div class="card-title" style="margin:0">Laporan Masalah Siswa</div><div class="ms-help">Tuliskan fakta, bukan label atau diagnosis.</div></div><span class="ms-v55-chip">${escapeHtml(masalahState.kelas||'')}</span></div>
+      <div class="ms-grid" style="margin-top:14px">
+        <div class="ms-field ms-v55-picker">
           <label>Nama siswa</label>
-          <select id="ms-siswa"><option value="">— pilih siswa —</option>${siswaOptions}</select>
+          <input type="hidden" id="ms-siswa" value="">
+          <button type="button" class="pv2-control ms-v55-trigger" onclick="msV55ToggleStudent()"><span id="ms-v55-student-label">— Pilih / cari siswa —</span>${pointSvg('down',16)}</button>
+          <div class="ms-v55-pop" id="ms-v55-student-pop" hidden>
+            <input class="pv2-control" id="ms-v55-student-search" placeholder="Ketik nama siswa..." oninput="msV55FilterStudent()">
+            <div class="ms-v55-list" id="ms-v55-student-list">${siswaButtons}</div>
+          </div>
         </div>
         <div class="ms-field">
           <label>Tanggal kejadian</label>
@@ -816,7 +857,7 @@ function renderFormMasalah(){
       </div>
 
       <div class="ms-actions">
-        <button class="btn" id="ms-ai-btn" onclick="generateSaranMasalahAI()">Analisis & Buat Saran Penanganan</button>
+        <button class="btn" id="ms-ai-btn" onclick="generateSaranMasalahAI()">Susun Saran Penanganan</button>
         <span class="ms-help">Rekomendasi sistem berbasis data master masalah dan cocok dengan cerita yang Anda tulis.</span>
       </div>
     </div>
@@ -849,7 +890,7 @@ async function generateSaranMasalahAI(){
   if(cerita.length < 20){ showToast('Cerita kejadian masih terlalu singkat.', true); return; }
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Sistem sedang menyusun saran...';
+  btn.innerHTML = '<span class="spinner"></span>Menyusun saran penanganan...';
   result.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Mencocokkan cerita dengan kata kunci dan master masalah...</div>`;
 
   try{
@@ -874,7 +915,7 @@ async function generateSaranMasalahAI(){
     result.innerHTML = `<div class="card"><div class="ms-alert"><strong>Analisis belum berhasil.</strong><br>${escapeHtml(err.message || 'Gagal membaca master masalah di Spreadsheet.')}</div></div>`;
   }finally{
     btn.disabled = false;
-    btn.textContent = 'Analisis Ulang';
+    btn.textContent = 'Susun Ulang';
   }
 }
 
@@ -920,7 +961,7 @@ function renderHasilMasalahAI(siswa, tanggal, cerita, tindakan, risiko){
       ${urgent ? `<div class="ms-alert"><strong>Perlu perhatian segera.</strong><br>Utamakan keselamatan siswa dan teruskan kepada kesiswaan/pimpinan sekolah sesuai prosedur perlindungan anak. Rekomendasi sistem tidak menggantikan penanganan resmi sekolah.</div>` : ''}
       <div class="ms-ai-head">
         <div>
-          <div class="ms-ai-title">Hasil Analisis &amp; Rekomendasi Sistem</div>
+          <div class="ms-ai-title">Saran Penanganan &amp; Tindak Lanjut</div>
           <div class="ms-badges">
             <span class="ms-badge">${escapeHtml(ai.kategori || '-')}</span>
             <span class="ms-badge attention">${escapeHtml(ai.tingkatPerhatian || '-')}</span>
@@ -957,10 +998,10 @@ function renderHasilMasalahAI(siswa, tanggal, cerita, tindakan, risiko){
         </div>
       </div>
 
-      <div class="ms-actions">
-        <button class="btn" id="ms-save-btn" onclick="saveCatatanMasalah()">Simpan Laporan</button>
-        <button class="btn btn-outline" onclick="document.getElementById('ms-ai-btn').scrollIntoView({behavior:'smooth'})">Perbaiki Cerita / Buat Ulang</button>
+      <div class="ms-v55-save">
+        <button class="btn" id="ms-save-btn" onclick="saveCatatanMasalah()">${pointSvg('save',16)} Simpan Laporan</button>
       </div>
+      <div class="ms-actions" style="justify-content:center"><button class="btn btn-outline" onclick="document.getElementById('ms-ai-btn').scrollIntoView({behavior:'smooth'})">Perbaiki Cerita / Susun Ulang</button></div>
     </div>
   `;
 
@@ -977,7 +1018,7 @@ async function saveCatatanMasalah(){
   const result = document.getElementById('ms-ai-result');
   const btn = document.getElementById('ms-save-btn');
   const saranFinal = document.getElementById('ms-saran-final').value.trim();
-  if(!masalahState.analisisAI){ showToast('Buat analisis terlebih dahulu.', true); return; }
+  if(!masalahState.analisisAI){ showToast('Susun saran penanganan terlebih dahulu.', true); return; }
   if(!saranFinal){ showToast('Saran final tidak boleh kosong.', true); return; }
 
   btn.disabled = true;
@@ -1029,7 +1070,14 @@ function renderRiwayatMasalah(){
     <div class="card">
       <div class="ms-history-toolbar">
         <div><div class="card-title" style="margin:0">Riwayat Catatan</div><div class="ms-help">${masalahState.riwayat.length} laporan terbaru</div></div>
-        <input type="search" id="ms-history-search" placeholder="Cari nama atau masalah..." oninput="filterRiwayatMasalah()" style="max-width:280px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;">
+        <div class="ms-v55-filters">
+          <input type="search" id="ms-history-search" placeholder="Cari nama atau masalah..." oninput="filterRiwayatMasalah()" class="pv2-control">
+          <select id="ms-history-status" class="pv2-control" onchange="filterRiwayatMasalah()">
+            <option value="">Semua status</option>
+            <option value="baru">Baru</option>
+            <option value="diteruskan ke kesiswaan">Diteruskan ke Kesiswaan</option>
+          </select>
+        </div>
       </div>
       <div class="ms-history-list" id="ms-history-list"></div>
     </div>
@@ -1038,8 +1086,13 @@ function renderRiwayatMasalah(){
 }
 
 function filterRiwayatMasalah(){
-  const q = (document.getElementById('ms-history-search').value || '').toLowerCase().trim();
-  const list = masalahState.riwayat.filter(r => [r.namaSiswa,r.masalahUtama,r.kategori,r.ringkasan,r.status].join(' ').toLowerCase().includes(q));
+  const q = (document.getElementById('ms-history-search')?.value || '').toLowerCase().trim();
+  const status=(document.getElementById('ms-history-status')?.value||'').toLowerCase();
+  const list = masalahState.riwayat.filter(r => {
+    const matchQ=[r.namaSiswa,r.masalahUtama,r.kategori,r.ringkasan,r.status].join(' ').toLowerCase().includes(q);
+    const matchStatus=!status||String(r.status||'').toLowerCase()===status;
+    return matchQ&&matchStatus;
+  });
   drawRiwayatMasalah(list);
 }
 
