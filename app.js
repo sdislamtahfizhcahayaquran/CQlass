@@ -1,4 +1,17 @@
 // ==========================================================
+// CQLASS 2 — SUPABASE AUTH CONFIG
+// ==========================================================
+const SUPABASE_URL = 'https://lmglkxzemtvxcgktiord.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
+const AUTH_URL = `${SUPABASE_URL}/functions/v1/auth-user`;
+
+const AUTH_STORAGE = Object.freeze({
+  TOKEN: 'cqlass_session_token',
+  EXPIRES: 'cqlass_session_expires_at',
+  USER: 'cqlass_user'
+});
+
+// ==========================================================
 // KONFIGURASI — WAJIB DIISI SESUAI DEPLOYMENT ANDA
 // ==========================================================
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNKFqYZ4M6ceOTTR7KdcCeQ4sCXzjVhth1bcAOr_iWGNXJcvNPipjv1K97V4DM3Z-48g/exec';
@@ -21,6 +34,93 @@ const AVATAR_RACE_THEME = Object.freeze({
 
 function getAvatarRaceTheme(avatarId){
   return AVATAR_RACE_THEME[Number(avatarId)] || { main:'#0A6E6E', dark:'#064A4A', soft:'#E8F4F4' };
+}
+
+/* ==========================================================
+   SUPABASE AUTH CLIENT
+   ========================================================== */
+function getAuthToken(){ return localStorage.getItem(AUTH_STORAGE.TOKEN) || ''; }
+function saveAuthSession(token, expiresAt, user){
+  if(token) localStorage.setItem(AUTH_STORAGE.TOKEN, token);
+  if(expiresAt) localStorage.setItem(AUTH_STORAGE.EXPIRES, expiresAt);
+  if(user) localStorage.setItem(AUTH_STORAGE.USER, JSON.stringify(user));
+}
+function clearAuthSession(){
+  Object.values(AUTH_STORAGE).forEach(k => localStorage.removeItem(k));
+  sessionStorage.removeItem('kesiswaan_user');
+}
+function normalizeAuthUser(user={}){
+  const teacher=user.teacher||user.guru||{};
+  return {
+    ...user,
+    nama:user.nama||user.full_name||user.name||teacher.full_name||teacher.nama||user.username||'Pengguna',
+    username:user.username||'',
+    role:String(user.role||user.primary_role||user.role_code||'guru').toLowerCase(),
+    kelas:user.kelas||user.class_name||user.walas_class||'',
+    must_change_password:Boolean(user.must_change_password),
+    username_change_allowed:user.username_change_allowed!==false
+  };
+}
+async function authRequest(action,payload={},options={}){
+  const token=options.token!==undefined?options.token:getAuthToken();
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),options.timeoutMs||25000);
+  try{
+    const body={action,...payload};
+    if(token&&!body.session_token) body.session_token=token;
+    const headers={
+      'Content-Type':'application/json',
+      'apikey':SUPABASE_PUBLISHABLE_KEY,
+      'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+    };
+    if(token) headers['x-session-token']=token;
+    const response=await fetch(AUTH_URL,{method:'POST',headers,body:JSON.stringify(body),signal:controller.signal});
+    const raw=await response.text();
+    let data={};
+    try{ data=raw?JSON.parse(raw):{}; }catch(_){ throw new Error(`Respons auth bukan JSON. HTTP ${response.status}.`); }
+    if(!response.ok&&data.success!==false){ data.success=false; data.error=data.error||`http_${response.status}`; }
+    return data;
+  }catch(err){
+    if(err?.name==='AbortError') throw new Error('Server login terlalu lama merespons. Silakan coba lagi.');
+    throw err;
+  }finally{ clearTimeout(timer); }
+}
+function authErrorMessage(code){
+  const m={
+    invalid_credentials:'Username atau password salah.',user_not_found:'Akun tidak ditemukan.',
+    account_inactive:'Akun sedang tidak aktif. Hubungi admin.',akun_nonaktif:'Akun sedang tidak aktif. Hubungi admin.',
+    account_locked:'Akun dikunci sementara karena terlalu banyak percobaan login. Coba lagi nanti.',
+    session_invalid:'Sesi login sudah tidak berlaku. Silakan masuk kembali.',session_expired:'Sesi login telah berakhir. Silakan masuk kembali.',
+    password_change_required:'Anda wajib mengganti password awal terlebih dahulu.',old_password_wrong:'Password lama salah.',password_lama_salah:'Password lama salah.',
+    password_too_short:'Password baru minimal 8 karakter.',password_same:'Password baru harus berbeda dari password lama.',
+    username_not_allowed:'Perubahan username tidak diizinkan untuk akun ini.',username_taken:'Username tersebut sudah digunakan.',
+    username_sudah_dipakai:'Username tersebut sudah digunakan.',invalid_username:'Username hanya boleh berisi huruf kecil, angka, titik, dan underscore.'
+  };
+  return m[String(code||'')]||'Terjadi kendala pada autentikasi. Silakan coba lagi.';
+}
+async function validateSavedSession(){
+  const token=getAuthToken(); if(!token) return false;
+  const expires=localStorage.getItem(AUTH_STORAGE.EXPIRES);
+  if(expires&&Date.parse(expires)<=Date.now()){ clearAuthSession(); return false; }
+  try{
+    const res=await authRequest('session',{}, {token,timeoutMs:20000});
+    if(!res.success){ clearAuthSession(); return false; }
+    currentUser=normalizeAuthUser(res.user||res.account||{});
+    if(res.must_change_password!==undefined) currentUser.must_change_password=Boolean(res.must_change_password);
+    saveAuthSession(token,res.expires_at||expires||'',currentUser);
+    return true;
+  }catch(err){ console.warn('Validasi session gagal:',err); return false; }
+}
+function showLoginScreen(){
+  const app=document.getElementById('app-screen'), login=document.getElementById('login-screen');
+  if(app) app.style.display='none'; if(login) login.style.display='flex';
+}
+function forceInitialPasswordChange(){
+  if(!currentUser?.must_change_password) return;
+  const modal=document.getElementById('account-modal'); if(!modal) return;
+  modal.classList.add('open'); modal.dataset.forcePassword='1'; switchAccountTab('pass');
+  const err=document.getElementById('pass-error');
+  if(err){ err.textContent='Untuk keamanan, ganti password awal sebelum menggunakan CQlass.'; err.style.display='block'; }
 }
 
 /* ==========================================================
@@ -162,59 +262,44 @@ function toggleLoginPassword(){
 document.getElementById('toggle-pass')?.addEventListener('click', toggleLoginPassword);
 
 /* ==========================================================
-   AUTH & SESSION
+   AUTH & SESSION — SUPABASE
    ========================================================== */
 let currentUser = null;
 
-document.getElementById('login-form').addEventListener('submit', async (e) => {
+document.getElementById('login-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-  const errEl = document.getElementById('login-error');
-  const btn = document.getElementById('login-btn');
-
-  errEl.style.display = 'none';
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Memeriksa...';
-
+  const username=document.getElementById('login-username').value.trim().toLowerCase();
+  const password=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-error');
+  const btn=document.getElementById('login-btn');
+  if(errEl) errEl.style.display='none';
+  if(!username||!password){ if(errEl){errEl.textContent='Username dan password wajib diisi.';errEl.style.display='block';} return; }
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Memeriksa...';
   try{
-    const passwordHash = await hashPassword(username, password);
-    const res = await callApi('login', { username, passwordHash });
-    if(res.success){
-      currentUser = res.user;
-      sessionStorage.setItem('kesiswaan_user', JSON.stringify(currentUser));
-      enterApp();
-    } else {
-      errEl.textContent = 'Username atau password salah.';
-      errEl.style.display = 'block';
-    }
-  } catch(err){
-    errEl.textContent = err?.message || 'Gagal terhubung ke server. Cek koneksi internet.';
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Masuk';
-  }
+    const res=await authRequest('login',{username,password},{token:'',timeoutMs:25000});
+    if(!res.success){ if(errEl){errEl.textContent=authErrorMessage(res.error);errEl.style.display='block';} return; }
+    const token=res.session_token||res.token||''; if(!token) throw new Error('Server tidak mengirim session token.');
+    currentUser=normalizeAuthUser(res.user||res.account||{});
+    if(res.must_change_password!==undefined) currentUser.must_change_password=Boolean(res.must_change_password);
+    saveAuthSession(token,res.expires_at||'',currentUser);
+    enterApp();
+    if(currentUser.must_change_password) setTimeout(forceInitialPasswordChange,150);
+  }catch(err){ if(errEl){errEl.textContent=err?.message||'Gagal terhubung ke server login.';errEl.style.display='block';} }
+  finally{ btn.disabled=false; btn.textContent='Masuk'; }
 });
 
-function logout(){
-  if(bellIntervalId){
-    clearInterval(bellIntervalId);
-    bellIntervalId = null;
-  }
-  sessionStorage.removeItem('kesiswaan_user');
-  currentUser = null;
-  document.getElementById('app-screen').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-form').reset();
+async function logout(){
+  if(bellIntervalId){clearInterval(bellIntervalId);bellIntervalId=null;}
+  const token=getAuthToken();
+  try{ if(token) await authRequest('logout',{}, {token,timeoutMs:10000}); }
+  catch(err){ console.warn('Logout server gagal; session lokal tetap dibersihkan.'); }
+  finally{ clearAuthSession();currentUser=null;showLoginScreen();document.getElementById('login-form')?.reset(); }
 }
 
-window.addEventListener('load', () => {
-  const saved = sessionStorage.getItem('kesiswaan_user');
-  if(saved){
-    currentUser = JSON.parse(saved);
-    enterApp();
-  }
+window.addEventListener('load', async () => {
+  showLoginScreen();
+  const ok=await validateSavedSession();
+  if(ok){ enterApp(); if(currentUser.must_change_password) setTimeout(forceInitialPasswordChange,150); }
 });
 
 /* ==========================================================
@@ -256,7 +341,9 @@ function openAccountModal(){
   hideModalMsgs();
 }
 function closeAccountModal(){
-  document.getElementById('account-modal').classList.remove('open');
+  const modal=document.getElementById('account-modal');
+  if(modal?.dataset.forcePassword==='1'){ showToast('Ganti password awal terlebih dahulu.',true); return; }
+  modal?.classList.remove('open');
 }
 document.getElementById('account-modal').addEventListener('click', (e) => {
   if(e.target.id === 'account-modal') closeAccountModal();
@@ -389,124 +476,47 @@ function updateProfilePhotoUI(){
 
 async function submitGantiPassword(e){
   e.preventDefault();
-  const errEl = document.getElementById('pass-error');
-  const okEl = document.getElementById('pass-success');
-  const btn = document.getElementById('pass-submit-btn');
-  errEl.style.display = 'none'; okEl.style.display = 'none';
-
-  const oldPass = document.getElementById('pass-old').value;
-  const newPass = document.getElementById('pass-new').value;
-  const newPassConfirm = document.getElementById('pass-new-confirm').value;
-
-  if(newPass !== newPassConfirm){
-    errEl.textContent = 'Password baru dan konfirmasi tidak sama.';
-    errEl.style.display = 'block';
-    return false;
-  }
-  if(newPass.length < 4){
-    errEl.textContent = 'Password baru minimal 4 karakter.';
-    errEl.style.display = 'block';
-    return false;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
-
+  const errEl=document.getElementById('pass-error'), okEl=document.getElementById('pass-success'), btn=document.getElementById('pass-submit-btn');
+  if(errEl) errEl.style.display='none'; if(okEl) okEl.style.display='none';
+  const oldPass=document.getElementById('pass-old').value, newPass=document.getElementById('pass-new').value, confirm=document.getElementById('pass-new-confirm').value;
+  if(!oldPass||!newPass||!confirm){errEl.textContent='Semua kolom password wajib diisi.';errEl.style.display='block';return false;}
+  if(newPass!==confirm){errEl.textContent='Password baru dan konfirmasi tidak sama.';errEl.style.display='block';return false;}
+  if(newPass.length<8){errEl.textContent='Password baru minimal 8 karakter.';errEl.style.display='block';return false;}
+  if(newPass===oldPass){errEl.textContent='Password baru harus berbeda dari password lama.';errEl.style.display='block';return false;}
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
   try{
-    const oldHash = await hashPassword(currentUser.username, oldPass);
-    const newHash = await hashPassword(currentUser.username, newPass);
-    const res = await callApi('gantiPassword', {
-      username: currentUser.username,
-      oldPasswordHash: oldHash,
-      newPasswordHash: newHash
-    });
-
-    if(res.success){
-      okEl.textContent = 'Password berhasil diubah.';
-      okEl.style.display = 'block';
-      document.getElementById('form-pass').reset();
-      showToast('Password berhasil diubah');
-    } else {
-      const pesan = {
-        password_lama_salah: 'Password lama salah.',
-        akun_nonaktif: 'Akun sedang tidak aktif. Hubungi admin.',
-        password_baru_kosong: 'Password baru tidak boleh kosong.',
-        user_not_found: 'Akun tidak ditemukan.'
-      };
-      errEl.textContent = pesan[res.error] || 'Gagal mengubah password.';
-      errEl.style.display = 'block';
-    }
-  } catch(err){
-    errEl.textContent = 'Gagal terhubung ke server.';
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan Password Baru';
-  }
+    const res=await authRequest('change_password',{old_password:oldPass,new_password:newPass});
+    if(!res.success){errEl.textContent=authErrorMessage(res.error);errEl.style.display='block';return false;}
+    currentUser.must_change_password=false;
+    saveAuthSession(getAuthToken(),localStorage.getItem(AUTH_STORAGE.EXPIRES)||'',currentUser);
+    const modal=document.getElementById('account-modal');if(modal) delete modal.dataset.forcePassword;
+    document.getElementById('form-pass')?.reset();if(okEl){okEl.textContent='Password berhasil diubah.';okEl.style.display='block';}
+    showToast('Password berhasil diubah');if(modal)setTimeout(()=>modal.classList.remove('open'),650);
+  }catch(err){errEl.textContent=err?.message||'Gagal terhubung ke server.';errEl.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Simpan Password Baru';}
   return false;
 }
 
 async function submitGantiUsername(e){
   e.preventDefault();
-  const errEl = document.getElementById('user-error');
-  const okEl = document.getElementById('user-success');
-  const btn = document.getElementById('user-submit-btn');
-  errEl.style.display = 'none'; okEl.style.display = 'none';
-
-  const currentPass = document.getElementById('user-pass-verify').value;
-  const newUsername = document.getElementById('user-new').value.trim();
-
-  if(!newUsername){
-    errEl.textContent = 'Username baru tidak boleh kosong.';
-    errEl.style.display = 'block';
-    return false;
-  }
-  if(newUsername.toLowerCase() === currentUser.username.toLowerCase()){
-    errEl.textContent = 'Username baru sama dengan username sekarang.';
-    errEl.style.display = 'block';
-    return false;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
-
+  const errEl=document.getElementById('user-error'),okEl=document.getElementById('user-success'),btn=document.getElementById('user-submit-btn');
+  if(errEl)errEl.style.display='none';if(okEl)okEl.style.display='none';
+  const newUsername=document.getElementById('user-new').value.trim().toLowerCase();
+  if(currentUser?.must_change_password){errEl.textContent='Ganti password awal terlebih dahulu.';errEl.style.display='block';return false;}
+  if(!newUsername){errEl.textContent='Username baru tidak boleh kosong.';errEl.style.display='block';return false;}
+  if(newUsername.length<4){errEl.textContent='Username baru minimal 4 karakter.';errEl.style.display='block';return false;}
+  if(!/^[a-z0-9._]+$/.test(newUsername)){errEl.textContent='Gunakan huruf kecil, angka, titik, atau underscore tanpa spasi.';errEl.style.display='block';return false;}
+  if(newUsername===String(currentUser.username||'').toLowerCase()){errEl.textContent='Username baru sama dengan username sekarang.';errEl.style.display='block';return false;}
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
   try{
-    const passwordHash = await hashPassword(currentUser.username, currentPass);
-    const newPasswordHash = await hashPassword(newUsername, currentPass);
-
-    const res = await callApi('gantiUsername', {
-      oldUsername: currentUser.username,
-      passwordHash,
-      newUsername,
-      newPasswordHash
-    });
-
-    if(res.success){
-      currentUser.username = res.newUsername;
-      sessionStorage.setItem('kesiswaan_user', JSON.stringify(currentUser));
-      okEl.textContent = 'Username berhasil diubah menjadi "' + res.newUsername + '".';
-      okEl.style.display = 'block';
-      document.getElementById('form-user').reset();
-      showToast('Username berhasil diubah');
-    } else {
-      const pesan = {
-        password_salah: 'Password yang Anda masukkan salah.',
-        akun_nonaktif: 'Akun sedang tidak aktif. Hubungi admin.',
-        username_baru_kosong: 'Username baru tidak boleh kosong.',
-        username_sudah_dipakai: 'Username itu sudah dipakai orang lain.',
-        newPasswordHash_wajib_dikirim: 'Terjadi kesalahan sistem, coba lagi.',
-        user_not_found: 'Akun tidak ditemukan.'
-      };
-      errEl.textContent = pesan[res.error] || 'Gagal mengubah username.';
-      errEl.style.display = 'block';
-    }
-  } catch(err){
-    errEl.textContent = 'Gagal terhubung ke server.';
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Simpan Username Baru';
-  }
+    const res=await authRequest('change_username',{new_username:newUsername});
+    if(!res.success){errEl.textContent=authErrorMessage(res.error);errEl.style.display='block';return false;}
+    currentUser.username=res.new_username||res.newUsername||res.username||newUsername;
+    saveAuthSession(getAuthToken(),localStorage.getItem(AUTH_STORAGE.EXPIRES)||'',currentUser);
+    document.getElementById('form-user')?.reset();if(okEl){okEl.textContent=`Username berhasil diubah menjadi "${currentUser.username}".`;okEl.style.display='block';}
+    showToast('Username berhasil diubah');
+  }catch(err){errEl.textContent=err?.message||'Gagal terhubung ke server.';errEl.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Simpan Username Baru';}
   return false;
 }
 
@@ -567,6 +577,7 @@ let openGroupId = null;
 let bellIntervalId = null;
 
 function enterApp(){
+  if(currentUser) saveAuthSession(getAuthToken(),localStorage.getItem(AUTH_STORAGE.EXPIRES)||'',currentUser);
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
   document.getElementById('user-name').textContent = currentUser.nama;
