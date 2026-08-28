@@ -3002,6 +3002,16 @@ function injectPointV2Styles(){
   .pv2-escalation-title{font-size:12px;font-weight:900}.pv2-escalation-sub{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4}
   .pv2-empty{text-align:center;color:var(--muted);padding:22px;font-size:12px}
   .pv2-search{margin-bottom:8px}
+  .pv2-type-wrap{position:relative}
+  .pv2-type-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;background:#fff}
+  .pv2-type-trigger span{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .pv2-type-trigger small{font-size:10px;color:var(--muted);font-weight:600}
+  .pv2-type-picker{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--border);border-radius:13px;padding:9px;box-shadow:0 14px 34px rgba(20,60,58,.14)}
+  .pv2-type-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+  .pv2-type-option{width:100%;display:flex;align-items:center;text-align:left;border:0;border-bottom:1px solid var(--border);background:#fff;padding:10px 12px;cursor:pointer;font:inherit;color:var(--text)}
+  .pv2-type-option:last-child{border-bottom:0}.pv2-type-option:hover{background:#eff9f8}
+  .pv2-type-option span{display:flex;flex-direction:column;gap:2px}.pv2-type-option b{font-size:11.5px}.pv2-type-option small{font-size:9.8px;color:var(--muted)}
+
   @media(max-width:900px){.pv2-grid,.pv2-grid3,.pv2-escalation{grid-template-columns:1fr}.pv2-stat-grid{grid-template-columns:repeat(2,1fr)}}
   `;
   document.head.appendChild(s);
@@ -3129,10 +3139,40 @@ function pv2MasterList(kind,listId,badgeId){
   }).join('');
 }
 function pv2StudentList(students,listId,badgeId){
-  return students.map(s=>`<label class="pv2-choice" data-search="${escapeHtml((s.name+' '+(s.nis||'')).toLowerCase())}">
+  return students.map(s=>`<label class="pv2-choice" data-search="${escapeHtml(String(s.name||'').toLowerCase())}">
     <input type="checkbox" value="${escapeHtml(s.id)}" onchange="pv2SelectedCount('${listId}','${badgeId}')">
-    <span class="pv2-choice-main"><span class="pv2-choice-title">${escapeHtml(s.name)}</span><span class="pv2-choice-meta">${s.nis?'NIS '+escapeHtml(s.nis):'Siswa aktif'}</span></span>
+    <span class="pv2-choice-main"><span class="pv2-choice-title">${escapeHtml(s.name)}</span></span>
   </label>`).join('');
+}
+
+function pv2TypeMasterList(kind){
+  const arr=kind==='violation'?(POINT_V2.boot?.violation_masters||[]):(POINT_V2.boot?.reward_masters||[]);
+  return arr.map(m=>{
+    const name=kind==='violation'?m.violation_name:m.reward_name;
+    const score=kind==='violation'?(m.consequence_code==='DO'?'DO':`${m.points} poin`):`${m.points} poin`;
+    return `<button type="button" class="pv2-type-option" data-search="${escapeHtml((name+' '+m.category+' '+score).toLowerCase())}" onclick="pv2PickTypeMaster('${kind}','${escapeHtml(m.id)}','${escapeHtml(name)}','${escapeHtml(score)}')">
+      <span><b>${escapeHtml(name)}</b><small>${escapeHtml(m.category)} · ${escapeHtml(score)}</small></span>
+    </button>`;
+  }).join('');
+}
+function pv2ToggleTypePicker(kind,force){
+  const box=document.getElementById(`pv2-type-picker-${kind}`);if(!box)return;
+  const open=typeof force==='boolean'?force:box.hidden;
+  box.hidden=!open;
+  if(open){const input=document.getElementById(`pv2-type-search-${kind}`);if(input){input.focus();input.select()}}
+}
+function pv2FilterTypeMaster(kind){
+  const q=(document.getElementById(`pv2-type-search-${kind}`)?.value||'').toLowerCase().trim();
+  document.querySelectorAll(`#pv2-type-list-${kind} .pv2-type-option`).forEach(el=>{
+    el.style.display=(el.dataset.search||'').includes(q)?'flex':'none';
+  });
+}
+function pv2PickTypeMaster(kind,id,name,score){
+  const hidden=document.getElementById(`pv2-type-master-${kind}`);
+  const label=document.getElementById(`pv2-type-label-${kind}`);
+  if(hidden)hidden.value=id;
+  if(label)label.innerHTML=`<b>${escapeHtml(name)}</b><small>${escapeHtml(score)}</small>`;
+  pv2ToggleTypePicker(kind,false);
 }
 
 async function pv2RenderWorkspace(kind){
@@ -3159,11 +3199,16 @@ async function pv2RenderWorkspace(kind){
         ${pv2ClassControl(kind)}
         ${mode==='student'?`<div><label class="pv2-label">Siswa</label><select class="pv2-control" onchange="pv2ChooseStudent('${kind}',this.value)">
           <option value="">— Pilih siswa —</option>${students.map(s=>`<option value="${escapeHtml(s.id)}" ${sid===s.id?'selected':''}>${escapeHtml(s.name)}</option>`).join('')}
-        </select></div>`:`<div><label class="pv2-label">Jenis ${title}</label><select id="pv2-type-master-${kind}" class="pv2-control">
-          <option value="">— Pilih ${title.toLowerCase()} —</option>${(kind==='violation'?(b.violation_masters||[]):(b.reward_masters||[])).map(m=>{
-            const name=kind==='violation'?m.violation_name:m.reward_name;const sc=kind==='violation'?(m.consequence_code==='DO'?'DO':m.points):m.points;
-            return `<option value="${escapeHtml(m.id)}">${escapeHtml(name)} — ${escapeHtml(sc)}</option>`;
-          }).join('')}</select></div>`}
+        </select></div>`:`<div class="pv2-type-wrap"><label class="pv2-label">Jenis ${title}</label>
+          <input type="hidden" id="pv2-type-master-${kind}" value="">
+          <button type="button" class="pv2-control pv2-type-trigger" onclick="pv2ToggleTypePicker('${kind}')">
+            <span id="pv2-type-label-${kind}">— Pilih / cari ${title.toLowerCase()} —</span>${pointSvg('search',16)}
+          </button>
+          <div class="pv2-type-picker" id="pv2-type-picker-${kind}" hidden>
+            <input class="pv2-control pv2-search" id="pv2-type-search-${kind}" placeholder="Ketik untuk mencari ${title.toLowerCase()}..." oninput="pv2FilterTypeMaster('${kind}')">
+            <div class="pv2-type-list" id="pv2-type-list-${kind}">${pv2TypeMasterList(kind)}</div>
+          </div>
+        </div>`}
       </div>
     </div>
 
@@ -4003,7 +4048,7 @@ function renderWDAttendanceChart(list){
 
 function renderWDRankList(list, showClass){
   if(!list?.length) return '<div class="wd-empty">Belum ada data reward.</div>';
-  return `<div class="wd-rank-list">${list.slice(0,10).map((s,i)=>`<div class="wd-rank-row"><div class="wd-medal ${i<3?'r'+(i+1):''}">${i+1}</div><div><div class="wd-rank-name">${escapeHtml(s.nama||'-')}</div><div class="wd-rank-meta">${showClass?escapeHtml(s.kelas||''):('NIS '+escapeHtml(s.nis||'-'))}</div></div><div class="wd-rank-score">${s.totalPoin||0} poin</div></div>`).join('')}</div>`;
+  return `<div class="wd-rank-list">${list.slice(0,10).map((s,i)=>`<div class="wd-rank-row"><div class="wd-medal ${i<3?'r'+(i+1):''}">${i+1}</div><div><div class="wd-rank-name">${escapeHtml(s.nama||'-')}</div><div class="wd-rank-meta">${showClass?escapeHtml(s.kelas||''):''}</div></div><div class="wd-rank-score">${s.totalPoin||0} poin</div></div>`).join('')}</div>`;
 }
 
 function switchWDLeaderboard(mode){
@@ -4028,7 +4073,7 @@ function toggleWDEskalasi(){
 
 function renderWDEskalasiCards(list){
   if(!list?.length) return '<div class="wd-empty">Alhamdulillah, tidak ada siswa yang perlu dieskalasi saat ini.</div>';
-  return list.map(s=>`<div class="wd-esc-card"><div><strong>${escapeHtml(s.nama||'-')}</strong><br><span>${escapeHtml(s.kelas||'')} · NIS ${escapeHtml(s.nis||'-')} · ${s.jumlahKejadian||0} kejadian</span></div><div class="wd-esc-points">${s.totalPoin||0} poin</div></div>`).join('');
+  return list.map(s=>`<div class="wd-esc-card"><div><strong>${escapeHtml(s.nama||'-')}</strong><br><span>${escapeHtml(s.kelas||'')} · ${s.jumlahKejadian||0} kejadian</span></div><div class="wd-esc-points">${s.totalPoin||0} poin</div></div>`).join('');
 }
 
 function formatTanggalDashboard(tanggalYmd){
