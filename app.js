@@ -538,11 +538,11 @@ const MODULE_GROUPS = [
     ]
   },
   {
-    id: 'kesiswaan', label: 'Kesiswaan', roles: ['walas','kesiswaan','pimpinan'],
+    id: 'kesiswaan', label: 'Kesiswaan', roles: ['guru','walas','kesiswaan','pimpinan'],
     items: [
       { id: 'absensi',      label: 'Absensi (Morning Talk)', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderAbsensi },
-      { id: 'kedisiplinan', label: 'Kedisiplinan',           roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderKedisiplinan },
-      { id: 'reward',       label: 'Reward Siswa',           roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderReward },
+      { id: 'kedisiplinan', label: 'Kedisiplinan',           roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderKedisiplinan },
+      { id: 'reward',       label: 'Reward Siswa',           roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderReward },
       { id: 'masalah',      label: 'Masalah Siswa',          roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderMasalahSiswa }
     ]
   },
@@ -2923,380 +2923,392 @@ async function submitPjBLForm(){
 }
 
 /* ==========================================================
-   MODUL: KEDISIPLINAN & REWARD — SUPABASE
-   Berdasarkan Tata Tertib Siswa & Orang Tua/Wali CQ
+   MODUL: KEDISIPLINAN & REWARD V2 — SUPABASE
+   - Cepat: cache master + cache siswa, snapshot 1 request
+   - Walas: kelas otomatis, tidak ditanya ulang
+   - 2 mode input: Per Siswa / Per Jenis
+   - Edit + soft delete + rekap + eskalasi
+   - Hak akses sesuai tupoksi
+   - Ikon SVG, tanpa emoji
    ========================================================== */
 
-const POINT_STATUS = {
-  violationClassId: '',
-  rewardClassId: '',
-  violationStudentId: '',
-  rewardStudentId: '',
-  violationMasters: [],
-  rewardMasters: [],
-  classes: [],
-  violationStudents: [],
-  rewardStudents: []
+const POINT_V2 = {
+  boot: null,
+  bootAt: 0,
+  studentCache: new Map(),
+  activeKind: 'violation',
+  activeMode: { violation:'student', reward:'student' },
+  classId: { violation:'', reward:'' },
+  studentId: { violation:'', reward:'' },
+  snapshot: { violation:null, reward:null },
+  edit: null
 };
 
-function injectStudentPointStyles(){
-  if(document.getElementById('student-point-style')) return;
-  const s = document.createElement('style');
-  s.id = 'student-point-style';
-  s.textContent = `
-    .pt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-    .pt-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-    .pt-control{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;background:#fff;font:inherit;color:var(--text);outline:none}
-    .pt-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(8,126,124,.10)}
-    .pt-label{display:block;font-size:11px;font-weight:900;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.03em}
-    .pt-stat-grid{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:10px;margin:14px 0}
-    .pt-stat{border:1px solid var(--border);background:#fff;border-radius:14px;padding:14px}
-    .pt-stat strong{display:block;font-size:24px;color:var(--primary);line-height:1.1}
-    .pt-stat span{font-size:11px;color:var(--muted);font-weight:800}
-    .pt-pill{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:10.5px;font-weight:900;align-items:center;gap:5px}
-    .pt-pill.ringan{background:#eef8f2;color:#397752}.pt-pill.sedang{background:#fff6de;color:#9a6c00}.pt-pill.berat{background:#ffe9e4;color:#b54c37}
-    .pt-pill.reward{background:#e9f7f6;color:var(--primary)}
-    .pt-rule-box{padding:12px;border-radius:12px;background:#f7fbfb;border:1px solid var(--border);font-size:12px;line-height:1.55}
-    .pt-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
-    .pt-table{width:100%;border-collapse:collapse;min-width:760px}
-    .pt-table th,.pt-table td{padding:10px 11px;border-bottom:1px solid var(--border);text-align:left;font-size:12px;vertical-align:top}
-    .pt-table th{background:#f5fafa;font-size:10.5px;text-transform:uppercase;color:var(--muted);letter-spacing:.03em}
-    .pt-table tr:last-child td{border-bottom:0}
-    .pt-action-row{display:flex;gap:9px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:14px}
-    .pt-danger{color:#b54c37;font-weight:800}.pt-muted{color:var(--muted)}
-    .pt-alert{padding:12px 14px;border-radius:12px;background:#fff5f1;border:1px solid #f4c8bc;color:#a44935;font-size:12px;line-height:1.5}
-    .pt-good{padding:12px 14px;border-radius:12px;background:#edf9f7;border:1px solid #c8e9e4;color:#176f69;font-size:12px;line-height:1.5}
-    .pt-master-meta{font-size:11px;color:var(--muted);margin-top:5px}
-    @media(max-width:900px){
-      .pt-grid,.pt-grid-3{grid-template-columns:1fr}
-      .pt-stat-grid{grid-template-columns:repeat(2,1fr)}
-    }
+function pointSvg(name, size=18){
+  const attrs=`width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
+  const p={
+    user:`<svg ${attrs}><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>`,
+    users:`<svg ${attrs}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    alert:`<svg ${attrs}><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+    gift:`<svg ${attrs}><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13"/><path d="M3 12h18"/><path d="M7.5 8C5.6 8 4 6.8 4 5.3S5.2 3 6.7 3C9 3 12 8 12 8"/><path d="M16.5 8C18.4 8 20 6.8 20 5.3S18.8 3 17.3 3C15 3 12 8 12 8"/></svg>`,
+    edit:`<svg ${attrs}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>`,
+    trash:`<svg ${attrs}><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`,
+    save:`<svg ${attrs}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>`,
+    list:`<svg ${attrs}><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>`,
+    chart:`<svg ${attrs}><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 4-7"/></svg>`,
+    check:`<svg ${attrs}><path d="m20 6-11 11-5-5"/></svg>`,
+    chevron:`<svg ${attrs}><path d="m9 18 6-6-6-6"/></svg>`
+  };
+  return p[name]||p.check;
+}
+
+function injectPointV2Styles(){
+  if(document.getElementById('point-v2-style'))return;
+  const s=document.createElement('style');s.id='point-v2-style';
+  s.textContent=`
+  .pv2-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+  .pv2-tabs{display:inline-flex;background:#edf4f4;padding:4px;border-radius:12px;gap:4px}
+  .pv2-tab{border:0;background:transparent;padding:9px 14px;border-radius:9px;font:inherit;font-size:12px;font-weight:850;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .pv2-tab.active{background:#fff;color:var(--primary);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .pv2-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+  .pv2-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+  .pv2-label{display:block;font-size:10.5px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+  .pv2-control{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--text);font:inherit;outline:none}
+  .pv2-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(8,126,124,.09)}
+  .pv2-lock{display:flex;align-items:center;gap:8px;padding:11px 13px;border:1px solid #cfe5e3;background:#f2fbfa;border-radius:11px;color:#176f69;font-weight:800}
+  .pv2-choice-list{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:#fff}
+  .pv2-choice{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer}
+  .pv2-choice:last-child{border-bottom:0}.pv2-choice:hover{background:#f8fbfb}
+  .pv2-choice input{margin-top:3px;accent-color:var(--primary)}
+  .pv2-choice-main{flex:1;min-width:0}.pv2-choice-title{font-size:12px;font-weight:800;line-height:1.4}
+  .pv2-choice-meta{font-size:10.5px;color:var(--muted);margin-top:3px}
+  .pv2-count{display:inline-flex;align-items:center;gap:5px;background:#e9f7f6;color:var(--primary);padding:5px 9px;border-radius:999px;font-size:10.5px;font-weight:900}
+  .pv2-stat-grid{display:grid;grid-template-columns:repeat(5,minmax(105px,1fr));gap:10px}
+  .pv2-stat{background:#fff;border:1px solid var(--border);border-radius:13px;padding:13px}
+  .pv2-stat strong{display:block;font-size:23px;color:var(--primary);line-height:1.1}.pv2-stat span{font-size:10.5px;color:var(--muted);font-weight:800}
+  .pv2-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+  .pv2-table{width:100%;border-collapse:collapse;min-width:850px}.pv2-table th,.pv2-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:11.5px;text-align:left;vertical-align:top}
+  .pv2-table th{background:#f4f9f9;color:var(--muted);font-size:10px;text-transform:uppercase}.pv2-table tr:last-child td{border-bottom:0}
+  .pv2-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.pv2-pill.ringan{background:#eef8f2;color:#397752}.pv2-pill.sedang{background:#fff6de;color:#956800}.pv2-pill.berat{background:#ffe9e4;color:#b54c37}.pv2-pill.reward{background:#e9f7f6;color:#176f69}
+  .pv2-alert{padding:12px 13px;border-radius:11px;background:#fff3ef;border:1px solid #f2c8bc;color:#a34835;font-size:11.5px;line-height:1.5}
+  .pv2-good{padding:12px 13px;border-radius:11px;background:#edf9f7;border:1px solid #c9e9e4;color:#176f69;font-size:11.5px;line-height:1.5}
+  .pv2-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap;margin-top:13px}
+  .pv2-btn-icon{display:inline-flex;align-items:center;gap:7px}.pv2-mini{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--text)}
+  .pv2-mini:hover{border-color:var(--primary);color:var(--primary)}
+  .pv2-escalation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .pv2-escalation-card{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+  .pv2-escalation-card.urgent{border-color:#efc4b8;background:#fff8f5}
+  .pv2-escalation-title{font-size:12px;font-weight:900}.pv2-escalation-sub{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .pv2-empty{text-align:center;color:var(--muted);padding:22px;font-size:12px}
+  .pv2-search{margin-bottom:8px}
+  @media(max-width:900px){.pv2-grid,.pv2-grid3,.pv2-escalation{grid-template-columns:1fr}.pv2-stat-grid{grid-template-columns:repeat(2,1fr)}}
   `;
   document.head.appendChild(s);
 }
 
-async function studentPointsRequest(action, payload={}, timeoutMs=30000){
-  const token = getAuthToken();
-  if(!token) throw new Error('Sesi login tidak ditemukan.');
-  const c = new AbortController();
-  const timer = setTimeout(()=>c.abort(), timeoutMs);
+async function pointsV2Request(action,payload={},timeoutMs=25000){
+  const token=getAuthToken();if(!token)throw new Error('Sesi login tidak ditemukan.');
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeoutMs);
   try{
-    const r = await fetch(STUDENT_POINTS_URL,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'apikey':SUPABASE_PUBLISHABLE_KEY,
-        'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        'x-session-token':token
-      },
-      body:JSON.stringify({action,...payload}),
-      signal:c.signal
-    });
-    const raw = await r.text();
-    let data={};
-    try{data=raw?JSON.parse(raw):{}}catch(_){throw new Error(`Respons server poin bukan JSON (HTTP ${r.status}).`)}
-    if(!r.ok || data.success===false){
-      const msgs={
-        session_invalid:'Sesi login tidak valid. Silakan login kembali.',
-        session_expired:'Sesi login berakhir. Silakan login kembali.',
-        edit_window_closed:'Data sudah melewati batas edit 7 hari.',
-        future_date_not_allowed:'Tanggal kejadian tidak boleh melebihi hari ini.',
-        student_not_in_class:'Siswa tidak terdaftar pada kelas tersebut.',
-        invalid_master:'Jenis pelanggaran/reward tidak valid.',
-        do_violation:'Pelanggaran berkategori DO harus ditangani sesuai kebijakan sekolah.',
-      };
-      throw new Error(msgs[data.error] || data.message || data.error || `Gagal memproses data poin (HTTP ${r.status}).`);
+    const r=await fetch(STUDENT_POINTS_URL,{method:'POST',headers:{
+      'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,
+      'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token
+    },body:JSON.stringify({action,...payload}),signal:ctl.signal});
+    const raw=await r.text();let d={};
+    try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error(`Respons server poin bukan JSON (HTTP ${r.status}).`)}
+    if(!r.ok||d.success===false){
+      const m={forbidden:'Menu ini tidak termasuk tupoksi akun Anda.',class_forbidden:'Anda tidak memiliki akses ke kelas tersebut.',
+      session_invalid:'Sesi tidak valid. Silakan login ulang.',session_expired:'Sesi berakhir. Silakan login ulang.',
+      edit_window_closed:'Data sudah melewati batas edit 7 hari.',future_date_not_allowed:'Tanggal tidak boleh melebihi hari ini.',
+      invalid_master:'Jenis pilihan tidak valid.',student_not_in_class:'Siswa tidak terdaftar di kelas tersebut.'};
+      throw new Error(m[d.error]||d.message||d.error||`Gagal memproses data (HTTP ${r.status}).`);
     }
-    return data;
-  }catch(e){
-    if(e?.name==='AbortError') throw new Error('Server poin terlalu lama merespons.');
-    throw e;
-  }finally{clearTimeout(timer)}
+    return d;
+  }catch(e){if(e?.name==='AbortError')throw new Error('Server terlalu lama merespons.');throw e}
+  finally{clearTimeout(timer)}
 }
 
-function pointToday(){
-  return jakartaTodayISO ? jakartaTodayISO() : new Date().toISOString().slice(0,10);
+async function pointV2Bootstrap(force=false){
+  if(!force&&POINT_V2.boot&&Date.now()-POINT_V2.bootAt<600000)return POINT_V2.boot;
+  const d=await pointsV2Request('bootstrap',{},20000);
+  POINT_V2.boot=d;POINT_V2.bootAt=Date.now();
+  return d;
+}
+async function pointV2Students(classId){
+  if(!classId)return [];
+  if(POINT_V2.studentCache.has(classId))return POINT_V2.studentCache.get(classId);
+  const d=await pointsV2Request('students',{class_id:classId},20000);
+  POINT_V2.studentCache.set(classId,d.students||[]);
+  return d.students||[];
+}
+async function pointV2Snapshot(studentId){
+  return pointsV2Request('student_snapshot',{student_id:studentId},20000);
+}
+function pv2Today(){return typeof jakartaTodayISO==='function'?jakartaTodayISO():new Date().toISOString().slice(0,10)}
+function pv2Master(kind,id){
+  const arr=kind==='violation'?(POINT_V2.boot?.violation_masters||[]):(POINT_V2.boot?.reward_masters||[]);
+  return arr.find(x=>x.id===id);
+}
+function pv2ClassName(id){return (POINT_V2.boot?.classes||[]).find(x=>x.id===id)?.name||''}
+
+function pv2ClassControl(kind){
+  const b=POINT_V2.boot||{},cid=POINT_V2.classId[kind]||b.default_class_id||'';
+  if(b.class_locked){
+    return `<div><label class="pv2-label">Kelas</label><div class="pv2-lock">${pointSvg('users',17)}<span>${escapeHtml(pv2ClassName(cid)||b.default_class_name||'Kelas Anda')}</span></div></div>`;
+  }
+  return `<div><label class="pv2-label">Kelas</label><select class="pv2-control" id="pv2-class-${kind}" onchange="pv2ChangeClass('${kind}',this.value)">
+    <option value="">— Pilih kelas —</option>${(b.classes||[]).map(c=>`<option value="${escapeHtml(c.id)}" ${cid===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+  </select></div>`;
 }
 
-async function loadPointBootstrap(){
-  const res = await studentPointsRequest('bootstrap');
-  POINT_STATUS.classes = res.classes || [];
-  POINT_STATUS.violationMasters = res.violation_masters || [];
-  POINT_STATUS.rewardMasters = res.reward_masters || [];
-  return res;
+async function pv2ChangeClass(kind,classId){
+  POINT_V2.classId[kind]=classId;POINT_V2.studentId[kind]='';POINT_V2.snapshot[kind]=null;
+  await pv2RenderWorkspace(kind);
 }
-
-function pointClassOptions(selected=''){
-  return `<option value="">— Pilih kelas —</option>` + POINT_STATUS.classes.map(c =>
-    `<option value="${escapeHtml(c.id)}" ${c.id===selected?'selected':''}>${escapeHtml(c.name)}</option>`
-  ).join('');
+async function pv2ChooseStudent(kind,studentId){
+  POINT_V2.studentId[kind]=studentId;
+  if(!studentId){POINT_V2.snapshot[kind]=null;await pv2RenderWorkspace(kind);return}
+  const d=await pointV2Snapshot(studentId);POINT_V2.snapshot[kind]=d;await pv2RenderWorkspace(kind);
 }
+function pv2SetMode(kind,mode){POINT_V2.activeMode[kind]=mode;pv2RenderWorkspace(kind)}
 
-function pointStudentOptions(students, selected=''){
-  return `<option value="">— Pilih siswa —</option>` + students.map(s =>
-    `<option value="${escapeHtml(s.id)}" ${s.id===selected?'selected':''}>${escapeHtml(s.name)}</option>`
-  ).join('');
-}
-
-function violationMasterOptions(){
-  const groups = ['Ringan','Sedang','Berat'];
-  return `<option value="">— Pilih jenis pelanggaran —</option>` +
-    groups.map(cat=>{
-      const list=POINT_STATUS.violationMasters.filter(x=>x.category===cat);
-      if(!list.length)return '';
-      return `<optgroup label="${cat}">${list.map(x=>{
-        const p=x.consequence_code==='DO'?'DO':`${x.points} poin`;
-        return `<option value="${escapeHtml(x.id)}">${escapeHtml(x.violation_name)} — ${p}</option>`;
-      }).join('')}</optgroup>`;
-    }).join('');
-}
-
-function rewardMasterOptions(){
-  const groups = ['Kebaikan Kecil','Kebaikan Sedang','Kebaikan Besar'];
-  return `<option value="">— Pilih bentuk penghargaan —</option>` +
-    groups.map(cat=>{
-      const list=POINT_STATUS.rewardMasters.filter(x=>x.category===cat);
-      if(!list.length)return '';
-      return `<optgroup label="${cat}">${list.map(x=>
-        `<option value="${escapeHtml(x.id)}">${escapeHtml(x.reward_name)} — ${x.points} poin reward</option>`
-      ).join('')}</optgroup>`;
-    }).join('');
-}
-
-function pointSummaryHtml(s){
-  const next = s?.intervention?.next || null;
-  const current = s?.intervention?.current || null;
-  const hasDO = Boolean(s?.has_do_violation);
-  return `
-    ${hasDO?`<div class="pt-alert"><b>PERINGATAN:</b> terdapat pelanggaran berkategori <b>DO</b>. Konsekuensi tidak dapat dihapus oleh poin reward dan harus diproses sesuai kebijakan sekolah.</div>`:''}
-    <div class="pt-stat-grid">
-      <div class="pt-stat"><strong>${s?.violation_total||0}</strong><span>Total Poin Pelanggaran</span></div>
-      <div class="pt-stat"><strong>${s?.eligible_violation_total||0}</strong><span>Ringan + Sedang</span></div>
-      <div class="pt-stat"><strong>${s?.heavy_violation_total||0}</strong><span>Pelanggaran Berat</span></div>
-      <div class="pt-stat"><strong>${s?.effective_reward_total||0}</strong><span>Reward Berlaku</span></div>
-      <div class="pt-stat"><strong>${s?.balance||0}</strong><span>Saldo Poin</span></div>
+function pv2Summary(s){
+  if(!s)return '';
+  const cur=s.intervention?.current,next=s.intervention?.next;
+  return `<div class="card">
+    ${s.has_do_violation?`<div class="pv2-alert"><b>Kasus DO tercatat.</b> Reward tidak menghapus konsekuensi dan kasus harus ditindaklanjuti sesuai kebijakan sekolah.</div>`:''}
+    <div class="pv2-stat-grid" style="margin-top:${s.has_do_violation?'11px':'0'}">
+      <div class="pv2-stat"><strong>${s.violation_total||0}</strong><span>Total Pelanggaran</span></div>
+      <div class="pv2-stat"><strong>${s.eligible_violation_total||0}</strong><span>Ringan + Sedang</span></div>
+      <div class="pv2-stat"><strong>${s.heavy_violation_total||0}</strong><span>Pelanggaran Berat</span></div>
+      <div class="pv2-stat"><strong>${s.effective_reward_total||0}</strong><span>Reward Berlaku</span></div>
+      <div class="pv2-stat"><strong>${s.balance||0}</strong><span>Saldo Poin</span></div>
     </div>
-    <div class="${current?'pt-alert':'pt-good'}">
-      ${current
-        ? `<b>Status Pembinaan:</b> ${escapeHtml(current.stage)} — ${escapeHtml(current.action)}`
-        : `<b>Status Pembinaan:</b> Belum mencapai ambang panggilan 50 poin.`
-      }
-      ${next?`<br><span class="pt-muted">Ambang berikutnya: ${next.points} poin — ${escapeHtml(next.stage)}.</span>`:''}
+    <div class="${cur?'pv2-alert':'pv2-good'}" style="margin-top:10px">
+      ${cur?`<b>${escapeHtml(cur.stage)}</b><br>${escapeHtml(cur.action)}`:'Belum mencapai ambang pembinaan 50 poin.'}
+      ${next?`<br><span style="opacity:.8">Ambang berikutnya ${next.points} poin — ${escapeHtml(next.stage)}</span>`:''}
     </div>
+  </div>`;
+}
+
+function pv2History(kind,snapshot){
+  const rows=kind==='violation'?(snapshot?.violations||[]):(snapshot?.rewards||[]);
+  if(!rows.length)return `<div class="pv2-empty">Belum ada riwayat pada siswa ini.</div>`;
+  return `<div class="pv2-table-wrap"><table class="pv2-table"><thead><tr>
+    <th>Tanggal</th><th>${kind==='violation'?'Pelanggaran':'Reward'}</th><th>Kategori</th><th>Poin</th><th>Catatan</th><th>Pencatat</th><th>Aksi</th>
+  </tr></thead><tbody>${rows.map(r=>`<tr>
+    <td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.name)}</td>
+    <td><span class="pv2-pill ${kind==='violation'?String(r.category).toLowerCase():'reward'}">${escapeHtml(r.category)}</span></td>
+    <td><b>${r.consequence_code==='DO'?'DO':r.points}</b></td><td>${escapeHtml(r.note||'-')}</td><td>${escapeHtml(r.recorded_by||'-')}</td>
+    <td>${r.editable?`<button class="pv2-mini" title="Edit" onclick="pv2OpenEdit('${kind}','${r.id}')">${pointSvg('edit',15)}</button>
+    <button class="pv2-mini" title="Hapus" onclick="pv2Delete('${kind}','${r.id}')">${pointSvg('trash',15)}</button>`:'<span class="pv2-pill">Terkunci</span>'}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+
+function pv2FilterChoices(inputId,listId){
+  const q=(document.getElementById(inputId)?.value||'').toLowerCase();
+  document.querySelectorAll(`#${listId} .pv2-choice`).forEach(el=>{
+    el.style.display=(el.dataset.search||'').includes(q)?'flex':'none';
+  });
+}
+function pv2SelectedCount(listId,badgeId){
+  const n=document.querySelectorAll(`#${listId} input[type=checkbox]:checked`).length;
+  const b=document.getElementById(badgeId);if(b)b.textContent=`${n} dipilih`;
+}
+
+function pv2MasterList(kind,listId,badgeId){
+  const arr=kind==='violation'?(POINT_V2.boot?.violation_masters||[]):(POINT_V2.boot?.reward_masters||[]);
+  return arr.map(m=>{
+    const name=kind==='violation'?m.violation_name:m.reward_name;
+    const score=kind==='violation'?(m.consequence_code==='DO'?'DO':`${m.points} poin`):`${m.points} poin`;
+    return `<label class="pv2-choice" data-search="${escapeHtml((name+' '+m.category).toLowerCase())}">
+      <input type="checkbox" value="${escapeHtml(m.id)}" onchange="pv2SelectedCount('${listId}','${badgeId}')">
+      <span class="pv2-choice-main"><span class="pv2-choice-title">${escapeHtml(name)}</span><span class="pv2-choice-meta">${escapeHtml(m.category)} · ${escapeHtml(score)}</span></span>
+    </label>`;
+  }).join('');
+}
+function pv2StudentList(students,listId,badgeId){
+  return students.map(s=>`<label class="pv2-choice" data-search="${escapeHtml((s.name+' '+(s.nis||'')).toLowerCase())}">
+    <input type="checkbox" value="${escapeHtml(s.id)}" onchange="pv2SelectedCount('${listId}','${badgeId}')">
+    <span class="pv2-choice-main"><span class="pv2-choice-title">${escapeHtml(s.name)}</span><span class="pv2-choice-meta">${s.nis?'NIS '+escapeHtml(s.nis):'Siswa aktif'}</span></span>
+  </label>`).join('');
+}
+
+async function pv2RenderWorkspace(kind){
+  const root=document.getElementById(`pv2-root-${kind}`);if(!root)return;
+  const b=POINT_V2.boot||{};
+  if(!POINT_V2.classId[kind]&&b.default_class_id)POINT_V2.classId[kind]=b.default_class_id;
+  const cid=POINT_V2.classId[kind], mode=POINT_V2.activeMode[kind];
+  const students=cid?await pointV2Students(cid):[];
+  const sid=POINT_V2.studentId[kind],snap=POINT_V2.snapshot[kind];
+  const title=kind==='violation'?'Pelanggaran':'Reward';
+  const icon=kind==='violation'?'alert':'gift';
+  const listId=`pv2-list-${kind}`,badgeId=`pv2-badge-${kind}`;
+
+  root.innerHTML=`
+    <div class="card">
+      <div class="pv2-toolbar">
+        <div><div class="card-title" style="margin:0">${pointSvg(icon,19)} ${title}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">${b.access_label?escapeHtml(b.access_label):''}</div></div>
+        <div class="pv2-tabs">
+          <button class="pv2-tab ${mode==='student'?'active':''}" onclick="pv2SetMode('${kind}','student')">${pointSvg('user',15)} Per Siswa</button>
+          <button class="pv2-tab ${mode==='type'?'active':''}" onclick="pv2SetMode('${kind}','type')">${pointSvg('list',15)} Per ${title}</button>
+        </div>
+      </div>
+      <div class="pv2-grid" style="margin-top:13px">
+        ${pv2ClassControl(kind)}
+        ${mode==='student'?`<div><label class="pv2-label">Siswa</label><select class="pv2-control" onchange="pv2ChooseStudent('${kind}',this.value)">
+          <option value="">— Pilih siswa —</option>${students.map(s=>`<option value="${escapeHtml(s.id)}" ${sid===s.id?'selected':''}>${escapeHtml(s.name)}</option>`).join('')}
+        </select></div>`:`<div><label class="pv2-label">Jenis ${title}</label><select id="pv2-type-master-${kind}" class="pv2-control">
+          <option value="">— Pilih ${title.toLowerCase()} —</option>${(kind==='violation'?(b.violation_masters||[]):(b.reward_masters||[])).map(m=>{
+            const name=kind==='violation'?m.violation_name:m.reward_name;const sc=kind==='violation'?(m.consequence_code==='DO'?'DO':m.points):m.points;
+            return `<option value="${escapeHtml(m.id)}">${escapeHtml(name)} — ${escapeHtml(sc)}</option>`;
+          }).join('')}</select></div>`}
+      </div>
+    </div>
+
+    ${mode==='student'&&sid&&snap?pv2Summary(snap.summary):''}
+
+    ${cid&&(mode==='type'||sid)?`<div class="card">
+      <div class="pv2-grid3">
+        <div><label class="pv2-label">Tanggal</label><input id="pv2-date-${kind}" type="date" max="${pv2Today()}" value="${pv2Today()}" class="pv2-control"></div>
+        <div style="grid-column:span 2"><label class="pv2-label">Catatan / Kronologi</label><input id="pv2-note-${kind}" class="pv2-control" placeholder="${kind==='violation'?'Tuliskan fakta singkat dan objektif':'Tuliskan bukti/keterangan singkat'}"></div>
+      </div>
+      ${mode==='student'?`
+        <div class="pv2-toolbar" style="margin-top:14px"><b>Pilih banyak ${title.toLowerCase()}</b><span id="${badgeId}" class="pv2-count">0 dipilih</span></div>
+        <input class="pv2-control pv2-search" id="pv2-search-${kind}" placeholder="Cari ${title.toLowerCase()}..." oninput="pv2FilterChoices(this.id,'${listId}')" style="margin-top:9px">
+        <div class="pv2-choice-list" id="${listId}">${pv2MasterList(kind,listId,badgeId)}</div>
+      `:`
+        <div class="pv2-toolbar" style="margin-top:14px"><b>Pilih banyak siswa</b><span id="${badgeId}" class="pv2-count">0 dipilih</span></div>
+        <input class="pv2-control pv2-search" id="pv2-search-${kind}" placeholder="Cari siswa..." oninput="pv2FilterChoices(this.id,'${listId}')" style="margin-top:9px">
+        <div class="pv2-choice-list" id="${listId}">${pv2StudentList(students,listId,badgeId)}</div>
+      `}
+      <div class="pv2-actions"><button class="btn pv2-btn-icon" id="pv2-save-${kind}" onclick="pv2BulkSave('${kind}')">${pointSvg('save',16)} Simpan ${title}</button></div>
+    </div>`:''}
+
+    ${mode==='student'&&sid&&snap?`<div class="card"><div class="card-title">Riwayat ${title}</div>${pv2History(kind,snap)}</div>`:''}
+
+    ${(kind==='violation'&&(b.can_view_recap||false))?`<div class="card"><div class="pv2-toolbar"><div class="card-title" style="margin:0">${pointSvg('chart',18)} Rekap & Eskalasi</div><button class="btn btn-sm pv2-btn-icon" onclick="pv2LoadRecap()">${pointSvg('chart',15)} Muat Rekap</button></div><div id="pv2-recap"><div class="pv2-empty">Klik Muat Rekap untuk melihat siswa yang perlu penanganan.</div></div></div>`:''}
   `;
 }
 
-async function pointLoadStudents(classId, kind){
-  if(!classId) return;
-  const res=await studentPointsRequest('students',{class_id:classId});
-  if(kind==='violation'){
-    POINT_STATUS.violationStudents=res.students||[];
-    document.getElementById('kd-student').innerHTML=pointStudentOptions(POINT_STATUS.violationStudents);
-    document.getElementById('kd-student-area').style.display='block';
+async function pv2BulkSave(kind){
+  const mode=POINT_V2.activeMode[kind],cid=POINT_V2.classId[kind],sid=POINT_V2.studentId[kind];
+  const date=document.getElementById(`pv2-date-${kind}`)?.value||pv2Today();
+  const note=(document.getElementById(`pv2-note-${kind}`)?.value||'').trim();
+  const listId=`pv2-list-${kind}`;
+  const selected=[...document.querySelectorAll(`#${listId} input[type=checkbox]:checked`)].map(x=>x.value);
+  if(!cid){showToast('Kelas belum tersedia.',true);return}
+  let items=[];
+  if(mode==='student'){
+    if(!sid){showToast('Pilih siswa terlebih dahulu.',true);return}
+    if(!selected.length){showToast(`Pilih minimal satu ${kind==='violation'?'pelanggaran':'reward'}.`,true);return}
+    items=selected.map(master_id=>({student_id:sid,master_id}));
   }else{
-    POINT_STATUS.rewardStudents=res.students||[];
-    document.getElementById('rw-student').innerHTML=pointStudentOptions(POINT_STATUS.rewardStudents);
-    document.getElementById('rw-student-area').style.display='block';
+    const masterId=document.getElementById(`pv2-type-master-${kind}`)?.value||'';
+    if(!masterId){showToast(`Pilih jenis ${kind==='violation'?'pelanggaran':'reward'}.`,true);return}
+    if(!selected.length){showToast('Pilih minimal satu siswa.',true);return}
+    items=selected.map(student_id=>({student_id,master_id:masterId}));
   }
-}
-
-async function pointLoadProfile(studentId, kind){
-  if(!studentId) return;
-  const res=await studentPointsRequest('profile',{student_id:studentId});
-  const target=document.getElementById(kind==='violation'?'kd-profile':'rw-profile');
-  if(target) target.innerHTML=pointSummaryHtml(res.summary);
-}
-
-async function pointLoadHistory(studentId, kind){
-  if(!studentId) return;
-  const res=await studentPointsRequest('history',{student_id:studentId});
-  const el=document.getElementById(kind==='violation'?'kd-history':'rw-history');
-  if(!el)return;
-  const rows = kind==='violation' ? (res.violations||[]) : (res.rewards||[]);
-  if(!rows.length){
-    el.innerHTML=`<div class="pt-muted" style="padding:18px;text-align:center">Belum ada riwayat.</div>`;
-    return;
-  }
-  el.innerHTML=`
-    <div class="pt-table-wrap"><table class="pt-table">
-      <thead><tr>
-        <th>Tanggal</th><th>${kind==='violation'?'Pelanggaran':'Penghargaan'}</th><th>Kategori</th><th>Poin</th><th>Catatan</th><th>Pencatat</th><th>Aksi</th>
-      </tr></thead>
-      <tbody>
-      ${rows.map(r=>`
-        <tr>
-          <td>${escapeHtml(r.date)}</td>
-          <td>${escapeHtml(r.name)}</td>
-          <td><span class="pt-pill ${kind==='violation'?String(r.category).toLowerCase():'reward'}">${escapeHtml(r.category)}</span></td>
-          <td><b>${r.consequence_code==='DO'?'DO':r.points}</b></td>
-          <td>${escapeHtml(r.note||'-')}</td>
-          <td>${escapeHtml(r.recorded_by||'-')}</td>
-          <td>${r.editable?`<button class="btn btn-sm" onclick="deletePointRecord('${kind}','${r.id}','${studentId}')">Hapus</button>`:'<span class="pt-muted">Terkunci</span>'}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div>`;
-}
-
-async function deletePointRecord(kind,id,studentId){
-  if(!confirm('Hapus data ini? Data tetap tersimpan sebagai audit (soft delete).')) return;
+  const btn=document.getElementById(`pv2-save-${kind}`);btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
   try{
-    await studentPointsRequest('delete_record',{record_type:kind,record_id:id});
+    const action=kind==='violation'?'bulk_save_violations':'bulk_save_rewards';
+    const d=await pointsV2Request(action,{class_id:cid,date,note,items},35000);
+    showToast(`${d.saved||items.length} data berhasil disimpan`);
+    POINT_V2.studentCache.delete(cid);
+    if(mode==='student'&&sid){POINT_V2.snapshot[kind]=await pointV2Snapshot(sid)}
+    await pv2RenderWorkspace(kind);
+  }catch(e){showToast(e.message||'Gagal menyimpan data',true)}
+  finally{btn.disabled=false;btn.innerHTML=old}
+}
+
+function pv2OpenEdit(kind,id){
+  const snap=POINT_V2.snapshot[kind];const arr=kind==='violation'?(snap?.violations||[]):(snap?.rewards||[]);
+  const r=arr.find(x=>x.id===id);if(!r)return;
+  POINT_V2.edit={kind,id,record:r};
+  const masters=kind==='violation'?(POINT_V2.boot?.violation_masters||[]):(POINT_V2.boot?.reward_masters||[]);
+  const modal=document.createElement('div');modal.id='pv2-edit-overlay';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(11,39,38,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px';
+  modal.innerHTML=`<div class="card" style="width:min(650px,100%);max-height:90vh;overflow:auto;margin:0">
+    <div class="pv2-toolbar"><div class="card-title">Edit ${kind==='violation'?'Pelanggaran':'Reward'}</div><button class="pv2-mini" onclick="document.getElementById('pv2-edit-overlay').remove()">×</button></div>
+    <div class="pv2-grid">
+      <div><label class="pv2-label">Tanggal</label><input id="pv2-edit-date" type="date" max="${pv2Today()}" value="${escapeHtml(r.date)}" class="pv2-control"></div>
+      <div><label class="pv2-label">Jenis</label><select id="pv2-edit-master" class="pv2-control">${masters.map(m=>{
+        const name=kind==='violation'?m.violation_name:m.reward_name;return `<option value="${escapeHtml(m.id)}" ${m.id===r.master_id?'selected':''}>${escapeHtml(name)}</option>`;
+      }).join('')}</select></div>
+    </div>
+    <div style="margin-top:12px"><label class="pv2-label">Catatan</label><textarea id="pv2-edit-note" rows="3" class="pv2-control">${escapeHtml(r.note||'')}</textarea></div>
+    <div class="pv2-actions"><button class="btn pv2-btn-icon" onclick="pv2SaveEdit()">${pointSvg('save',16)} Simpan Perubahan</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+async function pv2SaveEdit(){
+  const e=POINT_V2.edit;if(!e)return;
+  try{
+    await pointsV2Request('update_record',{record_type:e.kind,record_id:e.id,
+      date:document.getElementById('pv2-edit-date').value,master_id:document.getElementById('pv2-edit-master').value,
+      note:(document.getElementById('pv2-edit-note').value||'').trim()});
+    document.getElementById('pv2-edit-overlay')?.remove();showToast('Data berhasil diperbarui');
+    const sid=POINT_V2.studentId[e.kind];POINT_V2.snapshot[e.kind]=await pointV2Snapshot(sid);await pv2RenderWorkspace(e.kind);
+  }catch(err){showToast(err.message||'Gagal mengedit data',true)}
+}
+async function pv2Delete(kind,id){
+  if(!confirm('Hapus data ini? Data tetap disimpan sebagai audit (soft delete).'))return;
+  try{
+    await pointsV2Request('delete_record',{record_type:kind,record_id:id});
     showToast('Data berhasil dihapus');
-    await pointLoadProfile(studentId,kind);
-    await pointLoadHistory(studentId,kind);
+    const sid=POINT_V2.studentId[kind];POINT_V2.snapshot[kind]=await pointV2Snapshot(sid);await pv2RenderWorkspace(kind);
   }catch(e){showToast(e.message||'Gagal menghapus data',true)}
 }
 
-/* ======================== KEDISIPLINAN ======================== */
-async function renderKedisiplinan(content){
-  injectStudentPointStyles();
-  content.innerHTML=`
-    <div class="page-title">Kedisiplinan & Poin Pelanggaran</div>
-    <div class="page-sub">Pencatatan sesuai BAB VIII Tata Tertib Siswa Cahaya Qur'an.</div>
-    <div id="kd-loading" class="card"><span class="spinner"></span> Memuat master tata tertib...</div>
-  `;
+async function pv2LoadRecap(){
+  const el=document.getElementById('pv2-recap');if(!el)return;
+  el.innerHTML='<div class="pv2-empty"><span class="spinner"></span> Memuat rekap...</div>';
   try{
-    await loadPointBootstrap();
-    content.innerHTML=`
-      <div class="page-title">Kedisiplinan & Poin Pelanggaran</div>
-      <div class="page-sub">Poin otomatis mengikuti jenis pelanggaran resmi sekolah.</div>
-
-      <div class="card">
-        <div class="pt-grid">
-          <div><label class="pt-label">Kelas</label><select id="kd-class" class="pt-control" onchange="POINT_STATUS.violationClassId=this.value;pointLoadStudents(this.value,'violation')">${pointClassOptions()}</select></div>
-          <div id="kd-student-area" style="display:none"><label class="pt-label">Siswa</label><select id="kd-student" class="pt-control" onchange="POINT_STATUS.violationStudentId=this.value;pointLoadProfile(this.value,'violation');pointLoadHistory(this.value,'violation')"></select></div>
-        </div>
+    const d=await pointsV2Request('recap',{period:'month'},30000);
+    const esc=d.escalations||[],absence=d.absence_escalations||[];
+    el.innerHTML=`
+      <div class="pv2-stat-grid" style="margin-bottom:12px">
+        <div class="pv2-stat"><strong>${d.summary?.students_with_points||0}</strong><span>Siswa Berpoin</span></div>
+        <div class="pv2-stat"><strong>${d.summary?.need_followup||0}</strong><span>Perlu Penanganan</span></div>
+        <div class="pv2-stat"><strong>${d.summary?.heavy_cases||0}</strong><span>Kasus Berat/DO</span></div>
+        <div class="pv2-stat"><strong>${absence.length}</strong><span>Tidak Masuk 3x Berturut</span></div>
+        <div class="pv2-stat"><strong>${d.summary?.open_followups||0}</strong><span>Tindak Lanjut Terbuka</span></div>
       </div>
-
-      <div id="kd-profile"></div>
-
-      <div class="card">
-        <div class="card-title">Catat Pelanggaran</div>
-        <div class="pt-grid-3">
-          <div><label class="pt-label">Tanggal Kejadian</label><input id="kd-date" type="date" max="${pointToday()}" value="${pointToday()}" class="pt-control"></div>
-          <div style="grid-column:span 2"><label class="pt-label">Jenis Pelanggaran</label><select id="kd-master" class="pt-control" onchange="showViolationMasterInfo(this.value)">${violationMasterOptions()}</select></div>
-        </div>
-        <div id="kd-master-info" style="margin-top:12px"></div>
-        <div style="margin-top:12px"><label class="pt-label">Catatan / Kronologi Singkat</label><textarea id="kd-note" class="pt-control" rows="3" placeholder="Tuliskan fakta kejadian secara singkat dan objektif."></textarea></div>
-        <div class="pt-action-row"><button id="kd-save" class="btn" onclick="saveViolation()">Simpan Pelanggaran</button></div>
+      <div class="pv2-escalation">
+        ${esc.slice(0,20).map(x=>`<div class="pv2-escalation-card ${x.urgent?'urgent':''}">
+          <div class="pv2-escalation-title">${pointSvg('alert',15)} ${escapeHtml(x.student_name)} · ${escapeHtml(x.class_name)}</div>
+          <div class="pv2-escalation-sub"><b>${x.balance} poin</b> · ${escapeHtml(x.reason)}<br>${escapeHtml(x.action||'Perlu ditindaklanjuti')}</div>
+          ${POINT_V2.boot?.can_manage_followup?`<div class="pv2-actions"><button class="pv2-mini" onclick="pv2Followup('${x.student_id}','in_progress')">Proses</button><button class="pv2-mini" onclick="pv2Followup('${x.student_id}','done')">Selesai</button></div>`:''}
+        </div>`).join('')}
+        ${absence.slice(0,20).map(x=>`<div class="pv2-escalation-card urgent">
+          <div class="pv2-escalation-title">${pointSvg('users',15)} ${escapeHtml(x.student_name)} · ${escapeHtml(x.class_name)}</div>
+          <div class="pv2-escalation-sub"><b>Tidak hadir 3 hari sekolah berturut-turut</b><br>${escapeHtml((x.dates||[]).join(', '))}</div>
+        </div>`).join('')}
       </div>
-
-      <div class="card">
-        <div class="card-title">Riwayat Pelanggaran Siswa</div>
-        <div id="kd-history"><div class="pt-muted">Pilih siswa untuk melihat riwayat.</div></div>
-      </div>
+      ${!esc.length&&!absence.length?'<div class="pv2-good">Tidak ada eskalasi aktif pada data yang tersedia.</div>':''}
     `;
+  }catch(e){el.innerHTML=`<div class="pv2-alert">${escapeHtml(e.message||'Gagal memuat rekap.')}</div>`}
+}
+async function pv2Followup(studentId,status){
+  try{await pointsV2Request('set_followup',{student_id:studentId,status});showToast('Status tindak lanjut diperbarui');await pv2LoadRecap()}
+  catch(e){showToast(e.message||'Gagal memperbarui tindak lanjut',true)}
+}
+
+async function pv2Render(kind,content){
+  injectPointV2Styles();POINT_V2.activeKind=kind;
+  content.innerHTML=`<div class="page-title">${kind==='violation'?'Kedisiplinan & Pelanggaran':'Reward Siswa'}</div>
+  <div class="page-sub">${kind==='violation'?'Input, edit, rekap, dan eskalasi sesuai Tata Tertib resmi.':'Input reward dan pengurangan poin sesuai Tata Tertib resmi.'}</div>
+  <div id="pv2-root-${kind}"><div class="card"><span class="spinner"></span> Memuat data...</div></div>`;
+  try{
+    const b=await pointV2Bootstrap();
+    if(!POINT_V2.classId[kind]&&b.default_class_id)POINT_V2.classId[kind]=b.default_class_id;
+    await pv2RenderWorkspace(kind);
   }catch(e){
-    content.innerHTML += `<div class="card pt-alert">${escapeHtml(e.message||'Gagal memuat modul kedisiplinan.')}</div>`;
+    document.getElementById(`pv2-root-${kind}`).innerHTML=`<div class="card"><div class="pv2-alert">${escapeHtml(e.message||'Gagal membuka modul.')}</div></div>`;
   }
 }
-
-function showViolationMasterInfo(id){
-  const m=POINT_STATUS.violationMasters.find(x=>x.id===id);
-  const el=document.getElementById('kd-master-info');
-  if(!m){el.innerHTML='';return}
-  const p=m.consequence_code==='DO'?'DO':`${m.points} poin`;
-  el.innerHTML=`<div class="pt-rule-box"><span class="pt-pill ${String(m.category).toLowerCase()}">${escapeHtml(m.category)}</span> &nbsp;<b>${escapeHtml(p)}</b><div class="pt-master-meta">${escapeHtml(m.violation_name)}</div>${m.consequence_code==='DO'?'<div class="pt-alert" style="margin-top:8px">Pelanggaran ini berkategori DO. Reward tidak menghapus konsekuensinya.</div>':''}</div>`;
-}
-
-async function saveViolation(){
-  const studentId=POINT_STATUS.violationStudentId;
-  const masterId=document.getElementById('kd-master')?.value||'';
-  const date=document.getElementById('kd-date')?.value||'';
-  const note=(document.getElementById('kd-note')?.value||'').trim();
-  if(!POINT_STATUS.violationClassId||!studentId||!masterId){showToast('Pilih kelas, siswa, dan jenis pelanggaran.',true);return}
-  const btn=document.getElementById('kd-save');btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
-  try{
-    const res=await studentPointsRequest('save_violation',{
-      class_id:POINT_STATUS.violationClassId,student_id:studentId,master_id:masterId,date,note
-    });
-    showToast(res.message||'Pelanggaran berhasil disimpan');
-    document.getElementById('kd-note').value='';
-    document.getElementById('kd-master').value='';
-    document.getElementById('kd-master-info').innerHTML='';
-    await pointLoadProfile(studentId,'violation');
-    await pointLoadHistory(studentId,'violation');
-  }catch(e){showToast(e.message||'Gagal menyimpan pelanggaran',true)}
-  finally{btn.disabled=false;btn.innerHTML=old}
-}
-
-/* =========================== REWARD =========================== */
-async function renderReward(content){
-  injectStudentPointStyles();
-  content.innerHTML=`
-    <div class="page-title">Reward Siswa</div>
-    <div class="page-sub">Penghargaan sesuai BAB IX Tata Tertib Siswa Cahaya Qur'an.</div>
-    <div class="card"><span class="spinner"></span> Memuat master reward...</div>
-  `;
-  try{
-    if(!POINT_STATUS.classes.length) await loadPointBootstrap();
-    content.innerHTML=`
-      <div class="page-title">Reward Siswa</div>
-      <div class="page-sub">Reward diverifikasi guru dan otomatis dihitung sesuai batas pengurangan poin sekolah.</div>
-
-      <div class="card">
-        <div class="pt-grid">
-          <div><label class="pt-label">Kelas</label><select id="rw-class" class="pt-control" onchange="POINT_STATUS.rewardClassId=this.value;pointLoadStudents(this.value,'reward')">${pointClassOptions()}</select></div>
-          <div id="rw-student-area" style="display:none"><label class="pt-label">Siswa</label><select id="rw-student" class="pt-control" onchange="POINT_STATUS.rewardStudentId=this.value;pointLoadProfile(this.value,'reward');pointLoadHistory(this.value,'reward')"></select></div>
-        </div>
-      </div>
-
-      <div id="rw-profile"></div>
-
-      <div class="card">
-        <div class="pt-rule-box">
-          <b>Aturan Reward:</b> maksimal pengurangan yang berlaku <b>20 poin per siswa per bulan</b>, tidak ditabung ke bulan berikutnya, saldo tidak boleh negatif, dan reward hanya mengurangi pelanggaran <b>Ringan & Sedang</b>. Pelanggaran Berat/DO tetap memiliki konsekuensi.
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Catat Penghargaan</div>
-        <div class="pt-grid-3">
-          <div><label class="pt-label">Tanggal</label><input id="rw-date" type="date" max="${pointToday()}" value="${pointToday()}" class="pt-control"></div>
-          <div style="grid-column:span 2"><label class="pt-label">Bentuk Penghargaan</label><select id="rw-master" class="pt-control" onchange="showRewardMasterInfo(this.value)">${rewardMasterOptions()}</select></div>
-        </div>
-        <div id="rw-master-info" style="margin-top:12px"></div>
-        <div style="margin-top:12px"><label class="pt-label">Catatan / Bukti Singkat</label><textarea id="rw-note" class="pt-control" rows="3" placeholder="Tuliskan keterangan singkat."></textarea></div>
-        <div class="pt-action-row"><button id="rw-save" class="btn" onclick="saveRewardSupabase()">Simpan Reward</button></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Riwayat Reward Siswa</div>
-        <div id="rw-history"><div class="pt-muted">Pilih siswa untuk melihat riwayat.</div></div>
-      </div>
-    `;
-  }catch(e){
-    content.innerHTML += `<div class="card pt-alert">${escapeHtml(e.message||'Gagal memuat modul reward.')}</div>`;
-  }
-}
-
-function showRewardMasterInfo(id){
-  const m=POINT_STATUS.rewardMasters.find(x=>x.id===id);
-  const el=document.getElementById('rw-master-info');
-  if(!m){el.innerHTML='';return}
-  el.innerHTML=`<div class="pt-rule-box"><span class="pt-pill reward">${escapeHtml(m.category)}</span> &nbsp;<b>${m.points} poin reward</b><div class="pt-master-meta">${escapeHtml(m.reward_name)}</div></div>`;
-}
-
-async function saveRewardSupabase(){
-  const studentId=POINT_STATUS.rewardStudentId;
-  const masterId=document.getElementById('rw-master')?.value||'';
-  const date=document.getElementById('rw-date')?.value||'';
-  const note=(document.getElementById('rw-note')?.value||'').trim();
-  if(!POINT_STATUS.rewardClassId||!studentId||!masterId){showToast('Pilih kelas, siswa, dan bentuk penghargaan.',true);return}
-  const btn=document.getElementById('rw-save');btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
-  try{
-    const res=await studentPointsRequest('save_reward',{
-      class_id:POINT_STATUS.rewardClassId,student_id:studentId,master_id:masterId,date,note
-    });
-    showToast(res.message||'Reward berhasil disimpan');
-    document.getElementById('rw-note').value='';
-    document.getElementById('rw-master').value='';
-    document.getElementById('rw-master-info').innerHTML='';
-    await pointLoadProfile(studentId,'reward');
-    await pointLoadHistory(studentId,'reward');
-  }catch(e){showToast(e.message||'Gagal menyimpan reward',true)}
-  finally{btn.disabled=false;btn.innerHTML=old}
-}
+function renderKedisiplinan(content){return pv2Render('violation',content)}
+function renderReward(content){return pv2Render('reward',content)}
 
 /* ==========================================================
    MODUL: CETAK RAPOR (AKADEMIK) — FINAL
