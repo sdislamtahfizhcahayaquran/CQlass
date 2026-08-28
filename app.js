@@ -3005,6 +3005,18 @@ function injectPointV2Styles(){
   .pv2-escalation-card.urgent{border-color:#efc4b8;background:#fff8f5}
   .pv2-escalation-title{font-size:12px;font-weight:900}.pv2-escalation-sub{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4}
   .pv2-empty{text-align:center;color:var(--muted);padding:22px;font-size:12px}
+  .pv2-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .pv2-history-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pv2-history-tools .pv2-control{min-width:190px;padding:8px 10px;font-size:11px}
+  .pv2-recap-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+  .pv2-recap-kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
+  .pv2-recap-kpi strong{display:block;font-size:21px;color:var(--primary);line-height:1}
+  .pv2-recap-kpi span{display:block;margin-top:5px;font-size:10px;color:var(--muted);font-weight:800}
+  .pv2-followup-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .pv2-followup-status{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:900;background:#eef7f6;color:#2e6b68}
+  .pv2-modal-card{width:min(700px,100%);max-height:90vh;overflow:auto;margin:0;border-radius:18px}
+  .pv2-modal-title{display:flex;align-items:center;gap:8px}
+  @media(max-width:900px){.pv2-recap-grid{grid-template-columns:repeat(2,1fr)}}
   .pv2-search{margin-bottom:8px}
   .pv2-type-wrap{position:relative}
   .pv2-type-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;background:#fff}
@@ -3107,17 +3119,31 @@ function pv2Summary(s){
   </div>`;
 }
 
+function pv2HistoryFilter(kind){
+  const q=(document.getElementById(`pv2-history-search-${kind}`)?.value||'').toLowerCase().trim();
+  const f=(document.getElementById(`pv2-history-filter-${kind}`)?.value||'').toLowerCase();
+  document.querySelectorAll(`#pv2-history-${kind} tbody tr`).forEach(tr=>{
+    const text=(tr.dataset.search||'').toLowerCase(),cat=(tr.dataset.category||'').toLowerCase();
+    tr.style.display=((!q||text.includes(q))&&(!f||cat===f))?'':'none';
+  });
+}
 function pv2History(kind,snapshot){
   const rows=kind==='violation'?(snapshot?.violations||[]):(snapshot?.rewards||[]);
   if(!rows.length)return `<div class="pv2-empty">Belum ada riwayat pada siswa ini.</div>`;
-  return `<div class="pv2-table-wrap"><table class="pv2-table"><thead><tr>
-    <th>Tanggal</th><th>${kind==='violation'?'Pelanggaran':'Reward'}</th><th>Kategori</th><th>Poin</th><th>Catatan</th><th>Pencatat</th><th>Aksi</th>
-  </tr></thead><tbody>${rows.map(r=>`<tr>
-    <td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.name)}</td>
+  const cats=[...new Set(rows.map(r=>String(r.category||'')).filter(Boolean))].sort();
+  return `<div class="pv2-section-head">
+    <div><div class="card-title" style="margin:0">Riwayat ${kind==='violation'?'Pelanggaran':'Reward'}</div><div class="page-sub" style="margin-top:3px">Cari atau filter tanpa memuat ulang.</div></div>
+    <div class="pv2-history-tools">
+      <input id="pv2-history-search-${kind}" class="pv2-control" placeholder="Cari riwayat..." oninput="pv2HistoryFilter('${kind}')">
+      <select id="pv2-history-filter-${kind}" class="pv2-control" onchange="pv2HistoryFilter('${kind}')"><option value="">Semua kategori</option>${cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select>
+    </div>
+  </div>
+  <div class="pv2-table-wrap" id="pv2-history-${kind}"><table class="pv2-table"><thead><tr><th>Tanggal</th><th>${kind==='violation'?'Pelanggaran':'Reward'}</th><th>Kategori</th><th>Poin</th><th>Catatan</th><th>Pencatat</th><th>Aksi</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr data-category="${escapeHtml(r.category||'')}" data-search="${escapeHtml([r.date,r.name,r.category,r.note,r.recorded_by].join(' ').toLowerCase())}">
+    <td>${escapeHtml(r.date)}</td><td><b>${escapeHtml(r.name)}</b></td>
     <td><span class="pv2-pill ${kind==='violation'?String(r.category).toLowerCase():'reward'}">${escapeHtml(r.category)}</span></td>
     <td><b>${r.consequence_code==='DO'?'DO':r.points}</b></td><td>${escapeHtml(r.note||'-')}</td><td>${escapeHtml(r.recorded_by||'-')}</td>
-    <td>${r.editable?`<button class="pv2-mini" title="Edit" onclick="pv2OpenEdit('${kind}','${r.id}')">${pointSvg('edit',15)}</button>
-    <button class="pv2-mini" title="Hapus" onclick="pv2Delete('${kind}','${r.id}')">${pointSvg('trash',15)}</button>`:'<span class="pv2-pill">Terkunci</span>'}</td>
+    <td>${r.editable?`<button class="pv2-mini" title="Edit" onclick="pv2OpenEdit('${kind}','${r.id}')">${pointSvg('edit',15)}</button><button class="pv2-mini" title="Hapus" onclick="pv2Delete('${kind}','${r.id}')">${pointSvg('trash',15)}</button>`:'<span class="pv2-pill">Terkunci</span>'}</td>
   </tr>`).join('')}</tbody></table></div>`;
 }
 
@@ -3262,7 +3288,7 @@ async function pv2RenderWorkspace(kind){
       <div class="pv2-actions"><button class="btn pv2-btn-icon" id="pv2-save-${kind}" onclick="pv2BulkSave('${kind}')">${pointSvg('save',16)} Simpan ${title}</button></div>
     </div>`:''}
 
-    ${mode==='student'&&sid&&snap?`<div class="card"><div class="card-title">Riwayat ${title}</div>${pv2History(kind,snap)}</div>`:''}
+    ${mode==='student'&&sid&&snap?`<div class="card">${pv2History(kind,snap)}</div>`:''}
 
     ${(kind==='violation'&&(b.can_view_recap||false))?`<div class="card"><div class="pv2-toolbar"><div class="card-title" style="margin:0">${pointSvg('chart',18)} Rekap & Eskalasi</div><button class="btn btn-sm pv2-btn-icon" onclick="pv2LoadRecap()">${pointSvg('chart',15)} Muat Rekap</button></div><div id="pv2-recap"><div class="pv2-empty">Klik Muat Rekap untuk melihat siswa yang perlu penanganan.</div></div></div>`:''}
   `;
@@ -3305,18 +3331,19 @@ function pv2OpenEdit(kind,id){
   const masters=kind==='violation'?(POINT_V2.boot?.violation_masters||[]):(POINT_V2.boot?.reward_masters||[]);
   const modal=document.createElement('div');modal.id='pv2-edit-overlay';
   modal.style.cssText='position:fixed;inset:0;background:rgba(11,39,38,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px';
-  modal.innerHTML=`<div class="card" style="width:min(650px,100%);max-height:90vh;overflow:auto;margin:0">
-    <div class="pv2-toolbar"><div class="card-title">Edit ${kind==='violation'?'Pelanggaran':'Reward'}</div><button class="pv2-mini" onclick="document.getElementById('pv2-edit-overlay').remove()">×</button></div>
-    <div class="pv2-grid">
+  const selected=masters.find(m=>m.id===r.master_id),selectedName=selected?(kind==='violation'?selected.violation_name:selected.reward_name):(r.name||'');
+  modal.innerHTML=`<div class="card pv2-modal-card">
+    <div class="pv2-toolbar"><div class="pv2-modal-title">${pointSvg('edit',18)}<div><div class="card-title" style="margin:0">Edit ${kind==='violation'?'Pelanggaran':'Reward'}</div><div class="page-sub" style="margin-top:2px">Perubahan disimpan ke riwayat yang sama.</div></div></div><button class="pv2-mini" onclick="document.getElementById('pv2-edit-overlay').remove()">×</button></div>
+    <div class="pv2-grid" style="margin-top:14px">
       <div><label class="pv2-label">Tanggal</label><input id="pv2-edit-date" type="date" max="${pv2Today()}" value="${escapeHtml(r.date)}" class="pv2-control"></div>
-      <div><label class="pv2-label">Jenis</label><select id="pv2-edit-master" class="pv2-control">${masters.map(m=>{
-        const name=kind==='violation'?m.violation_name:m.reward_name;return `<option value="${escapeHtml(m.id)}" ${m.id===r.master_id?'selected':''}>${escapeHtml(name)}</option>`;
-      }).join('')}</select></div>
+      <div><label class="pv2-label">Jenis</label><input id="pv2-edit-master-search" class="pv2-control" list="pv2-edit-master-options" value="${escapeHtml(selectedName)}" placeholder="Ketik untuk mencari..." autocomplete="off"><datalist id="pv2-edit-master-options">${masters.map(m=>{const n=kind==='violation'?m.violation_name:m.reward_name;return `<option value="${escapeHtml(n)}"></option>`}).join('')}</datalist><input type="hidden" id="pv2-edit-master" value="${escapeHtml(r.master_id||'')}"></div>
     </div>
-    <div style="margin-top:12px"><label class="pv2-label">Catatan</label><textarea id="pv2-edit-note" rows="3" class="pv2-control">${escapeHtml(r.note||'')}</textarea></div>
+    <div style="margin-top:12px"><label class="pv2-label">Catatan / Kronologi</label><textarea id="pv2-edit-note" rows="3" class="pv2-control">${escapeHtml(r.note||'')}</textarea></div>
     <div class="pv2-actions"><button class="btn pv2-btn-icon" onclick="pv2SaveEdit()">${pointSvg('save',16)} Simpan Perubahan</button></div>
   </div>`;
   document.body.appendChild(modal);
+  const inp=document.getElementById('pv2-edit-master-search');
+  inp?.addEventListener('input',()=>{const v=inp.value.trim().toLowerCase();const f=masters.find(m=>String(kind==='violation'?m.violation_name:m.reward_name).trim().toLowerCase()===v);const h=document.getElementById('pv2-edit-master');if(h)h.value=f?.id||''});
 }
 async function pv2SaveEdit(){
   const e=POINT_V2.edit;if(!e)return;
@@ -3341,29 +3368,20 @@ async function pv2LoadRecap(){
   const el=document.getElementById('pv2-recap');if(!el)return;
   el.innerHTML='<div class="pv2-empty"><span class="spinner"></span> Memuat rekap...</div>';
   try{
-    const d=await pointsV2Request('recap',{period:'month'},30000);
-    const esc=d.escalations||[],absence=d.absence_escalations||[];
+    const d=await pointsV2Request('recap',{period:'month'},30000),esc=d.escalations||[],absence=d.absence_escalations||[];
     el.innerHTML=`
-      <div class="pv2-stat-grid" style="margin-bottom:12px">
-        <div class="pv2-stat"><strong>${d.summary?.students_with_points||0}</strong><span>Siswa Berpoin</span></div>
-        <div class="pv2-stat"><strong>${d.summary?.need_followup||0}</strong><span>Perlu Penanganan</span></div>
-        <div class="pv2-stat"><strong>${d.summary?.heavy_cases||0}</strong><span>Kasus Berat/DO</span></div>
-        <div class="pv2-stat"><strong>${absence.length}</strong><span>Tidak Masuk 3x Berturut</span></div>
-        <div class="pv2-stat"><strong>${d.summary?.open_followups||0}</strong><span>Tindak Lanjut Terbuka</span></div>
+      <div class="pv2-recap-grid">
+        <div class="pv2-recap-kpi"><strong>${d.summary?.students_with_points||0}</strong><span>Siswa Memiliki Poin</span></div>
+        <div class="pv2-recap-kpi"><strong>${d.summary?.need_followup||0}</strong><span>Perlu Penanganan</span></div>
+        <div class="pv2-recap-kpi"><strong>${d.summary?.heavy_cases||0}</strong><span>Kasus Berat / DO</span></div>
+        <div class="pv2-recap-kpi"><strong>${absence.length}</strong><span>Absen 3 Hari Berturut</span></div>
       </div>
+      <div class="pv2-section-head"><div><div class="card-title" style="margin:0">Prioritas Penanganan</div><div class="page-sub" style="margin-top:3px">Hanya siswa yang membutuhkan perhatian.</div></div><span class="pv2-count">${esc.length+absence.length} kasus aktif</span></div>
       <div class="pv2-escalation">
-        ${esc.slice(0,20).map(x=>`<div class="pv2-escalation-card ${x.urgent?'urgent':''}">
-          <div class="pv2-escalation-title">${pointSvg('alert',15)} ${escapeHtml(x.student_name)} · ${escapeHtml(x.class_name)}</div>
-          <div class="pv2-escalation-sub"><b>${x.balance} poin</b> · ${escapeHtml(x.reason)}<br>${escapeHtml(x.action||'Perlu ditindaklanjuti')}</div>
-          ${POINT_V2.boot?.can_manage_followup?`<div class="pv2-actions"><button class="pv2-mini" onclick="pv2Followup('${x.student_id}','in_progress')">Proses</button><button class="pv2-mini" onclick="pv2Followup('${x.student_id}','done')">Selesai</button></div>`:''}
-        </div>`).join('')}
-        ${absence.slice(0,20).map(x=>`<div class="pv2-escalation-card urgent">
-          <div class="pv2-escalation-title">${pointSvg('users',15)} ${escapeHtml(x.student_name)} · ${escapeHtml(x.class_name)}</div>
-          <div class="pv2-escalation-sub"><b>Tidak hadir 3 hari sekolah berturut-turut</b><br>${escapeHtml((x.dates||[]).join(', '))}</div>
-        </div>`).join('')}
+        ${esc.slice(0,20).map(x=>`<div class="pv2-escalation-card ${x.urgent?'urgent':''}"><div class="pv2-followup-head"><div class="pv2-escalation-title">${pointSvg('alert',15)} ${escapeHtml(x.student_name)} · ${escapeHtml(x.class_name)}</div><span class="pv2-followup-status">${x.urgent?'PRIORITAS':'PEMBINAAN'}</span></div><div class="pv2-escalation-sub"><b>${x.balance} poin</b><br>${escapeHtml(x.reason)}<br>${escapeHtml(x.action||'Perlu ditindaklanjuti')}</div>${POINT_V2.boot?.can_manage_followup?`<div class="pv2-actions"><button class="pv2-mini" onclick="pv2Followup('${x.student_id}','in_progress')">Proses</button><button class="pv2-mini" onclick="pv2Followup('${x.student_id}','done')">Selesai</button></div>`:''}</div>`).join('')}
+        ${absence.slice(0,20).map(x=>`<div class="pv2-escalation-card urgent"><div class="pv2-followup-head"><div class="pv2-escalation-title">${pointSvg('users',15)} ${escapeHtml(x.student_name)} · ${escapeHtml(x.class_name)}</div><span class="pv2-followup-status">ABSENSI</span></div><div class="pv2-escalation-sub"><b>Tidak hadir 3 hari sekolah berturut-turut</b><br>${escapeHtml((x.dates||[]).join(', '))}</div></div>`).join('')}
       </div>
-      ${!esc.length&&!absence.length?'<div class="pv2-good">Tidak ada eskalasi aktif pada data yang tersedia.</div>':''}
-    `;
+      ${!esc.length&&!absence.length?'<div class="pv2-good">Tidak ada siswa yang perlu penanganan pada periode ini.</div>':''}`;
   }catch(e){el.innerHTML=`<div class="pv2-alert">${escapeHtml(e.message||'Gagal memuat rekap.')}</div>`}
 }
 async function pv2Followup(studentId,status){
