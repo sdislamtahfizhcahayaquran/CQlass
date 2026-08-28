@@ -7,6 +7,7 @@ const AUTH_URL = `${SUPABASE_URL}/functions/v1/auth-user`;
 const DASHBOARD_MASTER_URL = `${SUPABASE_URL}/functions/v1/dashboard-master`;
 const ATTENDANCE_URL = `${SUPABASE_URL}/functions/v1/attendance`;
 const STUDENT_POINTS_URL = `${SUPABASE_URL}/functions/v1/student-points`;
+const ROLE_DASHBOARD_URL = `${SUPABASE_URL}/functions/v1/role-dashboard`;
 
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
@@ -3769,280 +3770,181 @@ async function submitMoodPilih(mood){
 }
 
 /* ==========================================================
-   MODUL: DASHBOARD WALAS V3 — 1 REQUEST, RINGAN, RESPONSIF
+   DASHBOARD ROLE V4 — WALAS / GURU / KABID / PIMPINAN / ADMIN
+   - Tidak menampilkan statistik master kepada guru
+   - Reminder tugas harian
+   - Kabid/Pimpinan melihat guru yang belum mengerjakan
+   - Eskalasi Kesiswaan + tidak hadir 3 hari berturut-turut
+   - Leaderboard hanya dari data yang benar-benar terisi
+   - Inline SVG, tanpa emoji
    ========================================================== */
 let dashboardLoadToken = 0;
-let wdLastData = null;
+let roleDashboardCache = null;
+let roleDashboardCacheAt = 0;
 
-function renderDashboard(content){
-  const requestToken = ++dashboardLoadToken;
-  const nama = escapeHtml(currentUser?.nama || currentUser?.username || 'Pengguna');
-  content.innerHTML = `
-    <div id="wd-root" class="wd-shell">
-      <div class="wd-hero">
-        <div class="wd-hero-top">
-          <div>
-            <div class="wd-eyebrow">CQlass 2 · Supabase</div>
-            <div class="wd-title">Assalamu'alaikum, ${nama} 👋</div>
-            <div class="wd-sub">Ringkasan data master sekolah yang sudah tersimpan di database.</div>
-          </div>
-          <div class="wd-date-pill" id="wd-date">Memuat...</div>
-        </div>
-      </div>
-      <div id="master-dashboard-body">
-        <div class="wd-skeleton"></div>
-      </div>
-    </div>`;
-  loadSupabaseMasterDashboard(requestToken);
+function rdIcon(name,size=18){
+  const a=`width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
+  const m={
+    home:`<svg ${a}><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>`,
+    users:`<svg ${a}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    check:`<svg ${a}><path d="m20 6-11 11-5-5"/></svg>`,
+    clock:`<svg ${a}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
+    alert:`<svg ${a}><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+    gift:`<svg ${a}><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13"/><path d="M3 12h18"/><path d="M7.5 8C5.6 8 4 6.8 4 5.3S5.2 3 6.7 3C9 3 12 8 12 8"/><path d="M16.5 8C18.4 8 20 6.8 20 5.3S18.8 3 17.3 3C15 3 12 8 12 8"/></svg>`,
+    chart:`<svg ${a}><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 4-7"/></svg>`,
+    book:`<svg ${a}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4v15.5"/><path d="M20 22V6a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 6.5"/></svg>`,
+    database:`<svg ${a}><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>`,
+    arrow:`<svg ${a}><path d="m9 18 6-6-6-6"/></svg>`
+  };
+  return m[name]||m.check;
 }
 
-async function callDashboardMaster(){
-  const token = getAuthToken();
-  if(!token) return { success:false, error:'session_invalid' };
+function injectRoleDashboardStyles(){
+  if(document.getElementById('role-dashboard-style')) return;
+  const s=document.createElement('style');s.id='role-dashboard-style';
+  s.textContent=`
+    .rd-shell{max-width:1320px;margin:0 auto}
+    .rd-hero{background:linear-gradient(110deg,#075b59,#118783);border-radius:22px;padding:25px 28px;color:#fff;position:relative;overflow:hidden;margin-bottom:18px}
+    .rd-hero:after{content:"";position:absolute;width:260px;height:260px;border:42px solid rgba(255,255,255,.06);border-radius:50%;right:-70px;top:-90px}
+    .rd-eyebrow{font-size:11px;letter-spacing:.12em;font-weight:900;text-transform:uppercase;opacity:.8}.rd-title{font-size:30px;font-weight:900;line-height:1.15;margin-top:7px}.rd-sub{font-size:13px;opacity:.84;margin-top:7px}
+    .rd-kpis{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px;margin-bottom:16px}.rd-kpi{background:#fff;border:1px solid var(--border);border-radius:15px;padding:15px;min-height:105px}
+    .rd-kpi-icon{width:36px;height:36px;border-radius:11px;background:#eaf7f6;color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:8px}.rd-kpi strong{display:block;font-size:25px;line-height:1.05;color:#075b59}.rd-kpi span{font-size:11px;font-weight:800;color:var(--muted)}.rd-kpi small{display:block;font-size:10.5px;color:var(--muted);margin-top:5px}
+    .rd-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}.rd-grid3{display:grid;grid-template-columns:1.1fr 1fr .8fr;gap:14px;margin-bottom:14px}
+    .rd-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:17px}.rd-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:13px}.rd-card-title{font-size:14px;font-weight:900}.rd-card-sub{font-size:10.8px;color:var(--muted);margin-top:3px;line-height:1.4}
+    .rd-task{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border)}.rd-task:last-child{border-bottom:0}.rd-task-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center}.rd-task.done .rd-task-icon{background:#eaf8f1;color:#2c7a4b}.rd-task.pending .rd-task-icon{background:#fff1ed;color:#bd543e}.rd-task-main{flex:1;min-width:0}.rd-task-name{font-size:12px;font-weight:850}.rd-task-meta{font-size:10.5px;color:var(--muted);margin-top:2px}.rd-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:9.5px;font-weight:900}.rd-badge.done{background:#eaf8f1;color:#2c7a4b}.rd-badge.pending{background:#fff1ed;color:#bd543e}
+    .rd-list-row{display:grid;grid-template-columns:32px 1fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}.rd-list-row:last-child{border-bottom:0}.rd-rank{width:28px;height:28px;border-radius:9px;background:#edf6f6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:var(--primary)}.rd-name{font-size:11.5px;font-weight:850}.rd-meta{font-size:10px;color:var(--muted);margin-top:2px}.rd-score{font-size:12px;font-weight:900;color:#075b59}
+    .rd-alert-row{padding:10px 11px;border:1px solid #f1c8bd;background:#fff8f5;border-radius:11px;margin-bottom:8px}.rd-alert-row:last-child{margin-bottom:0}.rd-alert-title{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:900;color:#a44935}.rd-alert-sub{font-size:10.3px;color:#7b5d56;margin-top:4px;line-height:1.45}
+    .rd-pending-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);align-items:center}.rd-pending-row:last-child{border-bottom:0}.rd-pending-main{min-width:0}.rd-pending-name{font-size:11.5px;font-weight:850}.rd-pending-meta{font-size:10px;color:var(--muted);margin-top:2px}
+    .rd-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px}.rd-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.rd-quick button{border:1px solid var(--border);background:#fff;border-radius:11px;padding:11px;font:inherit;font-size:10.5px;font-weight:850;color:var(--text);cursor:pointer;display:flex;gap:7px;align-items:center;justify-content:center}.rd-quick button:hover{border-color:var(--primary);color:var(--primary)}
+    .rd-progress{height:7px;background:#edf3f3;border-radius:999px;overflow:hidden;margin-top:7px}.rd-progress span{display:block;height:100%;background:var(--primary);border-radius:999px}
+    @media(max-width:1050px){.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-grid3{grid-template-columns:1fr}.rd-grid2{grid-template-columns:1fr}}
+    @media(max-width:650px){.rd-kpis{grid-template-columns:repeat(2,1fr)}.rd-title{font-size:23px}.rd-hero{padding:20px}.rd-quick{grid-template-columns:1fr}}
+  `;
+  document.head.appendChild(s);
+}
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+async function roleDashboardRequest(action='dashboard',payload={},timeoutMs=22000){
+  const token=getAuthToken();if(!token)throw new Error('Sesi login tidak ditemukan.');
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeoutMs);
   try{
-    const response = await fetch(DASHBOARD_MASTER_URL, {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'apikey': SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        'x-session-token': token
-      },
-      body: JSON.stringify({ action:'summary' }),
-      signal: controller.signal
-    });
-    const raw = await response.text();
-    let data = {};
-    try{ data = raw ? JSON.parse(raw) : {}; }
-    catch(_){ return { success:false, error:`invalid_json_http_${response.status}` }; }
-    if(!response.ok && data.success !== false){
-      data.success = false;
-      data.error = data.error || `http_${response.status}`;
-    }
-    return data;
-  }catch(err){
-    if(err?.name === 'AbortError') return {success:false,error:'timeout'};
-    return {success:false,error:err?.message || 'network_error'};
-  }finally{
-    clearTimeout(timeoutId);
+    const r=await fetch(ROLE_DASHBOARD_URL,{method:'POST',headers:{
+      'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,
+      'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token
+    },body:JSON.stringify({action,...payload}),signal:ctl.signal});
+    const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error(`Respons dashboard bukan JSON (HTTP ${r.status}).`)}
+    if(!r.ok||d.success===false)throw new Error(d.message||d.error||`Dashboard gagal dimuat (HTTP ${r.status}).`);
+    return d;
+  }catch(e){if(e?.name==='AbortError')throw new Error('Dashboard terlalu lama merespons.');throw e}
+  finally{clearTimeout(timer)}
+}
+
+function renderDashboard(content){
+  injectRoleDashboardStyles();
+  const token=++dashboardLoadToken;
+  content.innerHTML=`<div class="rd-shell" id="rd-root"><div class="rd-card"><span class="spinner"></span> Memuat dashboard sesuai tupoksi...</div></div>`;
+  loadRoleDashboard(token);
+}
+
+async function loadRoleDashboard(requestToken,force=false){
+  const root=document.getElementById('rd-root');if(!root)return;
+  try{
+    let d;
+    if(!force&&roleDashboardCache&&Date.now()-roleDashboardCacheAt<45000)d=roleDashboardCache;
+    else{d=await roleDashboardRequest('dashboard');roleDashboardCache=d;roleDashboardCacheAt=Date.now()}
+    if(requestToken!==dashboardLoadToken||activeModule!=='dashboard')return;
+    renderRoleDashboard(d);
+  }catch(e){
+    root.innerHTML=`<div class="rd-card"><div class="rd-alert-row"><div class="rd-alert-title">${rdIcon('alert',16)} Dashboard belum dapat dimuat</div><div class="rd-alert-sub">${escapeHtml(e.message||'Terjadi kendala')}</div></div></div>`;
   }
 }
 
-async function loadSupabaseMasterDashboard(requestToken){
-  const body = document.getElementById('master-dashboard-body');
-  if(!body) return;
+function rdGreeting(role){
+  const map={walas:'Dashboard Wali Kelas',guru:'Dashboard Guru',kesiswaan:'Dashboard Kabid Kesiswaan',pimpinan:'Dashboard Pimpinan',admin:'Dashboard Admin',akademik:'Dashboard Kabid Akademik',tahfizh:'Dashboard Kabid Tahfizh',kegiatan:'Dashboard Kabid Kegiatan'};
+  return map[role]||'Dashboard';
+}
+function rdTasks(tasks=[]){
+  if(!tasks.length)return '<div class="rd-empty">Tidak ada tugas harian yang diwajibkan dari modul yang sudah terhubung.</div>';
+  return tasks.map(x=>`<div class="rd-task ${x.done?'done':'pending'}"><div class="rd-task-icon">${rdIcon(x.done?'check':'clock',17)}</div><div class="rd-task-main"><div class="rd-task-name">${escapeHtml(x.label)}</div><div class="rd-task-meta">${escapeHtml(x.detail||'')}</div></div><span class="rd-badge ${x.done?'done':'pending'}">${x.done?'SELESAI':'BELUM'}</span>${(!x.done&&x.can_mark)?`<button class="btn btn-sm" onclick="rdCompleteTask('${escapeHtml(x.code)}','${escapeHtml(x.scope_ref||'')}')">Tandai Sudah</button>`:''}</div>`).join('');
+}
+async function rdCompleteTask(code,scopeRef){
+  try{await roleDashboardRequest('complete_task',{task_code:code,scope_ref:scopeRef});roleDashboardCache=null;showToast('Tugas ditandai selesai');await loadRoleDashboard(dashboardLoadToken,true)}
+  catch(e){showToast(e.message||'Gagal memperbarui tugas',true)}
+}
+function rdLeaderboard(list=[]){
+  if(!list.length)return '<div class="rd-empty">Belum ada data yang cukup. Siswa/kelas tanpa input tidak dimasukkan.</div>';
+  return list.slice(0,5).map((x,i)=>`<div class="rd-list-row"><div class="rd-rank">${i+1}</div><div><div class="rd-name">${escapeHtml(x.name)}</div><div class="rd-meta">${escapeHtml(x.meta||'')}</div></div><div class="rd-score">${Number(x.score||0).toLocaleString('id-ID')}</div></div>`).join('');
+}
+function rdAlerts(list=[]){
+  if(!list.length)return '<div class="rd-empty">Tidak ada eskalasi aktif dari data yang tersedia.</div>';
+  return list.slice(0,12).map(x=>`<div class="rd-alert-row"><div class="rd-alert-title">${rdIcon('alert',15)} ${escapeHtml(x.title)}</div><div class="rd-alert-sub">${escapeHtml(x.detail||'')}</div></div>`).join('');
+}
+function rdPendingTeachers(list=[]){
+  if(!list.length)return '<div class="rd-empty">Semua tugas yang terhubung sudah dikerjakan.</div>';
+  return list.slice(0,20).map(x=>`<div class="rd-pending-row"><div class="rd-pending-main"><div class="rd-pending-name">${escapeHtml(x.teacher_name)}</div><div class="rd-pending-meta">${escapeHtml(x.class_name||'')} · ${escapeHtml((x.pending||[]).join(', '))}</div></div><span class="rd-badge pending">${x.pending?.length||0} belum</span></div>`).join('');
+}
 
-  const res = await callDashboardMaster();
-  if(requestToken !== dashboardLoadToken || activeModule !== 'dashboard') return;
+function renderRoleDashboard(d){
+  const root=document.getElementById('rd-root');if(!root)return;
+  const role=d.role||currentUser.role||'guru', name=currentUser?.nama||currentUser?.username||'Pengguna';
+  const date=d.date_label||'Hari ini';
 
-  if(!res.success){
-    if(['session_invalid','session_expired','unauthorized'].includes(String(res.error||''))){
-      clearAuthSession();
-      currentUser = null;
-      showLoginScreen();
-      return;
-    }
-    body.innerHTML = `
-      <div class="wd-card">
-        <div class="empty-state">
-          <div class="icon">—</div>
-          Dashboard Supabase belum dapat dimuat.<br>
-          <span style="font-size:11px">${escapeHtml(authErrorMessage(res.error) || res.error || 'unknown_error')}</span>
-        </div>
-      </div>`;
+  if(role==='admin'){
+    const c=d.master_counts||{};
+    root.innerHTML=`<div class="rd-hero"><div class="rd-eyebrow">Dashboard Admin</div><div class="rd-title">Pengelolaan Sistem CQlass</div><div class="rd-sub">Master data, akun, dan kesehatan sinkronisasi. Data Kesiswaan bukan fokus dashboard Admin.</div></div>
+    <div class="rd-kpis">
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('users')}</div><strong>${c.students||0}</strong><span>Siswa</span><small>Master aktif</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('users')}</div><strong>${c.teachers||0}</strong><span>Guru</span><small>Master guru</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('home')}</div><strong>${c.classes||0}</strong><span>Kelas</span><small>Rombel</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('book')}</div><strong>${c.subjects||0}</strong><span>Mapel</span><small>Master mapel</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('database')}</div><strong>${c.accounts||0}</strong><span>Akun Login</span><small>Akun CQlass</small></div>
+    </div>
+    <div class="rd-card"><div class="rd-card-title">Status Sistem</div><div class="rd-good" style="margin-top:10px">Dashboard Admin hanya menampilkan data sistem/master. Dashboard Kabid dan Pimpinan menangani monitoring operasional sesuai tupoksi.</div></div>`;
     return;
   }
 
-  renderSupabaseMasterDashboard(res);
-}
-
-function renderSupabaseMasterDashboard(res){
-  const body = document.getElementById('master-dashboard-body');
-  if(!body) return;
-
-  const c = res.counts || {};
-  const dateLabel = res.generated_at
-    ? new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}).format(new Date(res.generated_at))
-    : 'Data terbaru';
-  const dateEl = document.getElementById('wd-date');
-  if(dateEl) dateEl.textContent = dateLabel;
-
-  const cards = [
-    ['Siswa', c.students, 'users', 'Data siswa aktif/master'],
-    ['Guru', c.teachers, 'users', 'Master guru'],
-    ['Kelas', c.classes, 'check', 'Rombel SD'],
-    ['Mata Pelajaran', c.subjects, 'star', 'Master mapel'],
-    ['LP / TP', c.learning_objectives, 'check', 'Tujuan pembelajaran'],
-    ['Penugasan Guru', c.teacher_assignments, 'users', 'Penugasan mapel/kelas'],
-    ['Ekskul', c.extracurriculars, 'star', 'Master kegiatan ekskul'],
-    ['Peserta Ekskul', c.extracurricular_members, 'users', 'Keanggotaan ekskul'],
-    ['Penugasan Rapor', c.report_class_assignments, 'check', 'Walas/partner/tahfizh'],
-    ['Akun Login', c.user_accounts, 'users', 'Akun guru CQlass'],
-  ];
-
-  const tahfizh = Number(c.tahfizh_teacher_assignments || 0);
-  const config = Number(c.report_config || 0);
-
-  body.innerHTML = `
-    <div class="wd-kpis" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
-      ${cards.map(([label,val,icon,note])=>`
-        <div class="wd-kpi">
-          <div class="wd-kpi-icon">${wdIcon(icon)}</div>
-          <div class="wd-kpi-value">${Number(val || 0).toLocaleString('id-ID')}</div>
-          <div class="wd-kpi-label">${escapeHtml(label)}</div>
-          <div class="wd-kpi-note">${escapeHtml(note)}</div>
-        </div>`).join('')}
+  const s=d.summary||{}, scope=d.scope_label||'', tasks=d.tasks||[];
+  root.innerHTML=`
+    <div class="rd-hero">
+      <div class="rd-eyebrow">${escapeHtml(rdGreeting(role))}</div>
+      <div class="rd-title">Assalamu'alaikum, ${escapeHtml(name)}</div>
+      <div class="rd-sub">${escapeHtml(scope)} · ${escapeHtml(date)}</div>
     </div>
 
-    <div class="wd-grid-2">
-      <div class="wd-card">
-        <div class="wd-card-head">
-          <div>
-            <div class="wd-card-title">Status Sinkronisasi Master</div>
-            <div class="wd-card-sub">Ringkasan tabel utama yang dibaca langsung dari Supabase.</div>
-          </div>
-          <span class="wd-chip">LIVE</span>
-        </div>
-        <div class="wd-status-line"><span>Siswa</span><b>${Number(c.students||0).toLocaleString('id-ID')}</b></div>
-        <div class="wd-status-line"><span>Guru</span><b>${Number(c.teachers||0).toLocaleString('id-ID')}</b></div>
-        <div class="wd-status-line"><span>Kelas</span><b>${Number(c.classes||0).toLocaleString('id-ID')}</b></div>
-        <div class="wd-status-line"><span>Mapel</span><b>${Number(c.subjects||0).toLocaleString('id-ID')}</b></div>
-        <div class="wd-status-line"><span>LP/TP</span><b>${Number(c.learning_objectives||0).toLocaleString('id-ID')}</b></div>
-        <div class="wd-status-line"><span>Konfigurasi Rapor</span><b>${config.toLocaleString('id-ID')}</b></div>
-      </div>
-
-      <div class="wd-card">
-        <div class="wd-card-head">
-          <div>
-            <div class="wd-card-title">Pemeriksaan Tahfizh</div>
-            <div class="wd-card-sub">Jumlah assignment ditampilkan, tetapi integritas datanya tetap perlu diverifikasi.</div>
-          </div>
-          <span class="wd-chip">CHECK</span>
-        </div>
-        <div style="display:flex;align-items:flex-end;gap:12px;margin:14px 0 8px;">
-          <div style="font-size:40px;font-weight:800;line-height:1;">${tahfizh.toLocaleString('id-ID')}</div>
-          <div style="font-size:12px;color:var(--text-muted);padding-bottom:4px;">assignment guru Tahfizh</div>
-        </div>
-        <div class="wd-status-line"><span>Status</span><span class="wd-status-pill no">PERLU VERIFIKASI</span></div>
-        <div style="font-size:12px;line-height:1.6;color:var(--text-muted);margin-top:10px;">Angka ini tidak otomatis dianggap salah. Kita akan cek duplikasi <code>source_ref</code> dan kesesuaian dengan sheet Tahfizh pada tahap berikutnya.</div>
-      </div>
+    <div class="rd-kpis">
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('users')}</div><strong>${s.students||0}</strong><span>${role==='walas'?'Siswa Kelas':'Siswa dalam Scope'}</span><small>${escapeHtml(scope)}</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('check')}</div><strong>${s.attendance_pct==null?'-':String(s.attendance_pct).replace('.',',')+'%'}</strong><span>Kehadiran Hari Ini</span><small>${s.attendance_filled?'Sudah ada input':'Belum ada input'}</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('alert')}</div><strong>${s.violation_points_month||0}</strong><span>Poin Pelanggaran Bulan Ini</span><small>Dari data yang sudah diinput</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('gift')}</div><strong>${s.reward_points_month||0}</strong><span>Poin Reward Bulan Ini</span><small>Dari data yang sudah diinput</small></div>
+      <div class="rd-kpi"><div class="rd-kpi-icon">${rdIcon('alert')}</div><strong>${s.escalation_count||0}</strong><span>Perlu Penanganan</span><small>Termasuk absen 3 hari berturut-turut</small></div>
     </div>
 
-    <div class="wd-card">
-      <div class="wd-card-head">
-        <div>
-          <div class="wd-card-title">Database CQlass Siap</div>
-          <div class="wd-card-sub">Dashboard ini hanya membaca data master. Data transaksi seperti absensi, reward, kedisiplinan, nilai, dan PjBL akan kita hubungkan berikutnya.</div>
-        </div>
-      </div>
-    </div>`;
-}
+    ${role==='walas'||role==='guru'?`
+      <div class="rd-grid2">
+        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Tugas Hari Ini</div><div class="rd-card-sub">Yang belum dikerjakan tetap muncul sebagai reminder.</div></div></div>${rdTasks(tasks)}</div>
+        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Aksi Cepat</div><div class="rd-card-sub">Langsung ke pekerjaan utama.</div></div></div><div class="rd-quick">
+          ${role==='walas'?`<button onclick="setActiveModule('absensi')">${rdIcon('check',15)} Morning Talk</button>`:''}
+          <button onclick="setActiveModule('kedisiplinan')">${rdIcon('alert',15)} Kedisiplinan</button>
+          <button onclick="setActiveModule('reward')">${rdIcon('gift',15)} Reward</button>
+        </div></div>
+      </div>`:''}
 
-async function loadDashboardWalasFast(requestToken){
-  const root = document.getElementById('wd-root');
-  if(!root) return;
-  try{
-    const res = await callApi('getDashboardWalas', {
-      username: currentUser.username, kelas: currentUser.kelas || '', role: currentUser.role
-    });
-    if(requestToken !== dashboardLoadToken || activeModule !== 'dashboard' || !document.getElementById('wd-root')) return;
-    if(!res.success) throw new Error(res.error || 'dashboard_gagal');
-    wdLastData = res;
-    renderDashboardWalasData(res);
-  }catch(err){
-    root.innerHTML += `<div class="card"><div class="empty-state"><div class="icon">—</div>Dashboard belum dapat dimuat.<br><span style="font-size:11px">${escapeHtml(err.message || '')}</span></div></div>`;
-    root.querySelector('.wd-skeleton')?.remove();
-  }
-}
+    ${role==='kesiswaan'||role==='pimpinan'?`
+      <div class="rd-grid2">
+        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Guru/Walas Belum Mengerjakan</div><div class="rd-card-sub">Monitoring tugas harian yang sudah terhubung ke CQlass.</div></div><span class="rd-badge pending">${d.pending_teachers?.length||0} guru</span></div>${rdPendingTeachers(d.pending_teachers||[])}</div>
+        <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Info Eskalasi ${role==='kesiswaan'?'Kesiswaan':''}</div><div class="rd-card-sub">Pelanggaran berat, tahap pembinaan, dan siswa tidak hadir 3 hari sekolah berturut-turut.</div></div></div>${rdAlerts(d.escalations||[])}</div>
+      </div>`:''}
 
-function renderDashboardWalasData(d){
-  const root = document.getElementById('wd-root');
-  if(!root) return;
-  const k = d.kehadiran || {};
-  const wajib = d.wajibLapor || {};
-  const esc = d.eskalasi || {count:0,data:[]};
-  const rank = d.reward || {kelas:[],sekolah:[]};
-  const kelasTertib = d.kelasTertib || [];
-  const tanggalText = d.meta?.tanggalLabel || d.meta?.tanggal || '';
-  const scope = d.meta?.scopeLabel || (currentUser.kelas || 'Sekolah');
-
-  root.innerHTML = `
-    <div class="wd-hero">
-      <div class="wd-hero-top">
-        <div>
-          <div class="wd-eyebrow">${currentUser.role === 'walas' ? 'Dashboard Wali Kelas' : 'Dashboard Sekolah'}</div>
-          <div class="wd-title">${escapeHtml(scope)}</div>
-          <div class="wd-sub">Ringkasan penting yang perlu dilihat hari ini — cepat, fokus, dan siap ditindaklanjuti.</div>
-        </div>
-        <div class="wd-date-pill">${escapeHtml(tanggalText)}</div>
-      </div>
+    <div class="rd-grid2">
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Leaderboard Siswa Teladan</div><div class="rd-card-sub">Hanya siswa yang memiliki input Reward/Pelanggaran pada periode ini.</div></div><span class="rd-badge done">Bulan ini</span></div>${rdLeaderboard(d.student_leaderboard||[])}</div>
+      <div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Leaderboard Kelas Teladan</div><div class="rd-card-sub">Kelas tanpa data input tidak dimasukkan ke ranking.</div></div><span class="rd-badge done">Bulan ini</span></div>${rdLeaderboard(d.class_leaderboard||[])}</div>
     </div>
 
-    <div class="wd-kpis">
-      <div class="wd-kpi success">
-        <div class="wd-kpi-icon">${wdIcon('users')}</div>
-        <div class="wd-kpi-value">${Number(k.persentaseHadir || 0).toFixed(1).replace('.0','')}%</div>
-        <div class="wd-kpi-label">Kehadiran bulan ini</div>
-        <div class="wd-kpi-note">${k.hadir || 0} hadir dari ${k.total || 0} catatan</div>
-      </div>
-      <div class="wd-kpi ${wajib.sudahHariIni ? 'success' : 'danger'}">
-        <div class="wd-kpi-icon">${wdIcon('check')}</div>
-        <div class="wd-kpi-value">${wajib.sudahHariIni ? 'Sudah' : 'Belum'}</div>
-        <div class="wd-kpi-label">Wajib lapor hari ini</div>
-        <div class="wd-kpi-note">Kepatuhan bulan ini ${wajib.persentase || 0}%</div>
-      </div>
-      <div class="wd-kpi">
-        <div class="wd-kpi-icon">${wdIcon('star')}</div>
-        <div class="wd-kpi-value">${rank.kelas?.[0]?.totalPoin || 0}</div>
-        <div class="wd-kpi-label">Poin reward tertinggi kelas</div>
-        <div class="wd-kpi-note">${escapeHtml(rank.kelas?.[0]?.nama || 'Belum ada reward')}</div>
-      </div>
-      <div class="wd-kpi danger clickable" onclick="toggleWDEskalasi()" role="button" tabindex="0">
-        <div class="wd-kpi-icon">${wdIcon('alert')}</div>
-        <div class="wd-kpi-value">${esc.count || 0}</div>
-        <div class="wd-kpi-label">Eskalasi ke Kesiswaan</div>
-        <div class="wd-kpi-note">Klik untuk melihat siswa ›</div>
-      </div>
-    </div>
-
-    <div class="wd-grid-2">
-      <div class="wd-card">
-        <div class="wd-card-head"><div><div class="wd-card-title">Kehadiran Siswa</div><div class="wd-card-sub">Persentase hadir per hari, 14 hari sekolah terakhir.</div></div><span class="wd-chip">${escapeHtml(scope)}</span></div>
-        <div id="wd-attendance-chart">${renderWDAttendanceChart(k.trend || [])}</div>
-        <div class="wd-attendance-legend"><span><b>${k.hadir||0}</b> Hadir</span><span><b>${k.sakit||0}</b> Sakit</span><span><b>${k.izin||0}</b> Izin</span><span><b>${k.alfa||0}</b> Alfa</span></div>
-      </div>
-      <div class="wd-card">
-        <div class="wd-card-head"><div><div class="wd-card-title">Kepatuhan Wajib Lapor</div><div class="wd-card-sub">Hari kerja yang sudah dicek melalui modul Kedisiplinan.</div></div></div>
-        <div class="wd-report-ring" style="--pct:${Math.max(0,Math.min(100,wajib.persentase||0))}"><strong>${wajib.persentase||0}%</strong></div>
-        <div class="wd-status-line"><span>Hari kerja berjalan</span><b>${wajib.hariWajib || 0} hari</b></div>
-        <div class="wd-status-line"><span>Laporan tercatat</span><b>${wajib.hariLapor || 0} hari</b></div>
-        <div class="wd-status-line"><span>Status hari ini</span><span class="wd-status-pill ${wajib.sudahHariIni?'ok':'no'}">${wajib.sudahHariIni?'TERLAPOR':'BELUM'}</span></div>
-      </div>
-    </div>
-
-    <div class="wd-leader-grid">
-      <div class="wd-card">
-        <div class="wd-card-head"><div><div class="wd-card-title">Leaderboard Reward</div><div class="wd-card-sub">10 siswa dengan poin positif tertinggi.</div></div>
-          <div class="wd-tabs"><button class="wd-tab active" id="wd-tab-kelas" onclick="switchWDLeaderboard('kelas')">Kelas Saya</button><button class="wd-tab" id="wd-tab-sekolah" onclick="switchWDLeaderboard('sekolah')">Sekolah</button></div>
-        </div>
-        <div id="wd-leader-list">${renderWDRankList(rank.kelas || [], false)}</div>
-      </div>
-      <div class="wd-card">
-        <div class="wd-card-head"><div><div class="wd-card-title">Kelas Paling Tertib</div><div class="wd-card-sub">Berdasarkan kelengkapan wajib lapor — data kosong tidak dianggap tertib.</div></div><span class="wd-chip">Bulan ini</span></div>
-        <div>${renderWDDisciplineRanking(kelasTertib)}</div>
-      </div>
-    </div>
-
-    <div class="wd-card" id="wd-escalation-box">
-      <div class="wd-card-head">
-        <div><div class="wd-card-title">Eskalasi ke Kesiswaan</div><div class="wd-card-sub">Hanya siswa yang sudah mencapai ambang eskalasi ${esc.ambang || 50} poin.</div></div>
-        <button class="btn btn-sm btn-primary-light" onclick="toggleWDEskalasi()">${esc.count || 0} siswa · Lihat detail</button>
-      </div>
-      <div class="wd-esc-drawer" id="wd-esc-drawer">${renderWDEskalasiCards(esc.data || [])}</div>
-    </div>
+    ${role==='pimpinan'?`<div class="rd-card"><div class="rd-card-head"><div><div class="rd-card-title">Ringkasan Lintas Bidang</div><div class="rd-card-sub">Bagian yang belum terhubung ke Supabase tidak dibuat seolah-olah sudah terisi.</div></div></div>
+      <div class="rd-grid3">
+        <div class="rd-good"><b>Kesiswaan</b><br>${s.escalation_count||0} eskalasi aktif · ${d.pending_teachers?.length||0} walas memiliki tugas tertunda.</div>
+        <div class="rd-good"><b>Akademik</b><br>Reminder nilai/TP akan aktif setelah transaksi akademik dipindahkan ke Supabase.</div>
+        <div class="rd-good"><b>Tahfizh & Kegiatan</b><br>Dashboard bidang akan mengikuti data transaksi masing-masing, bukan data dummy.</div>
+      </div></div>`:''}
   `;
 }
 
