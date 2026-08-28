@@ -4,6 +4,7 @@
 const SUPABASE_URL = 'https://lmglkxzemtvxcgktiord.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
 const AUTH_URL = `${SUPABASE_URL}/functions/v1/auth-user`;
+const DASHBOARD_MASTER_URL = `${SUPABASE_URL}/functions/v1/dashboard-master`;
 
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
@@ -4090,22 +4091,169 @@ let wdLastData = null;
 
 function renderDashboard(content){
   const requestToken = ++dashboardLoadToken;
-  const kelasLabel = currentUser.role === 'walas' ? (currentUser.kelas || 'Kelas') : 'Seluruh Sekolah';
+  const nama = escapeHtml(currentUser?.nama || currentUser?.username || 'Pengguna');
   content.innerHTML = `
     <div id="wd-root" class="wd-shell">
       <div class="wd-hero">
         <div class="wd-hero-top">
           <div>
-            <div class="wd-eyebrow">Dashboard Kelas</div>
-            <div class="wd-title">Assalamu'alaikum, ${escapeHtml(currentUser.nama || 'Wali Kelas')} 👋</div>
-            <div class="wd-sub">Pantau ${escapeHtml(kelasLabel)} tanpa perlu membuka banyak menu.</div>
+            <div class="wd-eyebrow">CQlass 2 · Supabase</div>
+            <div class="wd-title">Assalamu'alaikum, ${nama} 👋</div>
+            <div class="wd-sub">Ringkasan data master sekolah yang sudah tersimpan di database.</div>
           </div>
-          <div class="wd-date-pill" id="wd-date">Hari ini</div>
+          <div class="wd-date-pill" id="wd-date">Memuat...</div>
         </div>
       </div>
-      <div class="wd-skeleton"></div>
+      <div id="master-dashboard-body">
+        <div class="wd-skeleton"></div>
+      </div>
     </div>`;
-  loadDashboardWalasFast(requestToken);
+  loadSupabaseMasterDashboard(requestToken);
+}
+
+async function callDashboardMaster(){
+  const token = getAuthToken();
+  if(!token) return { success:false, error:'session_invalid' };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  try{
+    const response = await fetch(DASHBOARD_MASTER_URL, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'x-session-token': token
+      },
+      body: JSON.stringify({ action:'summary' }),
+      signal: controller.signal
+    });
+    const raw = await response.text();
+    let data = {};
+    try{ data = raw ? JSON.parse(raw) : {}; }
+    catch(_){ return { success:false, error:`invalid_json_http_${response.status}` }; }
+    if(!response.ok && data.success !== false){
+      data.success = false;
+      data.error = data.error || `http_${response.status}`;
+    }
+    return data;
+  }catch(err){
+    if(err?.name === 'AbortError') return {success:false,error:'timeout'};
+    return {success:false,error:err?.message || 'network_error'};
+  }finally{
+    clearTimeout(timeoutId);
+  }
+}
+
+async function loadSupabaseMasterDashboard(requestToken){
+  const body = document.getElementById('master-dashboard-body');
+  if(!body) return;
+
+  const res = await callDashboardMaster();
+  if(requestToken !== dashboardLoadToken || activeModule !== 'dashboard') return;
+
+  if(!res.success){
+    if(['session_invalid','session_expired','unauthorized'].includes(String(res.error||''))){
+      clearAuthSession();
+      currentUser = null;
+      showLoginScreen();
+      return;
+    }
+    body.innerHTML = `
+      <div class="wd-card">
+        <div class="empty-state">
+          <div class="icon">—</div>
+          Dashboard Supabase belum dapat dimuat.<br>
+          <span style="font-size:11px">${escapeHtml(authErrorMessage(res.error) || res.error || 'unknown_error')}</span>
+        </div>
+      </div>`;
+    return;
+  }
+
+  renderSupabaseMasterDashboard(res);
+}
+
+function renderSupabaseMasterDashboard(res){
+  const body = document.getElementById('master-dashboard-body');
+  if(!body) return;
+
+  const c = res.counts || {};
+  const dateLabel = res.generated_at
+    ? new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}).format(new Date(res.generated_at))
+    : 'Data terbaru';
+  const dateEl = document.getElementById('wd-date');
+  if(dateEl) dateEl.textContent = dateLabel;
+
+  const cards = [
+    ['Siswa', c.students, 'users', 'Data siswa aktif/master'],
+    ['Guru', c.teachers, 'users', 'Master guru'],
+    ['Kelas', c.classes, 'check', 'Rombel SD'],
+    ['Mata Pelajaran', c.subjects, 'star', 'Master mapel'],
+    ['LP / TP', c.learning_objectives, 'check', 'Tujuan pembelajaran'],
+    ['Penugasan Guru', c.teacher_assignments, 'users', 'Penugasan mapel/kelas'],
+    ['Ekskul', c.extracurriculars, 'star', 'Master kegiatan ekskul'],
+    ['Peserta Ekskul', c.extracurricular_members, 'users', 'Keanggotaan ekskul'],
+    ['Penugasan Rapor', c.report_class_assignments, 'check', 'Walas/partner/tahfizh'],
+    ['Akun Login', c.user_accounts, 'users', 'Akun guru CQlass'],
+  ];
+
+  const tahfizh = Number(c.tahfizh_teacher_assignments || 0);
+  const config = Number(c.report_config || 0);
+
+  body.innerHTML = `
+    <div class="wd-kpis" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+      ${cards.map(([label,val,icon,note])=>`
+        <div class="wd-kpi">
+          <div class="wd-kpi-icon">${wdIcon(icon)}</div>
+          <div class="wd-kpi-value">${Number(val || 0).toLocaleString('id-ID')}</div>
+          <div class="wd-kpi-label">${escapeHtml(label)}</div>
+          <div class="wd-kpi-note">${escapeHtml(note)}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="wd-grid-2">
+      <div class="wd-card">
+        <div class="wd-card-head">
+          <div>
+            <div class="wd-card-title">Status Sinkronisasi Master</div>
+            <div class="wd-card-sub">Ringkasan tabel utama yang dibaca langsung dari Supabase.</div>
+          </div>
+          <span class="wd-chip">LIVE</span>
+        </div>
+        <div class="wd-status-line"><span>Siswa</span><b>${Number(c.students||0).toLocaleString('id-ID')}</b></div>
+        <div class="wd-status-line"><span>Guru</span><b>${Number(c.teachers||0).toLocaleString('id-ID')}</b></div>
+        <div class="wd-status-line"><span>Kelas</span><b>${Number(c.classes||0).toLocaleString('id-ID')}</b></div>
+        <div class="wd-status-line"><span>Mapel</span><b>${Number(c.subjects||0).toLocaleString('id-ID')}</b></div>
+        <div class="wd-status-line"><span>LP/TP</span><b>${Number(c.learning_objectives||0).toLocaleString('id-ID')}</b></div>
+        <div class="wd-status-line"><span>Konfigurasi Rapor</span><b>${config.toLocaleString('id-ID')}</b></div>
+      </div>
+
+      <div class="wd-card">
+        <div class="wd-card-head">
+          <div>
+            <div class="wd-card-title">Pemeriksaan Tahfizh</div>
+            <div class="wd-card-sub">Jumlah assignment ditampilkan, tetapi integritas datanya tetap perlu diverifikasi.</div>
+          </div>
+          <span class="wd-chip">CHECK</span>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:12px;margin:14px 0 8px;">
+          <div style="font-size:40px;font-weight:800;line-height:1;">${tahfizh.toLocaleString('id-ID')}</div>
+          <div style="font-size:12px;color:var(--text-muted);padding-bottom:4px;">assignment guru Tahfizh</div>
+        </div>
+        <div class="wd-status-line"><span>Status</span><span class="wd-status-pill no">PERLU VERIFIKASI</span></div>
+        <div style="font-size:12px;line-height:1.6;color:var(--text-muted);margin-top:10px;">Angka ini tidak otomatis dianggap salah. Kita akan cek duplikasi <code>source_ref</code> dan kesesuaian dengan sheet Tahfizh pada tahap berikutnya.</div>
+      </div>
+    </div>
+
+    <div class="wd-card">
+      <div class="wd-card-head">
+        <div>
+          <div class="wd-card-title">Database CQlass Siap</div>
+          <div class="wd-card-sub">Dashboard ini hanya membaca data master. Data transaksi seperti absensi, reward, kedisiplinan, nilai, dan PjBL akan kita hubungkan berikutnya.</div>
+        </div>
+      </div>
+    </div>`;
 }
 
 async function loadDashboardWalasFast(requestToken){
