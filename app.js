@@ -5,6 +5,7 @@ const SUPABASE_URL = 'https://lmglkxzemtvxcgktiord.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
 const AUTH_URL = `${SUPABASE_URL}/functions/v1/auth-user`;
 const DASHBOARD_MASTER_URL = `${SUPABASE_URL}/functions/v1/dashboard-master`;
+const ATTENDANCE_URL = `${SUPABASE_URL}/functions/v1/attendance`;
 
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
@@ -1076,185 +1077,444 @@ function toggleRiwayatMasalah(id,button){
 }
 
 /* ==========================================================
-   MODUL: ABSENSI (Morning Talk)
+   MODUL: ABSENSI / MORNING TALK — SUPABASE
    ========================================================== */
-let absensiState = { kelas:null, siswa:[], status:{}, tema:'', fotoBase64:null, fotoMime:null };
+const ABSENSI_STATUS = ['Hadir','Sakit','Izin','Alfa','Terlambat'];
+
+let absensiState = {
+  kelasId: '',
+  kelasNama: '',
+  tanggal: '',
+  classes: [],
+  siswa: [],
+  status: {},
+  catatan: {},
+  tema: '',
+  fotoBase64: null,
+  fotoMime: null,
+  fotoName: '',
+  fotoUrl: '',
+  existing: false,
+  loading: false
+};
+
+function jakartaTodayISO(){
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function injectAbsensiSupabaseStyles(){
+  if(document.getElementById('absensi-supabase-style')) return;
+  const style = document.createElement('style');
+  style.id = 'absensi-supabase-style';
+  style.textContent = `
+    .abs-top-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.35fr);gap:14px}
+    .abs-field label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:7px}
+    .abs-control{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;background:#fff;font:inherit;color:var(--text);outline:none}
+    .abs-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(8,126,124,.10)}
+    .abs-summary{display:grid;grid-template-columns:repeat(5,minmax(92px,1fr));gap:10px;margin:14px 0}
+    .abs-summary-item{padding:13px;border:1px solid var(--border);border-radius:13px;background:#fff;text-align:center}
+    .abs-summary-item strong{display:block;font-size:22px;color:var(--primary)}
+    .abs-summary-item span{font-size:11.5px;color:var(--muted);font-weight:700}
+    .abs-student-row{display:grid;grid-template-columns:minmax(190px,1fr) minmax(360px,1.6fr);gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+    .abs-student-row:last-child{border-bottom:0}
+    .abs-student-name{font-weight:800;color:var(--text)}
+    .abs-student-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
+    .abs-statuses{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+    .abs-status-btn{border:1px solid var(--border);background:#fff;border-radius:999px;padding:7px 10px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;color:var(--muted);transition:.15s}
+    .abs-status-btn:hover{transform:translateY(-1px)}
+    .abs-status-btn.selected{background:var(--primary);border-color:var(--primary);color:#fff}
+    .abs-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:14px;flex-wrap:wrap}
+    .abs-save-btn{min-width:190px}
+    .abs-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:10.5px;font-weight:900;background:#e9f7f6;color:var(--primary)}
+    .abs-photo-box{border:1.5px dashed var(--border);border-radius:13px;padding:16px;text-align:center;cursor:pointer;background:#fbfdfd}
+    .abs-photo-box:hover{border-color:var(--primary)}
+    .abs-photo-preview{display:none;max-width:100%;max-height:220px;border-radius:12px;margin-top:10px;object-fit:cover}
+    .abs-empty{padding:30px 15px;text-align:center;color:var(--muted)}
+    .abs-note{margin-top:7px;width:100%;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font:inherit;font-size:11.5px;display:none}
+    .abs-note.show{display:block}
+    @media(max-width:800px){
+      .abs-top-grid{grid-template-columns:1fr}
+      .abs-summary{grid-template-columns:repeat(2,1fr)}
+      .abs-student-row{grid-template-columns:1fr}
+      .abs-statuses{justify-content:flex-start}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+async function attendanceRequest(action, payload={}, options={}){
+  const token = getAuthToken();
+  if(!token) throw new Error('Sesi login tidak ditemukan.');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs || 30000);
+
+  try{
+    const response = await fetch(ATTENDANCE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type':'application/json',
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'x-session-token': token
+      },
+      body: JSON.stringify({ action, ...payload }),
+      signal: controller.signal
+    });
+
+    const raw = await response.text();
+    let data = {};
+    try{ data = raw ? JSON.parse(raw) : {}; }
+    catch(_){ throw new Error(`Respons Absensi bukan JSON. HTTP ${response.status}.`); }
+
+    if(!response.ok || data.success === false){
+      const map = {
+        session_invalid:'Sesi login tidak valid. Silakan login ulang.',
+        session_expired:'Sesi login telah berakhir. Silakan login ulang.',
+        forbidden:'Akun ini tidak memiliki akses ke Absensi.',
+        class_forbidden:'Anda tidak memiliki akses ke kelas tersebut.',
+        class_not_found:'Kelas tidak ditemukan.',
+        edit_window_closed:'Absensi tanggal tersebut sudah melewati batas waktu koreksi.',
+        future_date_not_allowed:'Tanggal absensi tidak boleh melebihi hari ini.',
+        invalid_status:'Terdapat status kehadiran yang tidak valid.',
+        theme_required:'Tema Morning Talk wajib diisi.',
+        photo_too_large:'Ukuran foto terlalu besar. Maksimal 4 MB.',
+        photo_type_not_allowed:'Format foto harus JPG, PNG, atau WEBP.'
+      };
+      throw new Error(map[data.error] || data.message || data.error || `Gagal memproses Absensi (HTTP ${response.status}).`);
+    }
+    return data;
+  }catch(err){
+    if(err?.name === 'AbortError') throw new Error('Server Absensi terlalu lama merespons.');
+    throw err;
+  }finally{
+    clearTimeout(timeoutId);
+  }
+}
 
 function renderAbsensi(content){
-  const isWalas = currentUser.role === 'walas';
+  injectAbsensiSupabaseStyles();
+  absensiState = {
+    kelasId: '',
+    kelasNama: '',
+    tanggal: jakartaTodayISO(),
+    classes: [],
+    siswa: [],
+    status: {},
+    catatan: {},
+    tema: '',
+    fotoBase64: null,
+    fotoMime: null,
+    fotoName: '',
+    fotoUrl: '',
+    existing: false,
+    loading: false
+  };
+
   content.innerHTML = `
     <div class="page-title">Absensi — Morning Talk</div>
-    <div class="page-sub">Catat kehadiran siswa saat Morning Talk hari ini.</div>
+    <div class="page-sub">Kehadiran siswa tersimpan langsung ke Supabase.</div>
 
-    ${!isWalas ? `
     <div class="card">
-      <div class="card-title">Pilih Kelas</div>
-      <input type="text" id="absensi-kelas-input" placeholder="Ketik nama kelas persis, contoh: 1 Banin A"
-        style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
-    </div>` : ''}
-
-    <div id="absensi-body"></div>
-  `;
-
-  if(isWalas){
-    absensiState.kelas = currentUser.kelas;
-    loadAbsensiForKelas();
-  } else {
-    document.getElementById('absensi-kelas-input').addEventListener('change', (e) => {
-      absensiState.kelas = e.target.value.trim();
-      loadAbsensiForKelas();
-    });
-  }
-}
-
-async function loadAbsensiForKelas(){
-  if(!absensiState.kelas) return;
-  const body = document.getElementById('absensi-body');
-  body.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat data...</div>`;
-
-  const [cek, siswaRes] = await Promise.all([
-    callApi('getAbsensiHariIni', { kelas: absensiState.kelas }),
-    callApi('getSiswaByKelas', { kelas: absensiState.kelas })
-  ]);
-
-  if(cek.sudahAbsen){
-    renderAbsensiSudahDiisi(cek);
-    return;
-  }
-
-  absensiState.siswa = siswaRes.data || [];
-  absensiState.status = {};
-  absensiState.tema = '';
-  absensiState.siswa.forEach(s => absensiState.status[s.nis] = 'Hadir');
-  renderAbsensiForm();
-}
-
-function renderAbsensiSudahDiisi(cek){
-  const body = document.getElementById('absensi-body');
-  body.innerHTML = `
-    <div class="card">
-      <div class="card-title">Sudah diisi hari ini</div>
-      ${cek.temaMT ? `<div style="font-size:13.5px; margin-bottom:14px;"><strong>Tema Morning Talk:</strong> ${escapeHtml(cek.temaMT)}</div>` : `<div style="font-size:12.5px; color:var(--muted); margin-bottom:14px;">Tema Morning Talk belum diisi.</div>`}
-      <div class="rekap-grid">
-        <div class="rekap-box"><div class="num" style="color:var(--success)">${cek.rekap.Hadir}</div><div class="lbl">Hadir</div></div>
-        <div class="rekap-box"><div class="num" style="color:var(--warn)">${cek.rekap.Sakit}</div><div class="lbl">Sakit</div></div>
-        <div class="rekap-box"><div class="num" style="color:#6A8FA6">${cek.rekap.Izin}</div><div class="lbl">Izin</div></div>
-        <div class="rekap-box"><div class="num" style="color:var(--danger)">${cek.rekap.Alfa}</div><div class="lbl">Alfa</div></div>
+      <div class="abs-top-grid">
+        <div class="abs-field">
+          <label>KELAS</label>
+          <select id="absensi-kelas-select" class="abs-control" onchange="absensiPilihKelas(this.value)">
+            <option value="">Memuat daftar kelas...</option>
+          </select>
+        </div>
+        <div class="abs-field">
+          <label>TANGGAL</label>
+          <input id="absensi-tanggal" class="abs-control" type="date" value="${absensiState.tanggal}" max="${absensiState.tanggal}" onchange="absensiUbahTanggal(this.value)">
+        </div>
       </div>
-      <div style="font-size:12.5px;color:var(--muted)">Total tercatat: ${cek.total} siswa</div>
+    </div>
+
+    <div id="absensi-body">
+      <div class="card"><span class="spinner"></span> Memuat akses dan daftar kelas...</div>
     </div>
   `;
+
+  bootstrapAbsensi();
 }
 
-function renderAbsensiForm(){
+async function bootstrapAbsensi(){
   const body = document.getElementById('absensi-body');
-  if(absensiState.siswa.length === 0){
-    body.innerHTML = `<div class="empty-state"><div class="icon">—</div>Belum ada data siswa untuk kelas ini di sheet Siswa.</div>`;
+  try{
+    const res = await attendanceRequest('bootstrap');
+    absensiState.classes = res.classes || [];
+
+    const select = document.getElementById('absensi-kelas-select');
+    if(!select) return;
+
+    select.innerHTML = `<option value="">— Pilih kelas —</option>` +
+      absensiState.classes.map(k => `<option value="${escapeHtml(k.id)}">${escapeHtml(k.name)}</option>`).join('');
+
+    const preferredId = res.default_class_id || '';
+    if(preferredId && absensiState.classes.some(k => k.id === preferredId)){
+      select.value = preferredId;
+      absensiPilihKelas(preferredId);
+    } else if(absensiState.classes.length === 1){
+      select.value = absensiState.classes[0].id;
+      absensiPilihKelas(absensiState.classes[0].id);
+    } else {
+      body.innerHTML = `<div class="card"><div class="abs-empty">Pilih kelas untuk mulai mengisi Absensi Morning Talk.</div></div>`;
+    }
+  }catch(err){
+    body.innerHTML = `<div class="card"><div class="abs-empty">${escapeHtml(err.message || 'Gagal memuat Absensi.')}</div></div>`;
+    showToast(err.message || 'Gagal memuat Absensi', true);
+  }
+}
+
+function absensiPilihKelas(classId){
+  absensiState.kelasId = classId || '';
+  const c = absensiState.classes.find(x => x.id === classId);
+  absensiState.kelasNama = c?.name || '';
+  if(classId) loadAbsensiSupabase();
+  else document.getElementById('absensi-body').innerHTML = `<div class="card"><div class="abs-empty">Pilih kelas terlebih dahulu.</div></div>`;
+}
+
+function absensiUbahTanggal(value){
+  absensiState.tanggal = value || jakartaTodayISO();
+  if(absensiState.kelasId) loadAbsensiSupabase();
+}
+
+async function loadAbsensiSupabase(){
+  if(!absensiState.kelasId) return;
+  const body = document.getElementById('absensi-body');
+  body.innerHTML = `<div class="card"><span class="spinner"></span> Memuat siswa dan absensi...</div>`;
+
+  try{
+    const res = await attendanceRequest('load', {
+      class_id: absensiState.kelasId,
+      date: absensiState.tanggal
+    });
+
+    absensiState.siswa = res.students || [];
+    absensiState.existing = Boolean(res.session);
+    absensiState.tema = res.session?.theme || '';
+    absensiState.fotoUrl = res.session?.photo_url || '';
+    absensiState.fotoBase64 = null;
+    absensiState.fotoMime = null;
+    absensiState.fotoName = '';
+    absensiState.status = {};
+    absensiState.catatan = {};
+
+    const existingByStudent = {};
+    (res.records || []).forEach(r => existingByStudent[r.student_id] = r);
+
+    absensiState.siswa.forEach(s => {
+      const old = existingByStudent[s.id];
+      absensiState.status[s.id] = old?.status || 'Hadir';
+      absensiState.catatan[s.id] = old?.note || '';
+    });
+
+    renderAbsensiSupabaseForm(res);
+  }catch(err){
+    body.innerHTML = `<div class="card"><div class="abs-empty">${escapeHtml(err.message || 'Gagal memuat data.')}</div></div>`;
+    showToast(err.message || 'Gagal memuat Absensi', true);
+  }
+}
+
+function rekapAbsensiState(){
+  const out = Object.fromEntries(ABSENSI_STATUS.map(s => [s,0]));
+  Object.values(absensiState.status).forEach(s => {
+    if(out[s] !== undefined) out[s]++;
+  });
+  return out;
+}
+
+function renderAbsensiSupabaseForm(res){
+  const body = document.getElementById('absensi-body');
+  if(!absensiState.siswa.length){
+    body.innerHTML = `<div class="card"><div class="abs-empty">Tidak ada siswa aktif yang ditemukan untuk kelas ini.</div></div>`;
     return;
   }
 
+  const editable = res.editable !== false;
+  const rekap = rekapAbsensiState();
+
   body.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div>
+          <div class="card-title" style="margin-bottom:3px">Morning Talk — ${escapeHtml(absensiState.kelasNama)}</div>
+          <div style="font-size:12px;color:var(--muted)">${escapeHtml(absensiState.tanggal)} · ${absensiState.siswa.length} siswa</div>
+        </div>
+        <span class="abs-badge">${absensiState.existing ? 'SUDAH TERSIMPAN · BISA DIPERBARUI' : 'BELUM TERSIMPAN'}</span>
+      </div>
+
+      <div class="abs-summary" id="absensi-summary">
+        ${ABSENSI_STATUS.map(st => `<div class="abs-summary-item"><strong data-abs-count="${st}">${rekap[st]}</strong><span>${st}</span></div>`).join('')}
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">Tema Morning Talk</div>
-      <input type="text" id="tema-input" placeholder="Contoh: Adab kepada orang tua" value="${escapeHtml(absensiState.tema || '')}"
-        style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;"
-        oninput="absensiState.tema = this.value">
+      <input type="text" id="tema-input" class="abs-control" placeholder="Contoh: Adab kepada orang tua" value="${escapeHtml(absensiState.tema)}" ${editable?'':'disabled'}
+        oninput="absensiState.tema=this.value">
     </div>
 
     <div class="card">
-      <div class="card-title">Foto Kondisi Kelas</div>
-      <div class="foto-upload" id="foto-upload-box" onclick="document.getElementById('foto-input').click()">
-        Klik untuk unggah 1 foto suasana Morning Talk
+      <div class="card-title">Foto Kondisi Kelas <span style="font-size:11px;color:var(--muted);font-weight:600">(opsional)</span></div>
+      <div class="abs-photo-box" onclick="${editable ? "document.getElementById('foto-input').click()" : "void(0)"}">
+        <div id="foto-upload-box">${absensiState.fotoUrl ? 'Klik untuk mengganti foto Morning Talk' : 'Klik untuk memilih 1 foto suasana Morning Talk'}</div>
       </div>
-      <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="handleFotoSelect(event)">
-      <img id="foto-preview" style="max-width:100%;max-height:160px;border-radius:8px;margin-top:10px;display:none;">
+      <input type="file" id="foto-input" accept="image/jpeg,image/png,image/webp" style="display:none" ${editable?'':'disabled'} onchange="handleFotoSelect(event)">
+      <img id="foto-preview" class="abs-photo-preview" ${absensiState.fotoUrl ? `src="${escapeHtml(absensiState.fotoUrl)}" style="display:block"` : ''}>
     </div>
 
     <div class="card">
-      <div class="card-title">Kehadiran Siswa (${absensiState.siswa.length} siswa)</div>
-      <div id="siswa-list"></div>
-    </div>
+      <div class="card-title">Kehadiran Siswa</div>
+      <div id="siswa-list">
+        ${absensiState.siswa.map(s => {
+          const nis = s.nis || s.nisn || '-';
+          const current = absensiState.status[s.id] || 'Hadir';
+          return `
+            <div class="abs-student-row">
+              <div>
+                <div class="abs-student-name">${escapeHtml(s.name)}</div>
+                <div class="abs-student-meta">NIS ${escapeHtml(nis)}</div>
+                <input class="abs-note ${current==='Terlambat'?'show':''}" id="abs-note-${escapeHtml(s.id)}"
+                  value="${escapeHtml(absensiState.catatan[s.id] || '')}" placeholder="Catatan, mis. terlambat 10 menit"
+                  ${editable?'':'disabled'} oninput="absensiState.catatan['${escapeHtml(s.id)}']=this.value">
+              </div>
+              <div class="abs-statuses" data-student="${escapeHtml(s.id)}">
+                ${ABSENSI_STATUS.map(st => `
+                  <button type="button" class="abs-status-btn ${current===st?'selected':''}"
+                    ${editable?'':'disabled'}
+                    onclick="setStatusSupabase('${escapeHtml(s.id)}','${st}',this)">${st}</button>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
 
-    <button class="btn" id="submit-absensi-btn" onclick="submitAbsensiForm()">Simpan Absensi</button>
+      <div class="abs-actions">
+        ${!editable ? `<span style="font-size:12px;color:var(--danger);font-weight:700">${escapeHtml(res.edit_message || 'Data sudah tidak dapat diedit.')}</span>` : ''}
+        ${editable ? `<button class="btn abs-save-btn" id="submit-absensi-btn" onclick="submitAbsensiSupabase()">💾 ${absensiState.existing?'Perbarui':'Simpan'} Absensi</button>` : ''}
+      </div>
+    </div>
   `;
-
-  const list = document.getElementById('siswa-list');
-  absensiState.siswa.forEach(s => {
-    const row = document.createElement('div');
-    row.className = 'siswa-row';
-    row.innerHTML = `
-      <div><div class="siswa-name">${escapeHtml(s.nama)}</div><div class="siswa-nis">NIS ${escapeHtml(s.nis)}</div></div>
-      <div class="status-btns" data-nis="${escapeHtml(s.nis)}">
-        ${['Hadir','Sakit','Izin','Alfa'].map(st => `<button type="button" class="status-btn sel-${st} ${absensiState.status[s.nis]===st?'selected':''}" onclick="setStatus('${escapeHtml(s.nis)}','${st}')">${st}</button>`).join('')}
-      </div>
-    `;
-    list.appendChild(row);
-  });
 }
 
-function setStatus(nis, status){
-  absensiState.status[nis] = status;
-  document.querySelectorAll(`.status-btns[data-nis="${nis}"] .status-btn`).forEach(btn => {
-    btn.classList.toggle('selected', btn.classList.contains('sel-' + status));
+function setStatusSupabase(studentId, status){
+  if(!ABSENSI_STATUS.includes(status)) return;
+  absensiState.status[studentId] = status;
+
+  document.querySelectorAll(`.abs-statuses[data-student="${CSS.escape(studentId)}"] .abs-status-btn`).forEach(btn => {
+    btn.classList.toggle('selected', btn.textContent.trim() === status);
+  });
+
+  const note = document.getElementById(`abs-note-${studentId}`);
+  if(note) note.classList.toggle('show', status === 'Terlambat');
+
+  const rekap = rekapAbsensiState();
+  ABSENSI_STATUS.forEach(st => {
+    const el = document.querySelector(`[data-abs-count="${st}"]`);
+    if(el) el.textContent = String(rekap[st] || 0);
   });
 }
 
 function handleFotoSelect(e){
-  const file = e.target.files[0];
+  const file = e.target.files?.[0];
   if(!file) return;
+
+  const allowed = ['image/jpeg','image/png','image/webp'];
+  if(!allowed.includes(file.type)){
+    showToast('Foto harus JPG, PNG, atau WEBP', true);
+    e.target.value = '';
+    return;
+  }
+
+  if(file.size > 4 * 1024 * 1024){
+    showToast('Ukuran foto maksimal 4 MB', true);
+    e.target.value = '';
+    return;
+  }
+
   absensiState.fotoMime = file.type;
+  absensiState.fotoName = file.name;
+
   const reader = new FileReader();
   reader.onload = () => {
-    absensiState.fotoBase64 = reader.result.split(',')[1];
-    document.getElementById('foto-upload-box').textContent = 'Foto dipilih: ' + file.name;
-    document.getElementById('foto-upload-box').classList.add('has-file');
+    const result = String(reader.result || '');
+    absensiState.fotoBase64 = result.split(',')[1] || '';
+    const box = document.getElementById('foto-upload-box');
+    if(box) box.textContent = `Foto dipilih: ${file.name}`;
     const preview = document.getElementById('foto-preview');
-    preview.src = reader.result;
-    preview.style.display = 'block';
+    if(preview){
+      preview.src = result;
+      preview.style.display = 'block';
+    }
   };
   reader.readAsDataURL(file);
 }
 
-async function submitAbsensiForm(){
+async function uploadFotoAbsensiJikaAda(){
+  if(!absensiState.fotoBase64) return absensiState.fotoUrl || '';
+
+  const res = await attendanceRequest('upload_photo', {
+    class_id: absensiState.kelasId,
+    date: absensiState.tanggal,
+    base64: absensiState.fotoBase64,
+    mime_type: absensiState.fotoMime,
+    filename: absensiState.fotoName || 'morning-talk.jpg'
+  }, { timeoutMs: 45000 });
+
+  return res.photo_path || '';
+}
+
+async function submitAbsensiSupabase(){
   const btn = document.getElementById('submit-absensi-btn');
   const temaInput = document.getElementById('tema-input');
-  if(temaInput) absensiState.tema = temaInput.value.trim();
+  absensiState.tema = (temaInput?.value || absensiState.tema || '').trim();
 
   if(!absensiState.tema){
-    showToast('Isi dulu tema Morning Talk hari ini', true);
+    showToast('Isi tema Morning Talk terlebih dahulu.', true);
+    temaInput?.focus();
+    return;
+  }
+
+  if(!absensiState.siswa.length){
+    showToast('Daftar siswa kosong.', true);
     return;
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
+  const original = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span>Menyimpan ke Supabase...';
 
   try{
-    let fotoUrl = '';
-    if(absensiState.fotoBase64){
-      const uploadRes = await callApi('uploadFotoMT', {
-        base64: absensiState.fotoBase64,
-        mimeType: absensiState.fotoMime,
-        filename: `MT_${absensiState.kelas}_${new Date().toISOString().slice(0,10)}.jpg`
-      });
-      if(uploadRes.success) fotoUrl = uploadRes.url;
-    }
+    const photoPath = await uploadFotoAbsensiJikaAda();
 
-    const data = absensiState.siswa.map(s => ({ nis: s.nis, nama: s.nama, status: absensiState.status[s.nis] }));
-    const res = await callApi('submitAbsensi', {
-      kelas: absensiState.kelas,
-      temaMT: absensiState.tema,
-      dicatatOleh: currentUser.nama,
-      fotoUrl,
-      data
-    });
+    const records = absensiState.siswa.map(s => ({
+      student_id: s.id,
+      status: absensiState.status[s.id] || 'Hadir',
+      note: (absensiState.catatan[s.id] || '').trim()
+    }));
 
-    if(res.success){
-      showToast('Absensi berhasil disimpan');
-      loadAbsensiForKelas();
-    }
-  } finally {
+    await attendanceRequest('save', {
+      class_id: absensiState.kelasId,
+      date: absensiState.tanggal,
+      theme: absensiState.tema,
+      photo_path: photoPath,
+      records
+    }, { timeoutMs: 45000 });
+
+    showToast(absensiState.existing ? 'Absensi berhasil diperbarui' : 'Absensi berhasil disimpan');
+    await loadAbsensiSupabase();
+  }catch(err){
+    showToast(err.message || 'Gagal menyimpan Absensi', true);
+  }finally{
     btn.disabled = false;
-    btn.textContent = 'Simpan Absensi';
+    btn.innerHTML = original;
   }
 }
 
