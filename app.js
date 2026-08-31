@@ -10,6 +10,7 @@ const STUDENT_POINTS_URL = `${SUPABASE_URL}/functions/v1/student-points`;
 const ROLE_DASHBOARD_URL = `${SUPABASE_URL}/functions/v1/role-dashboard`;
 const EXTRACURRICULAR_PUBLIC_URL = `${SUPABASE_URL}/functions/v1/extracurricular-public`;
 const STUDENT_CASES_URL = `${SUPABASE_URL}/functions/v1/student-cases`;
+const ACADEMIC_SCORES_URL = `${SUPABASE_URL}/functions/v1/academic-scores`;
 
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
@@ -531,13 +532,12 @@ async function submitGantiUsername(e){
    ========================================================== */
 const MODULE_GROUPS = [
   {
-    id: 'akademik', label: 'Akademik', roles: ['walas','kesiswaan','pimpinan'],
+    id: 'akademik', label: 'Akademik', roles: ['guru','walas','akademik','pimpinan'],
     items: [
-      { id: 'leger',      label: 'Legger Nilai', roles: ['walas','kesiswaan','pimpinan'], built: true,  render: renderLegger },
-      { id: 'cp',         label: 'Capaian Pembelajaran', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderCPBulanan },
-      { id: 'bilingual',  label: 'Bilingual', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderVocabularyBulanan },
-      { id: 'pjbl',       label: 'PjBL',        roles: ['walas','kesiswaan','pimpinan'], built: true,  render: renderPjBL },
-      { id: 'rapor',    label: 'Cetak Rapor', roles: ['walas','kesiswaan','pimpinan'], built: true,  render: renderCetakRapor }
+      { id: 'leger',      label: 'Input Nilai TP', roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderLegger },
+      { id: 'bilingual',  label: 'Bilingual', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderVocabularyBulanan },
+      { id: 'pjbl',       label: 'PjBL',        roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderPjBL },
+      { id: 'rapor',    label: 'Cetak Rapor', roles: ['walas','akademik','pimpinan'], built: true,  render: renderCetakRapor }
     ]
   },
   {
@@ -4245,4 +4245,119 @@ async function loadEkskulRekap(kelas){
   }catch(e){
     body.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(e.message||'Terjadi kendala saat memuat data ekskul.')}</div>`;
   }
+}
+
+
+/* ==========================================================
+   AKADEMIK V7 — INPUT NILAI TP SUPABASE
+   Override modul Legger lama. Ringan: bootstrap -> TP -> roster.
+   ========================================================== */
+const academicTPState = {
+  assignments: [], objectives: [], students: [],
+  assignmentId: '', objectiveId: '', academicYear: '2026/2027', semester: 1,
+  canEdit: false, dirty: new Set(), loadToken: 0
+};
+
+async function academicTPRequest(action,payload={},timeoutMs=25000){
+  const token=getAuthToken();
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const res=await fetch(ACADEMIC_SCORES_URL,{
+      method:'POST',signal:ctrl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},
+      body:JSON.stringify({action,...payload,session_token:token})
+    });
+    const text=await res.text();let data={};
+    try{data=text?JSON.parse(text):{}}catch(_){throw new Error(`Respons akademik bukan JSON. HTTP ${res.status}`)}
+    if(!res.ok||data.success===false)throw new Error(data.detail||data.error||`HTTP ${res.status}`);
+    return data;
+  }catch(err){if(err?.name==='AbortError')throw new Error('Server akademik terlalu lama merespons.');throw err}
+  finally{clearTimeout(timer)}
+}
+
+function renderLegger(content){
+  academicTPState.assignments=[];academicTPState.objectives=[];academicTPState.students=[];academicTPState.assignmentId='';academicTPState.objectiveId='';academicTPState.dirty=new Set();
+  content.innerHTML=`
+    <div class="page-title">Input Nilai TP</div>
+    <div class="page-sub">Pilih kelas dan mata pelajaran yang diampu, lalu isi nilai Tujuan Pembelajaran secara cepat.</div>
+    <div id="atp-root"><div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span><span>Menyiapkan penugasan guru...</span></div></div></div>`;
+  academicTPLoadBootstrap();
+}
+
+async function academicTPLoadBootstrap(){
+  const root=document.getElementById('atp-root');if(!root)return;
+  try{
+    const r=await academicTPRequest('bootstrap');
+    academicTPState.assignments=Array.isArray(r.assignments)?r.assignments:[];
+    academicTPState.academicYear=r.academic_year||'2026/2027';academicTPState.semester=Number(r.semester)||1;
+    if(!academicTPState.assignments.length){root.innerHTML='<div class="empty-state"><div class="icon">—</div>Belum ada penugasan kelas/mapel yang dapat ditampilkan untuk akun ini.</div>';return}
+    academicTPState.assignmentId=academicTPState.assignments[0].id;
+    root.innerHTML=`
+      <div class="card">
+        <div class="card-title">Pilih Pembelajaran</div>
+        <div style="display:grid;grid-template-columns:minmax(220px,2fr) minmax(150px,1fr) minmax(120px,.7fr);gap:12px;align-items:end">
+          <div><label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Kelas & Mata Pelajaran</label><select id="atp-assignment" onchange="academicTPAssignmentChanged(this.value)" style="width:100%">${academicTPState.assignments.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.class_name)} — ${escapeHtml(a.subject_name)}${a.can_edit?'':' (lihat)'}</option>`).join('')}</select></div>
+          <div><label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Tahun Ajaran</label><div class="lg-static">${escapeHtml(academicTPState.academicYear)}</div></div>
+          <div><label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Semester</label><select id="atp-semester" onchange="academicTPSemesterChanged(this.value)" style="width:100%"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div>
+        </div>
+      </div>
+      <div id="atp-objective-area"></div><div id="atp-score-area"></div>`;
+    document.getElementById('atp-semester').value=String(academicTPState.semester);
+    await academicTPLoadObjectives();
+  }catch(err){root.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message||'Gagal memuat data akademik.')}</div>`}
+}
+
+async function academicTPAssignmentChanged(id){academicTPState.assignmentId=id;academicTPState.objectiveId='';academicTPState.students=[];academicTPState.dirty=new Set();await academicTPLoadObjectives()}
+async function academicTPSemesterChanged(v){academicTPState.semester=Number(v)||1;if(academicTPState.objectiveId)await academicTPLoadScores()}
+
+async function academicTPLoadObjectives(){
+  const area=document.getElementById('atp-objective-area'),score=document.getElementById('atp-score-area');if(!area)return;
+  score.innerHTML='';area.innerHTML='<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span> Memuat TP...</div>';
+  try{
+    const r=await academicTPRequest('objectives',{assignment_id:academicTPState.assignmentId});
+    academicTPState.objectives=Array.isArray(r.objectives)?r.objectives:[];
+    if(!academicTPState.objectives.length){area.innerHTML='<div class="empty-state"><div class="icon">—</div>Belum ada TP untuk mata pelajaran/kelas ini di master learning_objectives.</div>';return}
+    academicTPState.objectiveId=academicTPState.objectives[0].id;
+    area.innerHTML=`<div class="card"><div class="card-title">Tujuan Pembelajaran</div><select id="atp-objective" onchange="academicTPObjectiveChanged(this.value)" style="width:100%">${academicTPState.objectives.map(o=>`<option value="${escapeHtml(o.id)}">${escapeHtml(o.code)} — ${escapeHtml(o.text)}</option>`).join('')}</select></div>`;
+    await academicTPLoadScores();
+  }catch(err){area.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message||'Gagal memuat TP.')}</div>`}
+}
+async function academicTPObjectiveChanged(id){academicTPState.objectiveId=id;academicTPState.dirty=new Set();await academicTPLoadScores()}
+
+async function academicTPLoadScores(){
+  const area=document.getElementById('atp-score-area');if(!area||!academicTPState.objectiveId)return;
+  const token=++academicTPState.loadToken;area.innerHTML='<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span> Memuat siswa dan nilai...</div>';
+  try{
+    const r=await academicTPRequest('roster_scores',{assignment_id:academicTPState.assignmentId,learning_objective_id:academicTPState.objectiveId,academic_year:academicTPState.academicYear,semester:academicTPState.semester});
+    if(token!==academicTPState.loadToken)return;
+    academicTPState.students=Array.isArray(r.students)?r.students:[];academicTPState.canEdit=Boolean(r.can_edit);academicTPState.dirty=new Set();
+    renderAcademicTPScores();
+  }catch(err){area.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message||'Gagal memuat nilai siswa.')}</div>`}
+}
+
+function renderAcademicTPScores(){
+  const area=document.getElementById('atp-score-area');if(!area)return;
+  if(!academicTPState.students.length){area.innerHTML='<div class="empty-state"><div class="icon">—</div>Belum ada siswa pada kelas ini.</div>';return}
+  const filled=academicTPState.students.filter(s=>s.score!==null&&s.score!==''&&s.score!==undefined).length;
+  area.innerHTML=`
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>Nilai Siswa (${academicTPState.students.length})</span><span id="atp-progress" style="font-size:12px;color:var(--muted)">${filled} terisi</span></div>
+      ${academicTPState.canEdit?'':'<div class="lg-warning">Mode lihat. Nilai hanya dapat disimpan oleh guru yang ditugaskan pada kelas/mapel ini.</div>'}
+      <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:560px"><thead><tr><th style="text-align:left;padding:9px;border-bottom:1px solid var(--border)">No</th><th style="text-align:left;padding:9px;border-bottom:1px solid var(--border)">Nama Siswa</th><th style="width:130px;padding:9px;border-bottom:1px solid var(--border)">Nilai 0–100</th><th style="text-align:left;padding:9px;border-bottom:1px solid var(--border)">Catatan</th></tr></thead><tbody>${academicTPState.students.map((s,i)=>`<tr><td style="padding:8px;border-bottom:1px solid var(--border)">${i+1}</td><td style="padding:8px;border-bottom:1px solid var(--border);font-weight:600">${escapeHtml(s.name)}</td><td style="padding:8px;border-bottom:1px solid var(--border)"><input class="atp-score" data-i="${i}" type="number" inputmode="decimal" min="0" max="100" step="1" value="${s.score??''}" ${academicTPState.canEdit?'':'disabled'} style="width:100%;text-align:center" oninput="academicTPValueChanged(${i},this.value)" onkeydown="academicTPKey(event,${i})"></td><td style="padding:8px;border-bottom:1px solid var(--border)"><input type="text" value="${escapeHtml(s.note||'')}" ${academicTPState.canEdit?'':'disabled'} style="width:100%" placeholder="Opsional" oninput="academicTPNoteChanged(${i},this.value)"></td></tr>`).join('')}</tbody></table></div>
+      ${academicTPState.canEdit?'<div style="display:flex;justify-content:center;margin-top:16px"><button id="atp-save" class="btn" onclick="academicTPSave()" disabled>Simpan Nilai</button></div>':''}
+    </div>`;
+}
+function academicTPValueChanged(i,v){let n=v;if(v!==''){n=Math.max(0,Math.min(100,Number(v)));academicTPState.students[i].score=Number.isFinite(n)?n:''}else academicTPState.students[i].score='';academicTPState.dirty.add(i);academicTPRefreshSave()}
+function academicTPNoteChanged(i,v){academicTPState.students[i].note=v;academicTPState.dirty.add(i);academicTPRefreshSave()}
+function academicTPRefreshSave(){const b=document.getElementById('atp-save');if(b){b.disabled=academicTPState.dirty.size===0;b.textContent=academicTPState.dirty.size?`Simpan Perubahan (${academicTPState.dirty.size})`:'Simpan Nilai'}const p=document.getElementById('atp-progress');if(p)p.textContent=`${academicTPState.students.filter(s=>s.score!==null&&s.score!==''&&s.score!==undefined).length} terisi`}
+function academicTPKey(e,i){if(e.key==='Enter'||e.key==='ArrowDown'){e.preventDefault();document.querySelector(`.atp-score[data-i="${i+1}"]`)?.focus()}else if(e.key==='ArrowUp'){e.preventDefault();document.querySelector(`.atp-score[data-i="${i-1}"]`)?.focus()}}
+async function academicTPSave(){
+  if(!academicTPState.canEdit||!academicTPState.dirty.size)return;
+  const b=document.getElementById('atp-save');if(b){b.disabled=true;b.innerHTML='<span class="spinner"></span>Menyimpan...'}
+  try{
+    const scores=[...academicTPState.dirty].map(i=>({student_id:academicTPState.students[i].id,score:academicTPState.students[i].score===''?null:academicTPState.students[i].score,note:academicTPState.students[i].note||''}));
+    const r=await academicTPRequest('save_scores',{assignment_id:academicTPState.assignmentId,learning_objective_id:academicTPState.objectiveId,academic_year:academicTPState.academicYear,semester:academicTPState.semester,scores},30000);
+    academicTPState.dirty=new Set();showToast(`${r.saved||scores.length} nilai berhasil disimpan.`);await academicTPLoadScores();
+  }catch(err){showToast(err.message||'Nilai gagal disimpan.',true);academicTPRefreshSave()}
 }
