@@ -8,6 +8,8 @@ const DASHBOARD_MASTER_URL = `${SUPABASE_URL}/functions/v1/dashboard-master`;
 const ATTENDANCE_URL = `${SUPABASE_URL}/functions/v1/attendance`;
 const STUDENT_POINTS_URL = `${SUPABASE_URL}/functions/v1/student-points`;
 const ROLE_DASHBOARD_URL = `${SUPABASE_URL}/functions/v1/role-dashboard`;
+const EXTRACURRICULAR_PUBLIC_URL = `${SUPABASE_URL}/functions/v1/extracurricular-public`;
+const STUDENT_CASES_URL = `${SUPABASE_URL}/functions/v1/student-cases`;
 
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
@@ -548,9 +550,9 @@ const MODULE_GROUPS = [
     ]
   },
   {
-    id: 'info', label: 'Info', roles: ['walas','kesiswaan','pimpinan'],
+    id: 'info', label: 'Info', roles: ['walas','kesiswaan','kegiatan','pimpinan'],
     items: [
-      { id: 'ekskul', label: 'Ekskul', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderEkskulRekap }
+      { id: 'ekskul', label: 'Ekskul', roles: ['walas','kesiswaan','kegiatan','pimpinan'], built: true, render: renderEkskulRekap }
     ]
   },
   {
@@ -692,10 +694,13 @@ function setActiveModule(id){
 }
 
 /* ==========================================================
-   MODUL: CATATAN MASALAH SISWA + REKOMENDASI SISTEM (AI)
+   MODUL: CATATAN MASALAH SISWA — SUPABASE V6
    ========================================================== */
 let masalahState = {
-  kelas: null,
+  kelasId: '',
+  kelas: '',
+  classes: [],
+  classLocked: false,
   siswa: [],
   tab: 'baru',
   analisisAI: null,
@@ -710,6 +715,40 @@ function todayStrMasalah(){
   return `${y}-${m}-${d}`;
 }
 
+async function studentCaseRequest(action,payload={},timeoutMs=20000){
+  const token=getAuthToken();
+  if(!token) throw new Error('Sesi login tidak ditemukan. Silakan masuk kembali.');
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const response=await fetch(STUDENT_CASES_URL,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_PUBLISHABLE_KEY,
+        'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'x-session-token':token
+      },
+      body:JSON.stringify({action,...payload}),
+      signal:controller.signal
+    });
+    const raw=await response.text();
+    let data={};
+    try{ data=raw?JSON.parse(raw):{}; }catch(_){ throw new Error(`Respons Masalah Siswa bukan JSON. HTTP ${response.status}.`); }
+    if(!response.ok||data.success===false){
+      const map={
+        session_invalid:'Sesi login sudah tidak berlaku.',session_expired:'Sesi login telah berakhir.',forbidden:'Akun ini tidak memiliki akses Masalah Siswa.',
+        class_forbidden:'Kelas tidak berada dalam akses akun ini.',student_not_in_class:'Siswa tidak ditemukan pada kelas aktif.',story_too_short:'Cerita kejadian minimal 20 karakter.',
+        invalid_date:'Tanggal kejadian tidak valid.',invalid_risk:'Pilihan risiko keselamatan tidak valid.',final_suggestion_required:'Saran final tidak boleh kosong.'
+      };
+      throw new Error(map[data.error]||data.error||`HTTP ${response.status}`);
+    }
+    return data;
+  }catch(err){
+    if(err?.name==='AbortError') throw new Error('Server Masalah Siswa terlalu lama merespons. Silakan coba lagi.');
+    throw err;
+  }finally{ clearTimeout(timer); }
+}
 
 function injectMasalahV55Styles(){
   if(document.getElementById('ms-v55-style')) return;
@@ -717,16 +756,11 @@ function injectMasalahV55Styles(){
   s.textContent=`
     .ms-v55-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .ms-v55-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#eaf7f6;color:var(--primary);font-size:10px;font-weight:900}
-    .ms-v55-picker{position:relative}
-    .ms-v55-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:#fff;cursor:pointer}
+    .ms-v55-picker{position:relative}.ms-v55-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:#fff;cursor:pointer}
     .ms-v55-pop{position:absolute;z-index:50;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--border);border-radius:13px;padding:9px;box-shadow:0 14px 34px rgba(20,60,58,.14)}
-    .ms-v55-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:10px}
-    .ms-v55-option{width:100%;border:0;border-bottom:1px solid var(--border);background:#fff;padding:10px 12px;text-align:left;cursor:pointer;font:inherit;font-size:11.5px;font-weight:800;color:var(--text)}
-    .ms-v55-option:last-child{border-bottom:0}.ms-v55-option:hover{background:#eff9f8}
-    .ms-v55-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-    .ms-v55-filters{display:flex;gap:8px;flex-wrap:wrap}.ms-v55-filters input,.ms-v55-filters select{min-width:190px}
+    .ms-v55-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:10px}.ms-v55-option{width:100%;border:0;border-bottom:1px solid var(--border);background:#fff;padding:10px 12px;text-align:left;cursor:pointer;font:inherit;font-size:11.5px;font-weight:800;color:var(--text)}
+    .ms-v55-option:last-child{border-bottom:0}.ms-v55-option:hover{background:#eff9f8}.ms-v55-filters{display:flex;gap:8px;flex-wrap:wrap}.ms-v55-filters input,.ms-v55-filters select{min-width:190px}
     .ms-v55-save{display:flex;justify-content:center;margin-top:16px}.ms-v55-save .btn{min-width:220px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
-    .ms-v55-note{background:#f7fbfb;border:1px solid var(--border);border-radius:11px;padding:10px 12px;font-size:10.5px;color:var(--muted);line-height:1.5}
     @media(max-width:700px){.ms-v55-filters{width:100%}.ms-v55-filters input,.ms-v55-filters select{width:100%;min-width:0}}
   `;
   document.head.appendChild(s);
@@ -740,396 +774,127 @@ function msV55FilterStudent(){
   const q=(document.getElementById('ms-v55-student-search')?.value||'').toLowerCase().trim();
   document.querySelectorAll('#ms-v55-student-list .ms-v55-option').forEach(el=>el.style.display=(el.dataset.search||'').includes(q)?'block':'none');
 }
-function msV55PickStudent(nis,nama){
+function msV55PickStudent(id,nama){
   const hidden=document.getElementById('ms-siswa'),label=document.getElementById('ms-v55-student-label');
-  if(hidden)hidden.value=nis;if(label)label.innerHTML=`<b>${escapeHtml(nama)}</b>`;
-  msV55ToggleStudent(false);
+  if(hidden)hidden.value=id;if(label)label.innerHTML=`<b>${escapeHtml(nama)}</b>`;msV55ToggleStudent(false);
 }
-function renderMasalahSiswa(content){
+
+async function renderMasalahSiswa(content){
   injectMasalahV55Styles();
-  const isWalas = currentUser.role === 'walas';
-  masalahState.analisisAI = null;
-  content.innerHTML = `
+  masalahState={kelasId:'',kelas:'',classes:[],classLocked:false,siswa:[],tab:'baru',analisisAI:null,riwayat:[]};
+  content.innerHTML=`
     <div class="page-title">Catatan Masalah Siswa</div>
-    <div class="page-sub">Catat kejadian siswa secara faktual, susun tindak lanjut, dan simpan riwayat penanganan.</div>
-
-    ${!isWalas ? `
-      <div class="card">
-        <div class="card-title">Pilih Kelas</div>
-        <input type="text" id="ms-kelas-input" placeholder="Ketik nama kelas persis, contoh: 3A Banat"
-          style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
-      </div>` : ''}
-    <div id="ms-body"></div>
-  `;
-
-  if(isWalas){
-    masalahState.kelas = currentUser.kelas;
-    loadMasalahKelas();
-  } else {
-    const input = document.getElementById('ms-kelas-input');
-    input.addEventListener('change', () => {
-      masalahState.kelas = input.value.trim();
-      loadMasalahKelas();
-    });
-  }
+    <div class="page-sub">Catat kejadian secara faktual dan simpan tindak lanjut langsung ke Supabase.</div>
+    <div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Memuat akses kelas...</div>`;
+  try{
+    const boot=await studentCaseRequest('bootstrap');
+    masalahState.classes=boot.classes||[];masalahState.classLocked=Boolean(boot.class_locked);
+    if(boot.default_class_id){masalahState.kelasId=boot.default_class_id;masalahState.kelas=boot.default_class_name||''}
+    const options=masalahState.classes.map(c=>`<option value="${escapeHtml(c.id)}" ${c.id===masalahState.kelasId?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
+    content.innerHTML=`
+      <div class="page-title">Catatan Masalah Siswa</div>
+      <div class="page-sub">Catat kejadian secara faktual, susun tindak lanjut, dan simpan riwayat penanganan.</div>
+      ${masalahState.classLocked?'':`<div class="card"><div class="card-title">Pilih Kelas</div><select id="ms-kelas-input" class="pv2-control" style="width:100%"><option value="">— Pilih kelas —</option>${options}</select></div>`}
+      <div id="ms-body"></div>`;
+    if(masalahState.classLocked){await loadMasalahKelas();}
+    else{
+      const sel=document.getElementById('ms-kelas-input');
+      sel?.addEventListener('change',async()=>{const c=masalahState.classes.find(x=>x.id===sel.value);masalahState.kelasId=sel.value;masalahState.kelas=c?.name||'';masalahState.tab='baru';masalahState.analisisAI=null;await loadMasalahKelas();});
+    }
+  }catch(err){content.innerHTML+=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message||'Gagal memuat Masalah Siswa.')}</div>`}
 }
 
 async function loadMasalahKelas(){
-  if(!masalahState.kelas) return;
-  const body = document.getElementById('ms-body');
-  body.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat data siswa...</div>`;
-  const res = await callApi('getSiswaByKelas', { kelas: masalahState.kelas });
-  masalahState.siswa = (res.data || []).slice().sort((a,b) => String(a.nama).localeCompare(String(b.nama), 'id'));
-  renderMasalahShell();
+  if(!masalahState.kelasId) return;
+  const body=document.getElementById('ms-body');if(!body)return;
+  body.innerHTML=`<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Memuat data siswa...</div>`;
+  try{
+    const res=await studentCaseRequest('students',{class_id:masalahState.kelasId});
+    masalahState.siswa=(res.students||[]).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'id'));
+    renderMasalahShell();
+  }catch(err){body.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message||'Gagal memuat siswa.')}</div>`}
 }
-
 function renderMasalahShell(){
-  const body = document.getElementById('ms-body');
-  if(!body) return;
-  if(!masalahState.siswa.length){
-    body.innerHTML = `<div class="empty-state"><div class="icon">—</div>Belum ada data siswa untuk kelas ${escapeHtml(masalahState.kelas || '-')}.</div>`;
-    return;
-  }
-
-  body.innerHTML = `
-    <div class="ms-tabs">
-      <button class="ms-tab ${masalahState.tab==='baru'?'active':''}" onclick="switchMasalahTab('baru')">+ Laporan Baru</button>
-      <button class="ms-tab ${masalahState.tab==='riwayat'?'active':''}" onclick="switchMasalahTab('riwayat')">Riwayat</button>
-    </div>
-    <div id="ms-tab-content"></div>
-  `;
+  const body=document.getElementById('ms-body');if(!body)return;
+  if(!masalahState.siswa.length){body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada siswa aktif untuk kelas ${escapeHtml(masalahState.kelas||'-')}.</div>`;return}
+  body.innerHTML=`<div class="ms-tabs"><button class="ms-tab ${masalahState.tab==='baru'?'active':''}" onclick="switchMasalahTab('baru')">+ Laporan Baru</button><button class="ms-tab ${masalahState.tab==='riwayat'?'active':''}" onclick="switchMasalahTab('riwayat')">Riwayat</button></div><div id="ms-tab-content"></div>`;
   renderMasalahTab();
 }
-
-function switchMasalahTab(tab){
-  masalahState.tab = tab;
-  masalahState.analisisAI = null;
-  renderMasalahShell();
-}
-
-function renderMasalahTab(){
-  if(masalahState.tab === 'riwayat') loadRiwayatMasalah();
-  else renderFormMasalah();
-}
-
+function switchMasalahTab(tab){masalahState.tab=tab;masalahState.analisisAI=null;renderMasalahShell()}
+function renderMasalahTab(){if(masalahState.tab==='riwayat')loadRiwayatMasalah();else renderFormMasalah()}
 function renderFormMasalah(){
-  const area = document.getElementById('ms-tab-content');
-  const siswaButtons = masalahState.siswa.map(s => `<button type="button" class="ms-v55-option" data-search="${escapeHtml(String(s.nama||'').toLowerCase())}" onclick="msV55PickStudent('${escapeHtml(s.nis)}','${escapeHtml(s.nama)}')">${escapeHtml(s.nama)}</button>`).join('');
-  area.innerHTML = `
+  const area=document.getElementById('ms-tab-content');
+  const siswaButtons=masalahState.siswa.map(s=>`<button type="button" class="ms-v55-option" data-search="${escapeHtml(String(s.name||'').toLowerCase())}" onclick="msV55PickStudent('${escapeHtml(s.id)}','${escapeHtml(s.name)}')">${escapeHtml(s.name)}</button>`).join('');
+  area.innerHTML=`
     <div class="card">
-      <div class="ms-v55-head"><div><div class="card-title" style="margin:0">Laporan Masalah Siswa</div><div class="ms-help">Tuliskan fakta, bukan label atau diagnosis.</div></div><span class="ms-v55-chip">${escapeHtml(masalahState.kelas||'')}</span></div>
+      <div class="ms-v55-head"><div><div class="card-title" style="margin:0">Laporan Masalah Siswa</div><div class="ms-help">Tuliskan fakta yang terlihat atau terdengar. Hindari label atau diagnosis.</div></div><span class="ms-v55-chip">${escapeHtml(masalahState.kelas||'')}</span></div>
       <div class="ms-grid" style="margin-top:14px">
-        <div class="ms-field ms-v55-picker">
-          <label>Nama siswa</label>
-          <input type="hidden" id="ms-siswa" value="">
-          <button type="button" class="pv2-control ms-v55-trigger" onclick="msV55ToggleStudent()"><span id="ms-v55-student-label">— Pilih / cari siswa —</span>${pointSvg('down',16)}</button>
-          <div class="ms-v55-pop" id="ms-v55-student-pop" hidden>
-            <input class="pv2-control" id="ms-v55-student-search" placeholder="Ketik nama siswa..." oninput="msV55FilterStudent()">
-            <div class="ms-v55-list" id="ms-v55-student-list">${siswaButtons}</div>
-          </div>
-        </div>
-        <div class="ms-field">
-          <label>Tanggal kejadian</label>
-          <input type="date" id="ms-tanggal" value="${todayStrMasalah()}">
-        </div>
+        <div class="ms-field ms-v55-picker"><label>Nama siswa</label><input type="hidden" id="ms-siswa"><button type="button" class="pv2-control ms-v55-trigger" onclick="msV55ToggleStudent()"><span id="ms-v55-student-label">— Pilih / cari siswa —</span>${pointSvg('down',16)}</button><div class="ms-v55-pop" id="ms-v55-student-pop" hidden><input class="pv2-control" id="ms-v55-student-search" placeholder="Ketik nama siswa..." oninput="msV55FilterStudent()"><div class="ms-v55-list" id="ms-v55-student-list">${siswaButtons}</div></div></div>
+        <div class="ms-field"><label>Tanggal kejadian</label><input type="date" id="ms-tanggal" value="${todayStrMasalah()}"></div>
       </div>
-
-      <div class="ms-field">
-        <label>Ceritakan masalah atau kejadian</label>
-        <textarea id="ms-cerita" class="ms-story" maxlength="5000" oninput="updateMasalahCount()" placeholder="Contoh: Saat pelajaran Matematika pukul 09.15, siswa meninggalkan kursi beberapa kali, berbicara kepada teman, dan belum mulai mengerjakan meskipun instruksi sudah diulang. Setelah tugas dibagi menjadi tiga bagian dan duduk dekat guru, siswa mulai mengerjakan..."></textarea>
-        <div class="ms-char-count" id="ms-char-count">0 / 5000</div>
-        <div class="ms-help">Tuliskan fakta yang terlihat atau terdengar: situasi, perilaku, pihak terlibat, frekuensi, dan dampaknya. Hindari label seperti "nakal", "malas", atau diagnosis.</div>
-      </div>
-
-      <div class="ms-field">
-        <label>Tindakan awal yang sudah dilakukan <span style="font-weight:400;color:var(--muted)">(opsional)</span></label>
-        <textarea id="ms-tindakan" placeholder="Contoh: Sudah diajak bicara secara pribadi, dipindahkan tempat duduk, atau diberi waktu menenangkan diri."></textarea>
-      </div>
-
-      <div class="ms-field" style="max-width:360px">
-        <label>Apakah ada risiko keselamatan?</label>
-        <select id="ms-risiko">
-          <option value="Tidak">Tidak</option>
-          <option value="Tidak yakin">Tidak yakin</option>
-          <option value="Ya">Ya</option>
-        </select>
-        <div class="ms-help">Pilih "Ya" untuk kekerasan, ancaman, pelecehan, menyakiti diri/orang lain, benda berbahaya, atau siswa merasa tidak aman.</div>
-      </div>
-
-      <div class="ms-actions">
-        <button class="btn" id="ms-ai-btn" onclick="generateSaranMasalahAI()">Susun Saran Penanganan</button>
-        <span class="ms-help">Rekomendasi sistem berbasis data master masalah dan cocok dengan cerita yang Anda tulis.</span>
-      </div>
-    </div>
-    <div id="ms-ai-result"></div>
-  `;
+      <div class="ms-field"><label>Ceritakan masalah atau kejadian</label><textarea id="ms-cerita" class="ms-story" maxlength="5000" oninput="updateMasalahCount()" placeholder="Contoh: Saat pelajaran Matematika pukul 09.15, siswa meninggalkan kursi beberapa kali dan belum mulai mengerjakan meskipun instruksi sudah diulang..."></textarea><div class="ms-char-count" id="ms-char-count">0 / 5000</div></div>
+      <div class="ms-field"><label>Tindakan awal yang sudah dilakukan <span style="font-weight:400;color:var(--muted)">(opsional)</span></label><textarea id="ms-tindakan" placeholder="Contoh: diajak bicara secara pribadi, dipindahkan tempat duduk, diberi waktu menenangkan diri."></textarea></div>
+      <div class="ms-field" style="max-width:360px"><label>Apakah ada risiko keselamatan?</label><select id="ms-risiko"><option value="Tidak">Tidak</option><option value="Tidak yakin">Tidak yakin</option><option value="Ya">Ya</option></select></div>
+      <div class="ms-actions"><button class="btn" id="ms-ai-btn" onclick="generateSaranMasalahAI()">Susun Saran Penanganan</button><span class="ms-help">Saran dibuat cepat dari cerita dan aturan pendampingan; tetap ditinjau walas sebelum disimpan.</span></div>
+    </div><div id="ms-ai-result"></div>`;
 }
-
-function updateMasalahCount(){
-  const el = document.getElementById('ms-cerita');
-  const count = document.getElementById('ms-char-count');
-  if(el && count) count.textContent = `${el.value.length} / 5000`;
-}
-
-function getSelectedSiswaMasalah(){
-  const nis = document.getElementById('ms-siswa')?.value || '';
-  return masalahState.siswa.find(s => String(s.nis) === String(nis)) || null;
-}
+function updateMasalahCount(){const el=document.getElementById('ms-cerita'),count=document.getElementById('ms-char-count');if(el&&count)count.textContent=`${el.value.length} / 5000`}
+function getSelectedSiswaMasalah(){const id=document.getElementById('ms-siswa')?.value||'';return masalahState.siswa.find(s=>String(s.id)===String(id))||null}
 
 async function generateSaranMasalahAI(){
-  const siswa = getSelectedSiswaMasalah();
-  const tanggal = document.getElementById('ms-tanggal').value;
-  const cerita = document.getElementById('ms-cerita').value.trim();
-  const tindakan = document.getElementById('ms-tindakan').value.trim();
-  const risiko = document.getElementById('ms-risiko').value;
-  const btn = document.getElementById('ms-ai-btn');
-  const result = document.getElementById('ms-ai-result');
-
-  if(!siswa){ showToast('Pilih nama siswa terlebih dahulu.', true); return; }
-  if(!tanggal){ showToast('Tanggal kejadian wajib diisi.', true); return; }
-  if(cerita.length < 20){ showToast('Cerita kejadian masih terlalu singkat.', true); return; }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyusun saran penanganan...';
-  result.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Mencocokkan cerita dengan kata kunci dan master masalah...</div>`;
-
+  const siswa=getSelectedSiswaMasalah(),tanggal=document.getElementById('ms-tanggal')?.value||'',cerita=document.getElementById('ms-cerita')?.value.trim()||'',tindakan=document.getElementById('ms-tindakan')?.value.trim()||'',risiko=document.getElementById('ms-risiko')?.value||'Tidak';
+  if(!siswa){showToast('Pilih siswa terlebih dahulu.',true);return}if(cerita.length<20){showToast('Cerita kejadian minimal 20 karakter.',true);return}if(!tanggal){showToast('Pilih tanggal kejadian.',true);return}
+  const btn=document.getElementById('ms-ai-btn'),result=document.getElementById('ms-ai-result');btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyusun...';
+  result.innerHTML=`<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Menyusun saran penanganan...</div>`;
   try{
-    const res = await callApi('analisisMasalahSiswa', {
-      kelas: masalahState.kelas,
-      nis: siswa.nis,
-      namaSiswa: siswa.nama,
-      tanggalKejadian: tanggal,
-      ceritaWalas: cerita,
-      tindakanAwal: tindakan,
-      risikoKeselamatan: risiko
-    });
-    if(!res.success){
-      const pesan = {
-        cerita_terlalu_singkat: 'Cerita kejadian masih terlalu singkat.',
-      };
-      throw new Error(pesan[res.error] || res.error || 'Analisis sistem gagal.');
-    }
-    masalahState.analisisAI = res.data;
-    renderHasilMasalahAI(siswa, tanggal, cerita, tindakan, risiko);
-  }catch(err){
-    result.innerHTML = `<div class="card"><div class="ms-alert"><strong>Analisis belum berhasil.</strong><br>${escapeHtml(err.message || 'Gagal membaca master masalah di Spreadsheet.')}</div></div>`;
-  }finally{
-    btn.disabled = false;
-    btn.textContent = 'Susun Ulang';
-  }
+    const res=await studentCaseRequest('suggest',{class_id:masalahState.kelasId,student_id:siswa.id,incident_date:tanggal,story:cerita,initial_action:tindakan,safety_risk:risiko});
+    masalahState.analisisAI=res.data;renderHasilMasalahAI(siswa,tanggal,cerita,tindakan,risiko);
+  }catch(err){result.innerHTML=`<div class="card"><div class="ms-alert"><strong>Saran belum berhasil disusun.</strong><br>${escapeHtml(err.message||'Terjadi kendala.')}</div></div>`}
+  finally{btn.disabled=false;btn.textContent='Susun Saran Penanganan'}
 }
-
-function renderListMasalah(items){
-  const arr = Array.isArray(items) ? items : [];
-  if(!arr.length) return '<p style="color:var(--muted)">Belum ada saran.</p>';
-  return `<ul class="ms-ai-list">${arr.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`;
-}
-
+function renderListMasalah(items){return Array.isArray(items)&&items.length?`<ul>${items.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul>`:'<p>-</p>'}
 function formatSaranFinalMasalah(ai){
-  const list = (title, values) => {
-    const arr = Array.isArray(values) ? values : [];
-    return arr.length ? `\n${title}\n${arr.map(x => '- ' + x).join('\n')}` : '';
-  };
-  return [
-    `RINGKASAN SITUASI\n${ai.ringkasan || '-'}`,
-    list('KEMUNGKINAN KEBUTUHAN SISWA', ai.kemungkinanKebutuhan),
-    list('TUJUAN PENDAMPINGAN', ai.tujuanPendampingan),
-    list('PENANGANAN LANGSUNG', ai.penangananLangsung),
-    list('STRATEGI DI KELAS', ai.strategiKelas),
-    ai.kalimatGuru ? `\nCONTOH KALIMAT GURU\n${ai.kalimatGuru}` : '',
-    ai.saranOrangTua ? `\nKOORDINASI ORANG TUA\n${ai.saranOrangTua}` : '',
-    list('RENCANA PEMANTAUAN', ai.rencanaPemantauan),
-    list('INDIKATOR PERBAIKAN', ai.indikatorPerbaikan),
-    ai.saranEskalasi ? `\nKAPAN PERLU DITERUSKAN\n${ai.saranEskalasi}` : '',
-    list('HAL YANG PERLU DIHINDARI', ai.halDihindari)
-  ].filter(Boolean).join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  const p=[];if(ai.penangananLangsung?.length)p.push('Penanganan langsung:\n- '+ai.penangananLangsung.join('\n- '));if(ai.strategiKelas?.length)p.push('Strategi di kelas:\n- '+ai.strategiKelas.join('\n- '));if(ai.saranOrangTua)p.push('Koordinasi orang tua:\n'+ai.saranOrangTua);if(ai.rencanaPemantauan?.length)p.push('Pemantauan:\n- '+ai.rencanaPemantauan.join('\n- '));if(ai.saranEskalasi)p.push('Eskalasi:\n'+ai.saranEskalasi);return p.join('\n\n')
 }
-
-function renderHasilMasalahAI(siswa, tanggal, cerita, tindakan, risiko){
-  const ai = masalahState.analisisAI;
-  const result = document.getElementById('ms-ai-result');
-  const urgent = Boolean(ai.mendesak) || risiko === 'Ya';
-  const flags = [
-    ai.perluOrangTua ? 'Orang tua' : '',
-    ai.perluKesiswaan ? 'Kesiswaan' : '',
-    ai.perluUKS ? 'UKS' : ''
-  ].filter(Boolean);
-  const finalText = formatSaranFinalMasalah(ai);
-
-  result.innerHTML = `
-    <div class="card">
-      ${urgent ? `<div class="ms-alert"><strong>Perlu perhatian segera.</strong><br>Utamakan keselamatan siswa dan teruskan kepada kesiswaan/pimpinan sekolah sesuai prosedur perlindungan anak. Rekomendasi sistem tidak menggantikan penanganan resmi sekolah.</div>` : ''}
-      <div class="ms-ai-head">
-        <div>
-          <div class="ms-ai-title">Saran Penanganan &amp; Tindak Lanjut</div>
-          <div class="ms-badges">
-            <span class="ms-badge">${escapeHtml(ai.kategori || '-')}</span>
-            <span class="ms-badge attention">${escapeHtml(ai.tingkatPerhatian || '-')}</span>
-            ${typeof ai.tingkatKecocokan === 'number' ? `<span class="ms-badge">Kecocokan ${escapeHtml(String(ai.tingkatKecocokan))}%</span>` : ''}
-            <span class="ms-badge ${urgent?'urgent':'safe'}">${urgent?'Mendesak':'Perlu ditinjau walas'}</span>
-            ${flags.map(x => `<span class="ms-badge">Koordinasi: ${escapeHtml(x)}</span>`).join('')}
-          </div>
-        </div>
-        <div style="font-size:11.5px;color:var(--muted);text-align:right">Evaluasi: <strong>${escapeHtml(ai.tanggalEvaluasi || '-')}</strong></div>
-      </div>
-
-      <div class="ms-ai-section"><h4>Masalah utama</h4><p>${escapeHtml(ai.masalahUtama || '-')}</p></div>
-      <div class="ms-ai-section"><h4>Ringkasan situasi</h4><p>${escapeHtml(ai.ringkasan || '-')}</p></div>
-      <div class="ms-grid">
-        <div class="ms-ai-section"><h4>Kemungkinan kebutuhan siswa</h4>${renderListMasalah(ai.kemungkinanKebutuhan)}</div>
-        <div class="ms-ai-section"><h4>Tujuan pendampingan</h4>${renderListMasalah(ai.tujuanPendampingan)}</div>
-      </div>
-      <div class="ms-ai-section"><h4>Penanganan langsung</h4>${renderListMasalah(ai.penangananLangsung)}</div>
-      <div class="ms-ai-section"><h4>Strategi di kelas</h4>${renderListMasalah(ai.strategiKelas)}</div>
-      <div class="ms-ai-section"><h4>Contoh kalimat guru</h4><p>${escapeHtml(ai.kalimatGuru || '-')}</p></div>
-      <div class="ms-ai-section"><h4>Koordinasi dengan orang tua</h4><p>${escapeHtml(ai.saranOrangTua || '-')}</p></div>
-      <div class="ms-grid">
-        <div class="ms-ai-section"><h4>Rencana pemantauan</h4>${renderListMasalah(ai.rencanaPemantauan)}</div>
-        <div class="ms-ai-section"><h4>Indikator perbaikan</h4>${renderListMasalah(ai.indikatorPerbaikan)}</div>
-      </div>
-      <div class="ms-ai-section"><h4>Kapan perlu diteruskan</h4><p>${escapeHtml(ai.saranEskalasi || '-')}</p></div>
-      <div class="ms-ai-section"><h4>Hal yang perlu dihindari</h4>${renderListMasalah(ai.halDihindari)}</div>
-
-      <div class="ms-final-box">
-        <div class="ms-field" style="margin:0">
-          <label>Saran final setelah ditinjau walas</label>
-          <textarea id="ms-saran-final" style="min-height:320px">${escapeHtml(finalText)}</textarea>
-          <div class="ms-help">Boleh diedit sebelum disimpan. Rekomendasi sistem adalah bahan bantu, bukan keputusan otomatis.</div>
-        </div>
-      </div>
-
-      <div class="ms-v55-save">
-        <button class="btn" id="ms-save-btn" onclick="saveCatatanMasalah()">${pointSvg('save',16)} Simpan Laporan</button>
-      </div>
-      <div class="ms-actions" style="justify-content:center"><button class="btn btn-outline" onclick="document.getElementById('ms-ai-btn').scrollIntoView({behavior:'smooth'})">Perbaiki Cerita / Susun Ulang</button></div>
-    </div>
-  `;
-
-  result.dataset.nis = siswa.nis;
-  result.dataset.nama = siswa.nama;
-  result.dataset.tanggal = tanggal;
-  result.dataset.cerita = cerita;
-  result.dataset.tindakan = tindakan;
-  result.dataset.risiko = risiko;
-  result.scrollIntoView({behavior:'smooth', block:'start'});
+function renderHasilMasalahAI(siswa,tanggal,cerita,tindakan,risiko){
+  const ai=masalahState.analisisAI,result=document.getElementById('ms-ai-result');if(!ai||!result)return;
+  const urgent=Boolean(ai.mendesak)||risiko==='Ya';const flags=[ai.perluOrangTua?'Orang tua':'',ai.perluKesiswaan?'Kesiswaan':'',ai.perluUKS?'UKS':''].filter(Boolean);const finalText=formatSaranFinalMasalah(ai);
+  result.innerHTML=`<div class="card">
+    ${urgent?`<div class="ms-alert"><strong>Perlu perhatian segera.</strong><br>Utamakan keselamatan siswa dan teruskan kepada Kesiswaan/Pimpinan sesuai prosedur sekolah.</div>`:''}
+    <div class="ms-ai-head"><div><div class="ms-ai-title">Saran Penanganan &amp; Tindak Lanjut</div><div class="ms-badges"><span class="ms-badge">${escapeHtml(ai.kategori||'-')}</span><span class="ms-badge attention">${escapeHtml(ai.tingkatPerhatian||'-')}</span><span class="ms-badge ${urgent?'urgent':'safe'}">${urgent?'Mendesak':'Perlu ditinjau walas'}</span>${flags.map(x=>`<span class="ms-badge">Koordinasi: ${escapeHtml(x)}</span>`).join('')}</div></div><div style="font-size:11.5px;color:var(--muted);text-align:right">Evaluasi: <strong>${escapeHtml(ai.tanggalEvaluasi||'-')}</strong></div></div>
+    <div class="ms-ai-section"><h4>Masalah utama</h4><p>${escapeHtml(ai.masalahUtama||'-')}</p></div><div class="ms-ai-section"><h4>Ringkasan situasi</h4><p>${escapeHtml(ai.ringkasan||'-')}</p></div>
+    <div class="ms-grid"><div class="ms-ai-section"><h4>Kemungkinan kebutuhan siswa</h4>${renderListMasalah(ai.kemungkinanKebutuhan)}</div><div class="ms-ai-section"><h4>Tujuan pendampingan</h4>${renderListMasalah(ai.tujuanPendampingan)}</div></div>
+    <div class="ms-ai-section"><h4>Penanganan langsung</h4>${renderListMasalah(ai.penangananLangsung)}</div><div class="ms-ai-section"><h4>Strategi di kelas</h4>${renderListMasalah(ai.strategiKelas)}</div>
+    <div class="ms-ai-section"><h4>Contoh kalimat guru</h4><p>${escapeHtml(ai.kalimatGuru||'-')}</p></div><div class="ms-ai-section"><h4>Koordinasi dengan orang tua</h4><p>${escapeHtml(ai.saranOrangTua||'-')}</p></div>
+    <div class="ms-grid"><div class="ms-ai-section"><h4>Rencana pemantauan</h4>${renderListMasalah(ai.rencanaPemantauan)}</div><div class="ms-ai-section"><h4>Indikator perbaikan</h4>${renderListMasalah(ai.indikatorPerbaikan)}</div></div>
+    <div class="ms-ai-section"><h4>Kapan perlu diteruskan</h4><p>${escapeHtml(ai.saranEskalasi||'-')}</p></div><div class="ms-ai-section"><h4>Hal yang perlu dihindari</h4>${renderListMasalah(ai.halDihindari)}</div>
+    <div class="ms-final-box"><div class="ms-field" style="margin:0"><label>Saran final setelah ditinjau walas</label><textarea id="ms-saran-final" style="min-height:280px">${escapeHtml(finalText)}</textarea><div class="ms-help">Boleh diedit sebelum disimpan.</div></div></div>
+    <div class="ms-v55-save"><button class="btn" id="ms-save-btn" onclick="saveCatatanMasalah()">${pointSvg('save',16)} Simpan Laporan</button></div></div>`;
+  result.dataset.studentId=siswa.id;result.dataset.tanggal=tanggal;result.dataset.cerita=cerita;result.dataset.tindakan=tindakan;result.dataset.risiko=risiko;result.scrollIntoView({behavior:'smooth',block:'start'});
 }
-
 async function saveCatatanMasalah(){
-  const result = document.getElementById('ms-ai-result');
-  const btn = document.getElementById('ms-save-btn');
-  const saranFinal = document.getElementById('ms-saran-final').value.trim();
-  if(!masalahState.analisisAI){ showToast('Susun saran penanganan terlebih dahulu.', true); return; }
-  if(!saranFinal){ showToast('Saran final tidak boleh kosong.', true); return; }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
+  const result=document.getElementById('ms-ai-result'),btn=document.getElementById('ms-save-btn'),saranFinal=document.getElementById('ms-saran-final')?.value.trim()||'';
+  if(!masalahState.analisisAI){showToast('Susun saran penanganan terlebih dahulu.',true);return}if(!saranFinal){showToast('Saran final tidak boleh kosong.',true);return}
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyimpan...';
   try{
-    const res = await callApi('submitCatatanMasalahSiswa', {
-      kelas: masalahState.kelas,
-      nis: result.dataset.nis,
-      namaSiswa: result.dataset.nama,
-      tanggalKejadian: result.dataset.tanggal,
-      ceritaWalas: result.dataset.cerita,
-      tindakanAwal: result.dataset.tindakan,
-      risikoKeselamatan: result.dataset.risiko,
-      rekomendasiSistem: masalahState.analisisAI,
-      saranFinal,
-      status: masalahState.analisisAI.mendesak ? 'Diteruskan ke Kesiswaan' : 'Baru',
-      dicatatOleh: currentUser.nama
-    });
-    if(!res.success) throw new Error(res.error || 'Gagal menyimpan laporan.');
-    showToast('Laporan masalah siswa berhasil disimpan.');
-    masalahState.analisisAI = null;
-    masalahState.tab = 'riwayat';
-    renderMasalahShell();
-  }catch(err){
-    showToast(err.message || 'Gagal menyimpan laporan.', true);
-  }finally{
-    if(document.getElementById('ms-save-btn')){
-      btn.disabled = false;
-      btn.textContent = 'Simpan Laporan';
-    }
-  }
+    await studentCaseRequest('save',{class_id:masalahState.kelasId,student_id:result.dataset.studentId,incident_date:result.dataset.tanggal,story:result.dataset.cerita,initial_action:result.dataset.tindakan,safety_risk:result.dataset.risiko,recommendation:masalahState.analisisAI,final_suggestion:saranFinal});
+    showToast('Laporan masalah siswa berhasil disimpan ke Supabase.');masalahState.analisisAI=null;masalahState.tab='riwayat';renderMasalahShell();
+  }catch(err){showToast(err.message||'Gagal menyimpan laporan.',true)}finally{if(document.getElementById('ms-save-btn')){btn.disabled=false;btn.innerHTML=`${pointSvg('save',16)} Simpan Laporan`}}
 }
-
 async function loadRiwayatMasalah(){
-  const area = document.getElementById('ms-tab-content');
-  area.innerHTML = `<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>Memuat riwayat laporan...</div>`;
-  const res = await callApi('getCatatanMasalahSiswa', { kelas: masalahState.kelas, limit: 100 });
-  masalahState.riwayat = res.data || [];
-  renderRiwayatMasalah();
+  const area=document.getElementById('ms-tab-content');area.innerHTML=`<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Memuat riwayat laporan...</div>`;
+  try{const res=await studentCaseRequest('history',{class_id:masalahState.kelasId,limit:50});masalahState.riwayat=res.data||[];renderRiwayatMasalah()}catch(err){area.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message||'Gagal memuat riwayat.')}</div>`}
 }
-
 function renderRiwayatMasalah(){
-  const area = document.getElementById('ms-tab-content');
-  if(!masalahState.riwayat.length){
-    area.innerHTML = `<div class="empty-state"><div class="icon">—</div>Belum ada catatan masalah siswa untuk kelas ini.</div>`;
-    return;
-  }
-  area.innerHTML = `
-    <div class="card">
-      <div class="ms-history-toolbar">
-        <div><div class="card-title" style="margin:0">Riwayat Catatan</div><div class="ms-help">${masalahState.riwayat.length} laporan terbaru</div></div>
-        <div class="ms-v55-filters">
-          <input type="search" id="ms-history-search" placeholder="Cari nama atau masalah..." oninput="filterRiwayatMasalah()" class="pv2-control">
-          <select id="ms-history-status" class="pv2-control" onchange="filterRiwayatMasalah()">
-            <option value="">Semua status</option>
-            <option value="baru">Baru</option>
-            <option value="diteruskan ke kesiswaan">Diteruskan ke Kesiswaan</option>
-          </select>
-        </div>
-      </div>
-      <div class="ms-history-list" id="ms-history-list"></div>
-    </div>
-  `;
-  drawRiwayatMasalah(masalahState.riwayat);
+  const area=document.getElementById('ms-tab-content');if(!masalahState.riwayat.length){area.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada catatan masalah siswa untuk kelas ini.</div>`;return}
+  area.innerHTML=`<div class="card"><div class="ms-history-toolbar"><div><div class="card-title" style="margin:0">Riwayat Catatan</div><div class="ms-help">${masalahState.riwayat.length} laporan terbaru</div></div><div class="ms-v55-filters"><input type="search" id="ms-history-search" placeholder="Cari nama atau masalah..." oninput="filterRiwayatMasalah()" class="pv2-control"><select id="ms-history-status" class="pv2-control" onchange="filterRiwayatMasalah()"><option value="">Semua status</option><option value="baru">Baru</option><option value="diteruskan ke kesiswaan">Diteruskan ke Kesiswaan</option></select></div></div><div class="ms-history-list" id="ms-history-list"></div></div>`;drawRiwayatMasalah(masalahState.riwayat)
 }
-
-function filterRiwayatMasalah(){
-  const q = (document.getElementById('ms-history-search')?.value || '').toLowerCase().trim();
-  const status=(document.getElementById('ms-history-status')?.value||'').toLowerCase();
-  const list = masalahState.riwayat.filter(r => {
-    const matchQ=[r.namaSiswa,r.masalahUtama,r.kategori,r.ringkasan,r.status].join(' ').toLowerCase().includes(q);
-    const matchStatus=!status||String(r.status||'').toLowerCase()===status;
-    return matchQ&&matchStatus;
-  });
-  drawRiwayatMasalah(list);
-}
-
+function filterRiwayatMasalah(){const q=(document.getElementById('ms-history-search')?.value||'').toLowerCase().trim(),status=(document.getElementById('ms-history-status')?.value||'').toLowerCase();drawRiwayatMasalah(masalahState.riwayat.filter(r=>[r.namaSiswa,r.masalahUtama,r.kategori,r.ringkasan,r.status].join(' ').toLowerCase().includes(q)&&(!status||String(r.status||'').toLowerCase()===status)))}
 function drawRiwayatMasalah(data){
-  const list = document.getElementById('ms-history-list');
-  if(!list) return;
-  if(!data.length){ list.innerHTML = `<div class="empty-state" style="padding:30px 10px">Tidak ada laporan yang cocok.</div>`; return; }
-  list.innerHTML = data.map((r,index) => {
-    const urgent = Boolean(r.mendesak);
-    const flags = [r.perluOrangTua?'Orang tua':'',r.perluKesiswaan?'Kesiswaan':'',r.perluUKS?'UKS':''].filter(Boolean).join(', ');
-    return `
-      <div class="ms-history-card" id="ms-history-${index}">
-        <div class="ms-history-top">
-          <div>
-            <div class="ms-history-name">${escapeHtml(r.namaSiswa || '-')}</div>
-            <div class="ms-history-meta">${escapeHtml(r.tanggalKejadian || '-')} · ${escapeHtml(r.kategori || '-')} · ${escapeHtml(r.tingkatPerhatian || '-')}</div>
-          </div>
-          <span class="ms-status" style="${urgent?'background:#FDF0EC;border-color:#E8B8AA;color:var(--danger)':''}">${escapeHtml(r.status || 'Baru')}</span>
-        </div>
-        <div class="ms-history-summary"><strong>${escapeHtml(r.masalahUtama || '-')}</strong><br>${escapeHtml(r.ringkasan || '')}</div>
-        <button class="ms-link-btn" onclick="toggleRiwayatMasalah('ms-history-${index}',this)">Lihat detail</button>
-        <div class="ms-history-detail">
-          <div class="ms-ai-section"><h4>Cerita walas</h4><p>${escapeHtml(r.ceritaWalas || '-')}</p></div>
-          <div class="ms-ai-section"><h4>Tindakan awal</h4><p>${escapeHtml(r.tindakanAwal || '-')}</p></div>
-          <div class="ms-ai-section"><h4>Saran final</h4><p>${escapeHtml(r.saranFinal || '-')}</p></div>
-          <div class="ms-help">Evaluasi: ${escapeHtml(r.tanggalEvaluasi || '-')} ${flags ? '· Koordinasi: '+escapeHtml(flags) : ''} · Dicatat oleh: ${escapeHtml(r.dicatatOleh || '-')}</div>
-        </div>
-      </div>`;
-  }).join('');
+  const list=document.getElementById('ms-history-list');if(!list)return;if(!data.length){list.innerHTML=`<div class="empty-state" style="padding:30px 10px">Tidak ada laporan yang cocok.</div>`;return}
+  list.innerHTML=data.map((r,index)=>{const urgent=Boolean(r.mendesak),flags=[r.perluOrangTua?'Orang tua':'',r.perluKesiswaan?'Kesiswaan':'',r.perluUKS?'UKS':''].filter(Boolean).join(', ');return `<div class="ms-history-card" id="ms-history-${index}"><div class="ms-history-top"><div><div class="ms-history-name">${escapeHtml(r.namaSiswa||'-')}</div><div class="ms-history-meta">${escapeHtml(r.tanggalKejadian||'-')} · ${escapeHtml(r.kategori||'-')} · ${escapeHtml(r.tingkatPerhatian||'-')}</div></div><span class="ms-status" style="${urgent?'background:#FDF0EC;border-color:#E8B8AA;color:var(--danger)':''}">${escapeHtml(r.status||'Baru')}</span></div><div class="ms-history-summary"><strong>${escapeHtml(r.masalahUtama||'-')}</strong><br>${escapeHtml(r.ringkasan||'')}</div><button class="ms-link-btn" onclick="toggleRiwayatMasalah('ms-history-${index}',this)">Lihat detail</button><div class="ms-history-detail"><div class="ms-ai-section"><h4>Cerita walas</h4><p>${escapeHtml(r.ceritaWalas||'-')}</p></div><div class="ms-ai-section"><h4>Tindakan awal</h4><p>${escapeHtml(r.tindakanAwal||'-')}</p></div><div class="ms-ai-section"><h4>Saran final</h4><p>${escapeHtml(r.saranFinal||'-')}</p></div><div class="ms-help">Evaluasi: ${escapeHtml(r.tanggalEvaluasi||'-')} ${flags?'· Koordinasi: '+escapeHtml(flags):''} · Dicatat oleh: ${escapeHtml(r.dicatatOleh||'-')}</div></div></div>`}).join('')
 }
-
-function toggleRiwayatMasalah(id,button){
-  const card = document.getElementById(id);
-  if(!card) return;
-  const open = card.classList.toggle('open');
-  button.textContent = open ? 'Tutup detail' : 'Lihat detail';
-}
+function toggleRiwayatMasalah(id,button){const card=document.getElementById(id);if(!card)return;const open=card.classList.toggle('open');button.textContent=open?'Tutup detail':'Lihat detail'}
 
 /* ==========================================================
    MODUL: ABSENSI / MORNING TALK — SUPABASE
@@ -4332,82 +4097,152 @@ async function loadDashboard(requestToken){
    CQLASS — REKAP EKSKUL WALAS (READ ONLY)
    Tampilan memakai komponen CSS yang sudah ada.
    ========================================================== */
-async function renderEkskulRekap(content){
-  const kelas = currentUser.role === 'walas' ? (currentUser.kelas || '') : '';
-  content.innerHTML = `
-    <div class="page-title">Rekap Ekskul</div>
-    <div class="page-sub">Rekap peserta, kehadiran, dan nilai ekstrakurikuler siswa.</div>
-    ${currentUser.role !== 'walas' ? `
+async function ekskulV6Api(action,payload={}){
+  const res=await fetch(EXTRACURRICULAR_PUBLIC_URL,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'apikey':SUPABASE_PUBLISHABLE_KEY,
+      'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY
+    },
+    body:JSON.stringify({action,...payload})
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok||!data.success)throw new Error(data.error||'Gagal memuat data ekskul.');
+  return data;
+}
+function injectEkskulV56Styles(){
+  if(document.getElementById('ek-v56-style')) return;
+  const s=document.createElement('style');s.id='ek-v56-style';
+  s.textContent=`
+    .ek-v56-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .ek-v56-chip{display:inline-flex;padding:6px 10px;border-radius:999px;background:#eaf7f6;color:var(--primary);font-size:10px;font-weight:900}
+    .ek-v56-kpis{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+    .ek-v56-kpi{background:#fff;border:1px solid var(--border);border-radius:13px;padding:13px}
+    .ek-v56-kpi strong{display:block;font-size:22px;color:var(--primary);line-height:1.05}
+    .ek-v56-kpi span{display:block;font-size:10px;color:var(--muted);font-weight:800;margin-top:5px}
+    .ek-v56-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .ek-v56-filters{display:flex;gap:8px;flex-wrap:wrap}
+    .ek-v56-filters .pv2-control{min-width:190px;padding:8px 10px;font-size:11px}
+    .ek-v56-card{margin-bottom:12px}
+    .ek-v56-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .ek-v56-progress{height:7px;background:#edf3f3;border-radius:999px;overflow:hidden;min-width:80px}
+    .ek-v56-progress span{display:block;height:100%;background:var(--primary);border-radius:999px}
+    .ek-v56-grade{display:inline-flex;min-width:30px;justify-content:center;padding:4px 7px;border-radius:8px;background:#eef7f6;color:var(--primary);font-weight:900}
+    .ek-v56-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    .ek-v56-table{width:100%;border-collapse:collapse;min-width:760px}
+    .ek-v56-table th,.ek-v56-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:11px;text-align:left;vertical-align:middle}
+    .ek-v56-table th{background:#f5f9f9;color:var(--muted);font-size:9.8px;text-transform:uppercase}
+    .ek-v56-table tr:last-child td{border-bottom:0}
+    .ek-v56-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px}
+    @media(max-width:900px){.ek-v56-kpis{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:650px){.ek-v56-filters{width:100%}.ek-v56-filters .pv2-control{width:100%;min-width:0}}
+  `;
+  document.head.appendChild(s);
+}
+let ekskulV56Rows=[];
+function renderEkskulRekap(content){
+  injectEkskulV56Styles();
+  const kelas=currentUser.role==='walas'?(currentUser.kelas||''):'';
+  content.innerHTML=`
+    <div class="ek-v56-head">
+      <div><div class="page-title">Rekap Ekstrakurikuler</div><div class="page-sub">Rekap pertemuan, kehadiran, materi, dan nilai ekskul dari Supabase.</div></div>
+      ${kelas?`<span class="ek-v56-chip">${escapeHtml(kelas)}</span>`:''}
+    </div>
+    ${currentUser.role!=='walas'?`
       <div class="card">
         <div class="card-title">Pilih Kelas</div>
-        <div style="display:flex;gap:10px;max-width:620px;">
-          <input id="ek-rekap-kelas" type="text" placeholder="Contoh: 5A Banin"
-            style="flex:1;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
-          <button class="btn btn-sm" style="width:auto;" onclick="loadEkskulRekapAdmin()">Tampilkan</button>
+        <div style="display:flex;gap:8px;max-width:620px;flex-wrap:wrap">
+          <input id="ek-rekap-kelas" class="pv2-control" type="text" placeholder="Ketik kelas, contoh: 5A Banin" style="flex:1;min-width:220px">
+          <button class="btn btn-sm" style="width:auto" onclick="loadEkskulRekapAdmin()">Tampilkan</button>
         </div>
-      </div>` : ''}
+      </div>`:''}
     <div id="ek-rekap-body"></div>`;
   if(kelas) loadEkskulRekap(kelas);
 }
-
 function loadEkskulRekapAdmin(){
   const kelas=(document.getElementById('ek-rekap-kelas')?.value||'').trim();
-  if(!kelas){ showToast('Isi kelas terlebih dahulu.',true); return; }
+  if(!kelas){showToast('Isi kelas terlebih dahulu.',true);return}
   loadEkskulRekap(kelas);
 }
-
-async function loadEkskulRekap(kelas){
-  const body=document.getElementById('ek-rekap-body');
-  if(!body)return;
-  body.innerHTML=`<div class="card"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Memuat rekap ekskul...</div>`;
-  try{
-    const res=await callApi('getRekapEkskulWalas',{kelas});
-    if(!res.success) throw new Error();
-    const rows=res.data||[];
-    if(!rows.length){
-      body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;
-      return;
-    }
-
-    const grouped={};
-    rows.forEach(r=>{
-      const k=r.namaEkskul||'Ekskul';
-      if(!grouped[k]) grouped[k]=[];
-      grouped[k].push(r);
-    });
-
-    body.innerHTML=Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'id')).map(nama=>{
-      const list=grouped[nama];
-      return `<div class="card">
-        <div class="card-title">${escapeHtml(nama)} <span style="font-size:11px;color:var(--muted);font-weight:500">(${list.length} siswa)</span></div>
-        <div style="overflow:auto">
-          <table class="lg-table" style="min-width:760px">
-            <thead><tr>
-              <th>No</th><th style="text-align:left;min-width:210px">Nama Siswa</th><th>Kelas</th>
-              <th>Hadir</th><th>Total</th><th>Kehadiran</th>
-              <th>Keikutsertaan</th><th>Kemampuan</th><th style="text-align:left;min-width:220px">Deskripsi</th>
-            </tr></thead>
-            <tbody>
-              ${list.map((r,i)=>{
-                const pct=r.totalPertemuan?Math.round((r.hadir||0)*100/r.totalPertemuan):0;
-                return `<tr>
-                  <td>${i+1}</td>
-                  <td style="text-align:left"><strong>${escapeHtml(r.nama||'-')}</strong><div class="siswa-nis">NIS ${escapeHtml(r.nis||'-')}</div></td>
-                  <td>${escapeHtml(r.kelas||'-')}</td>
-                  <td>${Number(r.hadir||0)}</td>
-                  <td>${Number(r.totalPertemuan||0)}</td>
-                  <td>${pct}%</td>
-                  <td>${escapeHtml(r.predikatKeikutsertaan||r.nilaiKeikutsertaan||'-')}</td>
-                  <td>${escapeHtml(r.predikatKemampuan||r.nilaiKemampuan||'-')}</td>
-                  <td style="text-align:left">${escapeHtml(r.deskripsi||'-')}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
+function ekV56Predikat(v){
+  const x=String(v||'-').trim();return x||'-';
+}
+function ekV56Filter(){
+  const q=(document.getElementById('ek-v56-search')?.value||'').toLowerCase().trim();
+  const eks=(document.getElementById('ek-v56-exkul')?.value||'').toLowerCase();
+  document.querySelectorAll('.ek-v56-student-row').forEach(tr=>{
+    const text=(tr.dataset.search||'').toLowerCase(),e=(tr.dataset.ekskul||'').toLowerCase();
+    tr.style.display=((!q||text.includes(q))&&(!eks||e===eks))?'':'none';
+  });
+  document.querySelectorAll('.ek-v56-card').forEach(card=>{
+    const visible=[...card.querySelectorAll('.ek-v56-student-row')].some(r=>r.style.display!=='none');
+    card.style.display=visible?'':'none';
+  });
+}
+function ekV56Render(rows,kelas){
+  const body=document.getElementById('ek-rekap-body');if(!body)return;
+  const grouped={};rows.forEach(r=>{const k=r.namaEkskul||'Ekskul';(grouped[k]??=[]).push(r)});
+  const eksNames=Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'id'));
+  const totalSiswa=new Set(rows.map(r=>String(r.nama||''))).size;
+  const totalHadir=rows.reduce((z,r)=>z+Number(r.hadir||0),0);
+  const totalPert=rows.reduce((z,r)=>z+Number(r.totalPertemuan||0),0);
+  const avg=totalPert?Math.round(totalHadir*100/totalPert):0;
+  body.innerHTML=`
+    <div class="ek-v56-kpis">
+      <div class="ek-v56-kpi"><strong>${eksNames.length}</strong><span>Ekskul Aktif</span></div>
+      <div class="ek-v56-kpi"><strong>${totalSiswa}</strong><span>Siswa Terdata</span></div>
+      <div class="ek-v56-kpi"><strong>${avg}%</strong><span>Rata-rata Kehadiran</span></div>
+      <div class="ek-v56-kpi"><strong>${rows.length}</strong><span>Keikutsertaan Ekskul</span></div>
+    </div>
+    <div class="card">
+      <div class="ek-v56-toolbar">
+        <div><div class="card-title" style="margin:0">Data Ekskul ${escapeHtml(kelas)}</div><div class="page-sub" style="margin-top:3px">Pencarian dan filter dilakukan langsung di browser.</div></div>
+        <div class="ek-v56-filters">
+          <input id="ek-v56-search" class="pv2-control" placeholder="Cari nama siswa..." oninput="ekV56Filter()">
+          <select id="ek-v56-exkul" class="pv2-control" onchange="ekV56Filter()"><option value="">Semua ekskul</option>${eksNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}</select>
         </div>
+      </div>
+    </div>
+    ${eksNames.map(nama=>{
+      const list=grouped[nama];
+      const h=list.reduce((z,r)=>z+Number(r.hadir||0),0),t=list.reduce((z,r)=>z+Number(r.totalPertemuan||0),0),pct=t?Math.round(h*100/t):0;
+      return `<div class="card ek-v56-card" data-ekskul-card="${escapeHtml(nama.toLowerCase())}">
+        <div class="ek-v56-card-head"><div><div class="card-title" style="margin:0">${escapeHtml(nama)}</div><div class="page-sub" style="margin-top:3px">${list.length} siswa · Kehadiran rata-rata ${pct}%</div></div><span class="ek-v56-chip">${pct}% hadir</span></div>
+        <div class="ek-v56-table-wrap"><table class="ek-v56-table"><thead><tr>
+          <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Kehadiran</th><th>Keikutsertaan</th><th>Kemampuan</th><th>Deskripsi</th>
+        </tr></thead><tbody>${list.map((r,i)=>{
+          const p=r.totalPertemuan?Math.round(Number(r.hadir||0)*100/Number(r.totalPertemuan||0)):0;
+          return `<tr class="ek-v56-student-row" data-ekskul="${escapeHtml(nama)}" data-search="${escapeHtml([r.nama,r.kelas,nama,r.predikatKeikutsertaan,r.predikatKemampuan,r.deskripsi].join(' ').toLowerCase())}">
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(r.nama||'-')}</strong></td>
+            <td>${escapeHtml(r.kelas||'-')}</td>
+            <td><div style="display:flex;align-items:center;gap:8px"><span style="min-width:34px;font-weight:800">${p}%</span><div class="ek-v56-progress"><span style="width:${Math.max(0,Math.min(100,p))}%"></span></div></div><div style="font-size:9px;color:var(--muted);margin-top:3px">${Number(r.hadir||0)} / ${Number(r.totalPertemuan||0)} pertemuan</div></td>
+            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.predikatKeikutsertaan||r.nilaiKeikutsertaan))}</span></td>
+            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.predikatKemampuan||r.nilaiKemampuan))}</span></td>
+            <td>${escapeHtml(r.deskripsi||'-')}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div>
       </div>`;
-    }).join('');
+    }).join('')}`;
+}
+async function loadEkskulRekap(kelas){
+  const body=document.getElementById('ek-rekap-body');if(!body)return;
+  body.innerHTML=`<div class="card"><span class="spinner"></span> Memuat rekap ekskul...</div>`;
+  try{
+    const res=await ekskulV6Api('recap',{class_name:kelas});
+    ekskulV56Rows=res.rows||[];
+    if(!ekskulV56Rows.length){body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data pertemuan ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;return}
+    // Adapter V6 agar renderer V5.6 tetap ringan.
+    ekskulV56Rows=ekskulV56Rows.map(r=>({
+      ...r,
+      predikatKeikutsertaan:r.rataNilai==null?'-':String(r.rataNilai),
+      predikatKemampuan:r.rataNilai==null?'-':String(r.rataNilai),
+      nilaiKeikutsertaan:r.rataNilai,
+      nilaiKemampuan:r.rataNilai
+    }));
+    ekV56Render(ekskulV56Rows,kelas);
   }catch(e){
-    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Terjadi kendala. Silakan hubungi admin.</div>`;
+    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(e.message||'Terjadi kendala saat memuat data ekskul.')}</div>`;
   }
 }
