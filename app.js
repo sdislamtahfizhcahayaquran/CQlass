@@ -3301,13 +3301,13 @@ function injectRaporPreviewStyles(){
   const s=document.createElement('style');s.id='rapor-v1-style';s.textContent=`
     .rpv-toolbar{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px}.rpv-field label{display:block;font-size:10.5px;font-weight:900;color:var(--muted);margin-bottom:5px;text-transform:uppercase}.rpv-control{width:100%;padding:10px 11px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:inherit;color:var(--text)}
     .rpv-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}.rpv-paper-wrap{overflow:auto;padding:10px 0 22px}.rpv-paper{position:relative;width:210mm;height:297mm;min-height:297mm;max-height:297mm;margin:0 auto 18px;background:#fff;color:#111;padding:4.2mm 7mm 5.5mm;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.12;box-sizing:border-box;overflow:hidden}.rpv-paper *{box-sizing:border-box}
-    .rpv-template-head{width:100%;border-collapse:collapse;border:2px solid #111;margin:0}.rpv-template-head td{border:2px solid #111;height:25px;padding:2px 4px;vertical-align:middle}.rpv-template-head .head-left{width:50.9%;text-align:center;font-weight:900;font-size:11px}.rpv-template-head .head-right{font-size:10px}.rpv-template-shadow{height:6px;background:#e7e7e7;margin:0 1px 10px}
-    .rpv-section-plain{font-weight:900;font-size:11px;margin:7px 0 3px}.rpv-tahfizh{width:100%;border-collapse:collapse;margin:0 0 7px;font-size:10px}.rpv-tahfizh td{padding:1px 3px;border:0;vertical-align:top}.rpv-tahfizh td:first-child{width:38%}.rpv-tahfizh td:nth-child(2){width:2%}.rpv-tahfizh .sub{padding-left:20px}
-    .rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:1px solid #111;padding:2px 3px;vertical-align:middle}.rpv-table th{background:#dce7f1;font-weight:900;text-align:center;font-size:9.5px}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-academic{font-size:10px;line-height:1.05}.rpv-academic th,.rpv-academic td{padding:1px 2px}.rpv-academic thead th{font-size:9px}.rpv-academic .no{width:4%}.rpv-academic .subject{width:35%}.rpv-academic .kktp{width:12.5%}.rpv-academic .lo{width:6.7%}.rpv-academic .remarks{width:14.8%}.rpv-academic tbody td{height:14px}.rpv-start4{background:#dedede!important}.rpv-group-row td{background:#d9d9d9;font-weight:900}
-    .rpv-att-grid{display:grid;grid-template-columns:65% 29%;gap:6%;align-items:start;margin:8px 0 0}.rpv-att-grid .rpv-section-plain{margin-left:0}.rpv-attendance{font-size:10px}.rpv-attendance th,.rpv-attendance td{height:18px}.rpv-score-table{font-size:10px;margin-top:21px}.rpv-score-table th,.rpv-score-table td{height:18px}
-    .rpv-p2-section{font-weight:900;font-size:11px;margin:0 0 4px}.rpv-p2-sub{font-weight:400;font-size:10px;margin:8px 0 3px}.rpv-p2-sub b{font-weight:900}.rpv-exkul{font-size:10px}.rpv-exkul th,.rpv-exkul td{height:24px}.rpv-exkul td{padding:3px 5px;line-height:1.22}.rpv-exkul td:last-child{font-size:8px}.rpv-discipline{font-size:10px}.rpv-discipline th{height:44px}.rpv-discipline td{height:21px}.rpv-merit{font-size:10px}.rpv-merit th{height:26px}.rpv-merit td{height:21px}.rpv-total-line{border:1px solid #111;border-top:0;padding:4px 3px;font-size:10px}
-    .rpv-date-center{position:absolute;left:50%;transform:translateX(-50%);top:162mm;text-align:center;font-size:10px;line-height:1.5;min-width:45mm}.rpv-signatures{position:absolute;left:7mm;right:7mm;top:187mm;height:37mm;text-align:center;font-size:10px}.rpv-signatures>div{position:absolute;top:0;width:30%}.rpv-signatures>div:nth-child(1){left:0}.rpv-signatures>div:nth-child(2){left:50%;transform:translateX(-50%)}.rpv-signatures>div:nth-child(3){right:0}.rpv-signatures .name{margin-top:31mm;text-decoration:underline;font-weight:400;white-space:nowrap}
-    .rpv-team-area{position:absolute;left:7mm;right:7mm;top:250mm;display:grid;grid-template-columns:54% 46%;font-size:10px}.rpv-team-title{font-weight:400;margin-bottom:4px}.rpv-team-simple{width:100%;border-collapse:collapse}.rpv-team-simple td{border:0;padding:2px 1px;vertical-align:top}.rpv-team-simple td:first-child{width:7%}.rpv-position-list{padding-top:18px}.rpv-position-list div{padding:2px 0}
+    .rpv-template-head{width:100%;border-collapse:collapse;border:2px solid #111;margin:0}.rpv-template-head td{border:2px solid #111;height:7.46mm;padding:2px 4px;vertical-align:middle}.rpv-template-head .head-left{width:50.9%;text-align:center;font-weight:900;font-size:11px}.rpv-template-head .head-right{font-size:10px;display:flex;align-items:center}.hr-label{flex:0 0 33mm}.hr-colon{flex:0 0 3mm}.hr-value{flex:1}.rpv-template-shadow{height:2.1mm;background:#e7e7e7;margin:0 0 5.8mm}
+    .rpv-section-plain{font-weight:900;font-size:11px;margin:0 0 3px}.rpv-tahfizh{width:100%;border-collapse:collapse;margin:0 0 4mm;font-size:10px}.rpv-tahfizh td{padding:0 3px;border:0;vertical-align:middle;height:4.94mm}.rpv-tahfizh td:first-child{width:38%}.rpv-tahfizh td:nth-child(2){width:2%}.rpv-tahfizh .sub{padding-left:20px}
+    .rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:1px solid #111;padding:1px 3px;vertical-align:middle}.rpv-table th{background:#dce7f1;font-weight:900;text-align:center;font-size:9px}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-academic{font-size:10px;line-height:1.1}.rpv-academic th,.rpv-academic td{padding:0 2px}.rpv-academic .no{width:4%}.rpv-academic .subject{width:35%}.rpv-academic .kktp{width:12.5%}.rpv-academic .lo{width:6.7%}.rpv-academic .remarks{width:14.8%}.rpv-academic tbody td{height:5.51mm}.rpv-academic .rpv-sub{padding-left:12px}.rpv-start4{background:#dedede!important}.rpv-group-row td{background:#d9d9d9;font-weight:900}
+    .rpv-att-grid{display:grid;grid-template-columns:65% 29%;gap:6%;align-items:start;margin:6px 0 0}.rpv-att-grid .rpv-section-plain{margin-left:0}.rpv-attendance{font-size:10px}.rpv-attendance th,.rpv-attendance td{height:7.5mm}.rpv-score-table{font-size:10px;margin-top:21px}.rpv-score-table th,.rpv-score-table td{height:7.5mm}
+    .rpv-p2-section{font-weight:900;font-size:11px;margin:0 0 4px}.rpv-p2-sub{font-weight:400;font-size:10px;margin:8px 0 3px}.rpv-p2-sub b{font-weight:900}.rpv-exkul{font-size:10px}.rpv-exkul th,.rpv-exkul td{height:6.9mm}.rpv-exkul td{padding:2px 5px;line-height:1.22}.rpv-exkul td:last-child{font-size:8px}.rpv-discipline{font-size:10px}.rpv-discipline th{height:8mm}.rpv-discipline td{height:6.9mm}.rpv-merit{font-size:10px}.rpv-merit th{height:6.9mm}.rpv-merit td{height:6.9mm}.rpv-total-line{border:1px solid #111;border-top:0;padding:4px 3px;font-size:10px}
+    .rpv-date-center{position:absolute;left:50%;transform:translateX(-50%);top:163mm;text-align:center;font-size:10px;line-height:1.5;min-width:45mm}.rpv-signatures{position:absolute;left:7mm;right:7mm;top:181mm;height:37mm;text-align:center;font-size:10px}.rpv-signatures>div{position:absolute;top:0;width:30%}.rpv-signatures>div:nth-child(1){left:0}.rpv-signatures>div:nth-child(2){left:50%;transform:translateX(-50%)}.rpv-signatures>div:nth-child(3){right:0}.rpv-signatures .name{margin-top:31mm;text-decoration:underline;font-weight:400;white-space:nowrap}
+    .rpv-team-area{position:absolute;left:7mm;right:7mm;top:223mm;display:grid;grid-template-columns:54% 46%;font-size:10px}.rpv-team-title{font-weight:400;margin-bottom:4px}.rpv-team-simple{width:100%;border-collapse:collapse}.rpv-team-simple td{border:0;padding:2px 1px;vertical-align:top}.rpv-team-simple td:first-child{width:7%}.rpv-position-list{padding-top:18px}.rpv-position-list div{padding:2px 0}
     .rpv-footer{position:absolute;left:7mm;right:7mm;bottom:3.8mm;display:flex;justify-content:space-between;font-size:9px;font-style:italic}.pv2-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}.rpv-print-btn{display:inline-flex;align-items:center;gap:7px}
     @media(max-width:900px){.rpv-toolbar{grid-template-columns:1fr 1fr}.rpv-paper-wrap{overflow:auto;display:flex;flex-direction:column;align-items:center}}
     @media print{@page{size:A4 portrait;margin:0}body *{visibility:hidden!important}#rpv-preview,#rpv-preview *{visibility:visible!important}#rpv-preview{position:absolute;left:0;top:0;width:210mm;margin:0;padding:0}.rpv-paper{box-shadow:none;margin:0;width:210mm;height:297mm;page-break-after:always;break-after:page}.rpv-paper:last-child{page-break-after:auto;break-after:auto}}
@@ -3393,9 +3393,46 @@ async function rpLoadClassPreview(autoPrint=false){
   }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuat rapor kelas.')}</div></div>`}finally{if(btn){btn.disabled=false;btn.textContent=autoPrint?'Cetak PDF Per Kelas':'Preview Rapor'}}
 }
 
+/* Struktur mapel baku sesuai template resmi (grouping Islamic Studies & Local Content
+   Subjects). Setiap slot dicocokkan ke r.academic (dari edge function report-preview)
+   lewat beberapa alias nama (ID/EN) supaya tetap match walau backend pakai istilah beda. */
+const RP_SUBJECT_TEMPLATE=[
+  {group:'Islamic Studies'},
+  {label:'a. Aqidah (Islamic Creed)',aliases:['aqidah','akidah']},
+  {label:'b. Fiqh (Islamic Jurisprudence)',aliases:['fiqh','fikih']},
+  {label:'c. Adab (Islamic Manners)',aliases:['adab','akhlak']},
+  {label:'d. Hadith',aliases:['hadith','hadits']},
+  {no:2,label:'Pancasila Education',aliases:['pancasila']},
+  {no:3,label:'Bahasa Indonesia',aliases:['bahasa indonesia']},
+  {no:4,label:'Mathematics',aliases:['matematika','mathematics']},
+  {no:5,label:'Natural Sciences',aliases:['natural sciences','ipa','sains']},
+  {no:6,label:'Social Sciences',aliases:['social sciences','ips','sospan']},
+  {no:7,label:'Arts, Culture, and Crafts Education',aliases:['seni budaya','arts','sbdp','prakarya']},
+  {no:8,label:'Physical Education, Sports, and Health',aliases:['pjok','physical education','penjas']},
+  {group:'Local Content Subjects'},
+  {label:'a. Arabic Language',aliases:['bahasa arab','arabic']},
+  {label:'b. English',aliases:['bahasa inggris','english']},
+  {label:'c. Sundanese Language',aliases:['bahasa sunda','sundanese']},
+  {label:'d. Seerah (Prophetic Biography)',aliases:['sirah','siroh','seerah']},
+  {label:"e. Tajweed (Qur'anic Recitation)",aliases:['tajwid','tajweed']}
+];
+function rpFindAcademic(list,aliases){
+  return list.find(item=>{const nm=String(item?.name||'').toLowerCase();return aliases.some(a=>nm.includes(a));})||null;
+}
 function rpAcademicRows(rows){
-  const list=Array.isArray(rows)?rows:[];if(!list.length)return`<tr><td colspan="9" class="rpv-center">Belum ada data akademik.</td></tr>`;
-  return list.map((r,i)=>{const sg4=Boolean(r.starting_grade_4);const cls=sg4?' class="rpv-center rpv-start4"':' class="rpv-center"';const kktp=sg4?'':escapeHtml(r.kktp||'-');const los=[0,1,2,3,4].map(x=>`<td${cls}>${sg4?'':rpScore(r.lo?.[x])}</td>`).join('');return`<tr><td class="rpv-center">${i+1}</td><td>${escapeHtml(r.name||'-')}</td><td${cls}>${kktp}</td>${los}<td${cls}>${escapeHtml(sg4?'Starting Grade 4':(r.remarks||'-'))}</td></tr>`}).join('');
+  const list=Array.isArray(rows)?rows:[];
+  let groupNo=0,subIndex=0;
+  return RP_SUBJECT_TEMPLATE.map(slot=>{
+    if(slot.group){groupNo=slot.group==='Islamic Studies'?1:9;subIndex=0;return`<tr class="rpv-group-row"><td class="rpv-center">${groupNo}</td><td colspan="8">${escapeHtml(slot.group)}</td></tr>`;}
+    const isSub=!slot.no;const no=slot.no||'';
+    const r=rpFindAcademic(list,slot.aliases)||{};
+    const sg4=Boolean(r.starting_grade_4);
+    const cls=sg4?' class="rpv-center rpv-start4"':' class="rpv-center"';
+    const kktp=sg4?'':escapeHtml(r.kktp||'-');
+    const los=[0,1,2,3,4].map(x=>`<td${cls}>${sg4?'':rpScore(r.lo?.[x])}</td>`).join('');
+    const remarks=sg4?'Starting Grade 4':escapeHtml(r.remarks||'-');
+    return`<tr><td class="rpv-center">${no}</td><td${isSub?' class="rpv-sub"':''}>${escapeHtml(slot.label)}</td><td${cls}>${kktp}</td>${los}<td${cls}>${remarks}</td></tr>`;
+  }).join('');
 }
 function rpTahfizhRows(t){
   if(!t)return`<tr><td>Memorization Material</td><td>-</td></tr><tr><td>Tahfizh Learning Target (LP)</td><td>-</td></tr><tr><td>Current Achievement</td><td>-</td></tr><tr><td>Tahfizh Achievement</td><td>-</td></tr><tr><td>&nbsp;&nbsp;a. Number of Surahs</td><td>-</td></tr><tr><td>&nbsp;&nbsp;b. Number of Lines</td><td>-</td></tr><tr><td>&nbsp;&nbsp;c. Number of Verses</td><td>-</td></tr><tr><td>&nbsp;&nbsp;d. Percentage (%)</td><td>-</td></tr><tr><td>Juz Advancement Assessment</td><td>-</td></tr>`;
@@ -3435,9 +3472,9 @@ function renderRaporPreview(){
   <div class="rpv-paper-wrap" id="rpv-preview">
     <section class="rpv-paper">
       <table class="rpv-template-head"><tbody>
-        <tr><td class="head-left">${reportTitle}</td><td class="head-right">Student Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;<b>${escapeHtml(st.name||'-')}</b></td></tr>
-        <tr><td class="head-left">${semTxt}</td><td class="head-right">Student ID/NISN&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;${escapeHtml(idText)}</td></tr>
-        <tr><td class="head-left">ACADEMIC YEAR ${escapeHtml(r.academic_year||'2026/2027')}</td><td class="head-right">Class/Phase&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;${escapeHtml(cl.name||'-')}</td></tr>
+        <tr><td class="head-left">${reportTitle}</td><td class="head-right"><span class="hr-label">Student Name</span><span class="hr-colon">:</span><span class="hr-value"><b>${escapeHtml(st.name||'-')}</b></span></td></tr>
+        <tr><td class="head-left">${semTxt}</td><td class="head-right"><span class="hr-label">Student ID/NISN</span><span class="hr-colon">:</span><span class="hr-value">${escapeHtml(idText)}</span></td></tr>
+        <tr><td class="head-left">ACADEMIC YEAR ${escapeHtml(r.academic_year||'2026/2027')}</td><td class="head-right"><span class="hr-label">Class/Phase</span><span class="hr-colon">:</span><span class="hr-value">${escapeHtml(cl.name||'-')}</span></td></tr>
       </tbody></table><div class="rpv-template-shadow"></div>
       <div class="rpv-section-plain">1&nbsp;&nbsp;Tahfizh Achievement Report</div><table class="rpv-tahfizh"><tbody>${tahRows}</tbody></table>
       <div class="rpv-section-plain">2&nbsp;&nbsp;Subject Assessment Report</div>
