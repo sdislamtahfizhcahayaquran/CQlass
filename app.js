@@ -525,170 +525,98 @@ async function submitGantiUsername(e){
   return false;
 }
 
-/* ==========================================================
-   NAVIGASI MODUL (V2 — dropdown berkelompok)
-   ========================================================== */
-const MODULE_GROUPS = [
-  {
-    id: 'akademik', label: 'Akademik', roles: ['guru','walas','akademik','pimpinan'],
-    items: [
-      { id: 'leger',      label: 'Nilai', roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderLegger },
-      { id: 'bilingual',  label: 'Bilingual', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderVocabularyBulanan },
-      { id: 'pjbl',       label: 'PjBL',        roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderPjBL },
-      { id: 'rapor',    label: 'Cetak Rapor', roles: ['walas','akademik','pimpinan'], built: true,  render: renderCetakRapor }
-    ]
-  },
-  {
-    id: 'kesiswaan', label: 'Kesiswaan', roles: ['guru','walas','kesiswaan','pimpinan'],
-    items: [
-      { id: 'absensi',      label: 'Absensi (Morning Talk)', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderAbsensi },
-      { id: 'kedisiplinan', label: 'Kedisiplinan',           roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderKedisiplinan },
-      { id: 'reward',       label: 'Reward Siswa',           roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderReward },
-      { id: 'masalah',      label: 'Masalah Siswa',          roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderMasalahSiswa }
-    ]
-  },
-  {
-    id: 'info', label: 'Info', roles: ['walas','kesiswaan','kegiatan','pimpinan'],
-    items: [
-      { id: 'ekskul', label: 'Ekskul', roles: ['walas','kesiswaan','kegiatan','pimpinan'], built: true, render: renderEkskulRekap }
-    ]
-  },
-  {
-    id: 'laporan', label: 'Laporan', roles: ['walas','kesiswaan','pimpinan'],
-    items: [
-      { id: 'laporan-guru',   label: 'Laporan Guru Bulanan', roles: ['walas','kesiswaan','pimpinan'], built: true,  render: renderLaporanGuru },
-      { id: 'laporan-unduh',  label: 'Unduh Rekap',          roles: ['kesiswaan','pimpinan'],         built: false }
-    ]
-  }
-];
+// ==========================================================
+// FUNGSI RENDER UNTUK SEMUA MODUL
+// ==========================================================
 
-const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderDashboard };
-
-function findModuleByIdV2(id) {
-  if (id === 'dashboard') return DASHBOARD_MODULE;
-  for (const g of MODULE_GROUPS) {
-    const found = g.items.find(m => m.id === id);
-    if (found) return found;
-  }
-  return null;
+function renderDashboard(content){
+  content.innerHTML = `
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Selamat datang di CQlass!</div>
+    <div class="card">
+      <div style="padding:20px;text-align:center;font-size:16px;color:var(--muted)">
+        👤 ${escapeHtml(currentUser?.nama || 'User')}<br>
+        📚 ${escapeHtml(currentUser?.kelas || 'Kelas belum diatur')}<br>
+        🔑 Role: ${escapeHtml(currentUser?.role || '-')}
+      </div>
+    </div>
+  `;
 }
 
-let activeModule = 'dashboard';
-let pendingKeterlambatanCount = 0;
-let openGroupId = null;
-let bellIntervalId = null;
-
-function enterApp(){
-  if(currentUser) saveAuthSession(getAuthToken(),localStorage.getItem(AUTH_STORAGE.EXPIRES)||'',currentUser);
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = 'block';
-  document.getElementById('user-name').textContent = currentUser.nama;
-  document.getElementById('user-role').textContent = currentUser.role.toUpperCase();
-  updateProfilePhotoUI();
-
-  activeModule = DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi';
-  renderSidebar();
-  setActiveModule(activeModule);
-
-  if(currentUser.role === 'walas'){
-    setTimeout(() => {
-      if(currentUser?.role === 'walas') refreshBellNotif();
-    }, 900);
-
-    if(!bellIntervalId){
-      bellIntervalId = setInterval(() => {
-        if(currentUser?.role === 'walas') refreshBellNotif();
-      }, 300000);
-    }
-  }
-
-  setTimeout(() => {
-    if(!currentUser) return;
-    callApi('logAktivitas', {
-      username: currentUser.username,
-      nama: currentUser.nama,
-      kelas: currentUser.kelas || '',
-      modul: 'Login',
-      aksi: 'login'
-    }).catch(()=>{});
-  }, 2200);
+function renderAbsensi(content){
+  content.innerHTML = `
+    <div class="page-title">Absensi (Morning Talk)</div>
+    <div class="page-sub">Modul absensi sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">📋</div>Belum tersedia</div></div>
+  `;
 }
 
-async function refreshPendingKeterlambatanBadge(){
-  if(!currentUser || currentUser.role !== 'walas') return;
-  try{
-    const res = await callApi('getKeterlambatanBelumDicatat', { kelas: currentUser.kelas });
-    const list = res.data || [];
-    pendingKeterlambatanCount = list.filter(r => !r.sudahDicatat).length;
-  } catch(err){
-    pendingKeterlambatanCount = 0;
-  }
-  renderSidebar();
+function renderKedisiplinan(content){
+  content.innerHTML = `
+    <div class="page-title">Kedisiplinan</div>
+    <div class="page-sub">Modul kedisiplinan sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">⚠️</div>Belum tersedia</div></div>
+  `;
 }
 
-function renderSidebar(){
-  const sidebar = document.getElementById('sidebar');
-  sidebar.innerHTML = '';
-
-  if (DASHBOARD_MODULE.roles.includes(currentUser.role)) {
-    const dashItem = document.createElement('div');
-    dashItem.className = 'nav-item' + (activeModule === 'dashboard' ? ' active' : '');
-    dashItem.innerHTML = `<span>${DASHBOARD_MODULE.label}</span>`;
-    dashItem.onclick = () => setActiveModule('dashboard');
-    sidebar.appendChild(dashItem);
-  }
-
-  MODULE_GROUPS.filter(g => g.roles.includes(currentUser.role)).forEach(group => {
-    const visibleItems = group.items.filter(m => m.roles.includes(currentUser.role));
-    if (!visibleItems.length) return;
-
-    const isOpen = openGroupId === group.id || visibleItems.some(m => m.id === activeModule);
-    const groupHead = document.createElement('div');
-    groupHead.className = 'nav-group-head' + (isOpen ? ' open' : '');
-    groupHead.innerHTML = `
-      <span>${group.label}</span>
-      <svg class="nav-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-    `;
-    groupHead.onclick = () => { openGroupId = (openGroupId === group.id) ? null : group.id; renderSidebar(); };
-    sidebar.appendChild(groupHead);
-
-    if (isOpen) {
-      const sub = document.createElement('div');
-      sub.className = 'nav-group-items';
-      visibleItems.forEach(m => {
-        const div = document.createElement('div');
-        div.className = 'nav-item nav-item-sub' + (m.id === activeModule ? ' active' : '') + (!m.built ? ' disabled' : '');
-        let badge = !m.built ? '<span class="nav-badge">segera</span>' : '';
-        if (m.id === 'kedisiplinan' && pendingKeterlambatanCount > 0) {
-          badge = `<span class="nav-badge alert">${pendingKeterlambatanCount} telat</span>`;
-        }
-        div.innerHTML = `<span>${m.label}</span>` + badge;
-        if (m.built) div.onclick = () => setActiveModule(m.id);
-        sub.appendChild(div);
-      });
-      sidebar.appendChild(sub);
-    }
-  });
+function renderReward(content){
+  content.innerHTML = `
+    <div class="page-title">Reward Siswa</div>
+    <div class="page-sub">Modul reward sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">🎁</div>Belum tersedia</div></div>
+  `;
 }
 
-function setActiveModule(id){
-  activeModule = id;
-  const mod = findModuleByIdV2(id);
-  if (mod) {
-    const parentGroup = MODULE_GROUPS.find(g => g.items.some(i => i.id === id));
-    if (parentGroup) openGroupId = parentGroup.id;
-  }
-  renderSidebar();
-  const content = document.getElementById('content');
-  if (mod && mod.built && mod.render) {
-    mod.render(content);
-  } else {
-    content.innerHTML = `<div class="empty-state"><div class="icon">—</div>Modul ini belum dibangun.</div>`;
-  }
+function renderMasalahSiswa(content){
+  content.innerHTML = `
+    <div class="page-title">Masalah Siswa</div>
+    <div class="page-sub">Modul masalah siswa sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">📋</div>Belum tersedia</div></div>
+  `;
+}
+
+function renderLegger(content){
+  content.innerHTML = `
+    <div class="page-title">Nilai</div>
+    <div class="page-sub">Modul nilai sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">📊</div>Belum tersedia</div></div>
+  `;
+}
+
+function renderVocabularyBulanan(content){
+  content.innerHTML = `
+    <div class="page-title">Bilingual</div>
+    <div class="page-sub">Modul bilingual sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">🌐</div>Belum tersedia</div></div>
+  `;
+}
+
+function renderPjBL(content){
+  content.innerHTML = `
+    <div class="page-title">PjBL</div>
+    <div class="page-sub">Modul PjBL sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">📋</div>Belum tersedia</div></div>
+  `;
+}
+
+function renderEkskulRekap(content){
+  content.innerHTML = `
+    <div class="page-title">Ekskul</div>
+    <div class="page-sub">Modul ekstrakurikuler sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">🏆</div>Belum tersedia</div></div>
+  `;
+}
+
+function renderLaporanGuru(content){
+  content.innerHTML = `
+    <div class="page-title">Laporan Guru Bulanan</div>
+    <div class="page-sub">Modul laporan guru sedang dalam pengembangan.</div>
+    <div class="card"><div class="empty-state"><div class="icon">📊</div>Belum tersedia</div></div>
+  `;
 }
 
 // ==========================================================
-// FUNGSI-FUNGSI UTILITY UNTUK RAPOR
+// FUNGSI RAPOR — CETAK RAPOR
 // ==========================================================
 
 function rpScore(v){
@@ -793,10 +721,6 @@ function rpDownloadBlob(blob, name){
     a.remove();
   }, 1200);
 }
-
-// ==========================================================
-// RAPOR V1 — PREVIEW SUPABASE (SESUAI TEMPLATE)
-// ==========================================================
 
 let raporPreviewState = {
   academicYear: '2026/2027',
@@ -957,10 +881,6 @@ function injectRaporPreviewStyles(){
   document.head.appendChild(s);
 }
 
-// ==========================================================
-// ACADEMIC ROWS — SESUAI TEMPLATE DENGAN STARTING GRADE 4
-// ==========================================================
-
 function rpAcademicRows(rows){
   const list = Array.isArray(rows) ? rows : [];
   if(!list.length) return `<tr><td colspan="9" class="rpv-center">Belum ada data akademik.</td></tr>`;
@@ -1020,7 +940,6 @@ function rpTahfizhRows(t){
     <tr><td>Juz Advancement Assessment</td><td>:</td><td>${escapeHtml(t.juz_assessment || '-')}</td></tr>`;
 }
 
-// TEAM TEACHING — WALAS TIDAK MASUK, POSISI SEJAJAR
 function rpTeamRows(team, tahfizh, walasName){
   const arr = [];
   
@@ -1221,10 +1140,6 @@ function renderRaporPreview(){
   
   document.getElementById('rpv-preview')?.scrollIntoView({behavior:'smooth', block:'start'});
   requestAnimationFrame(rpFitPaperToViewport);
-  if(!window.__rpFitBound){
-    window.__rpFitBound = true;
-    window.addEventListener('resize', () => requestAnimationFrame(rpFitPaperToViewport));
-  }
 }
 
 function rpFitPaperToViewport(){
@@ -1246,12 +1161,11 @@ function rpFitPaperToViewport(){
   });
 }
 
-// ==========================================================
-// CETAK RAPOR — MAIN FUNCTION
-// ==========================================================
-
-async function renderCetakRapor(content){
+function renderCetakRapor(content){
+  console.log('renderCetakRapor dipanggil!');
+  
   injectRaporPreviewStyles();
+  
   raporPreviewState = {
     academicYear: '2026/2027',
     semester: 1,
@@ -1276,16 +1190,23 @@ async function renderCetakRapor(content){
   `;
   
   try{
-    const b = await reportPreviewRequest('bootstrap', {
+    console.log('Memanggil reportPreviewRequest bootstrap...');
+    reportPreviewRequest('bootstrap', {
       academic_year: raporPreviewState.academicYear,
       semester_no: raporPreviewState.semester
+    }).then(b => {
+      console.log('Bootstrap berhasil:', b);
+      raporPreviewState.classes = b.classes || [];
+      raporPreviewState.classLocked = Boolean(b.class_locked);
+      raporPreviewState.classId = b.default_class_id || '';
+      renderRaporControls();
+      if(raporPreviewState.classId) rpLoadStudents();
+    }).catch(e => {
+      console.error('Error bootstrap:', e);
+      document.getElementById('rpv-root').innerHTML = `<div class="card"><div class="ms-alert">${escapeHtml(e.message || 'Gagal membuka Rapor.')}</div></div>`;
     });
-    raporPreviewState.classes = b.classes || [];
-    raporPreviewState.classLocked = Boolean(b.class_locked);
-    raporPreviewState.classId = b.default_class_id || '';
-    renderRaporControls();
-    if(raporPreviewState.classId) await rpLoadStudents();
   } catch(e){
+    console.error('Error di renderCetakRapor:', e);
     document.getElementById('rpv-root').innerHTML = `<div class="card"><div class="ms-alert">${escapeHtml(e.message || 'Gagal membuka Rapor.')}</div></div>`;
   }
 }
@@ -1327,61 +1248,61 @@ function rpUpdatePrintUi(){
   if(pb) pb.textContent = mode === 'CLASS' ? 'Cetak PDF Per Kelas (ZIP)' : 'Cetak PDF Per Siswa';
 }
 
-async function rpPreviewByMode(){
+function rpPreviewByMode(){
   const mode = document.getElementById('rpv-mode')?.value || 'STUDENT';
   return mode === 'CLASS' ? rpLoadClassPreview(false) : rpLoadPreview();
 }
 
-async function rpPrintByMode(){
+function rpPrintByMode(){
   const mode = document.getElementById('rpv-mode')?.value || 'STUDENT';
   return mode === 'CLASS' ? rpLoadClassPreview(true) : rpPrintStudentPdf();
 }
 
-async function rpChangeSemester(v){
+function rpChangeSemester(v){
   raporPreviewState.semester = Number(v) || 1;
   raporPreviewState.classId = '';
   raporPreviewState.studentId = '';
   raporPreviewState.report = null;
-  try{
-    const b = await reportPreviewRequest('bootstrap', {
-      academic_year: raporPreviewState.academicYear,
-      semester_no: raporPreviewState.semester
-    });
+  
+  reportPreviewRequest('bootstrap', {
+    academic_year: raporPreviewState.academicYear,
+    semester_no: raporPreviewState.semester
+  }).then(b => {
     raporPreviewState.classes = b.classes || [];
     raporPreviewState.classLocked = Boolean(b.class_locked);
     raporPreviewState.classId = b.default_class_id || '';
     renderRaporControls();
     const sem = document.getElementById('rpv-sem');
     if(sem) sem.value = String(raporPreviewState.semester);
-    if(raporPreviewState.classId) await rpLoadStudents();
-  } catch(e){
+    if(raporPreviewState.classId) rpLoadStudents();
+  }).catch(e => {
     showToast(e.message || 'Gagal mengganti semester', true);
-  }
+  });
 }
 
-async function rpLoadStudents(){
+function rpLoadStudents(){
   const sel = document.getElementById('rpv-student');
   if(!sel || !raporPreviewState.classId) return;
   sel.disabled = true;
   sel.innerHTML = '<option>Memuat siswa...</option>';
-  try{
-    const d = await reportPreviewRequest('students', {
-      academic_year: raporPreviewState.academicYear,
-      semester_no: raporPreviewState.semester,
-      class_id: raporPreviewState.classId
-    });
+  
+  reportPreviewRequest('students', {
+    academic_year: raporPreviewState.academicYear,
+    semester_no: raporPreviewState.semester,
+    class_id: raporPreviewState.classId
+  }).then(d => {
     raporPreviewState.students = d.students || [];
     sel.innerHTML = '<option value="">— Pilih siswa —</option>' + 
       raporPreviewState.students.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} — ${escapeHtml(s.nis || s.nisn || '')}</option>`).join('');
-  } catch(e){
+    sel.disabled = false;
+  }).catch(e => {
     sel.innerHTML = '<option value="">Gagal memuat siswa</option>';
     showToast(e.message || 'Gagal memuat siswa', true);
-  } finally {
     sel.disabled = false;
-  }
+  });
 }
 
-async function rpLoadPreview(){
+function rpLoadPreview(){
   const classId = raporPreviewState.classId;
   const studentId = document.getElementById('rpv-student')?.value || raporPreviewState.studentId || '';
   if(!classId){ showToast('Kelas belum tersedia.', true); return false; }
@@ -1399,47 +1320,57 @@ async function rpLoadPreview(){
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Memuat...'; }
   if(area) area.innerHTML = '<div class="card"><span class="spinner"></span> Menyusun rapor siswa...</div>';
   
-  try{
-    const d = await reportPreviewRequest('preview', {
-      academic_year: raporPreviewState.academicYear,
-      semester_no: raporPreviewState.semester,
-      class_id: classId,
-      student_id: studentId,
-      report_type: raporPreviewState.reportType,
-      start_date: raporPreviewState.startDate,
-      end_date: raporPreviewState.endDate
-    }, 45000);
+  reportPreviewRequest('preview', {
+    academic_year: raporPreviewState.academicYear,
+    semester_no: raporPreviewState.semester,
+    class_id: classId,
+    student_id: studentId,
+    report_type: raporPreviewState.reportType,
+    start_date: raporPreviewState.startDate,
+    end_date: raporPreviewState.endDate
+  }, 45000).then(d => {
     raporPreviewState.report = d.report;
     renderRaporPreview();
-    return true;
-  } catch(e){
-    if(area) area.innerHTML = `<div class="card"><div class="ms-alert">${escapeHtml(e.message || 'Preview gagal dimuat.')}</div></div>`;
-    return false;
-  } finally {
     if(btn){ btn.disabled = false; btn.textContent = 'Preview Siswa'; }
-  }
+    return true;
+  }).catch(e => {
+    if(area) area.innerHTML = `<div class="card"><div class="ms-alert">${escapeHtml(e.message || 'Preview gagal dimuat.')}</div></div>`;
+    if(btn){ btn.disabled = false; btn.textContent = 'Preview Siswa'; }
+    return false;
+  });
 }
 
-async function rpPrintStudentPdf(){
+function rpPrintStudentPdf(){
   const btn = document.getElementById('rpv-print-btn');
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Menyiapkan PDF...'; }
-  try{
-    const ok = await rpLoadPreview();
-    if(!ok) return;
-    const el = document.getElementById('rpv-preview');
-    if(!el) throw new Error('Preview PDF tidak ditemukan.');
-    const blob = await rpElementPdfBlob(el);
-    const name = rpSafeFilename(raporPreviewState.report?.student?.name || 'Rapor') + '.pdf';
-    rpDownloadBlob(blob, name);
-    showToast('PDF rapor berhasil dibuat.');
-  } catch(e){
-    showToast(e.message || 'Gagal membuat PDF.', true);
-  } finally {
+  
+  const ok = rpLoadPreview();
+  if(!ok) {
     if(btn){ btn.disabled = false; btn.textContent = 'Cetak PDF Per Siswa'; }
+    return;
   }
+  
+  setTimeout(() => {
+    const el = document.getElementById('rpv-preview');
+    if(!el){ 
+      showToast('Preview PDF tidak ditemukan.', true);
+      if(btn){ btn.disabled = false; btn.textContent = 'Cetak PDF Per Siswa'; }
+      return; 
+    }
+    
+    rpElementPdfBlob(el).then(blob => {
+      const name = rpSafeFilename(raporPreviewState.report?.student?.name || 'Rapor') + '.pdf';
+      rpDownloadBlob(blob, name);
+      showToast('PDF rapor berhasil dibuat.');
+      if(btn){ btn.disabled = false; btn.textContent = 'Cetak PDF Per Siswa'; }
+    }).catch(e => {
+      showToast(e.message || 'Gagal membuat PDF.', true);
+      if(btn){ btn.disabled = false; btn.textContent = 'Cetak PDF Per Siswa'; }
+    });
+  }, 1500);
 }
 
-async function rpLoadClassPreview(autoPrint = false){
+function rpLoadClassPreview(autoPrint = false){
   const classId = raporPreviewState.classId;
   if(!classId){ showToast('Kelas Walas belum ditemukan.', true); return; }
   
@@ -1454,48 +1385,215 @@ async function rpLoadClassPreview(autoPrint = false){
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Menyiapkan...'; }
   if(area) area.innerHTML = '<div class="card"><span class="spinner"></span> Menyusun seluruh rapor kelas. Mohon tunggu...</div>';
   
-  try{
-    const d = await reportPreviewRequest('class_reports', {
-      academic_year: raporPreviewState.academicYear,
-      semester_no: raporPreviewState.semester,
-      class_id: classId,
-      report_type: raporPreviewState.reportType,
-      start_date: raporPreviewState.startDate,
-      end_date: raporPreviewState.endDate
-    }, 120000);
-    
+  reportPreviewRequest('class_reports', {
+    academic_year: raporPreviewState.academicYear,
+    semester_no: raporPreviewState.semester,
+    class_id: classId,
+    report_type: raporPreviewState.reportType,
+    start_date: raporPreviewState.startDate,
+    end_date: raporPreviewState.endDate
+  }, 120000).then(d => {
     const reports = Array.isArray(d.reports) ? d.reports : [];
     if(!reports.length) throw new Error('Tidak ada siswa aktif pada kelas ini.');
     raporPreviewState.classReports = reports;
     
     if(autoPrint){
-      await rpEnsurePdfLibs(true);
-      const zip = new window.JSZip();
-      const original = raporPreviewState.report;
-      for(let i = 0; i < reports.length; i++){
-        raporPreviewState.report = reports[i];
-        renderRaporPreview();
-        const el = document.getElementById('rpv-preview');
-        if(!el) continue;
-        if(btn) btn.textContent = `PDF ${i+1}/${reports.length}`;
-        const blob = await rpElementPdfBlob(el);
-        zip.file(rpSafeFilename(reports[i]?.student?.name || `Siswa ${i+1}`) + '.pdf', blob);
-      }
-      raporPreviewState.report = original || reports[0];
-      const cl = reports[0]?.class?.name || 'Kelas';
-      const label = raporPreviewState.reportType === 'SEMESTER' ? 'Rapor Akhir Semester' : 'Rapor PTS';
-      const zblob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
-      rpDownloadBlob(zblob, `${label} ${rpSafeFilename(cl)}.zip`);
-      showToast('ZIP rapor per kelas berhasil dibuat.');
+      rpEnsurePdfLibs(true).then(() => {
+        const zip = new window.JSZip();
+        const original = raporPreviewState.report;
+        let completed = 0;
+        
+        reports.forEach((report, i) => {
+          raporPreviewState.report = report;
+          renderRaporPreview();
+          const el = document.getElementById('rpv-preview');
+          if(!el) { completed++; return; }
+          if(btn) btn.textContent = `PDF ${i+1}/${reports.length}`;
+          
+          rpElementPdfBlob(el).then(blob => {
+            zip.file(rpSafeFilename(report?.student?.name || `Siswa ${i+1}`) + '.pdf', blob);
+            completed++;
+            if(completed === reports.length) {
+              raporPreviewState.report = original || reports[0];
+              const cl = reports[0]?.class?.name || 'Kelas';
+              const label = raporPreviewState.reportType === 'SEMESTER' ? 'Rapor Akhir Semester' : 'Rapor PTS';
+              zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}}).then(zblob => {
+                rpDownloadBlob(zblob, `${label} ${rpSafeFilename(cl)}.zip`);
+                showToast('ZIP rapor per kelas berhasil dibuat.');
+                if(btn){ btn.disabled = false; btn.textContent = autoPrint ? 'Cetak PDF Per Kelas (ZIP)' : 'Preview Rapor'; }
+              });
+            }
+          }).catch(e => {
+            completed++;
+            if(completed === reports.length) {
+              raporPreviewState.report = original || reports[0];
+              if(btn){ btn.disabled = false; btn.textContent = autoPrint ? 'Cetak PDF Per Kelas (ZIP)' : 'Preview Rapor'; }
+            }
+          });
+        });
+      });
       return;
     }
     
     const first = reports[0];
     raporPreviewState.report = first;
     renderRaporPreview();
-  } catch(e){
+    if(btn){ btn.disabled = false; btn.textContent = 'Preview Rapor'; }
+  }).catch(e => {
     if(area) area.innerHTML = `<div class="card"><div class="ms-alert">${escapeHtml(e.message || 'Gagal membuat rapor kelas.')}</div></div>`;
-  } finally {
     if(btn){ btn.disabled = false; btn.textContent = autoPrint ? 'Cetak PDF Per Kelas (ZIP)' : 'Preview Rapor'; }
+  });
+}
+
+// ==========================================================
+// MODULE_GROUPS & DASHBOARD_MODULE (SETELAH SEMUA FUNGSI RENDER)
+// ==========================================================
+
+const MODULE_GROUPS = [
+  {
+    id: 'akademik', label: 'Akademik', roles: ['guru','walas','akademik','pimpinan'],
+    items: [
+      { id: 'leger', label: 'Nilai', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderLegger },
+      { id: 'bilingual', label: 'Bilingual', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderVocabularyBulanan },
+      { id: 'pjbl', label: 'PjBL', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderPjBL },
+      { id: 'rapor', label: 'Cetak Rapor', roles: ['walas','akademik','pimpinan'], built: true, render: renderCetakRapor }
+    ]
+  },
+  {
+    id: 'kesiswaan', label: 'Kesiswaan', roles: ['guru','walas','kesiswaan','pimpinan'],
+    items: [
+      { id: 'absensi', label: 'Absensi (Morning Talk)', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderAbsensi },
+      { id: 'kedisiplinan', label: 'Kedisiplinan', roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderKedisiplinan },
+      { id: 'reward', label: 'Reward Siswa', roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderReward },
+      { id: 'masalah', label: 'Masalah Siswa', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderMasalahSiswa }
+    ]
+  },
+  {
+    id: 'info', label: 'Info', roles: ['walas','kesiswaan','kegiatan','pimpinan'],
+    items: [
+      { id: 'ekskul', label: 'Ekskul', roles: ['walas','kesiswaan','kegiatan','pimpinan'], built: true, render: renderEkskulRekap }
+    ]
+  },
+  {
+    id: 'laporan', label: 'Laporan', roles: ['walas','kesiswaan','pimpinan'],
+    items: [
+      { id: 'laporan-guru', label: 'Laporan Guru Bulanan', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderLaporanGuru },
+      { id: 'laporan-unduh', label: 'Unduh Rekap', roles: ['kesiswaan','pimpinan'], built: false }
+    ]
   }
+];
+
+const DASHBOARD_MODULE = { 
+  id: 'dashboard', 
+  label: 'Dashboard', 
+  roles: ['walas','kesiswaan','pimpinan'], 
+  built: true, 
+  render: renderDashboard 
+};
+
+// ==========================================================
+// FUNGSI NAVIGASI (SETELAH MODULE_GROUPS)
+// ==========================================================
+
+function findModuleByIdV2(id) {
+  if (id === 'dashboard') return DASHBOARD_MODULE;
+  for (const g of MODULE_GROUPS) {
+    const found = g.items.find(m => m.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function renderSidebar(){
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+
+  if (DASHBOARD_MODULE.roles.includes(currentUser.role)) {
+    const dashItem = document.createElement('div');
+    dashItem.className = 'nav-item' + (activeModule === 'dashboard' ? ' active' : '');
+    dashItem.innerHTML = `<span>${DASHBOARD_MODULE.label}</span>`;
+    dashItem.onclick = () => setActiveModule('dashboard');
+    sidebar.appendChild(dashItem);
+  }
+
+  MODULE_GROUPS.filter(g => g.roles.includes(currentUser.role)).forEach(group => {
+    const visibleItems = group.items.filter(m => m.roles.includes(currentUser.role));
+    if (!visibleItems.length) return;
+
+    const isOpen = openGroupId === group.id || visibleItems.some(m => m.id === activeModule);
+    const groupHead = document.createElement('div');
+    groupHead.className = 'nav-group-head' + (isOpen ? ' open' : '');
+    groupHead.innerHTML = `
+      <span>${group.label}</span>
+      <svg class="nav-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    `;
+    groupHead.onclick = () => { openGroupId = (openGroupId === group.id) ? null : group.id; renderSidebar(); };
+    sidebar.appendChild(groupHead);
+
+    if (isOpen) {
+      const sub = document.createElement('div');
+      sub.className = 'nav-group-items';
+      visibleItems.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'nav-item nav-item-sub' + (m.id === activeModule ? ' active' : '') + (!m.built ? ' disabled' : '');
+        let badge = !m.built ? '<span class="nav-badge">segera</span>' : '';
+        div.innerHTML = `<span>${m.label}</span>` + badge;
+        if (m.built) div.onclick = () => setActiveModule(m.id);
+        sub.appendChild(div);
+      });
+      sidebar.appendChild(sub);
+    }
+  });
+}
+
+function setActiveModule(id){
+  activeModule = id;
+  const mod = findModuleByIdV2(id);
+  if (mod) {
+    const parentGroup = MODULE_GROUPS.find(g => g.items.some(i => i.id === id));
+    if (parentGroup) openGroupId = parentGroup.id;
+  }
+  renderSidebar();
+  const content = document.getElementById('content');
+  if (mod && mod.built && mod.render) {
+    mod.render(content);
+  } else {
+    content.innerHTML = `<div class="empty-state"><div class="icon">—</div>Modul ini belum dibangun.</div>`;
+  }
+}
+
+function enterApp(){
+  if(currentUser) saveAuthSession(getAuthToken(),localStorage.getItem(AUTH_STORAGE.EXPIRES)||'',currentUser);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  document.getElementById('user-name').textContent = currentUser.nama;
+  document.getElementById('user-role').textContent = currentUser.role.toUpperCase();
+  updateProfilePhotoUI();
+
+  activeModule = DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi';
+  renderSidebar();
+  setActiveModule(activeModule);
+
+  if(currentUser.role === 'walas'){
+    setTimeout(() => {
+      if(currentUser?.role === 'walas') refreshBellNotif();
+    }, 900);
+
+    if(!bellIntervalId){
+      bellIntervalId = setInterval(() => {
+        if(currentUser?.role === 'walas') refreshBellNotif();
+      }, 300000);
+    }
+  }
+
+  setTimeout(() => {
+    if(!currentUser) return;
+    callApi('logAktivitas', {
+      username: currentUser.username,
+      nama: currentUser.nama,
+      kelas: currentUser.kelas || '',
+      modul: 'Login',
+      aksi: 'login'
+    }).catch(()=>{});
+  }, 2200);
 }
