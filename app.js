@@ -4094,9 +4094,12 @@ async function loadDashboard(requestToken){
 
 
 /* ==========================================================
-   CQLASS — REKAP EKSKUL WALAS (READ ONLY)
-   Tampilan memakai komponen CSS yang sudah ada.
+   CQLASS — EKSKUL V7
+   REKAP + FINALISASI NILAI RAPOR DI CQLASS UTAMA
+   Web ekskul eksternal TIDAK diubah.
+   Backend: extracurricular-public
    ========================================================== */
+
 async function ekskulV6Api(action,payload={}){
   const res=await fetch(EXTRACURRICULAR_PUBLIC_URL,{
     method:'POST',
@@ -4111,6 +4114,7 @@ async function ekskulV6Api(action,payload={}){
   if(!res.ok||!data.success)throw new Error(data.error||'Gagal memuat data ekskul.');
   return data;
 }
+
 function injectEkskulV56Styles(){
   if(document.getElementById('ek-v56-style')) return;
   const s=document.createElement('style');s.id='ek-v56-style';
@@ -4130,44 +4134,133 @@ function injectEkskulV56Styles(){
     .ek-v56-progress span{display:block;height:100%;background:var(--primary);border-radius:999px}
     .ek-v56-grade{display:inline-flex;min-width:30px;justify-content:center;padding:4px 7px;border-radius:8px;background:#eef7f6;color:var(--primary);font-weight:900}
     .ek-v56-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
-    .ek-v56-table{width:100%;border-collapse:collapse;min-width:760px}
+    .ek-v56-table{width:100%;border-collapse:collapse;min-width:960px}
     .ek-v56-table th,.ek-v56-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:11px;text-align:left;vertical-align:middle}
     .ek-v56-table th{background:#f5f9f9;color:var(--muted);font-size:9.8px;text-transform:uppercase}
     .ek-v56-table tr:last-child td{border-bottom:0}
     .ek-v56-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px}
-    @media(max-width:900px){.ek-v56-kpis{grid-template-columns:repeat(2,1fr)}}
+    .ek-v7-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+    .ek-v7-tab{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:900;cursor:pointer;color:var(--muted)}
+    .ek-v7-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}
+    .ek-v7-final-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) 150px auto;gap:9px;align-items:end}
+    .ek-v7-final-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    .ek-v7-final-table{width:100%;border-collapse:collapse;min-width:1100px}
+    .ek-v7-final-table th,.ek-v7-final-table td{padding:9px;border-bottom:1px solid var(--border);font-size:11px;text-align:left;vertical-align:middle}
+    .ek-v7-final-table th{background:#f5f9f9;color:var(--muted);font-size:9.5px;text-transform:uppercase;white-space:nowrap}
+    .ek-v7-final-table tr:last-child td{border-bottom:0}
+    .ek-v7-grade-select{width:68px;padding:8px;border:1px solid var(--border);border-radius:9px;background:#fff;font:inherit;font-weight:800}
+    .ek-v7-desc{width:100%;min-width:250px;padding:8px;border:1px solid var(--border);border-radius:9px;font:inherit}
+    .ek-v7-stat{font-size:10px;color:var(--muted);line-height:1.45;white-space:nowrap}
+    .ek-v7-final-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+    .ek-v7-status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:900}
+    .ek-v7-status.ok{background:#e8f7ef;color:#147344}.ek-v7-status.no{background:#fff3e7;color:#985000}
+    .ek-v7-help{padding:11px 13px;border:1px solid #cfe5e3;background:#f3fbfa;border-radius:11px;color:#376a67;font-size:11px;line-height:1.55;margin-bottom:12px}
+    @media(max-width:900px){.ek-v56-kpis{grid-template-columns:repeat(2,1fr)}.ek-v7-final-toolbar{grid-template-columns:1fr}}
     @media(max-width:650px){.ek-v56-filters{width:100%}.ek-v56-filters .pv2-control{width:100%;min-width:0}}
   `;
   document.head.appendChild(s);
 }
+
 let ekskulV56Rows=[];
+const ekskulV7State={
+  assignments:[],
+  extracurriculars:[],
+  academicYearId:null,
+  semester:1,
+  assessmentRows:[]
+};
+
+function ekskulV7CanFinalize(){
+  const role=String(currentUser?.role||'').toLowerCase();
+  return role==='kegiatan'||role==='pimpinan';
+}
+
 function renderEkskulRekap(content){
   injectEkskulV56Styles();
   const kelas=currentUser.role==='walas'?(currentUser.kelas||''):'';
+  const canFinalize=ekskulV7CanFinalize();
+
   content.innerHTML=`
     <div class="ek-v56-head">
-      <div><div class="page-title">Rekap Ekstrakurikuler</div><div class="page-sub">Rekap pertemuan, kehadiran, materi, dan nilai ekskul dari Supabase.</div></div>
+      <div>
+        <div class="page-title">Ekstrakurikuler</div>
+        <div class="page-sub">Rekap kegiatan dan nilai final ekstrakurikuler untuk rapor.</div>
+      </div>
       ${kelas?`<span class="ek-v56-chip">${escapeHtml(kelas)}</span>`:''}
     </div>
-    ${currentUser.role!=='walas'?`
-      <div class="card">
-        <div class="card-title">Pilih Kelas</div>
-        <div style="display:flex;gap:8px;max-width:620px;flex-wrap:wrap">
-          <input id="ek-rekap-kelas" class="pv2-control" type="text" placeholder="Ketik kelas, contoh: 5A Banin" style="flex:1;min-width:220px">
-          <button class="btn btn-sm" style="width:auto" onclick="loadEkskulRekapAdmin()">Tampilkan</button>
-        </div>
+
+    ${canFinalize?`
+      <div class="ek-v7-tabs">
+        <button id="ek-v7-tab-rekap" class="ek-v7-tab active" onclick="ekV7OpenTab('rekap')">Rekap Ekskul</button>
+        <button id="ek-v7-tab-final" class="ek-v7-tab" onclick="ekV7OpenTab('final')">Finalisasi Nilai Rapor</button>
       </div>`:''}
-    <div id="ek-rekap-body"></div>`;
+
+    <div id="ek-v7-pane-rekap">
+      ${currentUser.role!=='walas'?`
+        <div class="card">
+          <div class="card-title">Pilih Kelas</div>
+          <div style="display:flex;gap:8px;max-width:620px;flex-wrap:wrap">
+            <input id="ek-rekap-kelas" class="pv2-control" type="text" placeholder="Ketik kelas, contoh: 5A Banin" style="flex:1;min-width:220px">
+            <button class="btn btn-sm" style="width:auto" onclick="loadEkskulRekapAdmin()">Tampilkan</button>
+          </div>
+        </div>`:''}
+      <div id="ek-rekap-body"></div>
+    </div>
+
+    ${canFinalize?`
+      <div id="ek-v7-pane-final" style="display:none">
+        <div class="card">
+          <div class="card-title">Finalisasi Nilai Rapor Ekskul</div>
+          <div class="ek-v7-help">
+            Kehadiran dan rata-rata nilai sesi ditampilkan sebagai bahan pertimbangan.
+            Nilai akhir <b>Aktivitas, Keterampilan, dan Kompetisi</b> tetap ditetapkan A–D saat finalisasi.
+            Data disimpan ke <b>extracurricular_assessments</b>.
+          </div>
+          <div class="ek-v7-final-toolbar">
+            <div>
+              <label class="pv2-label">Kelompok / Pelatih Ekskul</label>
+              <select id="ek-v7-final-assignment" class="pv2-control" onchange="ekV7LoadAssessments()">
+                <option value="">Memuat kelompok ekskul...</option>
+              </select>
+            </div>
+            <div>
+              <label class="pv2-label">Semester</label>
+              <select id="ek-v7-final-semester" class="pv2-control" onchange="ekV7LoadAssessments()">
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
+            <button class="btn btn-sm" style="width:auto" onclick="ekV7LoadAssessments()">Muat Siswa</button>
+          </div>
+        </div>
+        <div id="ek-v7-final-body"></div>
+      </div>`:''}
+  `;
+
   if(kelas) loadEkskulRekap(kelas);
+  if(canFinalize) ekV7BootstrapFinal();
 }
+
+function ekV7OpenTab(tab){
+  const final=tab==='final';
+  const pr=document.getElementById('ek-v7-pane-rekap');
+  const pf=document.getElementById('ek-v7-pane-final');
+  if(pr)pr.style.display=final?'none':'';
+  if(pf)pf.style.display=final?'':'none';
+  document.getElementById('ek-v7-tab-rekap')?.classList.toggle('active',!final);
+  document.getElementById('ek-v7-tab-final')?.classList.toggle('active',final);
+}
+
 function loadEkskulRekapAdmin(){
   const kelas=(document.getElementById('ek-rekap-kelas')?.value||'').trim();
   if(!kelas){showToast('Isi kelas terlebih dahulu.',true);return}
   loadEkskulRekap(kelas);
 }
+
 function ekV56Predikat(v){
   const x=String(v||'-').trim();return x||'-';
 }
+
 function ekV56Filter(){
   const q=(document.getElementById('ek-v56-search')?.value||'').toLowerCase().trim();
   const eks=(document.getElementById('ek-v56-exkul')?.value||'').toLowerCase();
@@ -4180,6 +4273,7 @@ function ekV56Filter(){
     card.style.display=visible?'':'none';
   });
 }
+
 function ekV56Render(rows,kelas){
   const body=document.getElementById('ek-rekap-body');if(!body)return;
   const grouped={};rows.forEach(r=>{const k=r.namaEkskul||'Ekskul';(grouped[k]??=[]).push(r)});
@@ -4188,65 +4282,263 @@ function ekV56Render(rows,kelas){
   const totalHadir=rows.reduce((z,r)=>z+Number(r.hadir||0),0);
   const totalPert=rows.reduce((z,r)=>z+Number(r.totalPertemuan||0),0);
   const avg=totalPert?Math.round(totalHadir*100/totalPert):0;
+  const lengkap=rows.filter(r=>r.activity_grade&&r.skill_grade&&r.competition_grade).length;
+
   body.innerHTML=`
     <div class="ek-v56-kpis">
       <div class="ek-v56-kpi"><strong>${eksNames.length}</strong><span>Ekskul Aktif</span></div>
       <div class="ek-v56-kpi"><strong>${totalSiswa}</strong><span>Siswa Terdata</span></div>
       <div class="ek-v56-kpi"><strong>${avg}%</strong><span>Rata-rata Kehadiran</span></div>
-      <div class="ek-v56-kpi"><strong>${rows.length}</strong><span>Keikutsertaan Ekskul</span></div>
+      <div class="ek-v56-kpi"><strong>${lengkap}/${rows.length}</strong><span>Nilai Rapor Lengkap</span></div>
     </div>
+
     <div class="card">
       <div class="ek-v56-toolbar">
-        <div><div class="card-title" style="margin:0">Data Ekskul ${escapeHtml(kelas)}</div><div class="page-sub" style="margin-top:3px">Pencarian dan filter dilakukan langsung di browser.</div></div>
+        <div>
+          <div class="card-title" style="margin:0">Data Ekskul ${escapeHtml(kelas)}</div>
+          <div class="page-sub" style="margin-top:3px">Rekap sesi dan finalisasi nilai rapor dari Supabase.</div>
+        </div>
         <div class="ek-v56-filters">
           <input id="ek-v56-search" class="pv2-control" placeholder="Cari nama siswa..." oninput="ekV56Filter()">
-          <select id="ek-v56-exkul" class="pv2-control" onchange="ekV56Filter()"><option value="">Semua ekskul</option>${eksNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}</select>
+          <select id="ek-v56-exkul" class="pv2-control" onchange="ekV56Filter()">
+            <option value="">Semua ekskul</option>
+            ${eksNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
+          </select>
         </div>
       </div>
     </div>
+
     ${eksNames.map(nama=>{
       const list=grouped[nama];
-      const h=list.reduce((z,r)=>z+Number(r.hadir||0),0),t=list.reduce((z,r)=>z+Number(r.totalPertemuan||0),0),pct=t?Math.round(h*100/t):0;
+      const h=list.reduce((z,r)=>z+Number(r.hadir||0),0);
+      const t=list.reduce((z,r)=>z+Number(r.totalPertemuan||0),0);
+      const pct=t?Math.round(h*100/t):0;
       return `<div class="card ek-v56-card" data-ekskul-card="${escapeHtml(nama.toLowerCase())}">
-        <div class="ek-v56-card-head"><div><div class="card-title" style="margin:0">${escapeHtml(nama)}</div><div class="page-sub" style="margin-top:3px">${list.length} siswa · Kehadiran rata-rata ${pct}%</div></div><span class="ek-v56-chip">${pct}% hadir</span></div>
-        <div class="ek-v56-table-wrap"><table class="ek-v56-table"><thead><tr>
-          <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Kehadiran</th><th>Aktivitas</th><th>Keterampilan</th><th>Kompetisi</th><th>Status</th><th>Deskripsi</th>
-        </tr></thead><tbody>${list.map((r,i)=>{
-          const p=r.totalPertemuan?Math.round(Number(r.hadir||0)*100/Number(r.totalPertemuan||0)):0;
-          return `<tr class="ek-v56-student-row" data-ekskul="${escapeHtml(nama)}" data-search="${escapeHtml([r.nama,r.kelas,nama,r.predikatKeikutsertaan,r.predikatKemampuan,r.deskripsi].join(' ').toLowerCase())}">
-            <td>${i+1}</td>
-            <td><strong>${escapeHtml(r.nama||'-')}</strong></td>
-            <td>${escapeHtml(r.kelas||'-')}</td>
-            <td><div style="display:flex;align-items:center;gap:8px"><span style="min-width:34px;font-weight:800">${p}%</span><div class="ek-v56-progress"><span style="width:${Math.max(0,Math.min(100,p))}%"></span></div></div><div style="font-size:9px;color:var(--muted);margin-top:3px">${Number(r.hadir||0)} / ${Number(r.totalPertemuan||0)} pertemuan</div></td>
-            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.activity_grade))}</span></td>
-            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.skill_grade))}</span></td>
-            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.competition_grade))}</span></td>
-            <td><span class="ek-v56-chip">${r.activity_grade&&r.skill_grade&&r.competition_grade?'Lengkap':'Belum Lengkap'}</span></td>
-            <td>${escapeHtml(r.deskripsi||'-')}</td>
-          </tr>`;
-        }).join('')}</tbody></table></div>
+        <div class="ek-v56-card-head">
+          <div>
+            <div class="card-title" style="margin:0">${escapeHtml(nama)}</div>
+            <div class="page-sub" style="margin-top:3px">${list.length} siswa · Kehadiran rata-rata ${pct}%</div>
+          </div>
+          <span class="ek-v56-chip">${pct}% hadir</span>
+        </div>
+        <div class="ek-v56-table-wrap">
+          <table class="ek-v56-table">
+            <thead><tr>
+              <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Kehadiran</th>
+              <th>Aktivitas</th><th>Keterampilan</th><th>Kompetisi</th><th>Status</th><th>Deskripsi</th>
+            </tr></thead>
+            <tbody>${list.map((r,i)=>{
+              const p=r.totalPertemuan?Math.round(Number(r.hadir||0)*100/Number(r.totalPertemuan||0)):0;
+              const done=Boolean(r.activity_grade&&r.skill_grade&&r.competition_grade);
+              return `<tr class="ek-v56-student-row"
+                data-ekskul="${escapeHtml(nama)}"
+                data-search="${escapeHtml([r.nama,r.kelas,nama,r.activity_grade,r.skill_grade,r.competition_grade,r.deskripsi].join(' ').toLowerCase())}">
+                <td>${i+1}</td>
+                <td><strong>${escapeHtml(r.nama||'-')}</strong></td>
+                <td>${escapeHtml(r.kelas||'-')}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="min-width:34px;font-weight:800">${p}%</span>
+                    <div class="ek-v56-progress"><span style="width:${Math.max(0,Math.min(100,p))}%"></span></div>
+                  </div>
+                  <div style="font-size:9px;color:var(--muted);margin-top:3px">${Number(r.hadir||0)} / ${Number(r.totalPertemuan||0)} pertemuan</div>
+                </td>
+                <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.activity_grade))}</span></td>
+                <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.skill_grade))}</span></td>
+                <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.competition_grade))}</span></td>
+                <td><span class="ek-v7-status ${done?'ok':'no'}">${done?'Lengkap':'Belum Lengkap'}</span></td>
+                <td>${escapeHtml(r.deskripsi||'-')}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>
       </div>`;
     }).join('')}`;
 }
+
 async function loadEkskulRekap(kelas){
   const body=document.getElementById('ek-rekap-body');if(!body)return;
   body.innerHTML=`<div class="card"><span class="spinner"></span> Memuat rekap ekskul...</div>`;
   try{
-    const res=await ekskulV6Api('recap',{class_name:kelas});
-    ekskulV56Rows=res.rows||[];
-    if(!ekskulV56Rows.length){body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data pertemuan ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;return}
-    // Adapter V6 agar renderer V5.6 tetap ringan.
-    ekskulV56Rows=ekskulV56Rows.map(r=>({
+    const res=await ekskulV6Api('recap',{class_name:kelas,semester_no:1});
+    ekskulV56Rows=(res.rows||[]).map(r=>({
       ...r,
       activity_grade:r.activity_grade||'',
       skill_grade:r.skill_grade||'',
       competition_grade:r.competition_grade||''
     }));
+    if(!ekskulV56Rows.length){
+      body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data pertemuan ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;
+      return;
+    }
     ekV56Render(ekskulV56Rows,kelas);
   }catch(e){
     body.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(e.message||'Terjadi kendala saat memuat data ekskul.')}</div>`;
   }
 }
+
+async function ekV7BootstrapFinal(){
+  const sel=document.getElementById('ek-v7-final-assignment');
+  if(!sel)return;
+  try{
+    const res=await ekskulV6Api('bootstrap');
+    ekskulV7State.assignments=Array.isArray(res.assignments)?res.assignments:[];
+    ekskulV7State.extracurriculars=Array.isArray(res.extracurriculars)?res.extracurriculars:[];
+    const exMap=new Map(ekskulV7State.extracurriculars.map(x=>[x.id,x.name]));
+    sel.innerHTML=`<option value="">— Pilih kelompok / pelatih —</option>`+
+      ekskulV7State.assignments.map(a=>{
+        const exName=exMap.get(a.extracurricular_id)||'Ekskul';
+        const label=[exName,a.class_name,a.coach_name].filter(Boolean).join(' — ');
+        return `<option value="${escapeHtml(a.id)}">${escapeHtml(label)}</option>`;
+      }).join('');
+  }catch(e){
+    sel.innerHTML=`<option value="">Gagal memuat kelompok ekskul</option>`;
+    showToast(e.message||'Gagal memuat kelompok ekskul.',true);
+  }
+}
+
+function ekV7GradeOptions(value){
+  const v=String(value||'').toUpperCase();
+  return `<option value="">-</option>`+
+    ['A','B','C','D'].map(g=>`<option value="${g}" ${v===g?'selected':''}>${g}</option>`).join('');
+}
+
+async function ekV7LoadAssessments(){
+  if(!ekskulV7CanFinalize())return;
+  const assignmentId=document.getElementById('ek-v7-final-assignment')?.value||'';
+  const semester=Number(document.getElementById('ek-v7-final-semester')?.value||1);
+  const body=document.getElementById('ek-v7-final-body');
+  if(!body)return;
+
+  if(!assignmentId){
+    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Pilih kelompok / pelatih ekskul terlebih dahulu.</div>`;
+    return;
+  }
+
+  body.innerHTML=`<div class="card"><span class="spinner"></span> Memuat data finalisasi rapor...</div>`;
+
+  try{
+    const res=await ekskulV6Api('load_assessments',{
+      assignment_id:assignmentId,
+      semester_no:semester
+    });
+
+    ekskulV7State.academicYearId=res.academic_year_id||null;
+    ekskulV7State.semester=semester;
+    ekskulV7State.assessmentRows=Array.isArray(res.rows)?res.rows:[];
+
+    ekV7RenderAssessmentTable();
+  }catch(e){
+    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(e.message||'Gagal memuat finalisasi nilai ekskul.')}</div>`;
+  }
+}
+
+function ekV7RenderAssessmentTable(){
+  const body=document.getElementById('ek-v7-final-body');
+  if(!body)return;
+
+  const rows=ekskulV7State.assessmentRows||[];
+  if(!rows.length){
+    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada siswa aktif pada kelompok ekskul ini.</div>`;
+    return;
+  }
+
+  const complete=rows.filter(x=>x.activity_grade&&x.skill_grade&&x.competition_grade).length;
+
+  body.innerHTML=`
+    <div class="card">
+      <div class="ek-v56-card-head">
+        <div>
+          <div class="card-title" style="margin:0">Nilai Rapor Ekskul</div>
+          <div class="page-sub" style="margin-top:3px">${rows.length} siswa · ${complete} sudah lengkap · ${rows.length-complete} belum lengkap</div>
+        </div>
+        <span class="ek-v56-chip">Semester ${ekskulV7State.semester}</span>
+      </div>
+
+      <div class="ek-v7-final-table-wrap">
+        <table class="ek-v7-final-table">
+          <thead>
+            <tr>
+              <th>No</th><th>Nama Siswa</th><th>Kehadiran</th><th>Rata Nilai</th>
+              <th>Aktivitas</th><th>Keterampilan</th><th>Kompetisi</th><th>Deskripsi Rapor</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r,i)=>{
+              const done=Boolean(r.activity_grade&&r.skill_grade&&r.competition_grade);
+              return `<tr class="ek-v7-assessment-row" data-student-id="${escapeHtml(r.student_id)}">
+                <td>${i+1}</td>
+                <td><strong>${escapeHtml(r.full_name||'-')}</strong></td>
+                <td>
+                  <strong>${Number(r.attendance_percentage||0)}%</strong>
+                  <div class="ek-v7-stat">
+                    Hadir ${Number(r.hadir||0)} / ${Number(r.total_sessions||0)}<br>
+                    Izin ${Number(r.izin||0)} · Sakit ${Number(r.sakit||0)} · Alfa ${Number(r.alpa||0)}
+                  </div>
+                </td>
+                <td><strong>${r.avg_session_score===null||r.avg_session_score===undefined?'-':escapeHtml(r.avg_session_score)}</strong></td>
+                <td><select class="ek-v7-grade-select" data-field="activity_grade">${ekV7GradeOptions(r.activity_grade)}</select></td>
+                <td><select class="ek-v7-grade-select" data-field="skill_grade">${ekV7GradeOptions(r.skill_grade)}</select></td>
+                <td><select class="ek-v7-grade-select" data-field="competition_grade">${ekV7GradeOptions(r.competition_grade)}</select></td>
+                <td><input class="ek-v7-desc" data-field="description" value="${escapeHtml(r.description||'')}" placeholder="Deskripsi untuk rapor (opsional)"></td>
+                <td><span class="ek-v7-status ${done?'ok':'no'}">${done?'Lengkap':'Belum Lengkap'}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ek-v7-final-actions">
+        <span class="page-sub" style="margin:0">A/B/C/D dapat diperbarui kembali sebelum rapor dicetak.</span>
+        <button class="btn btn-sm" id="ek-v7-save-final" style="width:auto;min-width:190px" onclick="ekV7SaveAssessments()">Simpan Nilai Rapor</button>
+      </div>
+    </div>`;
+}
+
+async function ekV7SaveAssessments(){
+  if(!ekskulV7CanFinalize())return;
+
+  const assignmentId=document.getElementById('ek-v7-final-assignment')?.value||'';
+  if(!assignmentId||!ekskulV7State.academicYearId){
+    showToast('Data tahun ajaran / kelompok ekskul belum siap.',true);
+    return;
+  }
+
+  const rows=[...document.querySelectorAll('.ek-v7-assessment-row')];
+  if(!rows.length){
+    showToast('Tidak ada siswa untuk disimpan.',true);
+    return;
+  }
+
+  const items=rows.map(tr=>({
+    student_id:tr.dataset.studentId,
+    activity_grade:tr.querySelector('[data-field="activity_grade"]')?.value||'',
+    skill_grade:tr.querySelector('[data-field="skill_grade"]')?.value||'',
+    competition_grade:tr.querySelector('[data-field="competition_grade"]')?.value||'',
+    description:(tr.querySelector('[data-field="description"]')?.value||'').trim()
+  }));
+
+  const btn=document.getElementById('ek-v7-save-final');
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyimpan...';}
+
+  try{
+    const res=await ekskulV6Api('save_assessments',{
+      assignment_id:assignmentId,
+      academic_year_id:ekskulV7State.academicYearId,
+      semester_no:ekskulV7State.semester,
+      items
+    });
+
+    showToast(`${res.saved||items.length} nilai rapor ekskul berhasil disimpan.`);
+    await ekV7LoadAssessments();
+  }catch(e){
+    showToast(e.message||'Gagal menyimpan nilai rapor ekskul.',true);
+  }finally{
+    const b=document.getElementById('ek-v7-save-final');
+    if(b){b.disabled=false;b.textContent='Simpan Nilai Rapor';}
+  }
+}
+
 
 /* ==========================================================
    AKADEMIK V7.2 — INPUT NILAI AKADEMIK SUPABASE
