@@ -3300,7 +3300,7 @@ function injectRaporPreviewStyles(){
   if(document.getElementById('rapor-v1-style'))return;
   const s=document.createElement('style');s.id='rapor-v1-style';s.textContent=`
     .rpv-toolbar{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px}.rpv-field label{display:block;font-size:10.5px;font-weight:900;color:var(--muted);margin-bottom:5px;text-transform:uppercase}.rpv-control{width:100%;padding:10px 11px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:inherit;color:var(--text)}
-    .rpv-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}.rpv-paper-wrap{overflow:auto;padding:10px 0 22px}.rpv-paper{position:relative;width:210mm;height:297mm;min-height:297mm;max-height:297mm;margin:0 auto 18px;background:#fff;color:#111;padding:4.2mm 7mm 5.5mm;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:Arial,Helvetica,sans-serif;font-size:10px;line-height:1.12;box-sizing:border-box;overflow:hidden}.rpv-paper *{box-sizing:border-box}
+    .rpv-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}.rpv-paper-wrap{overflow:auto;padding:10px 0 22px}.rpv-paper{position:relative;width:210mm;height:297mm;min-height:297mm;max-height:297mm;margin:0 auto 18px;background:#fff;color:#111;padding:4.2mm 7mm 5.5mm;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:Tahoma,Verdana,'Segoe UI',sans-serif;font-size:10px;line-height:1.12;box-sizing:border-box;overflow:hidden}.rpv-paper *{box-sizing:border-box}
     .rpv-template-head{width:100%;border-collapse:collapse;border:2px solid #111;margin:0}.rpv-template-head td{border:2px solid #111;height:7.46mm;padding:2px 4px;vertical-align:middle}.rpv-template-head .head-left{width:50.9%;text-align:center;font-weight:900;font-size:11px}.rpv-template-head .head-right{font-size:10px;display:flex;align-items:center}.hr-label{flex:0 0 33mm}.hr-colon{flex:0 0 3mm}.hr-value{flex:1}.rpv-template-shadow{height:2.1mm;background:#e7e7e7;margin:0 0 5.8mm}
     .rpv-section-plain{font-weight:900;font-size:11px;margin:0 0 3px}.rpv-tahfizh{width:100%;border-collapse:collapse;margin:0 0 4mm;font-size:10px}.rpv-tahfizh td{padding:0 3px;border:0;vertical-align:middle;height:4.94mm}.rpv-tahfizh td:first-child{width:38%}.rpv-tahfizh td:nth-child(2){width:2%}.rpv-tahfizh .sub{padding-left:20px}
     .rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:1px solid #111;padding:1px 3px;vertical-align:middle}.rpv-table th{background:#dce7f1;font-weight:900;text-align:center;font-size:9px}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-academic{font-size:10px;line-height:1.1}.rpv-academic th,.rpv-academic td{padding:0 2px}.rpv-academic .no{width:4%}.rpv-academic .subject{width:35%}.rpv-academic .kktp{width:12.5%}.rpv-academic .lo{width:6.7%}.rpv-academic .remarks{width:14.8%}.rpv-academic tbody td{height:5.51mm}.rpv-academic .rpv-sub{padding-left:12px}.rpv-start4{background:#dedede!important}.rpv-group-row td{background:#d9d9d9;font-weight:900}
@@ -3438,14 +3438,21 @@ function rpTahfizhRows(t){
   if(!t)return`<tr><td>Memorization Material</td><td>-</td></tr><tr><td>Tahfizh Learning Target (LP)</td><td>-</td></tr><tr><td>Current Achievement</td><td>-</td></tr><tr><td>Tahfizh Achievement</td><td>-</td></tr><tr><td>&nbsp;&nbsp;a. Number of Surahs</td><td>-</td></tr><tr><td>&nbsp;&nbsp;b. Number of Lines</td><td>-</td></tr><tr><td>&nbsp;&nbsp;c. Number of Verses</td><td>-</td></tr><tr><td>&nbsp;&nbsp;d. Percentage (%)</td><td>-</td></tr><tr><td>Juz Advancement Assessment</td><td>-</td></tr>`;
   return`<tr><td>Memorization Material</td><td>${escapeHtml(t.material||'-')}</td></tr><tr><td>Tahfizh Learning Target (LP)</td><td>${escapeHtml(t.target||'-')}</td></tr><tr><td>Current Achievement</td><td>${escapeHtml(t.current||'-')}</td></tr><tr><td>Tahfizh Achievement</td><td>${escapeHtml(t.achievement||'-')}</td></tr><tr><td>&nbsp;&nbsp;a. Number of Surahs</td><td>${escapeHtml(t.surahs??'-')}</td></tr><tr><td>&nbsp;&nbsp;b. Number of Lines</td><td>${escapeHtml(t.lines??'-')}</td></tr><tr><td>&nbsp;&nbsp;c. Number of Verses</td><td>${escapeHtml(t.verses??'-')}</td></tr><tr><td>&nbsp;&nbsp;d. Percentage (%)</td><td>${escapeHtml(t.percentage??'-')}</td></tr><tr><td>Juz Advancement Assessment</td><td>${escapeHtml(t.juz_assessment||'-')}</td></tr>`;
 }
-function rpTeamRows(team,tahfizh){
-  const arr=(team||[]).map(n=>({name:n,pos:'Subject Teacher'}));
-  for(const n of tahfizh||[])arr.push({name:n,pos:'Tahfizh Teacher'});
+/* Walas (homeroom teacher) sudah ditampilkan sendiri di blok tanda tangan,
+   jadi dikecualikan dari daftar "Class Teaching Team" biar tidak dobel. */
+function rpExcludeHomeroom(list,homeroom){
+  const hr=String(homeroom||'').trim().toLowerCase();
+  if(!hr)return list||[];
+  return (list||[]).filter(n=>String(n||'').trim().toLowerCase()!==hr);
+}
+function rpTeamRows(team,tahfizh,homeroom){
+  const arr=rpExcludeHomeroom(team,homeroom).map(n=>({name:n,pos:'Subject Teacher'}));
+  for(const n of rpExcludeHomeroom(tahfizh,homeroom))arr.push({name:n,pos:'Tahfizh Teacher'});
   if(!arr.length)return'<tr><td>1</td><td>-</td></tr>';
   return arr.map((x,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(x.name)}</td></tr>`).join('');
 }
-function rpTeamPositions(team,tahfizh){
-  const a=[];for(const _ of team||[])a.push('Subject Teacher');for(const _ of tahfizh||[])a.push('Tahfizh Teacher');
+function rpTeamPositions(team,tahfizh,homeroom){
+  const a=[];for(const _ of rpExcludeHomeroom(team,homeroom))a.push('Subject Teacher');for(const _ of rpExcludeHomeroom(tahfizh,homeroom))a.push('Tahfizh Teacher');
   return a.length?a.map(x=>`<div>${x}</div>`).join(''):'<div>-</div>';
 }
 
@@ -3491,7 +3498,7 @@ function renderRaporPreview(){
       <div class="rpv-p2-sub" style="margin-top:14px">B. Student Merit and Guidance Record</div><table class="rpv-table rpv-merit"><thead><tr><th style="width:51%">Category</th><th style="width:14%">Points</th><th>Remarks</th></tr></thead><tbody><tr><td>Achievement/Role Model Award</td><td class="rpv-center">${pts.reward_total||0}</td><td>-</td></tr><tr><td>Violation Points</td><td class="rpv-center">${pts.violation_total||0}</td><td>-</td></tr></tbody></table><div class="rpv-total-line">Final Total Points: <b>${pts.final_total||0}</b> Points</div>
       <div class="rpv-date-center"><div><u>${escapeHtml(raporPreviewState.hijriDate||'-')}</u></div><div>${escapeHtml(rpFmtDate(raporPreviewState.printDate))} CE</div></div>
       <div class="rpv-signatures"><div>Parent / Guardian<div class="name">_______________</div></div><div>Principal<div class="name">${escapeHtml(trs.principal||'_______________')}</div></div><div>Homeroom Teacher, ${escapeHtml(cl.name||'-')}<div class="name">${escapeHtml(trs.homeroom||'_______________')}</div></div></div>
-      <div class="rpv-team-area"><div><div class="rpv-team-title">Class Teaching Team, ${escapeHtml(cl.name||'-')}</div><table class="rpv-team-simple"><tbody>${rpTeamRows(trs.team,trs.tahfizh)}</tbody></table></div><div><div class="rpv-team-title">Position</div><div class="rpv-position-list">${rpTeamPositions(trs.team,trs.tahfizh)}</div></div></div>
+      <div class="rpv-team-area"><div><div class="rpv-team-title">Class Teaching Team, ${escapeHtml(cl.name||'-')}</div><table class="rpv-team-simple"><tbody>${rpTeamRows(trs.team,trs.tahfizh,trs.homeroom)}</tbody></table></div><div><div class="rpv-team-title">Position</div><div class="rpv-position-list">${rpTeamPositions(trs.team,trs.tahfizh,trs.homeroom)}</div></div></div>
       <div class="rpv-footer"><span>SD Islam Tahfizh Cahaya Qur'an</span><span>Page 2 of 2</span></div>
     </section>
   </div>`;
