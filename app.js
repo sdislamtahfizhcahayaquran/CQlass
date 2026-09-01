@@ -534,7 +534,7 @@ const MODULE_GROUPS = [
   {
     id: 'akademik', label: 'Akademik', roles: ['guru','walas','akademik','pimpinan'],
     items: [
-      { id: 'leger',      label: 'Input Nilai TP', roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderLegger },
+      { id: 'leger',      label: 'Nilai', roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderLegger },
       { id: 'bilingual',  label: 'Bilingual', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderVocabularyBulanan },
       { id: 'pjbl',       label: 'PjBL',        roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderPjBL },
       { id: 'rapor',    label: 'Cetak Rapor', roles: ['walas','akademik','pimpinan'], built: true,  render: renderCetakRapor }
@@ -4354,7 +4354,7 @@ function renderLegger(content){
   academicGridState.objectives=[]; academicGridState.students=[]; academicGridState.canEdit=false;
   academicGridState.dirty=new Map(); academicGridState.pickerOpen=false; academicGridState.loadToken++;
   content.innerHTML=`
-    <div class="ag-head"><div><div class="page-title">Input Nilai</div><div class="page-sub">Pilih kelas dan mata pelajaran yang Anda ajar, lalu isi Tugas, TP, WWP, dan ASAS.</div></div></div>
+    <div class="ag-head"><div><div class="page-title">Nilai</div><div class="page-sub">Pilih kelas dan mata pelajaran yang Anda ajar, lalu isi Tugas, TP, WWP, dan ASAS.</div></div></div>
     <div id="academic-grid-root"><div class="card"><div class="ag-loading"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Menyiapkan pembelajaran...</div></div></div>`;
   academicGridBootstrap();
 }
@@ -4473,4 +4473,4 @@ document.addEventListener('click',event=>{if(academicGridState.pickerOpen&&!even
 
 /* Sidebar tetap modul lama; hanya label/render Input Nilai yang diarahkan ke Academic V7.2. */
 const academicMenuItem = MODULE_GROUPS.find(group=>group.id==='akademik')?.items?.find(item=>item.id==='leger');
-if(academicMenuItem){academicMenuItem.render=renderLegger;academicMenuItem.label='Input Nilai';}
+if(academicMenuItem){academicMenuItem.render=renderLegger;academicMenuItem.label='Nilai';}
