@@ -3244,6 +3244,12 @@ function rpDefaultStartYmd(){const d=new Date();d.setDate(d.getDate()-30);return
 function rpFmtDate(v){if(!v)return'-';const d=new Date(v+'T00:00:00');if(Number.isNaN(d.getTime()))return v;return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric'}).format(d)}
 function rpScore(v){if(v===null||v===undefined||v==='')return'-';const n=Number(v);if(!Number.isFinite(n))return'-';return Number.isInteger(n)?String(n):n.toFixed(1).replace(/\.0$/,'')}
 function rpGrade(v){const s=String(v||'').trim().toUpperCase();return ['A','B','C','D'].includes(s)?s:(s==='-'?'-':'-')}
+function rpEkskulRemark(kind,grade){const g=rpGrade(grade);const maps={activity:{A:'Very Active',B:'Active',C:'Occasionally Active',D:'Not Participating'},skill:{A:'Skilled',B:'Proficient',C:'Developing',D:'Emerging'},competition:{A:'Competed and placed',B:'Competed without placing',C:'Interested but has not competed',D:'Not yet interested'},school:{A:'Very Active',B:'Active',C:'Fairly Active',D:'Not Very Active'}};return maps[kind]?.[g]||'-'}
+function rpSafeFilename(v){return String(v||'Rapor').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim()}
+function rpLoadScript(src,id){return new Promise((resolve,reject)=>{if(window[id])return resolve(window[id]);const old=document.querySelector(`script[data-rp-lib="${id}"]`);if(old){old.addEventListener('load',()=>resolve(window[id]),{once:true});old.addEventListener('error',reject,{once:true});return}const sc=document.createElement('script');sc.src=src;sc.async=true;sc.dataset.rpLib=id;sc.onload=()=>resolve(window[id]);sc.onerror=()=>reject(new Error('Gagal memuat library PDF.'));document.head.appendChild(sc)})}
+async function rpEnsurePdfLibs(zip=false){await rpLoadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js','html2pdf');if(zip)await rpLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js','JSZip')}
+async function rpElementPdfBlob(el){await rpEnsurePdfLibs(false);const opt={margin:0,html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}};return await window.html2pdf().set(opt).from(el).outputPdf('blob')}
+function rpDownloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1200)}
 
 async function reportPreviewRequest(action,payload={},timeoutMs=35000){
   const token=getAuthToken();if(!token)throw new Error('Sesi login tidak ditemukan.');
@@ -3263,7 +3269,7 @@ function injectRaporPreviewStyles(){
   if(document.getElementById('rapor-v1-style'))return;
   const s=document.createElement('style');s.id='rapor-v1-style';s.textContent=`
     .rpv-toolbar{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px}.rpv-field label{display:block;font-size:10.5px;font-weight:900;color:var(--muted);margin-bottom:5px;text-transform:uppercase}.rpv-control{width:100%;padding:10px 11px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:inherit;color:var(--text)}
-    .rpv-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}.rpv-paper-wrap{overflow:auto;padding:8px 0 20px}.rpv-paper{width:210mm;min-height:297mm;margin:0 auto 18px;background:#fff;color:#111;padding:11mm 11mm 9mm;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:9.5px;line-height:1.25;box-sizing:border-box}.rpv-paper *{box-sizing:border-box}.rpv-top-title{text-align:center;font-weight:800;line-height:1.35;margin-bottom:7px}.rpv-top-title .big{font-size:13px}.rpv-top-title .mid{font-size:11px}.rpv-info{width:100%;border-collapse:collapse;margin-bottom:7px}.rpv-info td{padding:2px 4px}.rpv-section{background:#eaf3f4;border:1px solid #9aaeb0;text-align:center;font-weight:800;padding:4px;margin:6px 0 0}.rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:1px solid #999;padding:3px 4px;vertical-align:middle}.rpv-table th{font-weight:800;text-align:center}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-small{font-size:8px}.rpv-muted{color:#555}.rpv-academic th,.rpv-academic td{font-size:8.1px;padding:2.5px 3px}.rpv-academic .no{width:5%}.rpv-academic .subject{width:26%}.rpv-academic .kktp{width:10%}.rpv-academic .lo{width:7%}.rpv-academic .remarks{width:17%}.rpv-att-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}.rpv-legend{font-size:7.8px;margin-top:5px}.rpv-footer{display:flex;justify-content:space-between;margin-top:6px;font-size:7.5px}.rpv-signatures{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;margin-top:18px;min-height:90px}.rpv-signatures .name{margin-top:45px;font-weight:700}.rpv-teachers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}.rpv-team-table{width:100%;border-collapse:collapse}.rpv-team-table td,.rpv-team-table th{border:1px solid #999;padding:3px;font-size:8px}.rpv-note-box{border:1px solid #d2dfdf;background:#f7fbfb;border-radius:9px;padding:9px;font-size:11px;color:#456}.rpv-page-label{text-align:right;font-size:7px;margin-top:5px}.rpv-print-btn{display:inline-flex;align-items:center;gap:7px}.rpv-status-chip{display:inline-flex;padding:5px 9px;border-radius:999px;background:#eaf7f6;color:var(--primary);font-size:10.5px;font-weight:900}
+    .rpv-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}.rpv-paper-wrap{overflow:auto;padding:8px 0 20px}.rpv-paper{width:210mm;min-height:297mm;margin:0 auto 18px;background:#fff;color:#111;padding:11mm 11mm 9mm;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:9.5px;line-height:1.25;box-sizing:border-box}.rpv-paper *{box-sizing:border-box}.rpv-top-title{text-align:center;font-weight:800;line-height:1.35;margin-bottom:7px}.rpv-top-title .big{font-size:13px}.rpv-top-title .mid{font-size:11px}.rpv-info{width:100%;border-collapse:collapse;margin-bottom:7px}.rpv-info td{padding:2px 4px}.rpv-section{background:#eaf3f4;border:1px solid #9aaeb0;text-align:center;font-weight:800;padding:4px;margin:6px 0 0}.rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:1px solid #999;padding:3px 4px;vertical-align:middle}.rpv-table th{font-weight:800;text-align:center}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-small{font-size:8px}.rpv-muted{color:#555}.rpv-academic th,.rpv-academic td{font-size:8.1px;padding:2.5px 3px}.rpv-academic .no{width:5%}.rpv-academic .subject{width:26%}.rpv-academic .kktp{width:10%}.rpv-academic .lo{width:7%}.rpv-academic .remarks{width:17%}.rpv-att-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}.rpv-legend{font-size:7.8px;margin-top:5px}.rpv-footer{display:flex;justify-content:space-between;margin-top:6px;font-size:7.5px}.rpv-signatures{position:relative;height:105px;margin-top:18px;text-align:center}.rpv-signatures>div{position:absolute;top:0;width:32%}.rpv-signatures>div:nth-child(1){left:0}.rpv-signatures>div:nth-child(2){left:50%;transform:translateX(-50%)}.rpv-signatures>div:nth-child(3){right:0}.rpv-start4{background:#eeeeee!important}.rpv-start4-first{border-left:1px solid #999!important}.rpv-signatures .name{margin-top:45px;font-weight:700}.rpv-teachers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}.rpv-team-table{width:100%;border-collapse:collapse}.rpv-team-table td,.rpv-team-table th{border:1px solid #999;padding:3px;font-size:8px}.rpv-note-box{border:1px solid #d2dfdf;background:#f7fbfb;border-radius:9px;padding:9px;font-size:11px;color:#456}.rpv-page-label{text-align:right;font-size:7px;margin-top:5px}.rpv-print-btn{display:inline-flex;align-items:center;gap:7px}.rpv-status-chip{display:inline-flex;padding:5px 9px;border-radius:999px;background:#eaf7f6;color:var(--primary);font-size:10.5px;font-weight:900}
     @media(max-width:900px){.rpv-toolbar{grid-template-columns:1fr 1fr}.rpv-paper{transform-origin:top left}.rpv-paper-wrap{padding-bottom:0}}
     @media print{body *{visibility:hidden!important}#rpv-preview,#rpv-preview *{visibility:visible!important}#rpv-preview{position:absolute;left:0;top:0;width:100%;padding:0;margin:0}.rpv-paper{box-shadow:none;margin:0;width:210mm;height:297mm;min-height:297mm;page-break-after:always;break-after:page}.rpv-paper:last-child{page-break-after:auto;break-after:auto}}
   `;document.head.appendChild(s);
@@ -3272,22 +3278,41 @@ function injectRaporPreviewStyles(){
 async function renderCetakRapor(content){
   injectRaporPreviewStyles();
   raporPreviewState={academicYear:'2026/2027',semester:1,reportType:'PTS',classes:[],classLocked:false,classId:'',students:[],studentId:'',startDate:rpDefaultStartYmd(),endDate:rpTodayYmd(),printDate:rpTodayYmd(),hijriDate:'',report:null,classReports:[]};
-  content.innerHTML=`<div class="page-title">Cetak Rapor PTS</div><div class="page-sub">Wali kelas mencetak PDF rapor PTS untuk siswa atau seluruh kelasnya.</div><div id="rpv-root"><div class="card"><span class="spinner"></span> Menyiapkan Rapor...</div></div>`;
+  content.innerHTML=`<div class="page-title">Rapor</div><div class="page-sub">Preview dan cetak rapor siswa sesuai kelas wali.</div><div id="rpv-root"><div class="card"><span class="spinner"></span> Menyiapkan Rapor...</div></div>`;
   try{const b=await reportPreviewRequest('bootstrap',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester});raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();if(raporPreviewState.classId)await rpLoadStudents()}catch(e){document.getElementById('rpv-root').innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuka Rapor.')}</div></div>`}
 }
 
 function renderRaporControls(){
   const root=document.getElementById('rpv-root');if(!root)return;
-  root.innerHTML=`<div class="card"><div class="card-title">Pilih Rapor</div><div class="rpv-toolbar">
-    <div class="rpv-field"><label>Kelas</label><select id="rpv-class" class="rpv-control" ${raporPreviewState.classLocked?'disabled':''} onchange="rpChangeClass(this.value)"><option value="">— Pilih kelas —</option>${raporPreviewState.classes.map(c=>`<option value="${escapeHtml(c.id)}" ${c.id===raporPreviewState.classId?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
-    <div class="rpv-field"><label>Siswa</label><select id="rpv-student" class="rpv-control" onchange="raporPreviewState.studentId=this.value"><option value="">— Pilih siswa —</option></select></div>
-    <div class="rpv-field"><label>Jenis Rapor</label><select id="rpv-type" class="rpv-control" onchange="raporPreviewState.reportType=this.value"><option value="PTS">Tengah Semester (PTS)</option><option value="SEMESTER">Akhir Semester</option></select></div>
-    <div class="rpv-field"><label>Semester</label><select id="rpv-sem" class="rpv-control" onchange="rpChangeSemester(this.value)"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div>
-    <div class="rpv-field"><label>Data mulai</label><input id="rpv-start" type="date" class="rpv-control" value="${raporPreviewState.startDate}"></div>
-    <div class="rpv-field"><label>Data selesai</label><input id="rpv-end" type="date" class="rpv-control" value="${raporPreviewState.endDate}"></div>
-    <div class="rpv-field"><label>Tanggal Rapor</label><input id="rpv-print-date" type="date" class="rpv-control" value="${raporPreviewState.printDate}"></div>
-    <div class="rpv-field"><label>Tanggal Hijriah (opsional)</label><input id="rpv-hijri" class="rpv-control" placeholder="8 Muharram 1448 AH"></div>
-  </div><div class="rpv-actions"><button class="btn" id="rpv-preview-btn" onclick="rpLoadPreview()">Preview Siswa</button><button class="btn" id="rpv-print-student-btn" onclick="rpPrintStudentPdf()">Cetak PDF Per Siswa</button><button class="btn" id="rpv-print-class-btn" onclick="rpPrintClassPdf()">Cetak Semua Rapor PTS</button><span class="rpv-status-chip">Walas: kelas sendiri</span><span class="rpv-status-chip">Tahfizh: menunggu sumber data</span></div></div><div id="rpv-preview-area"></div>`;
+  const className=raporPreviewState.classes.find(c=>c.id===raporPreviewState.classId)?.name||'-';
+  root.innerHTML=`<div class="card"><div class="card-title">Pengaturan Rapor</div>
+    <div class="rpv-status-chip" style="margin-bottom:12px">Kelas Walas: ${escapeHtml(className)}</div>
+    <div class="rpv-toolbar">
+      <div class="rpv-field"><label>Jenis Rapor</label><select id="rpv-type" class="rpv-control" onchange="raporPreviewState.reportType=this.value;rpUpdatePrintUi()"><option value="PTS" ${raporPreviewState.reportType==='PTS'?'selected':''}>PTS</option><option value="SEMESTER" ${raporPreviewState.reportType==='SEMESTER'?'selected':''}>Akhir Semester</option></select></div>
+      <div class="rpv-field"><label>Semester</label><select id="rpv-sem" class="rpv-control" onchange="rpChangeSemester(this.value)"><option value="1" ${Number(raporPreviewState.semester)===1?'selected':''}>Semester 1</option><option value="2" ${Number(raporPreviewState.semester)===2?'selected':''}>Semester 2</option></select></div>
+      <div class="rpv-field"><label>Cetak Rapor</label><select id="rpv-mode" class="rpv-control" onchange="rpUpdatePrintUi()"><option value="STUDENT">Per Siswa</option><option value="CLASS">Per Kelas</option></select></div>
+      <div class="rpv-field" id="rpv-student-field"><label>Siswa</label><select id="rpv-student" class="rpv-control" onchange="raporPreviewState.studentId=this.value"><option value="">— Pilih siswa —</option></select></div>
+      <div class="rpv-field"><label>Data Mulai</label><input id="rpv-start" type="date" class="rpv-control" value="${raporPreviewState.startDate}"></div>
+      <div class="rpv-field"><label>Data Selesai</label><input id="rpv-end" type="date" class="rpv-control" value="${raporPreviewState.endDate}"></div>
+      <div class="rpv-field"><label>Tanggal Rapor</label><input id="rpv-print-date" type="date" class="rpv-control" value="${raporPreviewState.printDate}"></div>
+      <div class="rpv-field"><label>Tanggal Hijriah (Opsional)</label><input id="rpv-hijri" class="rpv-control" value="${escapeHtml(raporPreviewState.hijriDate||'')}" placeholder="8 Muharram 1448 AH"></div>
+    </div>
+    <div class="rpv-actions"><button class="btn" id="rpv-preview-btn" onclick="rpPreviewByMode()">Preview Rapor</button><button class="btn" id="rpv-print-btn" onclick="rpPrintByMode()">Cetak PDF</button></div>
+  </div><div id="rpv-preview-area"></div>`;
+  rpUpdatePrintUi();
+}
+function rpUpdatePrintUi(){
+  const mode=document.getElementById('rpv-mode')?.value||'STUDENT';
+  const sf=document.getElementById('rpv-student-field');if(sf)sf.style.display=mode==='STUDENT'?'block':'none';
+  const pb=document.getElementById('rpv-print-btn');if(pb)pb.textContent=mode==='CLASS'?'Cetak PDF Per Kelas':'Cetak PDF Per Siswa';
+}
+async function rpPreviewByMode(){
+  const mode=document.getElementById('rpv-mode')?.value||'STUDENT';
+  return mode==='CLASS'?rpLoadClassPreview(false):rpLoadPreview();
+}
+async function rpPrintByMode(){
+  const mode=document.getElementById('rpv-mode')?.value||'STUDENT';
+  return mode==='CLASS'?rpLoadClassPreview(true):rpPrintStudentPdf();
 }
 
 async function rpChangeSemester(v){raporPreviewState.semester=Number(v)||1;raporPreviewState.classId='';raporPreviewState.studentId='';raporPreviewState.report=null;try{const b=await reportPreviewRequest('bootstrap',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester});raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();const sem=document.getElementById('rpv-sem');if(sem)sem.value=String(raporPreviewState.semester);if(raporPreviewState.classId)await rpLoadStudents()}catch(e){showToast(e.message||'Gagal mengganti semester',true)}}
@@ -3316,51 +3341,23 @@ async function rpLoadPreview(){
 }
 
 async function rpPrintStudentPdf(){
-  const btn=document.getElementById('rpv-print-student-btn');
-  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan PDF...'}
-  try{
-    const ok=await rpLoadPreview();
-    if(!ok)return;
-    setTimeout(()=>window.print(),180);
-  }finally{if(btn){btn.disabled=false;btn.textContent='Cetak PDF Per Siswa'}}
+  const btn=document.getElementById('rpv-print-btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan PDF...'}
+  try{const ok=await rpLoadPreview();if(!ok)return;const el=document.getElementById('rpv-preview');if(!el)throw new Error('Preview PDF tidak ditemukan.');const blob=await rpElementPdfBlob(el);const name=rpSafeFilename(raporPreviewState.report?.student?.name||'Rapor')+'.pdf';rpDownloadBlob(blob,name);showToast('PDF rapor berhasil dibuat.')}catch(e){showToast(e.message||'Gagal membuat PDF.',true)}finally{if(btn){btn.disabled=false;btn.textContent='Cetak PDF Per Siswa'}}
 }
 
-async function rpPrintClassPdf(){
-  const classId=raporPreviewState.classId;
-  if(!classId){showToast('Kelas Walas belum ditemukan.',true);return}
-  raporPreviewState.reportType=document.getElementById('rpv-type')?.value||'PTS';
-  if(raporPreviewState.reportType!=='PTS'){showToast('Cetak seluruh kelas pada tahap ini khusus Rapor PTS.',true);return}
-  raporPreviewState.startDate=document.getElementById('rpv-start')?.value||'';
-  raporPreviewState.endDate=document.getElementById('rpv-end')?.value||'';
-  raporPreviewState.printDate=document.getElementById('rpv-print-date')?.value||rpTodayYmd();
-  raporPreviewState.hijriDate=(document.getElementById('rpv-hijri')?.value||'').trim();
-  const btn=document.getElementById('rpv-print-class-btn'),area=document.getElementById('rpv-preview-area');
-  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan seluruh kelas...'}
-  if(area)area.innerHTML='<div class="card"><span class="spinner"></span> Menyusun seluruh rapor PTS kelas. Mohon tunggu...</div>';
-  try{
-    const d=await reportPreviewRequest('class_reports',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,report_type:'PTS',start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},120000);
-    const reports=Array.isArray(d.reports)?d.reports:[];
-    if(!reports.length)throw new Error('Tidak ada siswa aktif pada kelas ini.');
-    raporPreviewState.classReports=reports;
-    const original=raporPreviewState.report;
-    const pages=[];
-    for(const r of reports){
-      raporPreviewState.report=r;
-      renderRaporPreview();
-      const holder=document.getElementById('rpv-preview');
-      if(holder)pages.push(holder.innerHTML);
-    }
-    raporPreviewState.report=original||reports[0];
-    area.innerHTML=`<div class="card"><div class="pv2-toolbar"><div><div class="card-title" style="margin:0">Rapor PTS Satu Kelas</div><div class="page-sub" style="margin-top:3px">${reports.length} siswa · ${reports.length*2} halaman PDF.</div></div><button class="btn btn-sm" onclick="window.print()">Cetak / Simpan PDF</button></div></div><div class="rpv-paper-wrap" id="rpv-preview">${pages.join('')}</div>`;
-    document.getElementById('rpv-preview')?.scrollIntoView({behavior:'smooth',block:'start'});
-    setTimeout(()=>window.print(),220);
-  }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuat rapor kelas.')}</div></div>`}
-  finally{if(btn){btn.disabled=false;btn.textContent='Cetak Semua Rapor PTS'}}
+async function rpLoadClassPreview(autoPrint=false){
+  const classId=raporPreviewState.classId;if(!classId){showToast('Kelas Walas belum ditemukan.',true);return}
+  raporPreviewState.reportType=document.getElementById('rpv-type')?.value||'PTS';raporPreviewState.startDate=document.getElementById('rpv-start')?.value||'';raporPreviewState.endDate=document.getElementById('rpv-end')?.value||'';raporPreviewState.printDate=document.getElementById('rpv-print-date')?.value||rpTodayYmd();raporPreviewState.hijriDate=(document.getElementById('rpv-hijri')?.value||'').trim();
+  const btn=autoPrint?document.getElementById('rpv-print-btn'):document.getElementById('rpv-preview-btn'),area=document.getElementById('rpv-preview-area');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan...'}if(area)area.innerHTML='<div class="card"><span class="spinner"></span> Menyusun seluruh rapor kelas. Mohon tunggu...</div>';
+  try{const d=await reportPreviewRequest('class_reports',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},120000);const reports=Array.isArray(d.reports)?d.reports:[];if(!reports.length)throw new Error('Tidak ada siswa aktif pada kelas ini.');raporPreviewState.classReports=reports;
+    if(autoPrint){await rpEnsurePdfLibs(true);const zip=new window.JSZip();const original=raporPreviewState.report;for(let i=0;i<reports.length;i++){raporPreviewState.report=reports[i];renderRaporPreview();const el=document.getElementById('rpv-preview');if(!el)continue;if(btn)btn.textContent=`PDF ${i+1}/${reports.length}`;const blob=await rpElementPdfBlob(el);zip.file(rpSafeFilename(reports[i]?.student?.name||`Siswa ${i+1}`)+'.pdf',blob)}raporPreviewState.report=original||reports[0];const cl=reports[0]?.class?.name||'Kelas';const label=raporPreviewState.reportType==='SEMESTER'?'Rapor Akhir Semester':'Rapor PTS';const zblob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});rpDownloadBlob(zblob,`${label} ${rpSafeFilename(cl)}.zip`);showToast('ZIP rapor per kelas berhasil dibuat.');return}
+    const first=reports[0];raporPreviewState.report=first;renderRaporPreview();
+  }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuat rapor kelas.')}</div></div>`}finally{if(btn){btn.disabled=false;btn.textContent=autoPrint?'Cetak PDF Per Kelas':'Preview Rapor'}}
 }
 
 function rpAcademicRows(rows){
   const list=Array.isArray(rows)?rows:[];if(!list.length)return`<tr><td colspan="9" class="rpv-center">Belum ada data akademik.</td></tr>`;
-  return list.map((r,i)=>`<tr><td class="rpv-center">${i+1}</td><td>${escapeHtml(r.name||'-')}</td><td class="rpv-center">${escapeHtml(r.kktp||'-')}</td>${[0,1,2,3,4].map(x=>`<td class="rpv-center">${rpScore(r.lo?.[x])}</td>`).join('')}<td class="rpv-center">${escapeHtml(r.remarks||'-')}</td></tr>`).join('');
+  return list.map((r,i)=>{const sg4=Boolean(r.starting_grade_4);const cls=sg4?' class="rpv-center rpv-start4"':' class="rpv-center"';const kktp=sg4?'':escapeHtml(r.kktp||'-');const los=[0,1,2,3,4].map(x=>`<td${cls}>${sg4?'':rpScore(r.lo?.[x])}</td>`).join('');return`<tr><td class="rpv-center">${i+1}</td><td>${escapeHtml(r.name||'-')}</td><td${cls}>${kktp}</td>${los}<td${cls}>${escapeHtml(sg4?'Starting Grade 4':(r.remarks||'-'))}</td></tr>`}).join('');
 }
 function rpTahfizhRows(t){
   if(!t)return`<tr><td>Memorization Material</td><td>-</td></tr><tr><td>Tahfizh Learning Target (LP)</td><td>-</td></tr><tr><td>Current Achievement</td><td>-</td></tr><tr><td>Tahfizh Achievement</td><td>-</td></tr><tr><td>&nbsp;&nbsp;a. Number of Surahs</td><td>-</td></tr><tr><td>&nbsp;&nbsp;b. Number of Lines</td><td>-</td></tr><tr><td>&nbsp;&nbsp;c. Number of Verses</td><td>-</td></tr><tr><td>&nbsp;&nbsp;d. Percentage (%)</td><td>-</td></tr><tr><td>Juz Advancement Assessment</td><td>-</td></tr>`;
@@ -3383,7 +3380,7 @@ function renderRaporPreview(){
     </section>
     <section class="rpv-paper">
       <div class="rpv-top-title"><div class="big">ACADEMIC YEAR ${escapeHtml(r.academic_year||'2026/2027')}</div><div class="big">${reportTitle}</div><div class="mid">SEMESTER ${Number(r.semester_no)===2?'II':'I'}</div></div>
-      <div class="rpv-section">4&nbsp;&nbsp;Student Activity and Personal Development Report</div><table class="rpv-table"><thead><tr><th>No.</th><th>Extracurricular & Personal Development</th><th style="width:12%">Rating</th><th>Level</th></tr></thead><tbody><tr><td class="rpv-center">1</td><td>Extracurricular Participation</td><td class="rpv-center"><b>${rpGrade(eks.activity_grade)}</b></td><td>A = Very Active | B = Active | C = Occasionally Active | D = Not Participating</td></tr><tr><td class="rpv-center">2</td><td>Extracurricular Skill Development</td><td class="rpv-center"><b>${rpGrade(eks.skill_grade)}</b></td><td>A = Skilled | B = Proficient | C = Developing | D = Emerging</td></tr><tr><td class="rpv-center">3</td><td>Competition Participation and Achievement</td><td class="rpv-center"><b>${rpGrade(eks.competition_grade)}</b></td><td>A = Competed and placed | B = Competed without placing | C = Interested but has not competed | D = Not yet interested</td></tr><tr><td class="rpv-center">4</td><td>Participation in School Activities</td><td class="rpv-center"><b>${rpGrade(eks.school_activity_grade)}</b></td><td>A = Very Active | B = Active | C = Fairly Active | D = Not Very Active</td></tr></tbody></table><div class="rpv-small rpv-muted" style="margin-top:4px">Status Ekskul: <b>${escapeHtml(eks.status||'-')}</b>${eks.external_activity?` · ${escapeHtml(eks.external_activity)}`:''}</div>
+      <div class="rpv-section">4&nbsp;&nbsp;Student Activity and Personal Development Report</div><table class="rpv-table"><thead><tr><th style="width:6%">No.</th><th style="width:38%">Extracurricular & Personal Development</th><th style="width:12%">Rating</th><th>Remarks</th></tr></thead><tbody><tr><td class="rpv-center">1</td><td>Extracurricular Participation</td><td class="rpv-center"><b>${rpGrade(eks.activity_grade)}</b></td><td>${escapeHtml(rpEkskulRemark('activity',eks.activity_grade))}</td></tr><tr><td class="rpv-center">2</td><td>Extracurricular Skill Development</td><td class="rpv-center"><b>${rpGrade(eks.skill_grade)}</b></td><td>${escapeHtml(rpEkskulRemark('skill',eks.skill_grade))}</td></tr><tr><td class="rpv-center">3</td><td>Competition Participation and Achievement</td><td class="rpv-center"><b>${rpGrade(eks.competition_grade)}</b></td><td>${escapeHtml(rpEkskulRemark('competition',eks.competition_grade))}</td></tr><tr><td class="rpv-center">4</td><td>Participation in School Activities</td><td class="rpv-center"><b>${rpGrade(eks.school_activity_grade)}</b></td><td>${escapeHtml(rpEkskulRemark('school',eks.school_activity_grade))}</td></tr></tbody></table>
       <div class="rpv-section">5&nbsp;&nbsp;Student Character and Discipline Report</div><div style="font-weight:800;margin:5px 0">A. Disciplinary Record Summary</div><table class="rpv-table"><thead><tr><th>Category</th><th>Number of Incidents</th><th>Points</th><th>Remarks</th></tr></thead><tbody><tr><td>Minor</td><td class="rpv-center">${cats.Minor?.incidents||0}</td><td class="rpv-center">${cats.Minor?.points||0}</td><td>-</td></tr><tr><td>Moderate</td><td class="rpv-center">${cats.Moderate?.incidents||0}</td><td class="rpv-center">${cats.Moderate?.points||0}</td><td>-</td></tr><tr><td>Severe</td><td class="rpv-center">${cats.Severe?.incidents||0}</td><td class="rpv-center">${cats.Severe?.points||0}</td><td>-</td></tr></tbody></table><div style="margin:5px 0 8px"><b>Total Violation Points: ${pts.violation_total||0} Points</b></div>
       <div style="font-weight:800;margin:5px 0">B. Student Merit and Guidance Record</div><table class="rpv-table"><thead><tr><th>Category</th><th style="width:18%">Points</th><th>Remarks</th></tr></thead><tbody><tr><td>Achievement / Role Model Award</td><td class="rpv-center">${pts.reward_total||0}</td><td>-</td></tr><tr><td>Violation Points</td><td class="rpv-center">${pts.violation_total||0}</td><td>-</td></tr></tbody></table><div style="margin:5px 0 8px"><b>Final Total Points: ${pts.final_total||0} Points</b></div>
       <div class="rpv-teachers"><div><div style="font-weight:800;margin-bottom:4px">Class Teaching Team, ${escapeHtml(cl.name||'-')}</div><table class="rpv-team-table"><thead><tr><th style="width:8%">No.</th><th>Name</th><th>Position</th></tr></thead><tbody>${rpTeamRows(trs.team,trs.tahfizh)}</tbody></table></div><div class="rpv-note-box">Tanggal rapor:<br><b>${escapeHtml(raporPreviewState.hijriDate||'-')}</b><br><b>${escapeHtml(rpFmtDate(raporPreviewState.printDate))} CE</b><br><br>Data Tahfizh akan masuk otomatis setelah sumber Tahfizh dihubungkan.</div></div>
