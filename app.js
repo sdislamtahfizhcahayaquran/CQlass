@@ -4405,8 +4405,17 @@ async function academicGridLoad(){
   try{
     const result=await academicGridRequest('load',{assignment_id:academicGridState.assignmentId,academic_year:academicGridState.academicYear,semester_no:academicGridState.semester});
     if(token!==academicGridState.loadToken)return;
-    academicGridState.assignment={id:academicGridState.assignmentId,class_name:result.class_name||'',subject_name:result.subject_name||''};
-    academicGridState.objectives=Array.isArray(result.objectives)?result.objectives:[];
+    const loadedAssignment=result.assignment||{};
+    academicGridState.assignment={
+      id:academicGridState.assignmentId,
+      ...loadedAssignment,
+      class_name:loadedAssignment.class_name||result.class_name||academicSelectedAssignment()?.class_name||'',
+      subject_name:loadedAssignment.subject_name||result.subject_name||academicSelectedAssignment()?.subject_name||''
+    };
+    const loadedObjectives=Array.isArray(result.objectives)
+      ? result.objectives
+      : (Array.isArray(result.components?.tp) ? result.components.tp : []);
+    academicGridState.objectives=loadedObjectives;
     academicGridState.students=Array.isArray(result.students)?result.students:[];
     academicGridState.canEdit=result.can_edit!==false;academicGridState.dirty=new Map();renderAcademicGridTable();
   }catch(err){if(token!==academicGridState.loadToken)return;area.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(err.message||'Gagal memuat nilai akademik.')}</div>`;}
