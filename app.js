@@ -3269,7 +3269,12 @@ async function rpElementPdfBlob(el){
   const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
   for(let i=0;i<pages.length;i++){
     const page=pages[i];
+    const savedTransform=page.style.transform,savedMargin=page.style.marginBottom;
+    page.style.transform='';
+    page.style.marginBottom='';
     const canvas=await window.html2canvas(page,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,width:page.scrollWidth,height:page.scrollHeight,windowWidth:page.scrollWidth,windowHeight:page.scrollHeight});
+    page.style.transform=savedTransform;
+    page.style.marginBottom=savedMargin;
     if(i>0)pdf.addPage('a4','portrait');
     pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
   }
@@ -3304,7 +3309,7 @@ function injectRaporPreviewStyles(){
     .rpv-date-center{position:absolute;left:50%;transform:translateX(-50%);top:162mm;text-align:center;font-size:10px;line-height:1.5;min-width:45mm}.rpv-signatures{position:absolute;left:4mm;right:4mm;top:187mm;height:37mm;text-align:center;font-size:10px}.rpv-signatures>div{position:absolute;top:0;width:30%}.rpv-signatures>div:nth-child(1){left:0}.rpv-signatures>div:nth-child(2){left:50%;transform:translateX(-50%)}.rpv-signatures>div:nth-child(3){right:0}.rpv-signatures .name{margin-top:31mm;text-decoration:underline;font-weight:400;white-space:nowrap}
     .rpv-team-area{position:absolute;left:4mm;right:4mm;top:250mm;display:grid;grid-template-columns:54% 46%;font-size:9.6px}.rpv-team-title{font-weight:400;margin-bottom:4px}.rpv-team-simple{width:100%;border-collapse:collapse}.rpv-team-simple td{border:0;padding:2px 1px;vertical-align:top}.rpv-team-simple td:first-child{width:7%}.rpv-position-list{padding-top:18px}.rpv-position-list div{padding:2px 0}
     .rpv-footer{position:absolute;left:4mm;right:4mm;bottom:3.8mm;display:flex;justify-content:space-between;font-size:7.8px;font-style:italic}.pv2-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}.rpv-print-btn{display:inline-flex;align-items:center;gap:7px}
-    @media(max-width:900px){.rpv-toolbar{grid-template-columns:1fr 1fr}.rpv-paper-wrap{overflow:auto}.rpv-paper{transform-origin:top left}}
+    @media(max-width:900px){.rpv-toolbar{grid-template-columns:1fr 1fr}.rpv-paper-wrap{overflow:auto;display:flex;flex-direction:column;align-items:center}}
     @media print{@page{size:A4 portrait;margin:0}body *{visibility:hidden!important}#rpv-preview,#rpv-preview *{visibility:visible!important}#rpv-preview{position:absolute;left:0;top:0;width:210mm;margin:0;padding:0}.rpv-paper{box-shadow:none;margin:0;width:210mm;height:297mm;page-break-after:always;break-after:page}.rpv-paper:last-child{page-break-after:auto;break-after:auto}}
   `;document.head.appendChild(s);
 }
@@ -3454,6 +3459,32 @@ function renderRaporPreview(){
     </section>
   </div>`;
   document.getElementById('rpv-preview')?.scrollIntoView({behavior:'smooth',block:'start'});
+  requestAnimationFrame(rpFitPaperToViewport);
+  if(!window.__rpFitBound){
+    window.__rpFitBound=true;
+    window.addEventListener('resize',()=>requestAnimationFrame(rpFitPaperToViewport));
+  }
+}
+
+/* Menyusutkan #rpv-preview (A4, 210mm) agar pas 1 layar penuh di HP/layar sempit,
+   tanpa mengubah ukuran asli halaman (dipakai lagi apa adanya saat export PDF). */
+function rpFitPaperToViewport(){
+  const wrap=document.getElementById('rpv-preview');
+  if(!wrap) return;
+  const pages=[...wrap.querySelectorAll('.rpv-paper')];
+  if(!pages.length) return;
+  const availableWidth=wrap.clientWidth;
+  pages.forEach(page=>{
+    page.style.transform='';
+    page.style.marginBottom='';
+    const naturalWidth=page.offsetWidth;
+    if(!availableWidth||!naturalWidth) return;
+    if(availableWidth>=naturalWidth) return;
+    const scale=Math.max(0.28, availableWidth/naturalWidth);
+    page.style.transform=`scale(${scale})`;
+    page.style.transformOrigin='top center';
+    page.style.marginBottom=`${(page.offsetHeight*(1-scale))*-1}px`;
+  });
 }
 
 /* ==========================================================
