@@ -11,6 +11,7 @@ const ROLE_DASHBOARD_URL = `${SUPABASE_URL}/functions/v1/role-dashboard`;
 const EXTRACURRICULAR_PUBLIC_URL = `${SUPABASE_URL}/functions/v1/extracurricular-public`;
 const STUDENT_CASES_URL = `${SUPABASE_URL}/functions/v1/student-cases`;
 const ACADEMIC_SCORES_URL = `${SUPABASE_URL}/functions/v1/academic-scores`;
+const REPORT_PREVIEW_URL = `${SUPABASE_URL}/functions/v1/report-preview`;
 
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
@@ -3224,336 +3225,118 @@ function renderKedisiplinan(content){return pv2Render('violation',content)}
 function renderReward(content){return pv2Render('reward',content)}
 
 /* ==========================================================
-   MODUL: CETAK RAPOR (AKADEMIK) — FINAL
-   - Range data custom: Absensi + Reward + Kedisiplinan
-   - Tanggal cetak custom
-   - Tanggal Hijriah opsional
-   - Per siswa / seluruh kelas
+   MODUL: RAPOR V1 — PREVIEW SUPABASE
+   - Preview 2 halaman mengikuti template rapor
+   - Data siswa/akademik/absensi/ekskul/poin dari Edge report-preview
+   - Tahfizh disiapkan sebagai slot; sumber terpisah disambungkan berikutnya
    ========================================================== */
 
-function rpTodayYmd(){
-  const d = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-
-function rpDefaultStartYmd(){
-  const d = new Date();
-  d.setDate(d.getDate() - 30);
-  const pad = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-
-let raporState = {
-  kelas:null,
-  semester:'1',
-  jenisPeriode:'PTS',
-  mode:'kelas',
-  siswa:[],
-  selectedNis:'',
-  tanggalMulai:rpDefaultStartYmd(),
-  tanggalSelesai:rpTodayYmd(),
-  tanggalCetak:rpTodayYmd(),
-  tanggalCetakHijri:''
+let raporPreviewState={
+  academicYear:'2026/2027',semester:1,reportType:'PTS',classes:[],classLocked:false,
+  classId:'',students:[],studentId:'',startDate:'',endDate:'',printDate:'',hijriDate:'',report:null
 };
 
-function renderCetakRapor(content){
-  const isWalas = currentUser.role === 'walas';
-
-  raporState = {
-    kelas:isWalas ? (currentUser.kelas||'') : null,
-    semester:'1',
-    jenisPeriode:'PTS',
-    mode:'kelas',
-    siswa:[],
-    selectedNis:'',
-    tanggalMulai:raporState.tanggalMulai || rpDefaultStartYmd(),
-    tanggalSelesai:raporState.tanggalSelesai || rpTodayYmd(),
-    tanggalCetak:raporState.tanggalCetak || rpTodayYmd(),
-    tanggalCetakHijri:raporState.tanggalCetakHijri || ''
-  };
-
-  content.innerHTML = `
-    <div class="page-title">Cetak Rapor</div>
-    <div class="page-sub">Atur periode data, tanggal cetak, lalu download rapor per siswa atau seluruh kelas.</div>
-
-    ${!isWalas ? `
-    <div class="card">
-      <div class="card-title">Pilih Kelas</div>
-      <input type="text" id="rp-kelas-input" placeholder="Ketik nama kelas persis, contoh: 3A Banat"
-        style="width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;">
-    </div>` : ''}
-
-    <div class="card">
-      <div class="card-title">Periode Rapor</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <select id="rp-semester" class="pekan-select" onchange="raporState.semester=this.value">
-          <option value="1" ${raporState.semester==='1'?'selected':''}>Semester 1</option>
-          <option value="2" ${raporState.semester==='2'?'selected':''}>Semester 2</option>
-        </select>
-        <select id="rp-jenis" class="pekan-select" onchange="raporState.jenisPeriode=this.value">
-          <option value="PTS" ${raporState.jenisPeriode==='PTS'?'selected':''}>Tengah Semester (PTS)</option>
-          <option value="PAS" ${raporState.jenisPeriode==='PAS'?'selected':''}>Akhir Semester (PAS)</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Rentang Data Rapor</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">
-        <div>
-          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Mulai</label>
-          <input type="date" id="rp-tanggal-mulai" class="pekan-select" style="width:100%" value="${escapeHtml(raporState.tanggalMulai)}">
-        </div>
-        <div>
-          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Selesai</label>
-          <input type="date" id="rp-tanggal-selesai" class="pekan-select" style="width:100%" value="${escapeHtml(raporState.tanggalSelesai)}">
-        </div>
-        <div>
-          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Cetak Rapor</label>
-          <input type="date" id="rp-tanggal-cetak" class="pekan-select" style="width:100%" value="${escapeHtml(raporState.tanggalCetak)}">
-        </div>
-        <div>
-          <label style="display:block;font-size:12px;font-weight:700;margin-bottom:5px;">Tanggal Hijriah <span style="font-weight:400;color:var(--muted)">(opsional)</span></label>
-          <input type="text" id="rp-tanggal-hijri" placeholder="Contoh: 12 Rabiul Awal 1448 AH"
-            style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-family:inherit;"
-            value="${escapeHtml(raporState.tanggalCetakHijri)}">
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:9px;">
-        Rentang tanggal digunakan untuk Absensi, Reward, dan Kedisiplinan. Nilai akademik dan Tahfizh mengikuti data PTS/PAS yang tersimpan.
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Pilih Jenis Download</div>
-      <div class="kd-mode-toggle" style="margin-bottom:0">
-        <button type="button" id="rp-mode-kelas" class="kd-mode-btn active" onclick="setRaporMode('kelas')">
-          Seluruh Kelas<br><span style="font-size:11px;font-weight:400">Download semua siswa dalam ZIP</span>
-        </button>
-        <button type="button" id="rp-mode-siswa" class="kd-mode-btn" onclick="setRaporMode('siswa')">
-          Per Siswa<br><span style="font-size:11px;font-weight:400">Pilih satu siswa lalu download PDF</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="card" id="rp-siswa-card" style="display:none">
-      <div class="card-title">Pilih Siswa</div>
-      <select id="rp-siswa-select" class="pekan-select" style="width:100%;max-width:620px">
-        <option value="">— pilih siswa —</option>
-      </select>
-    </div>
-
-    <div class="card">
-      <button class="btn" id="rp-mulai-btn" onclick="mulaiCetakRapor()">Download Semua Rapor (ZIP)</button>
-      <div id="rp-status-area" style="margin-top:16px;"></div>
-    </div>
-  `;
-
-  if(!isWalas){
-    const kelasInput = document.getElementById('rp-kelas-input');
-    kelasInput?.addEventListener('change', async e => {
-      raporState.kelas = e.target.value.trim();
-      await checkRaporReadiness();
-      if(raporState.mode === 'siswa') await loadRaporSiswa();
-    });
-  }
-
-  checkRaporReadiness();
+function rpTodayYmd(){
+  const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const m=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${m.year}-${m.month}-${m.day}`;
 }
+function rpDefaultStartYmd(){const d=new Date();d.setDate(d.getDate()-30);return d.toISOString().slice(0,10)}
+function rpFmtDate(v){if(!v)return'-';const d=new Date(v+'T00:00:00');if(Number.isNaN(d.getTime()))return v;return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric'}).format(d)}
+function rpScore(v){if(v===null||v===undefined||v==='')return'-';const n=Number(v);if(!Number.isFinite(n))return'-';return Number.isInteger(n)?String(n):n.toFixed(1).replace(/\.0$/,'')}
+function rpGrade(v){const s=String(v||'').trim().toUpperCase();return ['A','B','C','D'].includes(s)?s:(s==='-'?'-':'-')}
 
-function periodeKodeRapor(){
-  const semester = document.getElementById('rp-semester')?.value || raporState.semester || '1';
-  const jenis = document.getElementById('rp-jenis')?.value || raporState.jenisPeriode || 'PTS';
-  return 'S' + semester + '_' + jenis;
-}
-
-function syncRaporDateState(){
-  raporState.tanggalMulai = document.getElementById('rp-tanggal-mulai')?.value || '';
-  raporState.tanggalSelesai = document.getElementById('rp-tanggal-selesai')?.value || '';
-  raporState.tanggalCetak = document.getElementById('rp-tanggal-cetak')?.value || '';
-  raporState.tanggalCetakHijri = document.getElementById('rp-tanggal-hijri')?.value.trim() || '';
-}
-
-function validateRaporDates(){
-  syncRaporDateState();
-  if(!raporState.tanggalMulai || !raporState.tanggalSelesai){
-    showToast('Tanggal mulai dan tanggal selesai wajib dipilih.', true);
-    return false;
-  }
-  if(raporState.tanggalMulai > raporState.tanggalSelesai){
-    showToast('Tanggal mulai tidak boleh setelah tanggal selesai.', true);
-    return false;
-  }
-  if(!raporState.tanggalCetak){
-    showToast('Tanggal cetak rapor wajib dipilih.', true);
-    return false;
-  }
-  return true;
-}
-
-async function setRaporMode(mode){
-  raporState.mode = mode;
-  document.getElementById('rp-mode-kelas')?.classList.toggle('active', mode === 'kelas');
-  document.getElementById('rp-mode-siswa')?.classList.toggle('active', mode === 'siswa');
-
-  const card = document.getElementById('rp-siswa-card');
-  if(card) card.style.display = mode === 'siswa' ? 'block' : 'none';
-
-  const btn = document.getElementById('rp-mulai-btn');
-  if(btn) btn.textContent = mode === 'siswa' ? 'Download Rapor Siswa (PDF)' : 'Download Semua Rapor (ZIP)';
-
-  if(mode === 'siswa') await loadRaporSiswa();
-}
-
-async function loadRaporSiswa(){
-  const select = document.getElementById('rp-siswa-select');
-  if(!select) return;
-
-  if(!raporState.kelas){
-    select.innerHTML = '<option value="">Pilih kelas terlebih dahulu</option>';
-    return;
-  }
-
-  select.disabled = true;
-  select.innerHTML = '<option value="">Memuat siswa...</option>';
-
+async function reportPreviewRequest(action,payload={},timeoutMs=35000){
+  const token=getAuthToken();if(!token)throw new Error('Sesi login tidak ditemukan.');
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeoutMs);
   try{
-    // Sumber ini ringan dan sama dengan daftar siswa aplikasi.
-    const res = await callApi('getRaporPTSStudents', { kelas:raporState.kelas });
-    if(!res.success) throw new Error(res.error || 'Gagal memuat siswa.');
-
-    raporState.siswa = (res.data || []).slice().sort((a,b) =>
-      String(a.nama||'').localeCompare(String(b.nama||''),'id')
-    );
-
-    select.innerHTML = '<option value="">— pilih siswa —</option>' +
-      raporState.siswa.map(s =>
-        `<option value="${escapeHtml(String(s.nis))}">${escapeHtml(s.nama)} — ${escapeHtml(String(s.nis))}</option>`
-      ).join('');
-  }catch(err){
-    select.innerHTML = '<option value="">Data siswa belum tersedia</option>';
-    showToast(err.message || 'Gagal memuat siswa.', true);
-  }finally{
-    select.disabled = false;
-  }
+    const r=await fetch(REPORT_PREVIEW_URL,{method:'POST',headers:{
+      'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,
+      'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token
+    },body:JSON.stringify({action,...payload}),signal:ctl.signal});
+    const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error(`Respons Rapor bukan JSON. HTTP ${r.status}.`)}
+    if(!r.ok||d.success===false){const map={session_invalid:'Sesi login tidak valid.',session_expired:'Sesi login telah berakhir.',forbidden:'Akun ini tidak memiliki akses Rapor.',class_forbidden:'Kelas tidak berada dalam akses akun ini.',student_not_in_class:'Siswa tidak ditemukan pada kelas ini.',academic_year_not_found:'Tahun ajaran belum tersedia di Supabase.'};throw new Error(map[d.error]||d.error||`HTTP ${r.status}`)}
+    return d;
+  }catch(e){if(e?.name==='AbortError')throw new Error('Server Rapor terlalu lama merespons.');throw e}finally{clearTimeout(timer)}
 }
 
-async function checkRaporReadiness(){
-  const area = document.getElementById('rp-status-area');
-  if(!area || !raporState.kelas) return;
-
-  try{
-    const res = await callApi('getRaporPTSReadiness',{kelas:raporState.kelas});
-    if(res.success && !res.ready){
-      area.innerHTML = `
-        <div style="background:#FFF8E5;border:1px solid #E8D69B;border-radius:10px;padding:13px 15px;font-size:12.5px;color:#7F681A;">
-          Template Rapor belum siap. Silakan hubungi admin.
-        </div>`;
-    }else{
-      area.innerHTML = '';
-    }
-  }catch(e){
-    // readiness non-kritis, tombol download tetap dapat dicoba
-  }
+function injectRaporPreviewStyles(){
+  if(document.getElementById('rapor-v1-style'))return;
+  const s=document.createElement('style');s.id='rapor-v1-style';s.textContent=`
+    .rpv-toolbar{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px}.rpv-field label{display:block;font-size:10.5px;font-weight:900;color:var(--muted);margin-bottom:5px;text-transform:uppercase}.rpv-control{width:100%;padding:10px 11px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:inherit;color:var(--text)}
+    .rpv-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:12px}.rpv-paper-wrap{overflow:auto;padding:8px 0 20px}.rpv-paper{width:210mm;min-height:297mm;margin:0 auto 18px;background:#fff;color:#111;padding:11mm 11mm 9mm;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:Arial,sans-serif;font-size:9.5px;line-height:1.25;box-sizing:border-box}.rpv-paper *{box-sizing:border-box}.rpv-top-title{text-align:center;font-weight:800;line-height:1.35;margin-bottom:7px}.rpv-top-title .big{font-size:13px}.rpv-top-title .mid{font-size:11px}.rpv-info{width:100%;border-collapse:collapse;margin-bottom:7px}.rpv-info td{padding:2px 4px}.rpv-section{background:#eaf3f4;border:1px solid #9aaeb0;text-align:center;font-weight:800;padding:4px;margin:6px 0 0}.rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:1px solid #999;padding:3px 4px;vertical-align:middle}.rpv-table th{font-weight:800;text-align:center}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-small{font-size:8px}.rpv-muted{color:#555}.rpv-academic th,.rpv-academic td{font-size:8.1px;padding:2.5px 3px}.rpv-academic .no{width:5%}.rpv-academic .subject{width:26%}.rpv-academic .kktp{width:10%}.rpv-academic .lo{width:7%}.rpv-academic .remarks{width:17%}.rpv-att-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}.rpv-legend{font-size:7.8px;margin-top:5px}.rpv-footer{display:flex;justify-content:space-between;margin-top:6px;font-size:7.5px}.rpv-signatures{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;margin-top:18px;min-height:90px}.rpv-signatures .name{margin-top:45px;font-weight:700}.rpv-teachers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}.rpv-team-table{width:100%;border-collapse:collapse}.rpv-team-table td,.rpv-team-table th{border:1px solid #999;padding:3px;font-size:8px}.rpv-note-box{border:1px solid #d2dfdf;background:#f7fbfb;border-radius:9px;padding:9px;font-size:11px;color:#456}.rpv-page-label{text-align:right;font-size:7px;margin-top:5px}.rpv-print-btn{display:inline-flex;align-items:center;gap:7px}.rpv-status-chip{display:inline-flex;padding:5px 9px;border-radius:999px;background:#eaf7f6;color:var(--primary);font-size:10.5px;font-weight:900}
+    @media(max-width:900px){.rpv-toolbar{grid-template-columns:1fr 1fr}.rpv-paper{transform-origin:top left}.rpv-paper-wrap{padding-bottom:0}}
+    @media print{body *{visibility:hidden!important}#rpv-preview,#rpv-preview *{visibility:visible!important}#rpv-preview{position:absolute;left:0;top:0;width:100%;padding:0;margin:0}.rpv-paper{box-shadow:none;margin:0;width:210mm;height:297mm;min-height:297mm;page-break-after:always;break-after:page}.rpv-paper:last-child{page-break-after:auto;break-after:auto}}
+  `;document.head.appendChild(s);
 }
 
-async function mulaiCetakRapor(){
-  const btn = document.getElementById('rp-mulai-btn');
-  const statusArea = document.getElementById('rp-status-area');
-
-  if(!raporState.kelas){
-    showToast('Pilih kelas terlebih dahulu.', true);
-    return;
-  }
-  if(!validateRaporDates()) return;
-
-  let nis = '';
-  if(raporState.mode === 'siswa'){
-    nis = document.getElementById('rp-siswa-select')?.value || '';
-    if(!nis){
-      showToast('Pilih siswa terlebih dahulu.', true);
-      return;
-    }
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Membuat rapor...';
-
-  const loadingText = raporState.mode === 'siswa'
-    ? 'Menyiapkan PDF siswa. Mohon tunggu...'
-    : 'Membuat seluruh PDF dan ZIP. Proses kelas memang lebih lama, jangan tutup halaman ini.';
-
-  statusArea.innerHTML = `
-    <div style="font-size:13px;color:var(--muted)">
-      <span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,0.25)"></span>
-      ${loadingText}
-    </div>`;
-
-  try{
-    const readiness = await callApi('getRaporPTSReadiness',{kelas:raporState.kelas});
-    if(!readiness.success || !readiness.ready){
-      statusArea.innerHTML = `<div class="ms-alert">Template Rapor belum siap. Silakan hubungi admin.</div>`;
-      return;
-    }
-
-    const action = raporState.mode === 'siswa'
-      ? 'generateRaporPTSSiswa'
-      : 'generateRaporPTSKelasZip';
-
-    const params = {
-      kelas: raporState.kelas,
-      periode: periodeKodeRapor(),
-
-      // Range yang dibaca backend untuk absensi/reward/kedisiplinan
-      tanggalMulai: raporState.tanggalMulai,
-      tanggalSelesai: raporState.tanggalSelesai,
-
-      // Tanggal yang dicetak pada halaman 2
-      tanggalCetak: raporState.tanggalCetak,
-      tanggalCetakHijri: raporState.tanggalCetakHijri,
-
-      requestedBy: currentUser.nama,
-      requestedByUsername: currentUser.username
-    };
-
-    if(raporState.mode === 'siswa') params.nis = nis;
-
-    const res = await callApi(action, params);
-    if(!res.success){
-      const msg = res.error || 'Terjadi kendala saat membuat rapor.';
-      statusArea.innerHTML = `<div class="ms-alert"><strong>Gagal membuat rapor.</strong><br>${escapeHtml(msg)}</div>`;
-      return;
-    }
-
-    const label = raporState.mode === 'siswa'
-      ? `Rapor berhasil dibuat: ${escapeHtml(res.fileName || '')}`
-      : `${Number(res.count || 0)} rapor siswa berhasil dibuat dalam ZIP.`;
-
-    statusArea.innerHTML = `
-      <div style="background:#EAF5F0;border:1px solid #C8E6D6;border-radius:10px;padding:14px 16px;font-size:13px;color:var(--success);">
-        ${label}<br>
-        <span style="font-size:12px;color:var(--muted)">
-          Data: ${escapeHtml(raporState.tanggalMulai)} s.d. ${escapeHtml(raporState.tanggalSelesai)}
-          · Tanggal cetak: ${escapeHtml(raporState.tanggalCetak)}
-        </span>
-      </div>
-      <a href="${escapeHtml(res.downloadUrl)}" target="_blank" rel="noopener" class="btn"
-         style="display:inline-block;text-decoration:none;text-align:center;margin-top:12px;width:auto;padding:12px 24px;">
-         ${raporState.mode === 'siswa' ? 'Download PDF' : 'Download ZIP'}
-      </a>`;
-  }catch(err){
-    statusArea.innerHTML = `
-      <div class="ms-alert"><strong>Gagal.</strong><br>
-      ${escapeHtml(err.message || String(err))}
-      </div>`;
-  }finally{
-    btn.disabled = false;
-    btn.textContent = raporState.mode === 'siswa'
-      ? 'Download Rapor Siswa (PDF)'
-      : 'Download Semua Rapor (ZIP)';
-  }
+async function renderCetakRapor(content){
+  injectRaporPreviewStyles();
+  raporPreviewState={academicYear:'2026/2027',semester:1,reportType:'PTS',classes:[],classLocked:false,classId:'',students:[],studentId:'',startDate:rpDefaultStartYmd(),endDate:rpTodayYmd(),printDate:rpTodayYmd(),hijriDate:'',report:null};
+  content.innerHTML=`<div class="page-title">Rapor</div><div class="page-sub">Preview rapor 2 halaman sebelum dicetak.</div><div id="rpv-root"><div class="card"><span class="spinner"></span> Menyiapkan Rapor...</div></div>`;
+  try{const b=await reportPreviewRequest('bootstrap',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester});raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();if(raporPreviewState.classId)await rpLoadStudents()}catch(e){document.getElementById('rpv-root').innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuka Rapor.')}</div></div>`}
 }
+
+function renderRaporControls(){
+  const root=document.getElementById('rpv-root');if(!root)return;
+  root.innerHTML=`<div class="card"><div class="card-title">Pilih Rapor</div><div class="rpv-toolbar">
+    <div class="rpv-field"><label>Kelas</label><select id="rpv-class" class="rpv-control" ${raporPreviewState.classLocked?'disabled':''} onchange="rpChangeClass(this.value)"><option value="">— Pilih kelas —</option>${raporPreviewState.classes.map(c=>`<option value="${escapeHtml(c.id)}" ${c.id===raporPreviewState.classId?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
+    <div class="rpv-field"><label>Siswa</label><select id="rpv-student" class="rpv-control" onchange="raporPreviewState.studentId=this.value"><option value="">— Pilih siswa —</option></select></div>
+    <div class="rpv-field"><label>Jenis Rapor</label><select id="rpv-type" class="rpv-control" onchange="raporPreviewState.reportType=this.value"><option value="PTS">Tengah Semester (PTS)</option><option value="SEMESTER">Akhir Semester</option></select></div>
+    <div class="rpv-field"><label>Semester</label><select id="rpv-sem" class="rpv-control" onchange="rpChangeSemester(this.value)"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div>
+    <div class="rpv-field"><label>Data mulai</label><input id="rpv-start" type="date" class="rpv-control" value="${raporPreviewState.startDate}"></div>
+    <div class="rpv-field"><label>Data selesai</label><input id="rpv-end" type="date" class="rpv-control" value="${raporPreviewState.endDate}"></div>
+    <div class="rpv-field"><label>Tanggal Rapor</label><input id="rpv-print-date" type="date" class="rpv-control" value="${raporPreviewState.printDate}"></div>
+    <div class="rpv-field"><label>Tanggal Hijriah (opsional)</label><input id="rpv-hijri" class="rpv-control" placeholder="8 Muharram 1448 AH"></div>
+  </div><div class="rpv-actions"><button class="btn" id="rpv-preview-btn" onclick="rpLoadPreview()">Preview Rapor</button><span class="rpv-status-chip">Tahfizh: menunggu sumber data</span></div></div><div id="rpv-preview-area"></div>`;
+}
+
+async function rpChangeSemester(v){raporPreviewState.semester=Number(v)||1;raporPreviewState.classId='';raporPreviewState.studentId='';raporPreviewState.report=null;try{const b=await reportPreviewRequest('bootstrap',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester});raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();const sem=document.getElementById('rpv-sem');if(sem)sem.value=String(raporPreviewState.semester);if(raporPreviewState.classId)await rpLoadStudents()}catch(e){showToast(e.message||'Gagal mengganti semester',true)}}
+async function rpChangeClass(id){raporPreviewState.classId=id;raporPreviewState.studentId='';raporPreviewState.report=null;await rpLoadStudents()}
+async function rpLoadStudents(){const sel=document.getElementById('rpv-student');if(!sel||!raporPreviewState.classId)return;sel.disabled=true;sel.innerHTML='<option>Memuat siswa...</option>';try{const d=await reportPreviewRequest('students',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:raporPreviewState.classId});raporPreviewState.students=d.students||[];sel.innerHTML='<option value="">— Pilih siswa —</option>'+raporPreviewState.students.map(s=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} — ${escapeHtml(s.nis||s.nisn||'')}</option>`).join('')}catch(e){sel.innerHTML='<option value="">Gagal memuat siswa</option>';showToast(e.message||'Gagal memuat siswa',true)}finally{sel.disabled=false}}
+
+async function rpLoadPreview(){
+  const classId=document.getElementById('rpv-class')?.value||raporPreviewState.classId;const studentId=document.getElementById('rpv-student')?.value||'';if(!classId){showToast('Pilih kelas.',true);return}if(!studentId){showToast('Pilih siswa.',true);return}
+  raporPreviewState.classId=classId;raporPreviewState.studentId=studentId;raporPreviewState.reportType=document.getElementById('rpv-type')?.value||'PTS';raporPreviewState.startDate=document.getElementById('rpv-start')?.value||'';raporPreviewState.endDate=document.getElementById('rpv-end')?.value||'';raporPreviewState.printDate=document.getElementById('rpv-print-date')?.value||'';raporPreviewState.hijriDate=(document.getElementById('rpv-hijri')?.value||'').trim();if(raporPreviewState.startDate&&raporPreviewState.endDate&&raporPreviewState.startDate>raporPreviewState.endDate){showToast('Tanggal mulai tidak boleh setelah tanggal selesai.',true);return}
+  const btn=document.getElementById('rpv-preview-btn'),area=document.getElementById('rpv-preview-area');btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Memuat Preview...';area.innerHTML='<div class="card"><span class="spinner"></span> Menggabungkan data rapor...</div>';
+  try{const d=await reportPreviewRequest('preview',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,student_id:studentId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},45000);raporPreviewState.report=d.report;renderRaporPreview()}catch(e){area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Preview gagal dimuat.')}</div></div>`}finally{btn.disabled=false;btn.textContent='Preview Rapor'}
+}
+
+function rpAcademicRows(rows){
+  const list=Array.isArray(rows)?rows:[];if(!list.length)return`<tr><td colspan="9" class="rpv-center">Belum ada data akademik.</td></tr>`;
+  return list.map((r,i)=>`<tr><td class="rpv-center">${i+1}</td><td>${escapeHtml(r.name||'-')}</td><td class="rpv-center">${escapeHtml(r.kktp||'-')}</td>${[0,1,2,3,4].map(x=>`<td class="rpv-center">${rpScore(r.lo?.[x])}</td>`).join('')}<td class="rpv-center">${escapeHtml(r.remarks||'-')}</td></tr>`).join('');
+}
+function rpTahfizhRows(t){
+  if(!t)return`<tr><td>Memorization Material</td><td>-</td></tr><tr><td>Tahfizh Learning Target (LP)</td><td>-</td></tr><tr><td>Current Achievement</td><td>-</td></tr><tr><td>Tahfizh Achievement</td><td>-</td></tr><tr><td>&nbsp;&nbsp;a. Number of Surahs</td><td>-</td></tr><tr><td>&nbsp;&nbsp;b. Number of Lines</td><td>-</td></tr><tr><td>&nbsp;&nbsp;c. Number of Verses</td><td>-</td></tr><tr><td>&nbsp;&nbsp;d. Percentage (%)</td><td>-</td></tr><tr><td>Juz Advancement Assessment</td><td>-</td></tr>`;
+  return`<tr><td>Memorization Material</td><td>${escapeHtml(t.material||'-')}</td></tr><tr><td>Tahfizh Learning Target (LP)</td><td>${escapeHtml(t.target||'-')}</td></tr><tr><td>Current Achievement</td><td>${escapeHtml(t.current||'-')}</td></tr><tr><td>Tahfizh Achievement</td><td>${escapeHtml(t.achievement||'-')}</td></tr><tr><td>&nbsp;&nbsp;a. Number of Surahs</td><td>${escapeHtml(t.surahs??'-')}</td></tr><tr><td>&nbsp;&nbsp;b. Number of Lines</td><td>${escapeHtml(t.lines??'-')}</td></tr><tr><td>&nbsp;&nbsp;c. Number of Verses</td><td>${escapeHtml(t.verses??'-')}</td></tr><tr><td>&nbsp;&nbsp;d. Percentage (%)</td><td>${escapeHtml(t.percentage??'-')}</td></tr><tr><td>Juz Advancement Assessment</td><td>${escapeHtml(t.juz_assessment||'-')}</td></tr>`;
+}
+function rpTeamRows(team,tahfizh){const arr=(team||[]).map(n=>({name:n,pos:'Subject Teacher'}));for(const n of tahfizh||[])arr.push({name:n,pos:'Tahfizh Teacher'});if(!arr.length)return'<tr><td>1</td><td>-</td><td>-</td></tr>';return arr.map((x,i)=>`<tr><td class="rpv-center">${i+1}</td><td>${escapeHtml(x.name)}</td><td>${escapeHtml(x.pos)}</td></tr>`).join('')}
+
+function renderRaporPreview(){
+  const area=document.getElementById('rpv-preview-area'),r=raporPreviewState.report;if(!area||!r)return;const st=r.student||{},cl=r.class||{},att=r.attendance||{},pts=r.points||{},eks=r.extracurricular||{},trs=r.teachers||{};const p=att.percent||{};const cats=pts.categories||{};const reportTitle=raporPreviewState.reportType==='SEMESTER'?'SEMESTER STUDENT PROGRESS REPORT':'MID-SEMESTER STUDENT PROGRESS REPORT';
+  area.innerHTML=`<div class="card"><div class="pv2-toolbar"><div><div class="card-title" style="margin:0">Preview Rapor — ${escapeHtml(st.name||'-')}</div><div class="page-sub" style="margin-top:3px">Periksa seluruh data sebelum PDF final dibuat.</div></div><button class="btn btn-sm rpv-print-btn" onclick="window.print()">${pointSvg('save',15)} Cetak Preview</button></div></div>
+  <div class="rpv-paper-wrap" id="rpv-preview">
+    <section class="rpv-paper">
+      <div class="rpv-top-title"><div class="big">ACADEMIC YEAR ${escapeHtml(r.academic_year||'2026/2027')}</div><div class="big">${reportTitle}</div><div class="mid">SEMESTER ${Number(r.semester_no)===2?'II':'I'}</div></div>
+      <table class="rpv-info"><tr><td style="width:24%">Student Name</td><td>: <b>${escapeHtml(st.name||'-')}</b></td></tr><tr><td>Student ID/NISN</td><td>: ${escapeHtml(st.nis||'-')} / ${escapeHtml(st.nisn||'-')}</td></tr><tr><td>Class/Phase</td><td>: ${escapeHtml(cl.name||'-')}</td></tr></table>
+      <div class="rpv-section">1&nbsp;&nbsp;Tahfizh Achievement Report</div><table class="rpv-table"><tbody>${rpTahfizhRows(r.tahfizh)}</tbody></table>
+      <div class="rpv-section">2&nbsp;&nbsp;Subject Assessment Report</div><table class="rpv-table rpv-academic"><thead><tr><th rowspan="2" class="no">NO</th><th rowspan="2" class="subject">SUBJECT</th><th rowspan="2" class="kktp">Learning Objective Achievement Criteria (KKTP)</th><th colspan="5">SUMMATIVE ASSESSMENT</th><th rowspan="2" class="remarks">REMARKS</th></tr><tr><th class="lo">LO 1</th><th class="lo">LO 2</th><th class="lo">LO 3</th><th class="lo">LO 4</th><th class="lo">LO 5</th></tr></thead><tbody>${rpAcademicRows(r.academic)}</tbody></table>
+      <div class="rpv-att-grid"><div><div class="rpv-section">3&nbsp;&nbsp;Attendance Record</div><table class="rpv-table"><thead><tr><th>No.</th><th>Days</th><th>Attendance Status</th><th>Percentage</th></tr></thead><tbody><tr><td class="rpv-center">1</td><td class="rpv-center">${att.present||0}</td><td>Present</td><td class="rpv-center">${p.present||0}%</td></tr><tr><td class="rpv-center">2</td><td class="rpv-center">${att.sick||0}</td><td>Absent Due to Illness</td><td class="rpv-center">${p.sick||0}%</td></tr><tr><td class="rpv-center">3</td><td class="rpv-center">${att.excused||0}</td><td>Excused Absence</td><td class="rpv-center">${p.excused||0}%</td></tr><tr><td class="rpv-center">4</td><td class="rpv-center">${att.unexcused||0}</td><td>Unexcused Absence</td><td class="rpv-center">${p.unexcused||0}%</td></tr></tbody></table></div>
+      <div><table class="rpv-table" style="margin-top:26px"><thead><tr><th>Score Range</th><th>Performance Level</th></tr></thead><tbody><tr><td class="rpv-center">90-100</td><td>Highly Proficient</td></tr><tr><td class="rpv-center">81-89</td><td>Proficient</td></tr><tr><td class="rpv-center">75-80</td><td>Developing</td></tr><tr><td class="rpv-center">&lt;75</td><td>Needs Guidance</td></tr></tbody></table></div></div>
+      <div class="rpv-footer"><span>SD Islam Tahfizh Cahaya Qur'an</span><span>Page 1 of 2</span></div>
+    </section>
+    <section class="rpv-paper">
+      <div class="rpv-top-title"><div class="big">ACADEMIC YEAR ${escapeHtml(r.academic_year||'2026/2027')}</div><div class="big">${reportTitle}</div><div class="mid">SEMESTER ${Number(r.semester_no)===2?'II':'I'}</div></div>
+      <div class="rpv-section">4&nbsp;&nbsp;Student Activity and Personal Development Report</div><table class="rpv-table"><thead><tr><th>No.</th><th>Extracurricular & Personal Development</th><th style="width:12%">Rating</th><th>Level</th></tr></thead><tbody><tr><td class="rpv-center">1</td><td>Extracurricular Participation</td><td class="rpv-center"><b>${rpGrade(eks.activity_grade)}</b></td><td>A = Very Active | B = Active | C = Occasionally Active | D = Not Participating</td></tr><tr><td class="rpv-center">2</td><td>Extracurricular Skill Development</td><td class="rpv-center"><b>${rpGrade(eks.skill_grade)}</b></td><td>A = Skilled | B = Proficient | C = Developing | D = Emerging</td></tr><tr><td class="rpv-center">3</td><td>Competition Participation and Achievement</td><td class="rpv-center"><b>${rpGrade(eks.competition_grade)}</b></td><td>A = Competed and placed | B = Competed without placing | C = Interested but has not competed | D = Not yet interested</td></tr><tr><td class="rpv-center">4</td><td>Participation in School Activities</td><td class="rpv-center"><b>${rpGrade(eks.school_activity_grade)}</b></td><td>A = Very Active | B = Active | C = Fairly Active | D = Not Very Active</td></tr></tbody></table><div class="rpv-small rpv-muted" style="margin-top:4px">Status Ekskul: <b>${escapeHtml(eks.status||'-')}</b>${eks.external_activity?` · ${escapeHtml(eks.external_activity)}`:''}</div>
+      <div class="rpv-section">5&nbsp;&nbsp;Student Character and Discipline Report</div><div style="font-weight:800;margin:5px 0">A. Disciplinary Record Summary</div><table class="rpv-table"><thead><tr><th>Category</th><th>Number of Incidents</th><th>Points</th><th>Remarks</th></tr></thead><tbody><tr><td>Minor</td><td class="rpv-center">${cats.Minor?.incidents||0}</td><td class="rpv-center">${cats.Minor?.points||0}</td><td>-</td></tr><tr><td>Moderate</td><td class="rpv-center">${cats.Moderate?.incidents||0}</td><td class="rpv-center">${cats.Moderate?.points||0}</td><td>-</td></tr><tr><td>Severe</td><td class="rpv-center">${cats.Severe?.incidents||0}</td><td class="rpv-center">${cats.Severe?.points||0}</td><td>-</td></tr></tbody></table><div style="margin:5px 0 8px"><b>Total Violation Points: ${pts.violation_total||0} Points</b></div>
+      <div style="font-weight:800;margin:5px 0">B. Student Merit and Guidance Record</div><table class="rpv-table"><thead><tr><th>Category</th><th style="width:18%">Points</th><th>Remarks</th></tr></thead><tbody><tr><td>Achievement / Role Model Award</td><td class="rpv-center">${pts.reward_total||0}</td><td>-</td></tr><tr><td>Violation Points</td><td class="rpv-center">${pts.violation_total||0}</td><td>-</td></tr></tbody></table><div style="margin:5px 0 8px"><b>Final Total Points: ${pts.final_total||0} Points</b></div>
+      <div class="rpv-teachers"><div><div style="font-weight:800;margin-bottom:4px">Class Teaching Team, ${escapeHtml(cl.name||'-')}</div><table class="rpv-team-table"><thead><tr><th style="width:8%">No.</th><th>Name</th><th>Position</th></tr></thead><tbody>${rpTeamRows(trs.team,trs.tahfizh)}</tbody></table></div><div class="rpv-note-box">Tanggal rapor:<br><b>${escapeHtml(raporPreviewState.hijriDate||'-')}</b><br><b>${escapeHtml(rpFmtDate(raporPreviewState.printDate))} CE</b><br><br>Data Tahfizh akan masuk otomatis setelah sumber Tahfizh dihubungkan.</div></div>
+      <div class="rpv-signatures"><div>Parent / Guardian<div class="name">_______________</div></div><div>Principal<div class="name">${escapeHtml(trs.principal||'_______________')}</div></div><div>Homeroom Teacher, ${escapeHtml(cl.name||'-')}<div class="name">${escapeHtml(trs.homeroom||'_______________')}</div></div></div>
+      <div class="rpv-footer"><span>SD Islam Tahfizh Cahaya Qur'an</span><span>Page 2 of 2</span></div>
+    </section>
+  </div>`;
+  document.getElementById('rpv-preview')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 
 /* ==========================================================
    MODUL: LAPORAN GURU BULANAN
@@ -4094,12 +3877,9 @@ async function loadDashboard(requestToken){
 
 
 /* ==========================================================
-   CQLASS — EKSKUL V7
-   REKAP + FINALISASI NILAI RAPOR DI CQLASS UTAMA
-   Web ekskul eksternal TIDAK diubah.
-   Backend: extracurricular-public
+   CQLASS — REKAP EKSKUL WALAS (READ ONLY)
+   Tampilan memakai komponen CSS yang sudah ada.
    ========================================================== */
-
 async function ekskulV6Api(action,payload={}){
   const res=await fetch(EXTRACURRICULAR_PUBLIC_URL,{
     method:'POST',
@@ -4114,7 +3894,6 @@ async function ekskulV6Api(action,payload={}){
   if(!res.ok||!data.success)throw new Error(data.error||'Gagal memuat data ekskul.');
   return data;
 }
-
 function injectEkskulV56Styles(){
   if(document.getElementById('ek-v56-style')) return;
   const s=document.createElement('style');s.id='ek-v56-style';
@@ -4134,133 +3913,44 @@ function injectEkskulV56Styles(){
     .ek-v56-progress span{display:block;height:100%;background:var(--primary);border-radius:999px}
     .ek-v56-grade{display:inline-flex;min-width:30px;justify-content:center;padding:4px 7px;border-radius:8px;background:#eef7f6;color:var(--primary);font-weight:900}
     .ek-v56-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
-    .ek-v56-table{width:100%;border-collapse:collapse;min-width:960px}
+    .ek-v56-table{width:100%;border-collapse:collapse;min-width:760px}
     .ek-v56-table th,.ek-v56-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:11px;text-align:left;vertical-align:middle}
     .ek-v56-table th{background:#f5f9f9;color:var(--muted);font-size:9.8px;text-transform:uppercase}
     .ek-v56-table tr:last-child td{border-bottom:0}
     .ek-v56-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px}
-    .ek-v7-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
-    .ek-v7-tab{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:900;cursor:pointer;color:var(--muted)}
-    .ek-v7-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}
-    .ek-v7-final-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) 150px auto;gap:9px;align-items:end}
-    .ek-v7-final-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
-    .ek-v7-final-table{width:100%;border-collapse:collapse;min-width:1100px}
-    .ek-v7-final-table th,.ek-v7-final-table td{padding:9px;border-bottom:1px solid var(--border);font-size:11px;text-align:left;vertical-align:middle}
-    .ek-v7-final-table th{background:#f5f9f9;color:var(--muted);font-size:9.5px;text-transform:uppercase;white-space:nowrap}
-    .ek-v7-final-table tr:last-child td{border-bottom:0}
-    .ek-v7-grade-select{width:68px;padding:8px;border:1px solid var(--border);border-radius:9px;background:#fff;font:inherit;font-weight:800}
-    .ek-v7-desc{width:100%;min-width:250px;padding:8px;border:1px solid var(--border);border-radius:9px;font:inherit}
-    .ek-v7-stat{font-size:10px;color:var(--muted);line-height:1.45;white-space:nowrap}
-    .ek-v7-final-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
-    .ek-v7-status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:900}
-    .ek-v7-status.ok{background:#e8f7ef;color:#147344}.ek-v7-status.no{background:#fff3e7;color:#985000}
-    .ek-v7-help{padding:11px 13px;border:1px solid #cfe5e3;background:#f3fbfa;border-radius:11px;color:#376a67;font-size:11px;line-height:1.55;margin-bottom:12px}
-    @media(max-width:900px){.ek-v56-kpis{grid-template-columns:repeat(2,1fr)}.ek-v7-final-toolbar{grid-template-columns:1fr}}
+    @media(max-width:900px){.ek-v56-kpis{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:650px){.ek-v56-filters{width:100%}.ek-v56-filters .pv2-control{width:100%;min-width:0}}
   `;
   document.head.appendChild(s);
 }
-
 let ekskulV56Rows=[];
-const ekskulV7State={
-  assignments:[],
-  extracurriculars:[],
-  academicYearId:null,
-  semester:1,
-  assessmentRows:[]
-};
-
-function ekskulV7CanFinalize(){
-  const role=String(currentUser?.role||'').toLowerCase();
-  return role==='kegiatan'||role==='pimpinan';
-}
-
 function renderEkskulRekap(content){
   injectEkskulV56Styles();
   const kelas=currentUser.role==='walas'?(currentUser.kelas||''):'';
-  const canFinalize=ekskulV7CanFinalize();
-
   content.innerHTML=`
     <div class="ek-v56-head">
-      <div>
-        <div class="page-title">Ekstrakurikuler</div>
-        <div class="page-sub">Rekap kegiatan dan nilai final ekstrakurikuler untuk rapor.</div>
-      </div>
+      <div><div class="page-title">Rekap Ekstrakurikuler</div><div class="page-sub">Rekap pertemuan, kehadiran, materi, dan nilai ekskul dari Supabase.</div></div>
       ${kelas?`<span class="ek-v56-chip">${escapeHtml(kelas)}</span>`:''}
     </div>
-
-    ${canFinalize?`
-      <div class="ek-v7-tabs">
-        <button id="ek-v7-tab-rekap" class="ek-v7-tab active" onclick="ekV7OpenTab('rekap')">Rekap Ekskul</button>
-        <button id="ek-v7-tab-final" class="ek-v7-tab" onclick="ekV7OpenTab('final')">Finalisasi Nilai Rapor</button>
-      </div>`:''}
-
-    <div id="ek-v7-pane-rekap">
-      ${currentUser.role!=='walas'?`
-        <div class="card">
-          <div class="card-title">Pilih Kelas</div>
-          <div style="display:flex;gap:8px;max-width:620px;flex-wrap:wrap">
-            <input id="ek-rekap-kelas" class="pv2-control" type="text" placeholder="Ketik kelas, contoh: 5A Banin" style="flex:1;min-width:220px">
-            <button class="btn btn-sm" style="width:auto" onclick="loadEkskulRekapAdmin()">Tampilkan</button>
-          </div>
-        </div>`:''}
-      <div id="ek-rekap-body"></div>
-    </div>
-
-    ${canFinalize?`
-      <div id="ek-v7-pane-final" style="display:none">
-        <div class="card">
-          <div class="card-title">Finalisasi Nilai Rapor Ekskul</div>
-          <div class="ek-v7-help">
-            Kehadiran dan rata-rata nilai sesi ditampilkan sebagai bahan pertimbangan.
-            Nilai akhir <b>Aktivitas, Keterampilan, dan Kompetisi</b> tetap ditetapkan A–D saat finalisasi.
-            Data disimpan ke <b>extracurricular_assessments</b>.
-          </div>
-          <div class="ek-v7-final-toolbar">
-            <div>
-              <label class="pv2-label">Kelompok / Pelatih Ekskul</label>
-              <select id="ek-v7-final-assignment" class="pv2-control" onchange="ekV7LoadAssessments()">
-                <option value="">Memuat kelompok ekskul...</option>
-              </select>
-            </div>
-            <div>
-              <label class="pv2-label">Semester</label>
-              <select id="ek-v7-final-semester" class="pv2-control" onchange="ekV7LoadAssessments()">
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
-              </select>
-            </div>
-            <button class="btn btn-sm" style="width:auto" onclick="ekV7LoadAssessments()">Muat Siswa</button>
-          </div>
+    ${currentUser.role!=='walas'?`
+      <div class="card">
+        <div class="card-title">Pilih Kelas</div>
+        <div style="display:flex;gap:8px;max-width:620px;flex-wrap:wrap">
+          <input id="ek-rekap-kelas" class="pv2-control" type="text" placeholder="Ketik kelas, contoh: 5A Banin" style="flex:1;min-width:220px">
+          <button class="btn btn-sm" style="width:auto" onclick="loadEkskulRekapAdmin()">Tampilkan</button>
         </div>
-        <div id="ek-v7-final-body"></div>
       </div>`:''}
-  `;
-
+    <div id="ek-rekap-body"></div>`;
   if(kelas) loadEkskulRekap(kelas);
-  if(canFinalize) ekV7BootstrapFinal();
 }
-
-function ekV7OpenTab(tab){
-  const final=tab==='final';
-  const pr=document.getElementById('ek-v7-pane-rekap');
-  const pf=document.getElementById('ek-v7-pane-final');
-  if(pr)pr.style.display=final?'none':'';
-  if(pf)pf.style.display=final?'':'none';
-  document.getElementById('ek-v7-tab-rekap')?.classList.toggle('active',!final);
-  document.getElementById('ek-v7-tab-final')?.classList.toggle('active',final);
-}
-
 function loadEkskulRekapAdmin(){
   const kelas=(document.getElementById('ek-rekap-kelas')?.value||'').trim();
   if(!kelas){showToast('Isi kelas terlebih dahulu.',true);return}
   loadEkskulRekap(kelas);
 }
-
 function ekV56Predikat(v){
   const x=String(v||'-').trim();return x||'-';
 }
-
 function ekV56Filter(){
   const q=(document.getElementById('ek-v56-search')?.value||'').toLowerCase().trim();
   const eks=(document.getElementById('ek-v56-exkul')?.value||'').toLowerCase();
@@ -4273,7 +3963,6 @@ function ekV56Filter(){
     card.style.display=visible?'':'none';
   });
 }
-
 function ekV56Render(rows,kelas){
   const body=document.getElementById('ek-rekap-body');if(!body)return;
   const grouped={};rows.forEach(r=>{const k=r.namaEkskul||'Ekskul';(grouped[k]??=[]).push(r)});
@@ -4282,263 +3971,64 @@ function ekV56Render(rows,kelas){
   const totalHadir=rows.reduce((z,r)=>z+Number(r.hadir||0),0);
   const totalPert=rows.reduce((z,r)=>z+Number(r.totalPertemuan||0),0);
   const avg=totalPert?Math.round(totalHadir*100/totalPert):0;
-  const lengkap=rows.filter(r=>r.activity_grade&&r.skill_grade&&r.competition_grade).length;
-
   body.innerHTML=`
     <div class="ek-v56-kpis">
       <div class="ek-v56-kpi"><strong>${eksNames.length}</strong><span>Ekskul Aktif</span></div>
       <div class="ek-v56-kpi"><strong>${totalSiswa}</strong><span>Siswa Terdata</span></div>
       <div class="ek-v56-kpi"><strong>${avg}%</strong><span>Rata-rata Kehadiran</span></div>
-      <div class="ek-v56-kpi"><strong>${lengkap}/${rows.length}</strong><span>Nilai Rapor Lengkap</span></div>
+      <div class="ek-v56-kpi"><strong>${rows.length}</strong><span>Keikutsertaan Ekskul</span></div>
     </div>
-
     <div class="card">
       <div class="ek-v56-toolbar">
-        <div>
-          <div class="card-title" style="margin:0">Data Ekskul ${escapeHtml(kelas)}</div>
-          <div class="page-sub" style="margin-top:3px">Rekap sesi dan finalisasi nilai rapor dari Supabase.</div>
-        </div>
+        <div><div class="card-title" style="margin:0">Data Ekskul ${escapeHtml(kelas)}</div><div class="page-sub" style="margin-top:3px">Pencarian dan filter dilakukan langsung di browser.</div></div>
         <div class="ek-v56-filters">
           <input id="ek-v56-search" class="pv2-control" placeholder="Cari nama siswa..." oninput="ekV56Filter()">
-          <select id="ek-v56-exkul" class="pv2-control" onchange="ekV56Filter()">
-            <option value="">Semua ekskul</option>
-            ${eksNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
-          </select>
+          <select id="ek-v56-exkul" class="pv2-control" onchange="ekV56Filter()"><option value="">Semua ekskul</option>${eksNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}</select>
         </div>
       </div>
     </div>
-
     ${eksNames.map(nama=>{
       const list=grouped[nama];
-      const h=list.reduce((z,r)=>z+Number(r.hadir||0),0);
-      const t=list.reduce((z,r)=>z+Number(r.totalPertemuan||0),0);
-      const pct=t?Math.round(h*100/t):0;
+      const h=list.reduce((z,r)=>z+Number(r.hadir||0),0),t=list.reduce((z,r)=>z+Number(r.totalPertemuan||0),0),pct=t?Math.round(h*100/t):0;
       return `<div class="card ek-v56-card" data-ekskul-card="${escapeHtml(nama.toLowerCase())}">
-        <div class="ek-v56-card-head">
-          <div>
-            <div class="card-title" style="margin:0">${escapeHtml(nama)}</div>
-            <div class="page-sub" style="margin-top:3px">${list.length} siswa · Kehadiran rata-rata ${pct}%</div>
-          </div>
-          <span class="ek-v56-chip">${pct}% hadir</span>
-        </div>
-        <div class="ek-v56-table-wrap">
-          <table class="ek-v56-table">
-            <thead><tr>
-              <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Kehadiran</th>
-              <th>Aktivitas</th><th>Keterampilan</th><th>Kompetisi</th><th>Status</th><th>Deskripsi</th>
-            </tr></thead>
-            <tbody>${list.map((r,i)=>{
-              const p=r.totalPertemuan?Math.round(Number(r.hadir||0)*100/Number(r.totalPertemuan||0)):0;
-              const done=Boolean(r.activity_grade&&r.skill_grade&&r.competition_grade);
-              return `<tr class="ek-v56-student-row"
-                data-ekskul="${escapeHtml(nama)}"
-                data-search="${escapeHtml([r.nama,r.kelas,nama,r.activity_grade,r.skill_grade,r.competition_grade,r.deskripsi].join(' ').toLowerCase())}">
-                <td>${i+1}</td>
-                <td><strong>${escapeHtml(r.nama||'-')}</strong></td>
-                <td>${escapeHtml(r.kelas||'-')}</td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span style="min-width:34px;font-weight:800">${p}%</span>
-                    <div class="ek-v56-progress"><span style="width:${Math.max(0,Math.min(100,p))}%"></span></div>
-                  </div>
-                  <div style="font-size:9px;color:var(--muted);margin-top:3px">${Number(r.hadir||0)} / ${Number(r.totalPertemuan||0)} pertemuan</div>
-                </td>
-                <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.activity_grade))}</span></td>
-                <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.skill_grade))}</span></td>
-                <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.competition_grade))}</span></td>
-                <td><span class="ek-v7-status ${done?'ok':'no'}">${done?'Lengkap':'Belum Lengkap'}</span></td>
-                <td>${escapeHtml(r.deskripsi||'-')}</td>
-              </tr>`;
-            }).join('')}</tbody>
-          </table>
-        </div>
+        <div class="ek-v56-card-head"><div><div class="card-title" style="margin:0">${escapeHtml(nama)}</div><div class="page-sub" style="margin-top:3px">${list.length} siswa · Kehadiran rata-rata ${pct}%</div></div><span class="ek-v56-chip">${pct}% hadir</span></div>
+        <div class="ek-v56-table-wrap"><table class="ek-v56-table"><thead><tr>
+          <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Kehadiran</th><th>Keikutsertaan</th><th>Kemampuan</th><th>Deskripsi</th>
+        </tr></thead><tbody>${list.map((r,i)=>{
+          const p=r.totalPertemuan?Math.round(Number(r.hadir||0)*100/Number(r.totalPertemuan||0)):0;
+          return `<tr class="ek-v56-student-row" data-ekskul="${escapeHtml(nama)}" data-search="${escapeHtml([r.nama,r.kelas,nama,r.predikatKeikutsertaan,r.predikatKemampuan,r.deskripsi].join(' ').toLowerCase())}">
+            <td>${i+1}</td>
+            <td><strong>${escapeHtml(r.nama||'-')}</strong></td>
+            <td>${escapeHtml(r.kelas||'-')}</td>
+            <td><div style="display:flex;align-items:center;gap:8px"><span style="min-width:34px;font-weight:800">${p}%</span><div class="ek-v56-progress"><span style="width:${Math.max(0,Math.min(100,p))}%"></span></div></div><div style="font-size:9px;color:var(--muted);margin-top:3px">${Number(r.hadir||0)} / ${Number(r.totalPertemuan||0)} pertemuan</div></td>
+            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.predikatKeikutsertaan||r.nilaiKeikutsertaan))}</span></td>
+            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.predikatKemampuan||r.nilaiKemampuan))}</span></td>
+            <td>${escapeHtml(r.deskripsi||'-')}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div>
       </div>`;
     }).join('')}`;
 }
-
 async function loadEkskulRekap(kelas){
   const body=document.getElementById('ek-rekap-body');if(!body)return;
   body.innerHTML=`<div class="card"><span class="spinner"></span> Memuat rekap ekskul...</div>`;
   try{
-    const res=await ekskulV6Api('recap',{class_name:kelas,semester_no:1});
-    ekskulV56Rows=(res.rows||[]).map(r=>({
+    const res=await ekskulV6Api('recap',{class_name:kelas});
+    ekskulV56Rows=res.rows||[];
+    if(!ekskulV56Rows.length){body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data pertemuan ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;return}
+    // Adapter V6 agar renderer V5.6 tetap ringan.
+    ekskulV56Rows=ekskulV56Rows.map(r=>({
       ...r,
-      activity_grade:r.activity_grade||'',
-      skill_grade:r.skill_grade||'',
-      competition_grade:r.competition_grade||''
+      predikatKeikutsertaan:r.rataNilai==null?'-':String(r.rataNilai),
+      predikatKemampuan:r.rataNilai==null?'-':String(r.rataNilai),
+      nilaiKeikutsertaan:r.rataNilai,
+      nilaiKemampuan:r.rataNilai
     }));
-    if(!ekskulV56Rows.length){
-      body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data pertemuan ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;
-      return;
-    }
     ekV56Render(ekskulV56Rows,kelas);
   }catch(e){
     body.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(e.message||'Terjadi kendala saat memuat data ekskul.')}</div>`;
   }
 }
-
-async function ekV7BootstrapFinal(){
-  const sel=document.getElementById('ek-v7-final-assignment');
-  if(!sel)return;
-  try{
-    const res=await ekskulV6Api('bootstrap');
-    ekskulV7State.assignments=Array.isArray(res.assignments)?res.assignments:[];
-    ekskulV7State.extracurriculars=Array.isArray(res.extracurriculars)?res.extracurriculars:[];
-    const exMap=new Map(ekskulV7State.extracurriculars.map(x=>[x.id,x.name]));
-    sel.innerHTML=`<option value="">— Pilih kelompok / pelatih —</option>`+
-      ekskulV7State.assignments.map(a=>{
-        const exName=exMap.get(a.extracurricular_id)||'Ekskul';
-        const label=[exName,a.class_name,a.coach_name].filter(Boolean).join(' — ');
-        return `<option value="${escapeHtml(a.id)}">${escapeHtml(label)}</option>`;
-      }).join('');
-  }catch(e){
-    sel.innerHTML=`<option value="">Gagal memuat kelompok ekskul</option>`;
-    showToast(e.message||'Gagal memuat kelompok ekskul.',true);
-  }
-}
-
-function ekV7GradeOptions(value){
-  const v=String(value||'').toUpperCase();
-  return `<option value="">-</option>`+
-    ['A','B','C','D'].map(g=>`<option value="${g}" ${v===g?'selected':''}>${g}</option>`).join('');
-}
-
-async function ekV7LoadAssessments(){
-  if(!ekskulV7CanFinalize())return;
-  const assignmentId=document.getElementById('ek-v7-final-assignment')?.value||'';
-  const semester=Number(document.getElementById('ek-v7-final-semester')?.value||1);
-  const body=document.getElementById('ek-v7-final-body');
-  if(!body)return;
-
-  if(!assignmentId){
-    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Pilih kelompok / pelatih ekskul terlebih dahulu.</div>`;
-    return;
-  }
-
-  body.innerHTML=`<div class="card"><span class="spinner"></span> Memuat data finalisasi rapor...</div>`;
-
-  try{
-    const res=await ekskulV6Api('load_assessments',{
-      assignment_id:assignmentId,
-      semester_no:semester
-    });
-
-    ekskulV7State.academicYearId=res.academic_year_id||null;
-    ekskulV7State.semester=semester;
-    ekskulV7State.assessmentRows=Array.isArray(res.rows)?res.rows:[];
-
-    ekV7RenderAssessmentTable();
-  }catch(e){
-    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>${escapeHtml(e.message||'Gagal memuat finalisasi nilai ekskul.')}</div>`;
-  }
-}
-
-function ekV7RenderAssessmentTable(){
-  const body=document.getElementById('ek-v7-final-body');
-  if(!body)return;
-
-  const rows=ekskulV7State.assessmentRows||[];
-  if(!rows.length){
-    body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada siswa aktif pada kelompok ekskul ini.</div>`;
-    return;
-  }
-
-  const complete=rows.filter(x=>x.activity_grade&&x.skill_grade&&x.competition_grade).length;
-
-  body.innerHTML=`
-    <div class="card">
-      <div class="ek-v56-card-head">
-        <div>
-          <div class="card-title" style="margin:0">Nilai Rapor Ekskul</div>
-          <div class="page-sub" style="margin-top:3px">${rows.length} siswa · ${complete} sudah lengkap · ${rows.length-complete} belum lengkap</div>
-        </div>
-        <span class="ek-v56-chip">Semester ${ekskulV7State.semester}</span>
-      </div>
-
-      <div class="ek-v7-final-table-wrap">
-        <table class="ek-v7-final-table">
-          <thead>
-            <tr>
-              <th>No</th><th>Nama Siswa</th><th>Kehadiran</th><th>Rata Nilai</th>
-              <th>Aktivitas</th><th>Keterampilan</th><th>Kompetisi</th><th>Deskripsi Rapor</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map((r,i)=>{
-              const done=Boolean(r.activity_grade&&r.skill_grade&&r.competition_grade);
-              return `<tr class="ek-v7-assessment-row" data-student-id="${escapeHtml(r.student_id)}">
-                <td>${i+1}</td>
-                <td><strong>${escapeHtml(r.full_name||'-')}</strong></td>
-                <td>
-                  <strong>${Number(r.attendance_percentage||0)}%</strong>
-                  <div class="ek-v7-stat">
-                    Hadir ${Number(r.hadir||0)} / ${Number(r.total_sessions||0)}<br>
-                    Izin ${Number(r.izin||0)} · Sakit ${Number(r.sakit||0)} · Alfa ${Number(r.alpa||0)}
-                  </div>
-                </td>
-                <td><strong>${r.avg_session_score===null||r.avg_session_score===undefined?'-':escapeHtml(r.avg_session_score)}</strong></td>
-                <td><select class="ek-v7-grade-select" data-field="activity_grade">${ekV7GradeOptions(r.activity_grade)}</select></td>
-                <td><select class="ek-v7-grade-select" data-field="skill_grade">${ekV7GradeOptions(r.skill_grade)}</select></td>
-                <td><select class="ek-v7-grade-select" data-field="competition_grade">${ekV7GradeOptions(r.competition_grade)}</select></td>
-                <td><input class="ek-v7-desc" data-field="description" value="${escapeHtml(r.description||'')}" placeholder="Deskripsi untuk rapor (opsional)"></td>
-                <td><span class="ek-v7-status ${done?'ok':'no'}">${done?'Lengkap':'Belum Lengkap'}</span></td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="ek-v7-final-actions">
-        <span class="page-sub" style="margin:0">A/B/C/D dapat diperbarui kembali sebelum rapor dicetak.</span>
-        <button class="btn btn-sm" id="ek-v7-save-final" style="width:auto;min-width:190px" onclick="ekV7SaveAssessments()">Simpan Nilai Rapor</button>
-      </div>
-    </div>`;
-}
-
-async function ekV7SaveAssessments(){
-  if(!ekskulV7CanFinalize())return;
-
-  const assignmentId=document.getElementById('ek-v7-final-assignment')?.value||'';
-  if(!assignmentId||!ekskulV7State.academicYearId){
-    showToast('Data tahun ajaran / kelompok ekskul belum siap.',true);
-    return;
-  }
-
-  const rows=[...document.querySelectorAll('.ek-v7-assessment-row')];
-  if(!rows.length){
-    showToast('Tidak ada siswa untuk disimpan.',true);
-    return;
-  }
-
-  const items=rows.map(tr=>({
-    student_id:tr.dataset.studentId,
-    activity_grade:tr.querySelector('[data-field="activity_grade"]')?.value||'',
-    skill_grade:tr.querySelector('[data-field="skill_grade"]')?.value||'',
-    competition_grade:tr.querySelector('[data-field="competition_grade"]')?.value||'',
-    description:(tr.querySelector('[data-field="description"]')?.value||'').trim()
-  }));
-
-  const btn=document.getElementById('ek-v7-save-final');
-  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyimpan...';}
-
-  try{
-    const res=await ekskulV6Api('save_assessments',{
-      assignment_id:assignmentId,
-      academic_year_id:ekskulV7State.academicYearId,
-      semester_no:ekskulV7State.semester,
-      items
-    });
-
-    showToast(`${res.saved||items.length} nilai rapor ekskul berhasil disimpan.`);
-    await ekV7LoadAssessments();
-  }catch(e){
-    showToast(e.message||'Gagal menyimpan nilai rapor ekskul.',true);
-  }finally{
-    const b=document.getElementById('ek-v7-save-final');
-    if(b){b.disabled=false;b.textContent='Simpan Nilai Rapor';}
-  }
-}
-
 
 /* ==========================================================
    AKADEMIK V7.2 — INPUT NILAI AKADEMIK SUPABASE
