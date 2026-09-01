@@ -4210,7 +4210,7 @@ function ekV56Render(rows,kelas){
       return `<div class="card ek-v56-card" data-ekskul-card="${escapeHtml(nama.toLowerCase())}">
         <div class="ek-v56-card-head"><div><div class="card-title" style="margin:0">${escapeHtml(nama)}</div><div class="page-sub" style="margin-top:3px">${list.length} siswa · Kehadiran rata-rata ${pct}%</div></div><span class="ek-v56-chip">${pct}% hadir</span></div>
         <div class="ek-v56-table-wrap"><table class="ek-v56-table"><thead><tr>
-          <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Kehadiran</th><th>Keikutsertaan</th><th>Kemampuan</th><th>Deskripsi</th>
+          <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Kehadiran</th><th>Aktivitas</th><th>Keterampilan</th><th>Kompetisi</th><th>Status</th><th>Deskripsi</th>
         </tr></thead><tbody>${list.map((r,i)=>{
           const p=r.totalPertemuan?Math.round(Number(r.hadir||0)*100/Number(r.totalPertemuan||0)):0;
           return `<tr class="ek-v56-student-row" data-ekskul="${escapeHtml(nama)}" data-search="${escapeHtml([r.nama,r.kelas,nama,r.predikatKeikutsertaan,r.predikatKemampuan,r.deskripsi].join(' ').toLowerCase())}">
@@ -4218,8 +4218,10 @@ function ekV56Render(rows,kelas){
             <td><strong>${escapeHtml(r.nama||'-')}</strong></td>
             <td>${escapeHtml(r.kelas||'-')}</td>
             <td><div style="display:flex;align-items:center;gap:8px"><span style="min-width:34px;font-weight:800">${p}%</span><div class="ek-v56-progress"><span style="width:${Math.max(0,Math.min(100,p))}%"></span></div></div><div style="font-size:9px;color:var(--muted);margin-top:3px">${Number(r.hadir||0)} / ${Number(r.totalPertemuan||0)} pertemuan</div></td>
-            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.predikatKeikutsertaan||r.nilaiKeikutsertaan))}</span></td>
-            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.predikatKemampuan||r.nilaiKemampuan))}</span></td>
+            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.activity_grade))}</span></td>
+            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.skill_grade))}</span></td>
+            <td><span class="ek-v56-grade">${escapeHtml(ekV56Predikat(r.competition_grade))}</span></td>
+            <td><span class="ek-v56-chip">${r.activity_grade&&r.skill_grade&&r.competition_grade?'Lengkap':'Belum Lengkap'}</span></td>
             <td>${escapeHtml(r.deskripsi||'-')}</td>
           </tr>`;
         }).join('')}</tbody></table></div>
@@ -4236,10 +4238,9 @@ async function loadEkskulRekap(kelas){
     // Adapter V6 agar renderer V5.6 tetap ringan.
     ekskulV56Rows=ekskulV56Rows.map(r=>({
       ...r,
-      predikatKeikutsertaan:r.rataNilai==null?'-':String(r.rataNilai),
-      predikatKemampuan:r.rataNilai==null?'-':String(r.rataNilai),
-      nilaiKeikutsertaan:r.rataNilai,
-      nilaiKemampuan:r.rataNilai
+      activity_grade:r.activity_grade||'',
+      skill_grade:r.skill_grade||'',
+      competition_grade:r.competition_grade||''
     }));
     ekV56Render(ekskulV56Rows,kelas);
   }catch(e){
