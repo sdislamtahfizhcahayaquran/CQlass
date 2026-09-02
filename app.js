@@ -3380,9 +3380,34 @@ async function rpLoadClassPreview(autoPrint=false){
   }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuat rapor kelas.')}</div></div>`}finally{if(btn){btn.disabled=false;btn.textContent=autoPrint?'Cetak PDF Per Kelas':'Preview Rapor'}}
 }
 
+const RP_KKTP_MASTER={
+  'AQIDAH':'78 - 81','ISLAMIC CREED':'78 - 81',
+  'FIQH':'79 - 82','ISLAMIC JURISPRUDENCE':'79 - 82',
+  'ADAB':'79 - 82','ISLAMIC MANNERS':'79 - 82',
+  'HADITH':'82 - 85',
+  'PANCASILA':'79 - 82',
+  'BAHASA INDONESIA':'77 - 80',
+  'MATHEMATICS':'76 - 79','MATEMATIKA':'76 - 79',
+  'NATURAL SCIENCES':'75 - 78','SAINS':'75 - 78',
+  'SOCIAL SCIENCES':'76 - 79','SOSIAL':'76 - 79',
+  'ARTS, CULTURE, AND CRAFTS EDUCATION':'78 - 81','SENI':'78 - 81',
+  'PHYSICAL EDUCATION, SPORTS, AND HEALTH':'78 - 81','PJOK':'78 - 81',
+  'ARABIC LANGUAGE':'77 - 80','BAHASA ARAB':'77 - 80',
+  'ENGLISH':'77 - 80','BAHASA INGGRIS':'77 - 80',
+  'SUNDANESE LANGUAGE':'76 - 79','BAHASA SUNDA':'76 - 79',
+  'SEERAH':'78 - 81','SIRAH':'78 - 81',
+  'TAJWEED':'77 - 80','TAJWID':'77 - 80'
+};
+function rpKktpForSubject(name,backend){
+  const b=String(backend??'').trim();
+  if(b && b!=='-')return b;
+  const n=String(name||'').toUpperCase().replace(/^[A-Z]\.\s*/,'').trim();
+  for(const [k,v] of Object.entries(RP_KKTP_MASTER)){if(n.includes(k))return v}
+  return '-';
+}
 function rpAcademicRows(rows){
   const list=Array.isArray(rows)?rows:[];if(!list.length)return`<tr><td colspan="9" class="rpv-center">Belum ada data akademik.</td></tr>`;
-  return list.map((r,i)=>{const sg4=Boolean(r.starting_grade_4);const cls=sg4?' class="rpv-center rpv-start4"':' class="rpv-center"';const kktp=sg4?'':escapeHtml(r.kktp||'-');const los=[0,1,2,3,4].map(x=>`<td${cls}>${sg4?'':rpScore(r.lo?.[x])}</td>`).join('');return`<tr><td class="rpv-center">${i+1}</td><td>${escapeHtml(r.name||'-')}</td><td${cls}>${kktp}</td>${los}<td${cls}>${escapeHtml(sg4?'Starting Grade 4':(r.remarks||'-'))}</td></tr>`}).join('');
+  return list.map((r,i)=>{const sg4=Boolean(r.starting_grade_4);const cls=sg4?' class="rpv-center rpv-start4"':' class="rpv-center"';const kktp=sg4?'':escapeHtml(rpKktpForSubject(r.name,r.kktp));const los=[0,1,2,3,4].map(x=>`<td${cls}>${sg4?'':rpScore(r.lo?.[x])}</td>`).join('');return`<tr><td class="rpv-center">${i+1}</td><td>${escapeHtml(r.name||'-')}</td><td${cls}>${kktp}</td>${los}<td${cls}>${escapeHtml(sg4?'Starting Grade 4':(r.remarks||'-'))}</td></tr>`}).join('');
 }
 function rpTahfizhRows(t){
   if(!t)return`<tr><td>Memorization Material</td><td>-</td></tr><tr><td>Tahfizh Learning Target (LP)</td><td>-</td></tr><tr><td>Current Achievement</td><td>-</td></tr><tr><td>Tahfizh Achievement</td><td>-</td></tr><tr><td>&nbsp;&nbsp;a. Number of Surahs</td><td>-</td></tr><tr><td>&nbsp;&nbsp;b. Number of Lines</td><td>-</td></tr><tr><td>&nbsp;&nbsp;c. Number of Verses</td><td>-</td></tr><tr><td>&nbsp;&nbsp;d. Percentage (%)</td><td>-</td></tr><tr><td>Juz Advancement Assessment</td><td>-</td></tr>`;
@@ -3402,6 +3427,7 @@ function rpTeamPositions(team,tahfizh){
 function renderRaporPreview(){
   const area=document.getElementById('rpv-preview-area'),r=raporPreviewState.report;if(!area||!r)return;
   const st=r.student||{},cl=r.class||{},att=r.attendance||{},pts=r.points||{},eks=r.extracurricular||{},trs=r.teachers||{};const p=att.percent||{};const cats=pts.categories||{};
+  if(!String(trs.principal||'').trim())trs.principal='Achmad Jumadi, M.Pd.';
   const reportTitle=raporPreviewState.reportType==='SEMESTER'?'SEMESTER STUDENT PROGRESS REPORT':'MID-SEMESTER STUDENT PROGRESS REPORT';
   const semTxt=Number(r.semester_no)===2?'SEMESTER II':'SEMESTER I';
   const idText=[st.nis,st.nisn].filter(Boolean).join(' / ')||'-';
@@ -4377,131 +4403,43 @@ document.addEventListener('click',event=>{if(academicGridState.pickerOpen&&!even
 const academicMenuItem = MODULE_GROUPS.find(group=>group.id==='akademik')?.items?.find(item=>item.id==='leger');
 if(academicMenuItem){academicMenuItem.render=renderLegger;academicMenuItem.label='Nilai';}
 
-/* ==========================================================
-   CQLASS RAPOR — PATCH KKTP + KEPALA SEKOLAH + GARIS TTD
-   Tempelkan blok ini PALING BAWAH app.js.
-   Hanya mengubah:
-   1) KKTP rapor
-   2) fallback nama Kepala Sekolah
-   3) panjang/posisi garis tanda tangan Parent/Principal/Homeroom
-   ========================================================== */
+/* RAPOR SIGNATURE ALIGN FIX */
 (function(){
-  const RP_KKTP_FINAL = Object.freeze({
-    'a. Aqidah (Islamic Creed)': '78 - 81',
-    'b. Fiqh (Islamic Jurisprudence)': '79 - 82',
-    'c. Adab (Islamic Manners)': '79 - 82',
-    'd. Hadith': '82 - 85',
-    'Pancasila Education': '79 - 82',
-    'Bahasa Indonesia': '77 - 80',
-    'Mathematics': '76 - 79',
-    'Natural Sciences': '75 - 78',
-    'Social Sciences': '76 - 79',
-    'Arts, Culture, and Crafts Education': '78 - 81',
-    'Physical Education, Sports, and Health': '78 - 81',
-    'a. Arabic Language': '77 - 80',
-    'b. English': '77 - 80',
-    'c. Sundanese Language': '76 - 79',
-    'd. Seerah (Prophetic Biography)': '78 - 81',
-    "e. Tajweed (Qur'anic Recitation)": '77 - 80'
-  });
-
-  // Gunakan KKTP dari backend bila tersedia.
-  // Jika backend belum mengirim KKTP, gunakan nilai MASTER_KKTP yang sudah disepakati.
-  rpAcademicRows = function(rows){
-    const list = Array.isArray(rows) ? rows : [];
-    let groupNo = 0, subIndex = 0;
-
-    return RP_SUBJECT_TEMPLATE.map(slot => {
-      if(slot.group){
-        groupNo = slot.group === 'Islamic Studies' ? 1 : 9;
-        subIndex = 0;
-        return `<tr class="rpv-group-row"><td class="rpv-center">${groupNo}</td><td colspan="8">${escapeHtml(slot.group)}</td></tr>`;
-      }
-
-      const isSub = !slot.no;
-      const no = slot.no || '';
-      const r = rpFindAcademic(list, slot.aliases) || {};
-      const sg4 = Boolean(r.starting_grade_4) || Boolean(slot.forceSg4);
-      const cls = sg4 ? ' class="rpv-center rpv-start4"' : ' class="rpv-center"';
-
-      const kktpBackend = String(r.kktp ?? '').trim();
-      const kktpMaster = RP_KKTP_FINAL[slot.label] || '-';
-      const kktp = sg4 ? '' : escapeHtml(kktpBackend || kktpMaster);
-
-      const los = [0,1,2,3,4]
-        .map(x => `<td${cls}>${sg4 ? '' : rpScore(r.lo?.[x])}</td>`)
-        .join('');
-
-      const remarks = sg4 ? 'Starting Grade 4' : escapeHtml(r.remarks || '-');
-
-      return `<tr>
-        <td class="rpv-center">${no}</td>
-        <td${isSub ? ' class="rpv-sub"' : ''}>${escapeHtml(slot.label)}</td>
-        <td${cls}>${kktp}</td>
-        ${los}
-        <td${cls}>${remarks}</td>
-      </tr>`;
-    }).join('');
-  };
-
-  const _renderRaporPreviewBeforeKktpFix = renderRaporPreview;
-
-  renderRaporPreview = function(){
-    const r = raporPreviewState && raporPreviewState.report
-      ? raporPreviewState.report
-      : null;
-
-    if(r){
-      r.teachers = r.teachers || {};
-
-      // Tetap prioritaskan nama dari backend/Master Guru.
-      // Fallback dipakai agar nama Kepala Sekolah tidak kosong pada rapor.
-      if(!String(r.teachers.principal || '').trim()){
-        r.teachers.principal = 'Achmad Jumadi, M.Pd.';
-      }
+  const style=document.createElement('style');
+  style.id='rpv-signature-final-fix';
+  style.textContent=`
+    .rpv-signatures .blank-line{
+      margin-top:31mm !important;
+      width:44mm !important;
+      min-width:44mm !important;
+      max-width:44mm !important;
+      height:5mm !important;
+      display:block !important;
+      border-bottom:1px solid #111 !important;
+      text-decoration:none !important;
+      line-height:4.5mm !important;
+      padding:0 !important;
+      white-space:nowrap !important;
+      text-align:center !important;
+      margin-left:auto !important;
+      margin-right:auto !important;
     }
-
-    _renderRaporPreviewBeforeKktpFix();
-
-    if(!document.getElementById('rpv-signature-align-fix')){
-      const style = document.createElement('style');
-      style.id = 'rpv-signature-align-fix';
-      style.textContent = `
-        .rpv-signatures .blank-line{
-          margin-top:31mm !important;
-          width:44mm !important;
-          min-width:44mm !important;
-          max-width:44mm !important;
-          height:5mm !important;
-          display:block !important;
-          border-bottom:1px solid #111 !important;
-          text-decoration:none !important;
-          line-height:4.5mm !important;
-          padding:0 !important;
-          white-space:nowrap !important;
-          text-align:center !important;
-          margin-left:auto !important;
-          margin-right:auto !important;
-        }
-
-        .rpv-signatures .name{
-          margin-top:31mm !important;
-          width:max-content !important;
-          min-width:0 !important;
-          max-width:100% !important;
-          height:5mm !important;
-          display:block !important;
-          border-bottom:1px solid #111 !important;
-          text-decoration:none !important;
-          line-height:4.5mm !important;
-          padding:0 !important;
-          white-space:nowrap !important;
-          text-align:center !important;
-          margin-left:auto !important;
-          margin-right:auto !important;
-        }
-      `;
-      document.head.appendChild(style);
+    .rpv-signatures .name{
+      margin-top:31mm !important;
+      width:max-content !important;
+      min-width:0 !important;
+      max-width:100% !important;
+      height:5mm !important;
+      display:block !important;
+      border-bottom:1px solid #111 !important;
+      text-decoration:none !important;
+      line-height:4.5mm !important;
+      padding:0 !important;
+      white-space:nowrap !important;
+      text-align:center !important;
+      margin-left:auto !important;
+      margin-right:auto !important;
     }
-  };
+  `;
+  document.head.appendChild(style);
 })();
