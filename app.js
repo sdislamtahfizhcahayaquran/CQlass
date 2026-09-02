@@ -1,5 +1,6 @@
 // ==========================================================
 // CQLASS 2 — SUPABASE AUTH CONFIG
+// FULL V8.1 — KKTP + TTD KEPSEK/WALAS + PASSWORD PROFILE OPTIONAL
 // ==========================================================
 const SUPABASE_URL = 'https://lmglkxzemtvxcgktiord.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
@@ -66,7 +67,8 @@ function normalizeAuthUser(user={}){
     username:user.username||'',
     role:String(user.role||user.primary_role||user.role_code||'guru').toLowerCase(),
     kelas:user.kelas||user.class_name||user.walas_class||'',
-    must_change_password:Boolean(user.must_change_password),
+    // Password awal tidak lagi dipaksa untuk diganti saat login.
+    must_change_password:false,
     username_change_allowed:user.username_change_allowed!==false
   };
 }
@@ -115,7 +117,7 @@ async function validateSavedSession(){
     const res=await authRequest('session',{}, {token,timeoutMs:20000});
     if(!res.success){ clearAuthSession(); return false; }
     currentUser=normalizeAuthUser(res.user||res.account||{});
-    if(res.must_change_password!==undefined) currentUser.must_change_password=Boolean(res.must_change_password);
+    currentUser.must_change_password=false;
     saveAuthSession(token,res.expires_at||expires||'',currentUser);
     return true;
   }catch(err){ console.warn('Validasi session gagal:',err); return false; }
@@ -125,11 +127,11 @@ function showLoginScreen(){
   if(app) app.style.display='none'; if(login) login.style.display='flex';
 }
 function forceInitialPasswordChange(){
-  if(!currentUser?.must_change_password) return;
-  const modal=document.getElementById('account-modal'); if(!modal) return;
-  modal.classList.add('open'); modal.dataset.forcePassword='1'; switchAccountTab('pass');
-  const err=document.getElementById('pass-error');
-  if(err){ err.textContent='Untuk keamanan, ganti password awal sebelum menggunakan CQlass.'; err.style.display='block'; }
+  // V8.1: tidak ada lagi kewajiban ganti password saat login.
+  // Pengguna tetap dapat mengganti password kapan saja dari menu Ubah Akun/Profile.
+  if(currentUser) currentUser.must_change_password=false;
+  const modal=document.getElementById('account-modal');
+  if(modal) delete modal.dataset.forcePassword;
 }
 
 /* ==========================================================
@@ -289,10 +291,9 @@ document.getElementById('login-form')?.addEventListener('submit', async (e) => {
     if(!res.success){ if(errEl){errEl.textContent=authErrorMessage(res.error);errEl.style.display='block';} return; }
     const token=res.session_token||res.token||''; if(!token) throw new Error('Server tidak mengirim session token.');
     currentUser=normalizeAuthUser(res.user||res.account||{});
-    if(res.must_change_password!==undefined) currentUser.must_change_password=Boolean(res.must_change_password);
+    currentUser.must_change_password=false;
     saveAuthSession(token,res.expires_at||'',currentUser);
     enterApp();
-    if(currentUser.must_change_password) setTimeout(forceInitialPasswordChange,150);
   }catch(err){ if(errEl){errEl.textContent=err?.message||'Gagal terhubung ke server login.';errEl.style.display='block';} }
   finally{ btn.disabled=false; btn.textContent='Masuk'; }
 });
@@ -308,7 +309,7 @@ async function logout(){
 window.addEventListener('load', async () => {
   showLoginScreen();
   const ok=await validateSavedSession();
-  if(ok){ enterApp(); if(currentUser.must_change_password) setTimeout(forceInitialPasswordChange,150); }
+  if(ok){ currentUser.must_change_password=false; enterApp(); }
 });
 
 /* ==========================================================
@@ -351,7 +352,7 @@ function openAccountModal(){
 }
 function closeAccountModal(){
   const modal=document.getElementById('account-modal');
-  if(modal?.dataset.forcePassword==='1'){ showToast('Ganti password awal terlebih dahulu.',true); return; }
+  if(modal) delete modal.dataset.forcePassword;
   modal?.classList.remove('open');
 }
 document.getElementById('account-modal').addEventListener('click', (e) => {
@@ -694,7 +695,6 @@ async function submitGantiUsername(e){
   const errEl=document.getElementById('user-error'),okEl=document.getElementById('user-success'),btn=document.getElementById('user-submit-btn');
   if(errEl)errEl.style.display='none';if(okEl)okEl.style.display='none';
   const newUsername=document.getElementById('user-new').value.trim().toLowerCase();
-  if(currentUser?.must_change_password){errEl.textContent='Ganti password awal terlebih dahulu.';errEl.style.display='block';return false;}
   if(!newUsername){errEl.textContent='Username baru tidak boleh kosong.';errEl.style.display='block';return false;}
   if(newUsername.length<4){errEl.textContent='Username baru minimal 4 karakter.';errEl.style.display='block';return false;}
   if(!/^[a-z0-9._]+$/.test(newUsername)){errEl.textContent='Gunakan huruf kecil, angka, titik, atau underscore tanpa spasi.';errEl.style.display='block';return false;}
@@ -3478,7 +3478,7 @@ function injectRaporPreviewStyles(){
     .rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:0.75px solid #444;padding:1px 3px;vertical-align:middle}.rpv-table th{background:#dce7f1;font-weight:900;text-align:center;font-size:11px}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-academic{font-size:11px;line-height:1.25}.rpv-academic th,.rpv-academic td{padding:1px 3px}.rpv-academic .no{width:4%}.rpv-academic .subject{width:35%}.rpv-academic .kktp{width:12.5%}.rpv-academic .lo{width:6.7%}.rpv-academic .remarks{width:14.8%}.rpv-academic tbody td{height:6.2mm}.rpv-academic .rpv-sub{padding-left:12px}.rpv-start4{background:#dedede!important}.rpv-group-row td{background:#d9d9d9;font-weight:900}
     .rpv-att-grid{display:grid;grid-template-columns:65% 29%;gap:6%;align-items:start;margin:6px 0 0}.rpv-att-grid .rpv-section-plain{margin-left:0}.rpv-attendance{font-size:11px}.rpv-attendance th,.rpv-attendance td{height:7.5mm}.rpv-score-table{font-size:11px;margin-top:21px}.rpv-score-table th,.rpv-score-table td{height:7.5mm}
     .rpv-p2-section{font-weight:900;font-size:12px;margin:0 0 4px}.rpv-p2-sub{font-weight:400;font-size:11px;margin:8px 0 3px}.rpv-p2-sub b{font-weight:900}.rpv-exkul{font-size:11px}.rpv-exkul th,.rpv-exkul td{height:6.9mm}.rpv-exkul td{padding:2px 5px;line-height:1.22}.rpv-exkul td:last-child{font-size:11px}.rpv-discipline{font-size:11px}.rpv-discipline th{height:8mm}.rpv-discipline td{height:6.9mm}.rpv-merit{font-size:11px}.rpv-merit th{height:6.9mm}.rpv-merit td{height:6.9mm}.rpv-total-line{border:0.75px solid #444;border-top:0;padding:4px 3px;font-size:11px}
-    .rpv-date-center{position:absolute;left:50%;transform:translateX(-50%);top:163mm;text-align:center;font-size:11px;line-height:1.5;min-width:45mm}.rpv-signatures{position:absolute;left:14mm;right:14mm;top:181mm;height:37mm;font-size:11px;display:flex;justify-content:space-between}.rpv-signatures>div{width:30%;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}.rpv-signatures .name,.rpv-signatures .blank-line{margin-top:31mm;font-size:7.6px;font-weight:900;line-height:1.1}.rpv-signatures .blank-line{display:block;width:60%;height:1px;border-bottom:1px solid #111}.rpv-signatures .name{text-decoration:underline;text-underline-offset:1.1px;text-decoration-thickness:.7px;white-space:nowrap}.rpv-signature-img{position:absolute;top:8mm;left:50%;transform:translateX(-50%);max-width:36mm;max-height:19mm;object-fit:contain;z-index:2}
+    .rpv-date-center{position:absolute;left:50%;transform:translateX(-50%);top:163mm;text-align:center;font-size:11px;line-height:1.5;min-width:45mm}.rpv-signatures{position:absolute;left:14mm;right:14mm;top:181mm;height:37mm;font-size:11px;display:flex;justify-content:space-between}.rpv-signatures>div{width:30%;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}.rpv-signatures .name,.rpv-signatures .blank-line{margin-top:31mm;line-height:1.1}.rpv-signatures .blank-line{display:block;width:60%;height:1px;border-bottom:1px solid #111}.rpv-signatures .name{display:inline-block;width:auto;font-size:11px;font-weight:900;white-space:nowrap;text-decoration:none;border-bottom:1px solid #111;padding-bottom:1px}.rpv-signature-img{position:absolute;top:8mm;left:50%;transform:translateX(-50%);max-width:36mm;max-height:19mm;object-fit:contain;z-index:2}
     .rpv-team-area{position:absolute;left:14mm;right:14mm;top:223mm;display:grid;grid-template-columns:max-content max-content;column-gap:6mm;font-size:11px}.rpv-team-title{font-weight:400;margin-bottom:4px}.rpv-team-simple{border-collapse:collapse}.rpv-team-simple td{border:0;padding:2px 1px;vertical-align:top}.rpv-team-simple td:first-child{width:14px}.rpv-team-simple td:last-child{white-space:nowrap}.rpv-position-list div{padding:2px 0;white-space:nowrap}
     .rpv-footer{position:absolute;left:14mm;right:14mm;bottom:3.8mm;display:flex;justify-content:space-between;font-size:11px;font-style:italic}.pv2-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}.rpv-print-btn{display:inline-flex;align-items:center;gap:7px}
     @media(max-width:900px){.rpv-toolbar{grid-template-columns:1fr 1fr}.rpv-paper-wrap{overflow:auto;display:flex;flex-direction:column;align-items:center}}
@@ -3601,7 +3601,9 @@ function rpAcademicRows(rows){
     const sg4=Boolean(r.starting_grade_4)||(Boolean(slot.forceSg4)&&Number(grade)<=3);
     const cls=sg4?' class="rpv-center rpv-start4"':' class="rpv-center"';
     const backend=String(r.kktp??'').trim(),master=RP_KKTP_FINAL[slot.label]||'-';
-    const kktp=sg4?'':escapeHtml(backend||master);
+    // Nilai 0 dari backend adalah placeholder, bukan KKTP. Gunakan MASTER_KKTP fallback.
+    const backendValid=backend && !/^0(?:[.,]0+)?$/.test(backend) && backend!=='-';
+    const kktp=sg4?'':escapeHtml(backendValid?backend:master);
     const los=[0,1,2,3,4].map(x=>`<td${cls}>${sg4?'':rpScore(r.lo?.[x])}</td>`).join('');
     const remarks=sg4?'Starting Grade 4':escapeHtml(r.remarks||'-');
     return`<tr><td class="rpv-center">${no}</td><td${isSub?' class="rpv-sub"':''}>${escapeHtml(slot.label)}</td><td${cls}>${kktp}</td>${los}<td${cls}>${remarks}</td></tr>`;
@@ -3649,7 +3651,7 @@ function renderRaporPreview(){
       <div class="rpv-p2-sub">A. Disciplinary Record Summary</div><table class="rpv-table rpv-discipline"><thead><tr><th style="width:51%">Level</th><th style="width:14%">Number of<br>Incidents</th><th>Remarks</th></tr></thead><tbody><tr><td>Minor</td><td class="rpv-center">${cats.Minor?.incidents||0}</td><td>-</td></tr><tr><td>Moderate</td><td class="rpv-center">${cats.Moderate?.incidents||0}</td><td>-</td></tr><tr><td>Severe</td><td class="rpv-center">${cats.Severe?.incidents||0}</td><td>-</td></tr></tbody></table><div class="rpv-total-line">Total Violation Points: <b>${pts.violation_total||0}</b> Points</div>
       <div class="rpv-p2-sub" style="margin-top:14px">B. Student Merit and Guidance Record</div><table class="rpv-table rpv-merit"><thead><tr><th style="width:51%">Category</th><th style="width:14%">Points</th><th>Remarks</th></tr></thead><tbody><tr><td>Achievement/Role Model Award</td><td class="rpv-center">${pts.reward_total||0}</td><td>-</td></tr><tr><td>Violation Points</td><td class="rpv-center">${pts.violation_total||0}</td><td>-</td></tr></tbody></table><div class="rpv-total-line">Final Total Points: <b>${pts.final_total||0}</b> Points</div>
       <div class="rpv-date-center"><div><u>${escapeHtml(raporPreviewState.hijriDate||'-')}</u></div><div>${escapeHtml(rpFmtDate(raporPreviewState.printDate))} CE</div></div>
-      <div class="rpv-signatures"><div>Parent / Guardian<div class="blank-line"></div></div><div>Principal${principalImg}<div class="name">${escapeHtml(trs.principal||'_______________')}</div></div><div>Homeroom Teacher, ${escapeHtml(cl.name||'-')}${homeroomImg}<div class="name">${escapeHtml(trs.homeroom||'_______________')}</div></div></div>
+      <div class="rpv-signatures"><div>Parent / Guardian<div class="blank-line"></div></div><div>Principal${principalImg}<div class="name">${escapeHtml(trs.principal||'Achmad Jumadi, M.Pd.')}</div></div><div>Homeroom Teacher, ${escapeHtml(cl.name||'-')}${homeroomImg}<div class="name">${escapeHtml(trs.homeroom||'_______________')}</div></div></div>
       <div class="rpv-team-area"><div><div class="rpv-team-title">Class Teaching Team, ${escapeHtml(cl.name||'-')}</div><table class="rpv-team-simple"><tbody>${rpTeamRows(trs.team,trs.tahfizh,trs.homeroom)}</tbody></table></div><div><div class="rpv-team-title">Position</div><div class="rpv-position-list">${rpTeamPositions(trs.team,trs.tahfizh,trs.homeroom)}</div></div></div>
       <div class="rpv-footer"><span>SD Islam Tahfizh Cahaya Qur'an</span><span>Page 2 of 2</span></div>
     </section>
