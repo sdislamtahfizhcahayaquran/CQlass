@@ -3615,7 +3615,7 @@ async function rpLoadClassPreview(autoPrint=false){
 }
 
 const RP_KKTP_FINAL=Object.freeze({
-  'a. Aqidah (Islamic Creed)':'78 - 81','b. Fiqh (Islamic Jurisprudence)':'79 - 82','c. Adab (Islamic Manners)':'79 - 82','d. Hadith':'82 - 85',
+  'a. Aqidah (Islamic Creed)':'78 - 81','b. Fiqh (Islamic Jurisprudence)':'79 - 82','c. Akhlak (Islamic Manners)':'79 - 82','d. Hadith':'82 - 85',
   'Pancasila Education':'79 - 82','Bahasa Indonesia':'77 - 80','Mathematics':'76 - 79','Natural Sciences':'75 - 78','Social Sciences':'76 - 79',
   'Arts, Culture, and Crafts Education':'78 - 81','Physical Education, Sports, and Health':'78 - 81','a. Arabic Language':'77 - 80','b. English':'77 - 80',
   'c. Sundanese Language':'76 - 79','d. Seerah (Prophetic Biography)':'78 - 81',"e. Tajweed (Qur'anic Recitation)":'77 - 80'
@@ -3624,7 +3624,7 @@ const RP_SUBJECT_TEMPLATE=[
   {group:'Islamic Studies'},
   {label:'a. Aqidah (Islamic Creed)',aliases:['aqidah','akidah']},
   {label:'b. Fiqh (Islamic Jurisprudence)',aliases:['fiqh','fikih']},
-  {label:'c. Adab (Islamic Manners)',aliases:['adab','akhlak']},
+  {label:'c. Akhlak (Islamic Manners)',aliases:['adab','akhlak']},
   {label:'d. Hadith',aliases:['hadith','hadits']},
   {no:2,label:'Pancasila Education',aliases:['pancasila']},
   {no:3,label:'Bahasa Indonesia',aliases:['bahasa indonesia']},
