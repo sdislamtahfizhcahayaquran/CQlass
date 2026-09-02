@@ -572,6 +572,62 @@ async function loadTeacherSignaturePreview(){
   }
 }
 
+function signatureCanvasToTransparentPng(img){
+  const maxDim=1800,scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+  const w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
+  const src=document.createElement('canvas');src.width=w;src.height=h;
+  const ctx=src.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,w,h);
+  const im=ctx.getImageData(0,0,w,h),p=im.data;
+
+  // Ambil warna background dominan dari tepi gambar. Ini bekerja untuk kertas putih,
+  // abu-abu, maupun background gelap/hitam tanpa mengubah bentuk tanda tangan.
+  const border=[];
+  const step=Math.max(1,Math.floor(Math.min(w,h)/120));
+  const push=(x,y)=>{const i=(y*w+x)*4;if(p[i+3]>10)border.push([p[i],p[i+1],p[i+2]])};
+  for(let x=0;x<w;x+=step){push(x,0);push(x,h-1)}
+  for(let y=0;y<h;y+=step){push(0,y);push(w-1,y)}
+  if(!border.length)throw new Error('Background gambar tidak dapat dideteksi.');
+  const med=(arr,idx)=>{const a=arr.map(v=>v[idx]).sort((a,b)=>a-b);return a[Math.floor(a.length/2)]};
+  const bgR=med(border,0),bgG=med(border,1),bgB=med(border,2);
+  const bgLum=.299*bgR+.587*bgG+.114*bgB;
+
+  let minX=w,minY=h,maxX=-1,maxY=-1,fgCount=0;
+  for(let i=0;i<p.length;i+=4){
+    if(p[i+3]===0)continue;
+    const r=p[i],g=p[i+1],b=p[i+2];
+    const dr=r-bgR,dg=g-bgG,db=b-bgB;
+    const dist=Math.sqrt(dr*dr+dg*dg+db*db);
+    const lum=.299*r+.587*g+.114*b;
+    const lumDist=Math.abs(lum-bgLum);
+    const chroma=Math.max(r,g,b)-Math.min(r,g,b);
+    // Threshold adaptif: background dekat warna tepi dibuat transparan, tepi foreground dibuat halus.
+    const metric=Math.max(dist,lumDist*1.35,chroma*.55);
+    let a;
+    if(metric<=24)a=0;
+    else if(metric<76)a=Math.round(255*((metric-24)/(76-24)));
+    else a=255;
+    // Pertahankan alpha sumber bila PNG memang sudah transparan.
+    a=Math.min(a,p[i+3]);
+    p[i+3]=Math.max(0,Math.min(255,a));
+    if(p[i+3]>42){
+      const q=i/4,x=q%w,y=Math.floor(q/w);
+      if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;fgCount++;
+    }
+  }
+  ctx.putImageData(im,0,0);
+  if(maxX<0||fgCount<20)throw new Error('Coretan tanda tangan tidak terdeteksi. Gunakan foto yang lebih jelas.');
+
+  const pad=Math.max(8,Math.round(Math.max(w,h)*.018));
+  minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(w-1,maxX+pad);maxY=Math.min(h-1,maxY+pad);
+  const cw=maxX-minX+1,ch=maxY-minY+1;
+  // Simpan cukup besar untuk cetak, tetapi tetap ringan.
+  const targetW=Math.min(1200,cw),ratio=targetW/cw;
+  const out=document.createElement('canvas');out.width=Math.max(1,Math.round(cw*ratio));out.height=Math.max(1,Math.round(ch*ratio));
+  const octx=out.getContext('2d');octx.clearRect(0,0,out.width,out.height);
+  octx.drawImage(src,minX,minY,cw,ch,0,0,out.width,out.height);
+  return out.toDataURL('image/png');
+}
+
 function processTeacherSignatureImage(file){
   return new Promise((resolve,reject)=>{
     if(!file)return reject(new Error('Pilih foto tanda tangan.'));
@@ -582,36 +638,24 @@ function processTeacherSignatureImage(file){
     reader.onload=()=>{
       const img=new Image();
       img.onerror=()=>reject(new Error('Gambar tidak valid.'));
-      img.onload=()=>{
-        try{
-          const maxDim=1800,scale=Math.min(1,maxDim/Math.max(img.width,img.height));
-          const w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
-          const src=document.createElement('canvas');src.width=w;src.height=h;
-          const ctx=src.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,w,h);
-          const im=ctx.getImageData(0,0,w,h),p=im.data;
-          let minX=w,minY=h,maxX=-1,maxY=-1;
-          for(let i=0;i<p.length;i+=4){
-            const r=p[i],g=p[i+1],b=p[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),brightness=(r+g+b)/3,chroma=mx-mn;
-            let a=255;
-            if(brightness>=246&&chroma<20)a=0;
-            else if(brightness>202&&chroma<32)a=Math.round(255*(246-brightness)/44);
-            p[i+3]=Math.max(0,Math.min(255,a));
-            if(p[i+3]>35){const q=i/4,x=q%w,y=Math.floor(q/w);if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
-          }
-          ctx.putImageData(im,0,0);
-          if(maxX<0)throw new Error('Coretan tanda tangan tidak terdeteksi. Gunakan foto lebih jelas di kertas putih.');
-          const pad=Math.max(10,Math.round(Math.max(w,h)*.025));
-          minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(w-1,maxX+pad);maxY=Math.min(h-1,maxY+pad);
-          const cw=maxX-minX+1,ch=maxY-minY+1,targetW=Math.min(950,cw),ratio=targetW/cw;
-          const out=document.createElement('canvas');out.width=Math.max(1,Math.round(cw*ratio));out.height=Math.max(1,Math.round(ch*ratio));
-          out.getContext('2d').drawImage(src,minX,minY,cw,ch,0,0,out.width,out.height);
-          resolve(out.toDataURL('image/png'));
-        }catch(e){reject(e)}
-      };
+      img.onload=()=>{try{resolve(signatureCanvasToTransparentPng(img))}catch(e){reject(e)}};
       img.src=String(reader.result||'');
     };
     reader.readAsDataURL(file);
   });
+}
+
+async function cleanStoredTeacherSignature(url){
+  if(!url)return '';
+  try{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url;});
+    return signatureCanvasToTransparentPng(img);
+  }catch(err){
+    console.warn('Auto remove background tanda tangan tersimpan gagal, memakai file asli.',err);
+    return url;
+  }
 }
 
 async function handleTeacherSignatureSelect(e){
@@ -648,7 +692,12 @@ async function deleteTeacherSignature(){
 
 async function rpFetchReportSignatures(classId){
   if(!classId)return null;
-  try{return await teacherSignatureRequest('POST',{action:'report_signatures',class_id:classId},30000)}catch(err){console.warn('Tanda tangan rapor belum tersedia:',err);return null}
+  try{
+    const bundle=await teacherSignatureRequest('POST',{action:'report_signatures',class_id:classId},30000);
+    if(bundle?.principal_signature_url)bundle.principal_signature_url=await cleanStoredTeacherSignature(bundle.principal_signature_url);
+    if(bundle?.homeroom_signature_url)bundle.homeroom_signature_url=await cleanStoredTeacherSignature(bundle.homeroom_signature_url);
+    return bundle;
+  }catch(err){console.warn('Tanda tangan rapor belum tersedia:',err);return null}
 }
 function rpApplySignatureBundle(report,bundle){
   if(!report||!bundle)return report;
@@ -3478,7 +3527,7 @@ function injectRaporPreviewStyles(){
     .rpv-table{width:100%;border-collapse:collapse;table-layout:fixed}.rpv-table th,.rpv-table td{border:0.75px solid #444;padding:1px 3px;vertical-align:middle}.rpv-table th{background:#dce7f1;font-weight:900;text-align:center;font-size:11px}.rpv-center{text-align:center}.rpv-left{text-align:left}.rpv-academic{font-size:11px;line-height:1.25}.rpv-academic th,.rpv-academic td{padding:1px 3px}.rpv-academic .no{width:4%}.rpv-academic .subject{width:35%}.rpv-academic .kktp{width:12.5%}.rpv-academic .lo{width:6.7%}.rpv-academic .remarks{width:14.8%}.rpv-academic tbody td{height:6.2mm}.rpv-academic .rpv-sub{padding-left:12px}.rpv-start4{background:#dedede!important}.rpv-group-row td{background:#d9d9d9;font-weight:900}
     .rpv-att-grid{display:grid;grid-template-columns:65% 29%;gap:6%;align-items:start;margin:6px 0 0}.rpv-att-grid .rpv-section-plain{margin-left:0}.rpv-attendance{font-size:11px}.rpv-attendance th,.rpv-attendance td{height:7.5mm}.rpv-score-table{font-size:11px;margin-top:21px}.rpv-score-table th,.rpv-score-table td{height:7.5mm}
     .rpv-p2-section{font-weight:900;font-size:12px;margin:0 0 4px}.rpv-p2-sub{font-weight:400;font-size:11px;margin:8px 0 3px}.rpv-p2-sub b{font-weight:900}.rpv-exkul{font-size:11px}.rpv-exkul th,.rpv-exkul td{height:6.9mm}.rpv-exkul td{padding:2px 5px;line-height:1.22}.rpv-exkul td:last-child{font-size:11px}.rpv-discipline{font-size:11px}.rpv-discipline th{height:8mm}.rpv-discipline td{height:6.9mm}.rpv-merit{font-size:11px}.rpv-merit th{height:6.9mm}.rpv-merit td{height:6.9mm}.rpv-total-line{border:0.75px solid #444;border-top:0;padding:4px 3px;font-size:11px}
-    .rpv-date-center{position:absolute;left:50%;transform:translateX(-50%);top:163mm;text-align:center;font-size:11px;line-height:1.5;min-width:45mm}.rpv-signatures{position:absolute;left:14mm;right:14mm;top:181mm;height:37mm;font-size:11px;display:flex;justify-content:space-between}.rpv-signatures>div{width:30%;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}.rpv-signatures .name,.rpv-signatures .blank-line{margin-top:31mm;line-height:1.1}.rpv-signatures .blank-line{display:block;width:60%;height:1px;border-bottom:1px solid #111}.rpv-signatures .name{display:inline-block;width:auto;font-size:11px;font-weight:900;white-space:nowrap;text-decoration:none;border-bottom:1px solid #111;padding-bottom:1px}.rpv-signature-img{position:absolute;top:8mm;left:50%;transform:translateX(-50%);max-width:36mm;max-height:19mm;object-fit:contain;z-index:2}
+    .rpv-date-center{position:absolute;left:50%;transform:translateX(-50%);top:163mm;text-align:center;font-size:11px;line-height:1.5;min-width:45mm}.rpv-signatures{position:absolute;left:14mm;right:14mm;top:181mm;height:37mm;font-size:11px;display:flex;justify-content:space-between}.rpv-signatures>div{width:30%;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}.rpv-signatures .name,.rpv-signatures .blank-line{margin-top:31mm;line-height:1.1}.rpv-signatures .blank-line{display:block;width:60%;height:1px;border-bottom:1px solid #111}.rpv-signatures .name{display:inline-block;width:auto;font-size:11px;font-weight:900;white-space:nowrap;text-decoration:none;border-bottom:1px solid #111;padding-bottom:1px}.rpv-signature-img{position:absolute;top:5.5mm;left:50%;transform:translateX(-50%);max-width:46mm;max-height:24mm;object-fit:contain;z-index:2}
     .rpv-team-area{position:absolute;left:14mm;right:14mm;top:223mm;display:grid;grid-template-columns:max-content max-content;column-gap:6mm;font-size:11px}.rpv-team-title{font-weight:400;margin-bottom:4px}.rpv-team-simple{border-collapse:collapse}.rpv-team-simple td{border:0;padding:2px 1px;vertical-align:top}.rpv-team-simple td:first-child{width:14px}.rpv-team-simple td:last-child{white-space:nowrap}.rpv-position-list div{padding:2px 0;white-space:nowrap}
     .rpv-footer{position:absolute;left:14mm;right:14mm;bottom:3.8mm;display:flex;justify-content:space-between;font-size:11px;font-style:italic}.pv2-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}.rpv-print-btn{display:inline-flex;align-items:center;gap:7px}
     @media(max-width:900px){.rpv-toolbar{grid-template-columns:1fr 1fr}.rpv-paper-wrap{overflow:auto;display:flex;flex-direction:column;align-items:center}}
