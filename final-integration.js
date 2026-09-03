@@ -3,7 +3,7 @@
   function loadScript(id,src,onload){if(document.getElementById(id)){if(onload)setTimeout(onload,0);return}var s=document.createElement('script');s.id=id;s.src=src;s.defer=true;if(onload)s.onload=onload;document.head.appendChild(s)}
   function loadNeutral(){if(window.CQNeutralUI)return;loadScript('cq-neutral-ui-js','neutral-ui.js?v=20260903-2')}
   function loadIcons(){if(window.CQIcons)return;loadScript('cq-icons-js','cq-icons.js?v=20260903-1')}
-  function loadRefinement(){loadScript('cq-ui-refinement-js','ui-refinement.js?v=20260903-1')}
+  function loadRefinement(){loadScript('cq-ui-refinement-js','ui-refinement.js?v=20260903-3')}
   function loadMTV7(){loadScript('cq-mt-v7-js','mt-v7.js?v=20260903-1',loadRefinement)}
   function loadMT(){loadScript('cq-mt-enhancements-js','mt-enhancements.js?v=20260903-2',loadMTV7)}
   function ensureAdmin(x){if(!x)return;if(!Array.isArray(x.roles))x.roles=[];if(!x.roles.includes('admin'))x.roles.push('admin')}
