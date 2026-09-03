@@ -1,5 +1,5 @@
 (function(){
-  function loadPjHistory(){if(document.getElementById('cq-pjbl-history-js'))return;var s=document.createElement('script');s.id='cq-pjbl-history-js';s.src='pjbl-history.js?v=20260903-1';s.defer=true;document.head.appendChild(s)}
+  function loadPjHistory(){if(document.getElementById('cq-pjbl-history-js'))return;var s=document.createElement('script');s.id='cq-pjbl-history-js';s.src='pjbl-history.js?v=20260903-2';s.defer=true;document.head.appendChild(s)}
   function role(){try{var u=JSON.parse(localStorage.getItem('cqlass_user')||'{}');return String(u.role||u.primary_role||u.role_code||'').toLowerCase()}catch(e){return''}}
   function add(){var sb=document.getElementById('sidebar');if(!sb)return;var r=role();if(!r)return;
     var old=document.getElementById('cq-final-tools');if(old)old.remove();
