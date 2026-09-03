@@ -1,4 +1,5 @@
-/* CQlass testing — core lama + PjBL Supabase */
+/* CQlass testing — core lama + PjBL Supabase + Ekskul recap */
 document.write('<script src="app-core.js?v=20260903-pjbl5"><\/script>');
 document.write('<script src="pjbl-supabase.js?v=20260903-pjbl5"><\/script>');
 document.write('<script>(function(){try{var g=MODULE_GROUPS.find(function(x){return x&&x.id==="akademik"});var i=g&&g.items&&g.items.find(function(x){return x&&x.id==="pjbl"});if(i&&typeof renderPjBL==="function")i.render=renderPjBL;}catch(e){console.error("PjBL bind gagal",e);}})();<\/script>');
+document.write('<script>(function(){try{if(typeof ekskulV6Api!=="function")return;var oldEkskulV6Api=ekskulV6Api;ekskulV6Api=async function(action,payload){if(action!=="recap")return oldEkskulV6Api(action,payload||{});var url=SUPABASE_URL+"/functions/v1/extracurricular-recap";var res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_PUBLISHABLE_KEY,"Authorization":"Bearer "+SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({action:"recap",...(payload||{})})});var data={};try{data=JSON.parse(await res.text()||"{}");}catch(e){throw new Error("Respons rekap ekskul tidak valid.");}if(!res.ok||data.success===false)throw new Error(data.error||"Gagal memuat rekap ekskul.");return data;};}catch(e){console.error("Ekskul recap bind gagal",e);}})();<\/script>');
