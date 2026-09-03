@@ -1,4 +1,5 @@
 (function(){
+  function loadPjHistory(){if(document.getElementById('cq-pjbl-history-js'))return;var s=document.createElement('script');s.id='cq-pjbl-history-js';s.src='pjbl-history.js?v=20260903-1';s.defer=true;document.head.appendChild(s)}
   function role(){try{var u=JSON.parse(localStorage.getItem('cqlass_user')||'{}');return String(u.role||u.primary_role||u.role_code||'').toLowerCase()}catch(e){return''}}
   function add(){var sb=document.getElementById('sidebar');if(!sb)return;var r=role();if(!r)return;
     var old=document.getElementById('cq-final-tools');if(old)old.remove();
@@ -11,6 +12,7 @@
     if(r==='admin'){link('master-data.html','🗂️ Pusat Data & Siswa Baru');link('system-health.html','🩺 CQlass Control Center');}
     if(box.children.length>1)sb.appendChild(box);
   }
+  loadPjHistory();
   var sb=document.getElementById('sidebar');if(sb)new MutationObserver(function(){clearTimeout(window.__cqFinalTimer);window.__cqFinalTimer=setTimeout(add,50)}).observe(sb,{childList:true,subtree:true});
-  document.addEventListener('DOMContentLoaded',function(){setTimeout(add,500)});setTimeout(add,1200);setTimeout(add,2500);
+  document.addEventListener('DOMContentLoaded',function(){loadPjHistory();setTimeout(add,500)});setTimeout(add,1200);setTimeout(add,2500);
 })();
