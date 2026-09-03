@@ -7,7 +7,7 @@
   function loadMTReportSource(){loadScript('cq-mt-report-source-v10','mt-report-source-v10.js?v=20260903-1',loadRefinement)}
   function loadMTV9(){loadScript('cq-mt-v9-js','mt-v7.js?v=20260903-tabs9',loadMTReportSource)}
   function loadMT(){loadScript('cq-mt-enhancements-js','mt-enhancements.js?v=20260903-2',loadMTV9)}
-  function loadDiscipline(){loadScript('cq-discipline-tabs-js','discipline-tabs.js?v=20260903-tabs1')}
+  function loadDiscipline(){loadScript('cq-discipline-tabs-js','discipline-tabs.js?v=20260903-tabs2')}
   function ensureAdmin(x){if(!x)return;if(!Array.isArray(x.roles))x.roles=[];if(!x.roles.includes('admin'))x.roles.push('admin')}
   function patchPjblRoute(){try{if(typeof renderPjBL!=='function')return false;var m=null;if(typeof findModuleByIdV2==='function')m=findModuleByIdV2('pjbl');if(m){m.render=renderPjBL;ensureAdmin(m)}if(typeof MODULE_GROUPS!=='undefined'){MODULE_GROUPS.forEach(function(g){(g.items||[]).forEach(function(x){if(x.id==='pjbl'){x.render=renderPjBL;ensureAdmin(x)}})})}if(typeof activeModule!=='undefined'&&activeModule==='pjbl'){var c=document.getElementById('content');if(c)renderPjBL(c)}return true}catch(e){return false}}
   function patchBilingualRoute(){try{if(typeof renderBilingualSupabase!=='function')return false;var m=null;if(typeof findModuleByIdV2==='function')m=findModuleByIdV2('bilingual');if(m){m.render=renderBilingualSupabase;ensureAdmin(m)}if(typeof MODULE_GROUPS!=='undefined'){MODULE_GROUPS.forEach(function(g){(g.items||[]).forEach(function(x){if(x.id==='bilingual'){x.render=renderBilingualSupabase;ensureAdmin(x)}})})}return true}catch(e){return false}}
