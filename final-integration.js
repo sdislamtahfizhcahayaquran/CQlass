@@ -8,7 +8,7 @@
     if(['tahfizh','pimpinan','admin','guru','walas'].includes(r))link('tahfizh-pts.html','📖 Input PTS Tahfizh');
     if(['tahfizh','pimpinan','admin'].includes(r))link('tahfizh-monthly.html','🗓️ Tahfizh Bulanan');
     if(['kesiswaan','pimpinan','admin'].includes(r))link('mt-report.html','📷 Laporan & Foto MT');
-    if(r==='admin')link('master-data.html','🗂️ Pusat Data & Siswa Baru');
+    if(r==='admin'){link('master-data.html','🗂️ Pusat Data & Siswa Baru');link('system-health.html','🩺 CQlass Control Center');}
     if(box.children.length>1)sb.appendChild(box);
   }
   var sb=document.getElementById('sidebar');if(sb)new MutationObserver(function(){clearTimeout(window.__cqFinalTimer);window.__cqFinalTimer=setTimeout(add,50)}).observe(sb,{childList:true,subtree:true});
