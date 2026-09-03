@@ -7,7 +7,7 @@
   function loadMTReportSource(){loadScript('cq-mt-report-source-v10','mt-report-source-v10.js?v=20260903-1',loadRefinement)}
   function loadMTV9(){loadScript('cq-mt-v9-js','mt-v7.js?v=20260903-tabs9',loadMTReportSource)}
   function loadMT(){loadScript('cq-mt-enhancements-js','mt-enhancements.js?v=20260903-2',loadMTV9)}
-  function loadPointStats(){loadScript('cq-points-stats-enhancement-js','points-stats-enhancement.js?v=20260904-1')}
+  function loadPointStats(){loadScript('cq-points-stats-enhancement-js','points-stats-enhancement.js?v=20260904-2')}
   function loadReward(){loadScript('cq-reward-tabs-js','reward-tabs.js?v=20260904-rw2',loadPointStats)}
   function loadDiscipline(){loadScript('cq-discipline-tabs-js','discipline-tabs.js?v=20260903-tabs2',loadReward)}
   function ensureAdmin(x){if(!x)return;if(!Array.isArray(x.roles))x.roles=[];if(!x.roles.includes('admin'))x.roles.push('admin')}
