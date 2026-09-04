@@ -5,7 +5,8 @@
   function loadIcons(){if(window.CQIcons)return;loadScript('cq-icons-js','cq-icons.js?v=20260903-1')}
   function loadRefinement(){loadScript('cq-ui-refinement-js','ui-refinement.js?v=20260903-5')}
   function loadAdmin(){loadScript('cq-admin-dashboard-js','admin-dashboard.js?v=20260904-1',function(){setTimeout(function(){try{if(role()==='admin'&&typeof renderSidebar==='function'){renderSidebar();if(typeof setActiveModule==='function'&&typeof activeModule!=='undefined')setActiveModule('dashboard')}}catch(e){}},220)})}
-  function loadAcademic(){loadScript('cq-academic-dashboard-js','academic-dashboard.js?v=20260904-2',function(){loadAdmin();setTimeout(function(){try{if(role()==='akademik'&&typeof renderSidebar==='function'){renderSidebar();if(typeof setActiveModule==='function'&&typeof activeModule!=='undefined'&&activeModule!=='dashboard')setActiveModule('dashboard')}}catch(e){}},200)})}
+  function loadLeggerLive(){loadScript('cq-academic-legger-live-js','academic-legger-live.js?v=20260904-1')}
+  function loadAcademic(){loadScript('cq-academic-dashboard-js','academic-dashboard.js?v=20260904-2',function(){loadAdmin();loadLeggerLive();setTimeout(function(){try{if(role()==='akademik'&&typeof renderSidebar==='function'){renderSidebar();if(typeof setActiveModule==='function'&&typeof activeModule!=='undefined'&&activeModule!=='dashboard')setActiveModule('dashboard')}}catch(e){}},200)})}
   function loadMTReportSource(){loadScript('cq-mt-report-source-v10','mt-report-source-v10.js?v=20260903-1',loadRefinement)}
   function loadMTV9(){loadScript('cq-mt-v9-js','mt-v7.js?v=20260903-tabs9',loadMTReportSource)}
   function loadMT(){loadScript('cq-mt-enhancements-js','mt-enhancements.js?v=20260903-2',loadMTV9)}
