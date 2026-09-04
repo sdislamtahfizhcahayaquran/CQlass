@@ -1,4 +1,4 @@
-/* CQlass — automatic client-side image compression for MT & PjBL */
+/* CQlass — automatic client-side image compression for MT, Absensi & PjBL */
 (function(){
   const MAX_DIMENSION = 1600;
   const TARGET_BYTES = 450 * 1024;
@@ -12,14 +12,14 @@
     if(accept && !accept.includes('image')) return false;
 
     const idText = `${input.id || ''} ${input.name || ''} ${input.className || ''}`.toLowerCase();
-    if(/pjbl|\bmt\b/.test(idText)) return true;
+    if(/pjbl|absen|absensi|morning|\bmt\b/.test(idText)) return true;
 
     const moduleName = String(window.activeModule || '').toLowerCase();
-    if(moduleName === 'pjbl' || moduleName === 'mt') return true;
+    if(moduleName === 'pjbl' || moduleName === 'mt' || moduleName === 'absensi') return true;
 
     const scope = input.closest('.card, .content, form, section, main, div');
     const text = String(scope?.innerText || '').toLowerCase();
-    return text.includes('pjbl') || /(^|\s)mt(\s|$)/i.test(text);
+    return text.includes('pjbl') || text.includes('absensi') || text.includes('morning talk') || /(^|\s)mt(\s|$)/i.test(text);
   }
 
   function loadImage(file){
@@ -38,7 +38,6 @@
 
   async function compressImage(file){
     if(!file || !String(file.type || '').startsWith('image/')) return file;
-
     const img = await loadImage(file);
     let width = img.naturalWidth || img.width;
     let height = img.naturalHeight || img.height;
@@ -56,10 +55,7 @@
     let type = 'image/webp';
     let quality = START_QUALITY;
     let blob = await canvasToBlob(canvas, type, quality);
-    if(!blob){
-      type = 'image/jpeg';
-      blob = await canvasToBlob(canvas, type, quality);
-    }
+    if(!blob){ type = 'image/jpeg'; blob = await canvasToBlob(canvas, type, quality); }
     if(!blob) return file;
 
     while(blob.size > TARGET_BYTES && quality > MIN_QUALITY){
@@ -68,58 +64,40 @@
       if(!next) break;
       blob = next;
     }
-
-    // Bila foto kecil sejak awal dan hasil kompresi justru lebih besar, pertahankan file asli.
     if(file.size <= TARGET_BYTES && blob.size >= file.size) return file;
-
     const ext = type === 'image/webp' ? 'webp' : 'jpg';
     const baseName = String(file.name || 'foto').replace(/\.[^.]+$/, '');
     return new File([blob], `${baseName}.${ext}`, { type, lastModified: Date.now() });
   }
 
   function replaceFiles(input, file){
-    try{
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      input.files = dt.files;
-      return true;
-    }catch(_){
-      return false;
-    }
+    try{ const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files; return true; }
+    catch(_){ return false; }
   }
 
   document.addEventListener('change', async function(event){
     const input = event.target;
     if(!isTargetInput(input)) return;
-    if(input.dataset.cqCompressed === '1'){
-      delete input.dataset.cqCompressed;
-      return;
-    }
-
+    if(input.dataset.cqCompressed === '1'){ delete input.dataset.cqCompressed; return; }
     const file = input.files && input.files[0];
     if(!file || !String(file.type || '').startsWith('image/')) return;
 
-    // Hentikan handler upload lama agar file besar tidak langsung dibaca/dikirim.
     event.preventDefault();
     event.stopImmediatePropagation();
-
     const originalBytes = file.size;
     const box = input.id === 'pjbl-foto-input' ? document.getElementById('pjbl-foto-upload-box') : null;
     const oldText = box?.textContent || '';
     if(box) box.textContent = 'Menyiapkan foto...';
-
     try{
       const compressed = await compressImage(file);
       if(!replaceFiles(input, compressed)) throw new Error('Browser tidak mendukung penggantian file otomatis.');
       input.dataset.cqCompressed = '1';
-
       const saved = Math.max(0, originalBytes - compressed.size);
       if(typeof window.showToast === 'function' && saved > 64 * 1024){
         const before = (originalBytes / 1024 / 1024).toFixed(1);
         const after = (compressed.size / 1024).toFixed(0);
         window.showToast(`Foto otomatis diperkecil: ${before} MB → ${after} KB`);
       }
-
       input.dispatchEvent(new Event('change', { bubbles:true }));
     }catch(err){
       if(box) box.textContent = oldText || 'Klik untuk pilih foto';
