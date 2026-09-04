@@ -1,0 +1,16 @@
+/* Guru Partner PTS: freeze header + No + Nama Siswa while scrolling */
+.gp-tablewrap{position:relative;overflow:auto!important;max-height:66vh;-webkit-overflow-scrolling:touch;isolation:isolate}
+.gp-table{border-collapse:separate!important;border-spacing:0!important;table-layout:fixed!important}
+.gp-table thead th{position:sticky!important;top:0!important;z-index:20!important;background:#eaf5f4!important;background-clip:padding-box;box-shadow:0 1px 0 var(--border)}
+.gp-table th:nth-child(1),.gp-table td:nth-child(1){width:46px!important;min-width:46px!important;max-width:46px!important}
+.gp-table th:nth-child(2),.gp-table td:nth-child(2){width:190px!important;min-width:190px!important;max-width:190px!important}
+.gp-table thead th:nth-child(1){left:0!important;z-index:32!important}
+.gp-table tbody td:nth-child(1){position:sticky!important;left:0!important;z-index:11!important;text-align:center;background:#fff!important;background-clip:padding-box}
+.gp-table thead th:nth-child(2){left:46px!important;z-index:31!important}
+.gp-table tbody td:nth-child(2),.gp-table td.name{position:sticky!important;left:46px!important;z-index:10!important;background:#fff!important;background-clip:padding-box;box-shadow:1px 0 0 var(--border)}
+.gp-table tbody tr:nth-child(even) td:nth-child(1),.gp-table tbody tr:nth-child(even) td:nth-child(2){background:#fbfdfd!important}
+.gp-table th:nth-child(n+3),.gp-table td:nth-child(n+3){width:150px!important;min-width:150px!important;max-width:150px!important}
+.gp-table th:nth-child(3),.gp-table td:nth-child(3),.gp-table th:nth-child(4),.gp-table td:nth-child(4),.gp-table th:nth-child(5),.gp-table td:nth-child(5),.gp-table th:nth-child(6),.gp-table td:nth-child(6){width:190px!important;min-width:190px!important;max-width:190px!important}
+.gp-table .gp-cell{box-sizing:border-box!important;width:100%!important;min-width:0!important}
+.gp-table .gp-cell.wide{min-width:0!important}
+@media(max-width:800px){.gp-table th:nth-child(2),.gp-table td:nth-child(2){width:165px!important;min-width:165px!important;max-width:165px!important}.gp-tablewrap{max-height:68vh}}
