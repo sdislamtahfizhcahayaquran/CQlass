@@ -1,75 +1,66 @@
 /* CQlass — Google Legger Live bridge
-   Tidak mengubah alur simpan Academic V7.2.
-   Setelah penyimpanan utama selesai, perubahan dikirim ke Legger secara terpisah.
+   Nilai utama tetap disimpan oleh Academic V7.2.
+   Sinkronisasi Legger berjalan terpisah melalui antrean persisten CQlass.
 */
 (function(){
+  const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
+  const QUEUE_URL=BASE+'/functions/v1/legger-sync-queue';
   const SHEET_URL='https://docs.google.com/spreadsheets/d/1g5WfGQtS35kYaK8jU60pFkvFm4B_gy6bO_yg0ivKvRI/edit';
-  const QUEUE_KEY='cqlass_legger_sync_queue_v1';
   let draining=false;
 
-  const safeJsonParse=(v,fallback)=>{try{return JSON.parse(v)}catch(_){return fallback}};
-  const getQueue=()=>safeJsonParse(localStorage.getItem(QUEUE_KEY)||'[]',[]).filter(Boolean);
-  const setQueue=q=>localStorage.setItem(QUEUE_KEY,JSON.stringify(q.slice(-500)));
-  const getState=()=>{try{return typeof academicGridState!=='undefined'?academicGridState:null}catch(_){return null}};
   const getUser=()=>{try{return typeof currentUser!=='undefined'?currentUser:null}catch(_){return null}};
+  const getState=()=>{try{return typeof academicGridState!=='undefined'?academicGridState:null}catch(_){return null}};
+  const getToken=()=>{try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){return ''}};
 
-  function scoreComponent(change, objectives){
-    if(change.kind==='tp'){
-      const idx=(objectives||[]).findIndex(o=>String(o.id)===String(change.learning_objective_id));
-      const obj=idx>=0?objectives[idx]:null;
-      const code=String(obj?.code||'');
-      const parsed=Number((code.match(/TP\s*(\d+)/i)||[])[1]);
-      return {jenisKomponen:'TP',urutan:Number.isFinite(parsed)&&parsed>0?parsed:idx+1};
-    }
-    const t=String(change.assessment_type||'').toUpperCase();
-    const m=t.match(/^TUGAS_(\d+)$/);
-    if(m)return {jenisKomponen:'Tugas',urutan:Number(m[1])};
-    if(t==='WWP')return {jenisKomponen:'WWP',urutan:1};
-    if(t==='ASAS')return {jenisKomponen:'ASAS',urutan:1};
-    return null;
+  function headers(){
+    const key=(typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'');
+    const token=getToken();
+    const h={'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key};
+    if(token)h['x-session-token']=token;
+    return h;
   }
 
-  function makePayload(snapshot){
-    const students=new Map((snapshot.students||[]).map(s=>[String(s.id),s]));
-    const changes=[];
-    for(const ch of snapshot.changes||[]){
-      const s=students.get(String(ch.student_id));
-      const c=scoreComponent(ch,snapshot.objectives||[]);
-      if(!s||!c||!Number.isFinite(Number(c.urutan))||Number(c.urutan)<1)continue;
-      changes.push({nis:String(s.nis||''),nama:String(s.name||s.full_name||''),jenisKomponen:c.jenisKomponen,urutan:c.urutan,nilai:ch.score===null||ch.score===undefined||ch.score===''?'':Number(ch.score)});
-    }
-    if(!changes.length)return null;
+  async function queueReq(action,payload={}){
+    const r=await fetch(QUEUE_URL,{method:'POST',headers:headers(),body:JSON.stringify({action,...payload})});
+    const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons sinkronisasi tidak valid.');}
+    if(!r.ok||d.success===false)throw new Error(d.detail||d.error||'Sinkronisasi belum berhasil.');
+    return d;
+  }
+
+  async function syncGroup(group){
     const u=getUser();
-    return {kelas:String(snapshot.assignment?.class_name||''),tahunAjaran:String(snapshot.academicYear||'2026/2027'),semester:String(snapshot.semester||1),mapel:String(snapshot.assignment?.subject_name||''),dicatatOleh:String(u?.nama||u?.name||'CQlass'),username:String(u?.username||'system_sync'),changes};
-  }
-
-  function enqueue(snapshot){
-    const payload=makePayload(snapshot);
-    if(!payload||!payload.kelas||!payload.mapel)return;
-    const q=getQueue();
-    q.push({id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,payload,attempts:0,nextAt:0,createdAt:Date.now()});
-    setQueue(q);
-    void drain();
+    try{
+      const res=await callApi('saveLeggerNilai',{
+        kelas:group.kelas,
+        tahunAjaran:group.tahunAjaran,
+        semester:group.semester,
+        mapel:group.mapel,
+        dicatatOleh:String(u?.nama||u?.name||'CQlass'),
+        username:String(u?.username||'system_sync'),
+        changes:Array.isArray(group.changes)?group.changes:[]
+      });
+      if(!res?.success)throw new Error(res?.error||'Legger belum berhasil diperbarui.');
+      await queueReq('ack',{items:group.items||[]});
+      return true;
+    }catch(err){
+      try{await queueReq('fail',{items:group.items||[],error:String(err?.message||err||'sync_failed')});}catch(_){}
+      return false;
+    }
   }
 
   async function drain(){
-    if(draining||typeof callApi!=='function'||!navigator.onLine)return;
+    if(draining||!navigator.onLine||typeof callApi!=='function'||!getToken())return;
     draining=true;
     try{
-      let q=getQueue();
-      for(let i=0;i<q.length;i++){
-        const item=q[i];
-        if(Number(item.nextAt||0)>Date.now())continue;
-        try{
-          const res=await callApi('saveLeggerNilai',item.payload);
-          if(!res?.success)throw new Error(res?.error||'sync_failed');
-          q=q.filter(x=>x.id!==item.id);setQueue(q);i=-1;
-        }catch(err){
-          item.attempts=Number(item.attempts||0)+1;
-          const delay=Math.min(5*60*1000,Math.max(5000,5000*Math.pow(2,Math.min(item.attempts-1,6))));
-          item.nextAt=Date.now()+delay;item.lastError=String(err?.message||err||'sync_failed').slice(0,300);setQueue(q);
-        }
+      for(let batch=0;batch<3;batch++){
+        const claimed=await queueReq('claim',{limit:80});
+        const groups=Array.isArray(claimed.groups)?claimed.groups:[];
+        if(!groups.length)break;
+        for(const group of groups)await syncGroup(group);
+        if(Number(claimed.count||0)<80)break;
       }
+    }catch(_){
+      // Antrean tetap tersimpan di CQlass dan akan dicoba kembali otomatis.
     }finally{draining=false;}
   }
 
@@ -77,11 +68,11 @@
     if(typeof academicGridSave!=='function'||academicGridSave.__leggerGoogleHook)return false;
     const original=academicGridSave;
     const wrapped=async function(){
-      const state=getState();
-      const snapshot=state?{changes:[...(state.dirty?.values?.()||[])].map(x=>({...x})),assignment:state.assignment?{...state.assignment}:null,academicYear:state.academicYear,semester:state.semester,students:(state.students||[]).map(x=>({...x})),objectives:(state.objectives||[]).map(x=>({...x}))}:null;
+      const before=getState();
+      const hadChanges=Boolean(before?.dirty?.size);
       await original.apply(this,arguments);
       const after=getState();
-      if(snapshot?.changes?.length&&after?.dirty?.size===0)enqueue(snapshot);
+      if(hadChanges&&after?.dirty?.size===0)setTimeout(()=>void drain(),0);
     };
     wrapped.__leggerGoogleHook=true;
     window.academicGridSave=wrapped;
@@ -92,14 +83,20 @@
     const old=document.getElementById('ll-xls');if(old)old.remove();
     const load=document.getElementById('ll-load');
     if(load&&!document.getElementById('ll-google-sheet')){
-      const a=document.createElement('a');a.id='ll-google-sheet';a.className='btn btn-sm';a.href=SHEET_URL;a.target='_blank';a.rel='noopener';a.textContent='Buka Legger Nilai';a.style.textDecoration='none';load.insertAdjacentElement('afterend',a);
+      const a=document.createElement('a');
+      a.id='ll-google-sheet';a.className='btn btn-sm';a.href=SHEET_URL;a.target='_blank';a.rel='noopener';a.textContent='Buka Legger Nilai';a.style.textDecoration='none';
+      load.insertAdjacentElement('afterend',a);
     }
   }
 
   function start(){
-    let tries=0;const hookTimer=setInterval(()=>{tries++;if(installAcademicHook()||tries>60)clearInterval(hookTimer)},500);
-    enhanceLeggerUI();const content=document.getElementById('content');if(content)new MutationObserver(enhanceLeggerUI).observe(content,{childList:true,subtree:true});
-    window.addEventListener('online',()=>void drain());setInterval(()=>void drain(),30000);setTimeout(()=>void drain(),1500);
+    let tries=0;
+    const hookTimer=setInterval(()=>{tries++;if(installAcademicHook()||tries>60)clearInterval(hookTimer)},500);
+    enhanceLeggerUI();
+    const content=document.getElementById('content');if(content)new MutationObserver(enhanceLeggerUI).observe(content,{childList:true,subtree:true});
+    window.addEventListener('online',()=>void drain());
+    setInterval(()=>void drain(),20000);
+    setTimeout(()=>void drain(),1200);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
