@@ -30,7 +30,7 @@
         built:true,
         render:function(content){
           content.innerHTML='<div class="card"><span class="spinner"></span> Membuka Laporan Bulanan Tahfizh...</div>';
-          setTimeout(function(){window.location.href='tahfizh-monthly.html'},30);
+          setTimeout(function(){window.location.href='tahfizh-monthly.html?v=20260907-datafix2'},30);
         }
       });
     }
