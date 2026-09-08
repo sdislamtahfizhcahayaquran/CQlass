@@ -53,13 +53,3 @@
 
   window.__cqBackgroundApiFixInstalled = true;
 })();
-
-/* Load login visual layer separately so this file stays lightweight. */
-(function(){
-  if(document.getElementById('cq-login-theme-css')) return;
-  const link = document.createElement('link');
-  link.id = 'cq-login-theme-css';
-  link.rel = 'stylesheet';
-  link.href = 'login-futuristic.css?v=20260908-unified3';
-  document.head.appendChild(link);
-})();
