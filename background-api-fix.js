@@ -60,6 +60,6 @@
   const link = document.createElement('link');
   link.id = 'cq-login-theme-css';
   link.rel = 'stylesheet';
-  link.href = 'login-futuristic.css?v=20260908-leafy1';
+  link.href = 'login-futuristic.css?v=20260908-unified2';
   document.head.appendChild(link);
 })();
