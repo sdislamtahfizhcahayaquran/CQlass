@@ -9,6 +9,7 @@
   const KABID_ALL = new Set(['akademik','tahfizh','kesiswaan','kegiatan']);
   const ATTENDANCE_IDS = new Set(['absensi','attendance','morning-talk','morning_talk']);
   const ATTENDANCE_TEXT = /\b(absen|absensi|attendance|morning\s*talk|kehadiran)\b/i;
+  const ATTENDANCE_ROW_TEXT = /\b(absen|absensi|attendance|morning\s*talk|kehadiran|hadir)\b/i;
 
   function role(){
     try{return String(currentUser?.role||'').toLowerCase()}catch(_){return ''}
@@ -30,16 +31,12 @@
           const label=String(item.label||'');
           const isAttendance=ATTENDANCE_IDS.has(id) || ATTENDANCE_TEXT.test(label);
           if(!isAttendance) continue;
-          const allowed=['walas','kesiswaan','pimpinan'];
-          item.roles=allowed.slice();
+          item.roles=['walas','kesiswaan','pimpinan'];
         }
       }
 
       const kg=MODULE_GROUPS.find(g=>g&&g.id==='kesiswaan');
-      if(kg){
-        const allowedGroup=['guru','walas','kesiswaan','pimpinan'];
-        kg.roles=allowedGroup.slice();
-      }
+      if(kg) kg.roles=['guru','walas','kesiswaan','pimpinan'];
     }catch(err){console.warn('Kabid role scope:',err)}
   }
 
@@ -100,13 +97,39 @@
     };
   }
 
+  function removeAttendanceColumn(table){
+    const headers=[...table.querySelectorAll('thead th')];
+    const indexes=[];
+    headers.forEach((th,i)=>{if(ATTENDANCE_TEXT.test(String(th.textContent||''))) indexes.push(i)});
+    if(!indexes.length) return;
+    [...indexes].sort((a,b)=>b-a).forEach(i=>{
+      table.querySelectorAll('tr').forEach(tr=>{
+        const cells=tr.children;
+        if(cells[i]) cells[i].remove();
+      });
+    });
+  }
+
   function cleanDashboard(){
     if(!isNonKesiswaanKabid()) return;
     const root=document.getElementById('rd-root');
     if(!root) return;
-    root.querySelectorAll('.rd-kpi,.rd-card').forEach(el=>{
-      const text=String(el.textContent||'').trim();
-      if(ATTENDANCE_TEXT.test(text)) el.remove();
+
+    root.querySelectorAll('.rd-kpi').forEach(el=>{
+      if(ATTENDANCE_TEXT.test(String(el.textContent||''))) el.remove();
+    });
+    root.querySelectorAll('.rd10-status').forEach(el=>{
+      if(ATTENDANCE_TEXT.test(String(el.textContent||''))) el.remove();
+    });
+    root.querySelectorAll('.rd-card').forEach(card=>{
+      const title=String(card.querySelector('.rd-card-title')?.textContent||'');
+      if(ATTENDANCE_TEXT.test(title)){card.remove();return;}
+      card.querySelectorAll('table').forEach(removeAttendanceColumn);
+      card.querySelectorAll('tbody tr').forEach(tr=>{
+        const first=String(tr.children?.[0]?.textContent||'').trim().toLowerCase();
+        const txt=String(tr.textContent||'');
+        if(first==='kesiswaan' && ATTENDANCE_ROW_TEXT.test(txt)) tr.remove();
+      });
     });
   }
 
