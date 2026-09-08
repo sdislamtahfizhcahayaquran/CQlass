@@ -249,3 +249,12 @@
   s.dataset.cqAdminClean='1';
   document.head.appendChild(s);
 })();
+
+/* Load teacher/walas sidebar cleanup after the legacy menu patches. */
+(function(){
+  if(document.querySelector('script[data-cq-teacher-walas-clean]')) return;
+  const s=document.createElement('script');
+  s.src='teacher-walas-sidebar-clean.js?v=20260908-teacherwalas1';
+  s.dataset.cqTeacherWalasClean='1';
+  document.head.appendChild(s);
+})();
