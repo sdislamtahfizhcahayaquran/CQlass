@@ -20,12 +20,17 @@
 
   function openDataMaster(){
     try{
-      if(typeof setActiveModule==='function'){
-        setActiveModule('data-master');
+      if(typeof window.openCleanAdminMaster==='function'){
+        window.openCleanAdminMaster();
         return;
       }
       const content=document.getElementById('content');
-      if(content&&typeof window.renderAdminMasterData==='function') window.renderAdminMasterData(content);
+      if(content&&typeof window.renderAdminMasterData==='function'){
+        try{if(typeof activeModule!=='undefined')activeModule='data-master'}catch(_){ }
+        window.renderAdminMasterData(content);
+        return;
+      }
+      if(typeof setActiveModule==='function') setActiveModule('data-master');
     }catch(err){
       console.warn('Buka Data Master gagal:',err);
       const content=document.getElementById('content');
@@ -66,7 +71,7 @@
   }
 
   function injectAdminQuickAccess(){
-    if(!isAdmin()) return;
+    if(!isAdmin() || typeof window.__cqAdminSidebarClean!=='undefined') return;
     const sidebar=document.getElementById('sidebar');
     if(!sidebar || sidebar.querySelector('#cq-admin-master-quick')) return;
     const nodes=[...sidebar.querySelectorAll('*')];
@@ -115,7 +120,14 @@
     const originalSetActiveModule=setActiveModule;
     setActiveModule=function(id){
       const key=String(id||'').toLowerCase();
-      if(key==='data-master') ensureAdminMasterModule();
+      if(key==='data-master'){
+        ensureAdminMasterModule();
+        if(isAdmin()&&typeof window.renderAdminMasterData==='function'){
+          try{activeModule='data-master'}catch(_){ }
+          if(typeof renderSidebar==='function')renderSidebar();
+          return window.renderAdminMasterData(document.getElementById('content'));
+        }
+      }
       if(isNonKesiswaanKabid() && ATTENDANCE_IDS.has(key)){
         if(typeof activeModule!=='undefined') activeModule='dashboard';
         return originalSetActiveModule('dashboard');
@@ -227,4 +239,13 @@
   });
 
   window.__cqKabidRoleScopeFix=true;
+})();
+
+/* Load the dedicated clean Admin sidebar after all legacy sidebar patches. */
+(function(){
+  if(document.querySelector('script[data-cq-admin-clean]')) return;
+  const s=document.createElement('script');
+  s.src='admin-sidebar-clean.js?v=20260908-adminclean1';
+  s.dataset.cqAdminClean='1';
+  document.head.appendChild(s);
 })();
