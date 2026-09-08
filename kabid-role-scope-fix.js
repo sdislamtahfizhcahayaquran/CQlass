@@ -1,6 +1,7 @@
-/* CQlass — Kabid role scope cleanup
+/* CQlass — Kabid role scope cleanup + Admin Data Master visibility
    Absensi/Morning Talk adalah domain Kesiswaan.
-   Kabid Akademik, Tahfizh, dan Kegiatan tidak diarahkan atau diberi popup dari proses absensi. */
+   Kabid Akademik, Tahfizh, dan Kegiatan tidak diarahkan atau diberi popup dari proses absensi.
+   Data Master harus selalu terlihat jelas untuk Admin. */
 (function(){
   'use strict';
   if(window.__cqKabidRoleScopeFix) return;
@@ -15,9 +16,77 @@
     try{return String(currentUser?.role||'').toLowerCase()}catch(_){return ''}
   }
   function isNonKesiswaanKabid(){return NON_KESISWAAN_KABID.has(role())}
+  function isAdmin(){return role()==='admin'}
+
+  function openDataMaster(){
+    try{
+      if(typeof setActiveModule==='function'){
+        setActiveModule('data-master');
+        return;
+      }
+      const content=document.getElementById('content');
+      if(content&&typeof window.renderAdminMasterData==='function') window.renderAdminMasterData(content);
+    }catch(err){
+      console.warn('Buka Data Master gagal:',err);
+      const content=document.getElementById('content');
+      if(content&&typeof window.renderAdminMasterData==='function') window.renderAdminMasterData(content);
+    }
+  }
+  window.openAdminDataMaster=openDataMaster;
+
+  function ensureAdminMasterModule(){
+    try{
+      if(typeof MODULE_GROUPS==='undefined' || !Array.isArray(MODULE_GROUPS)) return false;
+      let g=MODULE_GROUPS.find(x=>x&&x.id==='administrasi');
+      if(!g){
+        g={id:'administrasi',label:'Administrasi',roles:['admin'],items:[]};
+        MODULE_GROUPS.push(g);
+      }
+      if(!Array.isArray(g.roles)) g.roles=[];
+      if(!g.roles.includes('admin')) g.roles.push('admin');
+      if(!Array.isArray(g.items)) g.items=[];
+      let it=g.items.find(x=>x&&x.id==='data-master');
+      if(!it){
+        it={id:'data-master',label:'Data Master',roles:['admin'],built:true,render:function(c){
+          if(typeof window.renderAdminMasterData==='function') return window.renderAdminMasterData(c);
+          if(c) c.innerHTML='<div class="card">Memuat Data Master...</div>';
+        }};
+        g.items.unshift(it);
+      }else{
+        it.label='Data Master';
+        it.roles=['admin'];
+        it.built=true;
+        it.render=function(c){
+          if(typeof window.renderAdminMasterData==='function') return window.renderAdminMasterData(c);
+          if(c) c.innerHTML='<div class="card">Memuat Data Master...</div>';
+        };
+      }
+      return true;
+    }catch(err){console.warn('Data Master module patch:',err);return false}
+  }
+
+  function injectAdminQuickAccess(){
+    if(!isAdmin()) return;
+    const sidebar=document.getElementById('sidebar');
+    if(!sidebar || sidebar.querySelector('#cq-admin-master-quick')) return;
+    const nodes=[...sidebar.querySelectorAll('*')];
+    const title=nodes.find(el=>String(el.textContent||'').trim().toUpperCase()==='AKSES CEPAT');
+    if(!title) return;
+    let host=title.parentElement;
+    if(!host) return;
+    const btn=document.createElement('button');
+    btn.id='cq-admin-master-quick';
+    btn.type='button';
+    btn.textContent='Data Master';
+    btn.setAttribute('aria-label','Buka Data Master');
+    btn.style.cssText='width:100%;margin-top:8px;min-height:44px;padding:10px 14px;border:1px solid rgba(8,124,120,.22);border-radius:12px;background:#eef7f6;color:#102f3a;font:700 14px/1.2 Inter,system-ui,sans-serif;text-align:left;cursor:pointer;';
+    btn.addEventListener('click',openDataMaster);
+    host.appendChild(btn);
+  }
 
   function enforceModuleRoles(){
     try{
+      ensureAdminMasterModule();
       if(typeof DASHBOARD_MODULE!=='undefined' && Array.isArray(DASHBOARD_MODULE.roles)){
         KABID_ALL.forEach(r=>{if(!DASHBOARD_MODULE.roles.includes(r)) DASHBOARD_MODULE.roles.push(r)});
       }
@@ -46,6 +115,7 @@
     const originalSetActiveModule=setActiveModule;
     setActiveModule=function(id){
       const key=String(id||'').toLowerCase();
+      if(key==='data-master') ensureAdminMasterModule();
       if(isNonKesiswaanKabid() && ATTENDANCE_IDS.has(key)){
         if(typeof activeModule!=='undefined') activeModule='dashboard';
         return originalSetActiveModule('dashboard');
@@ -59,6 +129,12 @@
     enterApp=function(){
       enforceModuleRoles();
       const out=originalEnterApp.apply(this,arguments);
+      setTimeout(function(){
+        try{
+          if(typeof renderSidebar==='function') renderSidebar();
+          injectAdminQuickAccess();
+        }catch(_){ }
+      },80);
       if(isNonKesiswaanKabid()){
         try{
           if(typeof activeModule!=='undefined' && ATTENDANCE_IDS.has(String(activeModule||'').toLowerCase())){
@@ -75,7 +151,9 @@
     const originalRenderSidebar=renderSidebar;
     renderSidebar=function(){
       enforceModuleRoles();
-      return originalRenderSidebar.apply(this,arguments);
+      const out=originalRenderSidebar.apply(this,arguments);
+      setTimeout(injectAdminQuickAccess,0);
+      return out;
     };
   }
 
@@ -133,12 +211,19 @@
     });
   }
 
-  const observer=new MutationObserver(function(){cleanDashboard()});
+  const observer=new MutationObserver(function(){cleanDashboard();injectAdminQuickAccess()});
   document.addEventListener('DOMContentLoaded',function(){
     enforceModuleRoles();
     const target=document.getElementById('content')||document.body;
-    if(target) observer.observe(target,{childList:true,subtree:true});
+    if(target) observer.observe(document.body,{childList:true,subtree:true});
     cleanDashboard();
+    setTimeout(function(){
+      try{
+        ensureAdminMasterModule();
+        if(isAdmin()&&typeof renderSidebar==='function') renderSidebar();
+        injectAdminQuickAccess();
+      }catch(_){ }
+    },250);
   });
 
   window.__cqKabidRoleScopeFix=true;
