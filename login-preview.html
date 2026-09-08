@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CQlass Login Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sdislamtahfizhcahayaquran/CQlass@login-redesign-preview/login-preview.css?v=20260908-preview-public1">
+<style>
+html,body{margin:0;min-height:100%;overflow:hidden}
+.preview-ribbon{position:fixed;left:16px;bottom:16px;z-index:9999;padding:8px 12px;border-radius:999px;background:rgba(3,45,50,.82);color:#fff;font:600 11px/1.2 Inter,system-ui,sans-serif;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.16)}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-hero">
+    <div class="login-hero-brand">
+      <img src="logo_sd.png" alt="Logo SDIT Cahaya Qur'an" class="login-hero-logo">
+      <div class="login-hero-brand-text"><div class="l1">CQlass</div><div class="l2">SD Islam Tahfizh Cahaya Qur'an</div></div>
+    </div>
+    <div class="login-hero-rule"></div>
+    <h1>CQlass<span>CQlass</span></h1>
+    <p class="lead">Preview login CQlass</p>
+    <div class="login-quote"></div>
+  </div>
+  <div class="login-form-panel">
+    <div class="login-card">
+      <div class="login-title">Masuk ke Akun Anda</div>
+      <div class="login-sub">Silakan login untuk melanjutkan ke CQlass.</div>
+      <div class="login-error" id="login-error"></div>
+      <form id="login-form">
+        <div class="field"><label>Username</label><div class="input-icon-wrap"><input type="text" id="login-username" placeholder="Masukkan username Anda"></div></div>
+        <div class="field"><label>Kata Sandi</label><div class="input-icon-wrap"><input type="password" id="login-password" placeholder="Masukkan kata sandi Anda"><button type="button" class="toggle-pass" id="toggle-pass" aria-label="Tampilkan kata sandi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+        <button type="submit" class="btn">Masuk</button>
+      </form>
+      <div class="login-help">Lupa kata sandi? Hubungi admin sekolah.</div>
+    </div>
+    <div class="login-footer">© 2026 SD Islam Tahfizh Cahaya Qur'an</div>
+  </div>
+</div>
+<div class="preview-ribbon">PREVIEW — tidak mengubah login utama</div>
+<script>
+document.getElementById('login-form').addEventListener('submit',e=>e.preventDefault());
+const b=document.getElementById('toggle-pass'),p=document.getElementById('login-password');
+b.addEventListener('click',()=>{p.type=p.type==='password'?'text':'password';});
+</script>
+</body>
+</html>
