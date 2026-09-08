@@ -19,7 +19,7 @@ html body #login-screen{
   overflow:hidden!important;
   isolation:isolate!important;
   color:var(--cq-login-ink)!important;
-  background:url('gedung.png') center 48%/cover no-repeat!important;
+  background:url('login-campus.webp') center 48%/cover no-repeat!important;
 }
 
 /* soft white-to-teal atmospheric wash, deliberately continuous */
