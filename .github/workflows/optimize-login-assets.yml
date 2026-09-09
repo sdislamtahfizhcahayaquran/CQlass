@@ -1,0 +1,79 @@
+name: Optimize login assets
+
+on:
+  push:
+    paths:
+      - '.github/workflows/optimize-login-assets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check pillow
+
+      - name: Compress CQlass login assets
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+
+          def human(n):
+              for unit in ('B','KB','MB'):
+                  if n < 1024 or unit == 'MB':
+                      return f'{n:.1f}{unit}'
+                  n /= 1024
+
+          bg_path = Path('login-bg.webp')
+          bg_before = bg_path.stat().st_size
+          with Image.open(bg_path) as im:
+              im = im.convert('RGB')
+              w, h = im.size
+              max_w = 1920
+              if w > max_w:
+                  nh = round(h * max_w / w)
+                  im = im.resize((max_w, nh), Image.Resampling.LANCZOS)
+              im.save(bg_path, 'WEBP', quality=72, method=6)
+          bg_after = bg_path.stat().st_size
+          with Image.open(bg_path) as check:
+              print(f'background: {w}x{h} -> {check.size[0]}x{check.size[1]}, {human(bg_before)} -> {human(bg_after)}')
+
+          logo_path = Path('logo_sd.png')
+          logo_before = logo_path.stat().st_size
+          with Image.open(logo_path) as im:
+              im = im.convert('RGBA')
+              w, h = im.size
+              max_side = 512
+              scale = min(1.0, max_side / max(w, h))
+              if scale < 1.0:
+                  im = im.resize((round(w*scale), round(h*scale)), Image.Resampling.LANCZOS)
+              im.save(logo_path, 'PNG', optimize=True, compress_level=9)
+          logo_after = logo_path.stat().st_size
+          with Image.open(logo_path) as check:
+              print(f'logo: {w}x{h} -> {check.size[0]}x{check.size[1]}, {human(logo_before)} -> {human(logo_after)}')
+          PY
+
+      - name: Commit optimized assets
+        run: |
+          if git diff --quiet -- login-bg.webp logo_sd.png; then
+            echo "No asset changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add login-bg.webp logo_sd.png
+          git commit -m "Compress CQlass login assets [skip ci]"
+          git push
