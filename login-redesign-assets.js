@@ -6,7 +6,7 @@
   if(css) css.href='login-redesign.css?v=20260909-polish1';
 
   const root=document.documentElement;
-  root.style.setProperty('--cq-login-bg',"url('login-bg.webp?v=20260909-upload1')");
+  root.style.setProperty('--cq-login-bg',"url('login-bg.webp?v=20260910-opt1')");
   root.classList.add('login-assets-ready');
 
   const login=document.getElementById('login-screen');
@@ -42,7 +42,7 @@
 
         <section class="login-wrap" aria-label="Masuk ke CQlass">
           <div class="login-card">
-            <div class="login-logo"><img src="logo_sd.png" alt="Logo SDIT Cahaya Qur'an" class="login-logo-img" onerror="this.style.display='none'"></div>
+            <div class="login-logo"><img src="logo_sd.png?v=20260910-opt1" alt="Logo SDIT Cahaya Qur'an" class="login-logo-img" onerror="this.style.display='none'"></div>
             <h2>Masuk ke Akun Anda</h2>
             <p class="sub">Silakan login untuk melanjutkan ke CQlass.</p>
             <form id="login-form" novalidate>
