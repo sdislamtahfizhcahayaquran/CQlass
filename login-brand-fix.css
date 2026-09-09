@@ -98,3 +98,56 @@ html body #login-screen .login-wrap{margin:0!important;right:auto!important;tran
   html body #login-screen .brand-wordmark .cq-school{font-size:9.5px!important;margin-top:4px!important}
   html body #login-screen .brand-wordmark .cq-tagline{font-size:5.2px!important;letter-spacing:.11em!important}
 }
+
+/* ===== GLOBAL APP TYPOGRAPHY =====
+   Keep every CQlass role visually consistent with the login language while
+   preserving the existing component sizing/layout. */
+html body #app-screen,
+html body #app-screen *{
+  font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif!important;
+}
+
+/* Navigation stays compact and readable. */
+html body #app-screen .sidebar,
+html body #app-screen .nav-item{
+  letter-spacing:-.005em;
+}
+html body #app-screen .nav-item{
+  font-weight:550!important;
+  line-height:1.35;
+}
+html body #app-screen .nav-item.active{
+  font-weight:650!important;
+}
+
+/* Headings use the stronger Jakarta character without changing layout. */
+html body #app-screen .topbar-title,
+html body #app-screen .page-title,
+html body #app-screen .card-title,
+html body #app-screen .modal-title{
+  font-weight:700!important;
+  letter-spacing:-.02em;
+}
+html body #app-screen .page-title{font-weight:800!important}
+
+/* Controls inherit consistently across every role/module. */
+html body #app-screen button,
+html body #app-screen input,
+html body #app-screen select,
+html body #app-screen textarea{
+  font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif!important;
+}
+
+/* Data-heavy screens remain easy to scan. */
+html body #app-screen table,
+html body #app-screen th,
+html body #app-screen td{
+  font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif!important;
+}
+html body #app-screen th{font-weight:700!important}
+html body #app-screen .num,
+html body #app-screen [class*='score'],
+html body #app-screen [class*='nilai'],
+html body #app-screen [class*='stat']{
+  font-variant-numeric:tabular-nums;
+}
