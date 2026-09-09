@@ -1,4 +1,11 @@
 :root{--cq-login-bg:url('login-bg.webp?v=20260909-upload1')}
+html,body{background:#dff6ef!important}
+html body #login-screen{background-color:#dff6ef!important}
+/* Hide the old static login DOM while the final login DOM is being injected. */
+html body #login-screen>.login-hero,
+html body #login-screen>.login-form-panel{display:none!important}
+html body #login-screen .wordmark-img{display:none!important}
+
 /* CQlass login final composition hotfix — visual only */
 html body #login-screen .brand-row{display:flex!important;align-items:center!important;gap:12px!important;margin:0 0 12px!important;min-height:58px!important}
 html body #login-screen .brand-school-logo{display:block!important;width:46px!important;height:46px!important;object-fit:contain!important;flex:0 0 46px!important;filter:drop-shadow(0 5px 12px rgba(4,49,45,.14))!important}
@@ -6,10 +13,8 @@ html body #login-screen .brand-wordmark{display:flex!important;flex-direction:co
 html body #login-screen .brand-wordmark .cq-name{font-family:'Poppins','Plus Jakarta Sans',sans-serif!important;font-size:34px!important;font-weight:800!important;letter-spacing:-.045em!important;line-height:.9!important;background:linear-gradient(92deg,#073b59 0%,#08758a 38%,#10bca5 67%,#51d969 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;text-shadow:none!important;white-space:nowrap!important}
 html body #login-screen .brand-wordmark .cq-school{margin-top:6px!important;font-family:'Poppins','Plus Jakarta Sans',sans-serif!important;font-size:12px!important;font-weight:800!important;letter-spacing:.01em!important;color:#073b59!important;white-space:nowrap!important}
 html body #login-screen .brand-wordmark .cq-tagline{margin-top:4px!important;font-size:6.8px!important;font-weight:800!important;letter-spacing:.18em!important;color:#0a8190!important;text-transform:uppercase!important;white-space:nowrap!important}
-html body #login-screen .wordmark-img{display:none!important}
 html body #login-screen .login-wrap{margin:0!important;right:auto!important;transform:none!important;box-sizing:border-box!important}
 
-/* Keep a proper two-column app layout on laptops. */
 @media (min-width:960px){
   html body #login-screen{height:100vh!important;min-height:640px!important;overflow:hidden!important;background-attachment:scroll!important}
   html body #login-screen .scene{position:absolute!important;inset:0!important;min-height:0!important;height:100%!important}
@@ -32,7 +37,6 @@ html body #login-screen .login-wrap{margin:0!important;right:auto!important;tran
   html body #login-screen .quote cite{margin-top:4px!important;font-size:10.5px!important}
 }
 
-/* Slightly tighter laptop composition. */
 @media (min-width:960px) and (max-width:1180px){
   html body #login-screen main{grid-template-columns:minmax(0,1fr) 380px!important;gap:18px!important;padding:12px 20px 18px!important;max-width:1160px!important}
   html body #login-screen .left{max-width:650px!important}
@@ -61,7 +65,6 @@ html body #login-screen .login-wrap{margin:0!important;right:auto!important;tran
   html body #login-screen .mosque-footer p{font-size:7.2px!important}
 }
 
-/* Only stack on tablets/phones. */
 @media (max-width:959px){
   html body #login-screen{height:auto!important;min-height:100vh!important;overflow:auto!important;background-attachment:fixed!important}
   html body #login-screen .scene{position:relative!important;min-height:100vh!important;height:auto!important}
