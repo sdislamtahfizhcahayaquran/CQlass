@@ -1,38 +1,83 @@
-/* CQlass login brand/layout hotfix — visual only */
-html body #login-screen .brand-row{display:flex!important;align-items:center!important;gap:16px!important;margin:0 0 16px!important;min-height:88px!important}
-html body #login-screen .brand-school-logo{display:block!important;width:64px!important;height:64px!important;object-fit:contain!important;flex:0 0 64px!important;filter:drop-shadow(0 6px 14px rgba(4,49,45,.18))!important}
+/* CQlass login final composition hotfix — visual only */
+html body #login-screen .brand-row{display:flex!important;align-items:center!important;gap:12px!important;margin:0 0 12px!important;min-height:58px!important}
+html body #login-screen .brand-school-logo{display:block!important;width:46px!important;height:46px!important;object-fit:contain!important;flex:0 0 46px!important;filter:drop-shadow(0 5px 12px rgba(4,49,45,.14))!important}
 html body #login-screen .brand-wordmark{display:flex!important;flex-direction:column!important;justify-content:center!important;min-width:0!important;line-height:1!important}
-html body #login-screen .brand-wordmark .cq-name{font-family:'Poppins','Plus Jakarta Sans',sans-serif!important;font-size:50px!important;font-weight:800!important;letter-spacing:-.055em!important;line-height:.88!important;background:linear-gradient(92deg,#073b59 0%,#08758a 38%,#10bca5 67%,#51d969 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;text-shadow:none!important;white-space:nowrap!important}
-html body #login-screen .brand-wordmark .cq-school{margin-top:8px!important;font-family:'Poppins','Plus Jakarta Sans',sans-serif!important;font-size:17px!important;font-weight:800!important;letter-spacing:.01em!important;color:#073b59!important;white-space:nowrap!important}
-html body #login-screen .brand-wordmark .cq-tagline{margin-top:6px!important;font-size:9px!important;font-weight:800!important;letter-spacing:.22em!important;color:#0a8190!important;text-transform:uppercase!important;white-space:nowrap!important}
+html body #login-screen .brand-wordmark .cq-name{font-family:'Poppins','Plus Jakarta Sans',sans-serif!important;font-size:34px!important;font-weight:800!important;letter-spacing:-.045em!important;line-height:.9!important;background:linear-gradient(92deg,#073b59 0%,#08758a 38%,#10bca5 67%,#51d969 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;text-shadow:none!important;white-space:nowrap!important}
+html body #login-screen .brand-wordmark .cq-school{margin-top:6px!important;font-family:'Poppins','Plus Jakarta Sans',sans-serif!important;font-size:12px!important;font-weight:800!important;letter-spacing:.01em!important;color:#073b59!important;white-space:nowrap!important}
+html body #login-screen .brand-wordmark .cq-tagline{margin-top:4px!important;font-size:6.8px!important;font-weight:800!important;letter-spacing:.18em!important;color:#0a8190!important;text-transform:uppercase!important;white-space:nowrap!important}
 html body #login-screen .wordmark-img{display:none!important}
 html body #login-screen .login-wrap{margin:0!important;right:auto!important;transform:none!important;box-sizing:border-box!important}
-@media (min-width:1181px) and (max-width:1320px){
-  html body #login-screen main{grid-template-columns:minmax(0,1fr) 410px!important;gap:30px!important;padding:20px 30px 30px!important;max-width:1240px!important}
-  html body #login-screen .left{max-width:670px!important;min-width:0!important}
-  html body #login-screen .login-wrap{width:410px!important;max-width:410px!important;justify-self:end!important}
-  html body #login-screen .login-card{padding:24px 28px 22px!important}
-  html body #login-screen .features{gap:10px!important}
-  html body #login-screen .feature-card{padding:14px 13px!important;min-height:118px!important}
-  html body #login-screen .brand-row{min-height:72px!important;margin-bottom:12px!important}
-  html body #login-screen .brand-school-logo{width:54px!important;height:54px!important;flex-basis:54px!important}
-  html body #login-screen .brand-wordmark .cq-name{font-size:42px!important}
-  html body #login-screen .brand-wordmark .cq-school{font-size:15px!important;margin-top:7px!important}
-  html body #login-screen .brand-wordmark .cq-tagline{font-size:8px!important;letter-spacing:.18em!important}
-  html body #login-screen h1{font-size:44px!important}
-  html body #login-screen .lead{max-width:610px!important}
+
+/* Keep a proper two-column app layout on laptops. */
+@media (min-width:960px){
+  html body #login-screen{height:100vh!important;min-height:640px!important;overflow:hidden!important;background-attachment:scroll!important}
+  html body #login-screen .scene{position:absolute!important;inset:0!important;min-height:0!important;height:100%!important}
+  html body #login-screen main{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(360px,410px)!important;align-items:center!important;gap:24px!important;padding:16px 28px 22px!important;max-width:1320px!important;margin:0 auto!important;min-height:0!important}
+  html body #login-screen .left{max-width:680px!important;min-width:0!important;margin:0!important;padding:0!important;align-self:center!important}
+  html body #login-screen .login-wrap{width:100%!important;max-width:410px!important;justify-self:end!important;align-self:center!important}
+  html body #login-screen .login-card{padding:24px 28px 20px!important}
+  html body #login-screen .login-logo-img{height:94px!important;max-width:132px!important}
+  html body #login-screen .login-card h2{font-size:22px!important}
+  html body #login-screen .login-card .sub{margin-bottom:17px!important}
+  html body #login-screen h1{font-size:clamp(40px,4.1vw,50px)!important;line-height:1.02!important;margin-bottom:12px!important}
+  html body #login-screen .lead{max-width:620px!important;margin-bottom:16px!important;padding:10px 14px!important;font-size:14px!important;line-height:1.5!important}
+  html body #login-screen .features{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;max-width:650px!important;margin-bottom:16px!important}
+  html body #login-screen .feature-card{min-height:96px!important;padding:12px 12px!important;border-radius:16px!important;gap:10px!important}
+  html body #login-screen .feature-card .icon{width:36px!important;height:36px!important;flex-basis:36px!important;border-radius:11px!important}
+  html body #login-screen .feature-card .icon svg{width:18px!important;height:18px!important}
+  html body #login-screen .feature-card strong{font-size:13px!important;margin:1px 0 4px!important}
+  html body #login-screen .feature-card span{font-size:11.4px!important;line-height:1.4!important}
+  html body #login-screen .quote{max-width:560px!important;padding:9px 13px 9px 15px!important;font-size:12px!important;line-height:1.4!important}
+  html body #login-screen .quote cite{margin-top:4px!important;font-size:10.5px!important}
 }
-@media (max-width:1180px){
-  html body #login-screen .brand-row{justify-content:flex-start!important;min-height:74px!important}
-  html body #login-screen .brand-school-logo{width:56px!important;height:56px!important;flex-basis:56px!important}
-  html body #login-screen .brand-wordmark .cq-name{font-size:44px!important}
-  html body #login-screen .brand-wordmark .cq-school{font-size:15px!important}
-  html body #login-screen .brand-wordmark .cq-tagline{font-size:8px!important;letter-spacing:.18em!important}
+
+/* Slightly tighter laptop composition. */
+@media (min-width:960px) and (max-width:1180px){
+  html body #login-screen main{grid-template-columns:minmax(0,1fr) 380px!important;gap:18px!important;padding:12px 20px 18px!important;max-width:1160px!important}
+  html body #login-screen .left{max-width:650px!important}
+  html body #login-screen .login-wrap{max-width:380px!important}
+  html body #login-screen .login-card{padding:20px 24px 18px!important}
+  html body #login-screen .login-logo-img{height:84px!important}
+  html body #login-screen .brand-row{min-height:50px!important;margin-bottom:9px!important}
+  html body #login-screen .brand-school-logo{width:40px!important;height:40px!important;flex-basis:40px!important}
+  html body #login-screen .brand-wordmark .cq-name{font-size:29px!important}
+  html body #login-screen .brand-wordmark .cq-school{font-size:10.5px!important;margin-top:5px!important}
+  html body #login-screen .brand-wordmark .cq-tagline{font-size:5.8px!important;letter-spacing:.16em!important;margin-top:3px!important}
+  html body #login-screen h1{font-size:42px!important}
+  html body #login-screen .lead{font-size:13.2px!important;padding:9px 12px!important;margin-bottom:13px!important}
+  html body #login-screen .features{gap:8px!important;margin-bottom:13px!important}
+  html body #login-screen .feature-card{min-height:88px!important;padding:10px!important;gap:8px!important}
+  html body #login-screen .feature-card .icon{width:32px!important;height:32px!important;flex-basis:32px!important}
+  html body #login-screen .feature-card strong{font-size:12px!important}
+  html body #login-screen .feature-card span{font-size:10.5px!important;line-height:1.34!important}
+  html body #login-screen .quote{max-width:500px!important;font-size:11.2px!important;padding:8px 11px 8px 13px!important}
+  html body #login-screen .field input{height:48px!important}
+  html body #login-screen .field .icon-left,html body #login-screen .field .icon-right{top:24px!important}
+  html body #login-screen .btn-submit{height:50px!important}
+  html body #login-screen .divider{margin:14px 0 10px!important}
+  html body #login-screen .contact-line{margin-bottom:9px!important;font-size:10.5px!important}
+  html body #login-screen .mosque-footer svg{width:58px!important}
+  html body #login-screen .mosque-footer p{font-size:7.2px!important}
 }
+
+/* Only stack on tablets/phones. */
+@media (max-width:959px){
+  html body #login-screen{height:auto!important;min-height:100vh!important;overflow:auto!important;background-attachment:fixed!important}
+  html body #login-screen .scene{position:relative!important;min-height:100vh!important;height:auto!important}
+  html body #login-screen main{display:grid!important;grid-template-columns:1fr!important;gap:28px!important;padding:28px 22px 44px!important}
+  html body #login-screen .left{max-width:720px!important;width:100%!important;margin:0 auto!important}
+  html body #login-screen .login-wrap{justify-self:center!important;width:min(100%,420px)!important;max-width:420px!important}
+  html body #login-screen .brand-row{min-height:52px!important;margin-bottom:10px!important}
+  html body #login-screen .brand-school-logo{width:42px!important;height:42px!important;flex-basis:42px!important}
+  html body #login-screen .brand-wordmark .cq-name{font-size:31px!important}
+  html body #login-screen .brand-wordmark .cq-school{font-size:11px!important}
+  html body #login-screen .brand-wordmark .cq-tagline{font-size:6px!important;letter-spacing:.14em!important}
+}
+
 @media (max-width:620px){
-  html body #login-screen .brand-row{gap:11px!important;min-height:60px!important}
-  html body #login-screen .brand-school-logo{width:46px!important;height:46px!important;flex-basis:46px!important}
-  html body #login-screen .brand-wordmark .cq-name{font-size:34px!important}
-  html body #login-screen .brand-wordmark .cq-school{font-size:12px!important;margin-top:5px!important}
-  html body #login-screen .brand-wordmark .cq-tagline{font-size:6.5px!important;letter-spacing:.12em!important}
+  html body #login-screen .brand-row{gap:10px!important}
+  html body #login-screen .brand-school-logo{width:38px!important;height:38px!important;flex-basis:38px!important}
+  html body #login-screen .brand-wordmark .cq-name{font-size:27px!important}
+  html body #login-screen .brand-wordmark .cq-school{font-size:9.5px!important;margin-top:4px!important}
+  html body #login-screen .brand-wordmark .cq-tagline{font-size:5.2px!important;letter-spacing:.11em!important}
 }
