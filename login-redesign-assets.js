@@ -3,7 +3,7 @@
   'use strict';
 
   const css=[...document.querySelectorAll('link[rel="stylesheet"]')].find(x=>/login-redesign\.css/i.test(x.getAttribute('href')||''));
-  if(css) css.href='login-redesign.css?v=20260909-exact3';
+  if(css) css.href='login-redesign.css?v=20260909-exact4';
 
   const login=document.getElementById('login-screen');
   if(login){
@@ -74,19 +74,23 @@
     }
   }
 
+  const root=document.documentElement;
+  root.style.setProperty('--cq-login-bg',"url('login-bg.webp?v=20260909-upload1')");
+
   const BASE='https://cdn.jsdelivr.net/gh/sdislamtahfizhcahayaquran/CQlass@login-redesign-preview/preview-assets/';
   const load=async(names)=>{
     const parts=await Promise.all(names.map(async name=>{
-      const r=await fetch(BASE+name+'?v=20260909-exact3',{cache:'force-cache'});
+      const r=await fetch(BASE+name+'?v=20260909-exact4',{cache:'force-cache'});
       if(!r.ok) throw new Error('asset '+name+' '+r.status);
       return (await r.text()).trim();
     }));
     return parts.join('');
   };
-  Promise.all([load(['bg1.txt','bg2.txt','bg3.txt','bg4.txt']),load(['wm1.txt','wm2.txt','wm3.txt','wm4.txt'])]).then(([bg,wm])=>{
-    const root=document.documentElement;
-    root.style.setProperty('--cq-login-bg','url("data:image/webp;base64,'+bg+'")');
+  load(['wm1.txt','wm2.txt','wm3.txt','wm4.txt']).then(wm=>{
     root.style.setProperty('--cq-login-wordmark','url("data:image/webp;base64,'+wm+'")');
     root.classList.add('login-assets-ready');
-  }).catch(err=>{console.warn('CQlass login assets fallback:',err);document.documentElement.classList.add('login-assets-fallback')});
+  }).catch(err=>{
+    console.warn('CQlass wordmark asset fallback:',err);
+    root.classList.add('login-assets-fallback');
+  });
 })();
