@@ -1,10 +1,23 @@
 :root{--cq-login-bg:url('login-bg.webp?v=20260909-upload1')}
 html,body{background:#dff6ef!important}
 html body #login-screen{background-color:#dff6ef!important}
-/* Hide the old static login DOM while the final login DOM is being injected. */
+
+/* Instant first paint: keep the server-rendered login visible while the polished DOM loads. */
 html body #login-screen>.login-hero,
-html body #login-screen>.login-form-panel{display:none!important}
+html body #login-screen>.login-form-panel{display:flex!important;visibility:visible!important;opacity:1!important}
+html body #login-screen>.login-hero{max-width:none!important;background:transparent!important}
+html body #login-screen>.login-form-panel{background:transparent!important}
+html body #login-screen>.login-form-panel .login-card{background:rgba(255,255,255,.94)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important}
 html body #login-screen .wordmark-img{display:none!important}
+
+/* Never animate the login into view: it should appear immediately. */
+html body #login-screen,
+html body #login-screen>.login-hero,
+html body #login-screen>.login-form-panel,
+html body #login-screen .scene,
+html body #login-screen .left,
+html body #login-screen .login-wrap,
+html body #login-screen .login-card{animation:none!important;transition:none!important}
 
 /* CQlass login final composition hotfix — visual only */
 html body #login-screen .brand-row{display:flex!important;align-items:center!important;gap:12px!important;margin:0 0 12px!important;min-height:58px!important}
@@ -66,7 +79,7 @@ html body #login-screen .login-wrap{margin:0!important;right:auto!important;tran
 }
 
 @media (max-width:959px){
-  html body #login-screen{height:auto!important;min-height:100vh!important;overflow:auto!important;background-attachment:fixed!important}
+  html body #login-screen{height:auto!important;min-height:100vh!important;overflow:auto!important;background-attachment:scroll!important}
   html body #login-screen .scene{position:relative!important;min-height:100vh!important;height:auto!important}
   html body #login-screen main{display:grid!important;grid-template-columns:1fr!important;gap:28px!important;padding:28px 22px 44px!important}
   html body #login-screen .left{max-width:720px!important;width:100%!important;margin:0 auto!important}
