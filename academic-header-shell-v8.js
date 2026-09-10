@@ -1,10 +1,45 @@
 /* CQlass compatibility/theme loader
    1) Shared typography, sidebar vine, and single building hero for every role.
-   2) Kabid Akademik deterministic header V9 compatibility.
+   2) School logo favicon for every role/page.
+   3) Kabid Akademik deterministic header V9 compatibility.
 */
 (function(){
   'use strict';
   var THEME='20260910-theme3';
+  var FAVICON='logo_sd.png?v=20260910-favicon1';
+
+  function ensureFavicon(){
+    var links=document.querySelectorAll('link[rel="icon"],link[rel="shortcut icon"]');
+    if(links.length){
+      links.forEach(function(l){
+        l.setAttribute('href',FAVICON);
+        l.setAttribute('type','image/png');
+      });
+    }else{
+      var icon=document.createElement('link');
+      icon.rel='icon';
+      icon.type='image/png';
+      icon.href=FAVICON;
+      document.head.appendChild(icon);
+    }
+
+    var shortcut=document.querySelector('link[rel="shortcut icon"]');
+    if(!shortcut){
+      shortcut=document.createElement('link');
+      shortcut.rel='shortcut icon';
+      shortcut.type='image/png';
+      shortcut.href=FAVICON;
+      document.head.appendChild(shortcut);
+    }
+
+    var apple=document.querySelector('link[rel="apple-touch-icon"]');
+    if(!apple){
+      apple=document.createElement('link');
+      apple.rel='apple-touch-icon';
+      document.head.appendChild(apple);
+    }
+    apple.href=FAVICON;
+  }
 
   function ensureStyle(){
     var l=document.querySelector('link[data-cq-global-role-theme]');
@@ -41,6 +76,7 @@
     document.head.appendChild(s);
   }
 
+  ensureFavicon();
   ensureStyle();
   ensureGlobalRuntime();
   ensureAcademicHeader();
