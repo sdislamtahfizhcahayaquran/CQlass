@@ -5,7 +5,7 @@
 */
 (function(){
   'use strict';
-  var THEME='20260910-theme3';
+  var THEME='20260910-theme4';
   var FAVICON='logo_sd.png?v=20260910-favicon1';
 
   function ensureFavicon(){
