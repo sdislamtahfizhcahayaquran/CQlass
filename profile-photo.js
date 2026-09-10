@@ -250,7 +250,15 @@
     script.dataset.cqAccountSettingsFix='1';
     document.head.appendChild(script);
   }
+  function loadSignaturePreviewControls(){
+    if(document.querySelector('script[data-cq-signature-preview-controls]')) return;
+    const script=document.createElement('script');
+    script.src='signature-preview-controls.js?v=20260910-preview1';
+    script.dataset.cqSignaturePreviewControls='1';
+    document.head.appendChild(script);
+  }
   loadAccountSettingsFix();
+  loadSignaturePreviewControls();
 
   document.addEventListener('DOMContentLoaded',function(){
     renderSlots();
