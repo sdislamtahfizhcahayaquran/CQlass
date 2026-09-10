@@ -243,6 +243,15 @@
   style.textContent='.user-photo-slot{box-shadow:0 0 0 2px rgba(10,110,110,.10);transition:transform .15s ease,box-shadow .15s ease}.user-photo-slot:hover{transform:scale(1.05);box-shadow:0 0 0 3px rgba(10,110,110,.18)}.foto-profil-fallback-large{font-size:28px}.modal-field input[type=file]{padding:9px;background:#fff}.modal-field input[type=file]::file-selector-button{border:0;border-radius:8px;padding:8px 12px;margin-right:10px;background:#e8f4f4;color:#0a6e6e;font-weight:700;cursor:pointer}';
   document.head.appendChild(style);
 
+  function loadAccountSettingsFix(){
+    if(document.querySelector('script[data-cq-account-settings-fix]')) return;
+    const script=document.createElement('script');
+    script.src='account-settings-fix.js?v=20260910-account1';
+    script.dataset.cqAccountSettingsFix='1';
+    document.head.appendChild(script);
+  }
+  loadAccountSettingsFix();
+
   document.addEventListener('DOMContentLoaded',function(){
     renderSlots();
     setTimeout(function(){ loadProfilePhoto(false); },0);
