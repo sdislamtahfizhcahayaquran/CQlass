@@ -7,7 +7,7 @@
   if(window.__CQ_GLOBAL_ROLE_THEME__) return;
 
   function norm(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');}
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m];});}
+  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
   function readUser(){
     try{if(typeof currentUser!=='undefined'&&currentUser)return currentUser;}catch(_){ }
     try{return JSON.parse(localStorage.getItem('cqlass_user')||'null')||{};}catch(_){return {};}
@@ -91,12 +91,12 @@
     var natives=nativeHeroes(content);
 
     if(fallback){
-      /* The global hero was already first on screen: keep it and suppress any late legacy/native hero. */
+      /* Global hero is already first on screen: keep it and suppress late legacy/native heroes. */
       natives.forEach(function(el){el.classList.add('cq-theme-hero-hidden');el.dataset.cqThemeHeroHidden='1';});
       return;
     }
 
-    /* No global hero: keep the first native hero and hide accidental duplicates only. */
+    /* No global hero: keep only the first native hero. */
     natives.forEach(function(el,i){
       if(i===0){el.classList.remove('cq-theme-hero-hidden');delete el.dataset.cqThemeHeroHidden;}
       else{el.classList.add('cq-theme-hero-hidden');el.dataset.cqThemeHeroHidden='1';}
