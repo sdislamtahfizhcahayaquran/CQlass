@@ -2,15 +2,16 @@
    Lightweight only: existing optimized WebP + inline SVG vine. No extra raster assets.
 */
 :root{
-  --cq-font-body:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --cq-font-heading:'Poppins','Plus Jakarta Sans',var(--cq-font-body);
-  --cq-font-ui:'Plus Jakarta Sans',var(--cq-font-body);
+  --cq-font-body:'Plus Jakarta Sans','Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --cq-font-heading:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
+  --cq-font-ui:'Plus Jakarta Sans','Inter',system-ui,sans-serif;
   --cq-hero-image:url('login-bg.webp?v=20260910-opt1');
 }
 
 /* ===== GLOBAL TYPOGRAPHY =====
-   All role accounts use the same typography system as Kabid Akademik.
-   Text body = Inter, headings = Poppins, navigation/buttons = Plus Jakarta Sans.
+   All role accounts use one consistent CQlass typography system.
+   Plus Jakarta Sans is used across body, headings, navigation, controls, and data tables.
+   Weight and size remain component-specific so dense operational screens stay readable.
 */
 html,body,#app-screen{
   font-family:var(--cq-font-body)!important;
