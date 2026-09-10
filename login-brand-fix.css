@@ -1,10 +1,11 @@
-:root{--cq-login-bg:url('login-bg.webp?v=20260909-upload1')}
+:root{--cq-login-bg:url('login-bg.webp?v=20260910-opt1')}
 html,body{background:#dff6ef!important}
 html body #login-screen{background-color:#dff6ef!important}
 
-/* Instant first paint: keep the server-rendered login visible while the polished DOM loads. */
+/* Cold-start guard: never paint the legacy server fallback. The polished login
+   replaces these nodes synchronously; until then only the CQlass background is visible. */
 html body #login-screen>.login-hero,
-html body #login-screen>.login-form-panel{display:flex!important;visibility:visible!important;opacity:1!important}
+html body #login-screen>.login-form-panel{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 html body #login-screen>.login-hero{max-width:none!important;background:transparent!important}
 html body #login-screen>.login-form-panel{background:transparent!important}
 html body #login-screen>.login-form-panel .login-card{background:rgba(255,255,255,.94)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important}
