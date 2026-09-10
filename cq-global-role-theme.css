@@ -15,8 +15,7 @@
 html,body,#app-screen{
   font-family:var(--cq-font-body)!important;
 }
-#app-screen :is(div,span,p,a,button,input,select,textarea,label,table,thead,tbody,tfoot,tr,th,td,ul,ol,li,nav,section,article,header,footer,form,small,strong,b,em)
-:not(.material-icons):not(.material-symbols-outlined):not(.fa):not(.fas):not(.far):not(.fab){
+#app-screen :is(div,span,p,a,button,input,select,textarea,label,table,thead,tbody,tfoot,tr,th,td,ul,ol,li,nav,section,article,header,footer,form,small,strong,b,em):not(.material-icons):not(.material-symbols-outlined):not(.fa):not(.fas):not(.far):not(.fab){
   font-family:var(--cq-font-body)!important;
 }
 #app-screen :is(h1,h2,h3,h4,h5,h6,.page-title,.rd-title,.ak7-title,.cq-role-hero-title,.card-title,.modal-title,.hrd-board-head h2,.hrd-detail-top h3){
