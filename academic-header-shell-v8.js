@@ -1,23 +1,29 @@
 /* CQlass compatibility/theme loader
-   1) Shared lightweight visual language for every role.
+   1) Shared typography, sidebar vine, and single building hero for every role.
    2) Kabid Akademik deterministic header V9 compatibility.
 */
 (function(){
   'use strict';
+  var THEME='20260910-theme3';
 
   function ensureStyle(){
-    if(document.querySelector('link[data-cq-global-role-theme]')) return;
-    var l=document.createElement('link');
-    l.rel='stylesheet';
-    l.href='cq-global-role-theme.css?v=20260910-theme2';
-    l.dataset.cqGlobalRoleTheme='1';
-    document.head.appendChild(l);
+    var l=document.querySelector('link[data-cq-global-role-theme]');
+    if(!l){
+      l=document.createElement('link');
+      l.rel='stylesheet';
+      l.dataset.cqGlobalRoleTheme='1';
+      document.head.appendChild(l);
+    }
+    var next='cq-global-role-theme.css?v='+THEME;
+    if(!l.href||l.href.indexOf(THEME)<0)l.href=next;
   }
 
   function ensureGlobalRuntime(){
-    if(window.__CQ_GLOBAL_ROLE_THEME__ || document.querySelector('script[data-cq-global-role-theme]')) return;
+    if(window.__CQ_GLOBAL_ROLE_THEME_V3__) return;
+    var old=document.querySelector('script[data-cq-global-role-theme]');
+    if(old)old.remove();
     var g=document.createElement('script');
-    g.src='cq-global-role-theme.js?v=20260910-theme2';
+    g.src='cq-global-role-theme.js?v='+THEME;
     g.dataset.cqGlobalRoleTheme='1';
     g.async=false;
     document.head.appendChild(g);
