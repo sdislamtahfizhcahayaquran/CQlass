@@ -1,5 +1,5 @@
 /* CQlass shared role theme runtime
-   Adds only a fallback dashboard hero when a role dashboard has no native hero.
+   Keeps one lightweight building hero on role dashboards.
    Does not touch data, permissions, routing, forms, or module contents.
 */
 (function(){
@@ -7,7 +7,7 @@
   if(window.__CQ_GLOBAL_ROLE_THEME__) return;
 
   function norm(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');}
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m];});}
   function readUser(){
     try{if(typeof currentUser!=='undefined'&&currentUser)return currentUser;}catch(_){ }
     try{return JSON.parse(localStorage.getItem('cqlass_user')||'null')||{};}catch(_){return {};}
@@ -55,13 +55,15 @@
     var active=sb.querySelector('.nav-item.active,.active[aria-current="page"],.active');
     return !!(active&&String(active.textContent||'').trim().toLowerCase()==='dashboard');
   }
-  function hasHero(content){
-    return !!content.querySelector('.ak7-hero,.rd-hero,.hrd-hero,.cq-role-hero,[class*="dashboard-hero"],[class*="dash-hero"]');
+  function nativeHeroes(content){
+    return Array.prototype.slice.call(content.querySelectorAll('.ak7-hero,.rd-hero,.hrd-hero,[class*="dashboard-hero"],[class*="dash-hero"]'));
   }
+  function fallbackHero(content){return content.querySelector('.cq-role-hero[data-cq-role-theme="1"]');}
   function addFallbackHero(){
     var app=document.getElementById('app-screen');
     var content=document.getElementById('content');
-    if(!app||!content||getComputedStyle(app).display==='none'||!dashboardActive()||hasHero(content))return;
+    if(!app||!content||getComputedStyle(app).display==='none'||!dashboardActive())return;
+    if(fallbackHero(content)||nativeHeroes(content).length)return;
     if(!String(content.textContent||'').trim())return;
 
     var title=content.querySelector(':scope > .page-title');
@@ -80,22 +82,43 @@
   }
   function restoreHidden(){
     document.querySelectorAll('[data-cq-theme-hidden="1"]').forEach(function(el){el.style.display='';delete el.dataset.cqThemeHidden;});
+    document.querySelectorAll('.cq-theme-hero-hidden').forEach(function(el){el.classList.remove('cq-theme-hero-hidden');delete el.dataset.cqThemeHeroHidden;});
+  }
+  function dedupeHeroes(){
+    var content=document.getElementById('content');
+    if(!content)return;
+    var fallback=fallbackHero(content);
+    var natives=nativeHeroes(content);
+
+    if(fallback){
+      /* The global hero was already first on screen: keep it and suppress any late legacy/native hero. */
+      natives.forEach(function(el){el.classList.add('cq-theme-hero-hidden');el.dataset.cqThemeHeroHidden='1';});
+      return;
+    }
+
+    /* No global hero: keep the first native hero and hide accidental duplicates only. */
+    natives.forEach(function(el,i){
+      if(i===0){el.classList.remove('cq-theme-hero-hidden');delete el.dataset.cqThemeHeroHidden;}
+      else{el.classList.add('cq-theme-hero-hidden');el.dataset.cqThemeHeroHidden='1';}
+    });
   }
   function sync(){
-    if(dashboardActive()) addFallbackHero();
-    else{
+    if(dashboardActive()){
+      addFallbackHero();
+      dedupeHeroes();
+    }else{
       document.querySelectorAll('.cq-role-hero[data-cq-role-theme="1"]').forEach(function(el){el.remove();});
       restoreHidden();
     }
   }
 
   var timer=0;
-  function schedule(){clearTimeout(timer);timer=setTimeout(sync,40);}
+  function schedule(){clearTimeout(timer);timer=setTimeout(sync,35);}
   var observer=new MutationObserver(schedule);
   if(document.documentElement)observer.observe(document.documentElement,{childList:true,subtree:true});
-  document.addEventListener('click',function(){setTimeout(sync,80);},true);
-  document.addEventListener('DOMContentLoaded',function(){setTimeout(sync,120);},{once:true});
-  window.addEventListener('load',function(){setTimeout(sync,180);},{once:true});
-  setTimeout(sync,120);
+  document.addEventListener('click',function(){setTimeout(sync,70);},true);
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(sync,100);},{once:true});
+  window.addEventListener('load',function(){setTimeout(sync,150);},{once:true});
+  setTimeout(sync,100);
   window.__CQ_GLOBAL_ROLE_THEME__=true;
 })();
