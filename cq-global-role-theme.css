@@ -8,57 +8,57 @@
   --cq-hero-image:url('login-bg.webp?v=20260910-opt1');
 }
 
-/* Typography: same visual system used by Kabid Akademik */
-html,body,#app-screen,#app-screen button,#app-screen input,#app-screen select,#app-screen textarea,#app-screen table{
+/* ===== GLOBAL TYPOGRAPHY =====
+   All role accounts use the same typography system as Kabid Akademik.
+   Text body = Inter, headings = Poppins, navigation/buttons = Plus Jakarta Sans.
+*/
+html,body,#app-screen{
   font-family:var(--cq-font-body)!important;
 }
-#app-screen h1,#app-screen h2,#app-screen h3,#app-screen h4,
-#app-screen .page-title,#app-screen .rd-title,#app-screen .ak7-title,#app-screen .hrd-hero h1,
-#app-screen .cq-role-hero-title{
+#app-screen :is(div,span,p,a,button,input,select,textarea,label,table,thead,tbody,tfoot,tr,th,td,ul,ol,li,nav,section,article,header,footer,form,small,strong,b,em)
+:not(.material-icons):not(.material-symbols-outlined):not(.fa):not(.fas):not(.far):not(.fab){
+  font-family:var(--cq-font-body)!important;
+}
+#app-screen :is(h1,h2,h3,h4,h5,h6,.page-title,.rd-title,.ak7-title,.cq-role-hero-title,.card-title,.modal-title,.hrd-board-head h2,.hrd-detail-top h3){
   font-family:var(--cq-font-heading)!important;
 }
-#app-screen .nav-item,#app-screen .nav-group-title,#app-screen .sidebar-title,
-#app-screen .btn,#app-screen button,#app-screen .role-badge{
+#app-screen :is(.nav-item,.nav-group-title,.sidebar-title,.btn,button,.role-badge,.topbar-title,.topbar-right,.cq-role-hero-eye){
   font-family:var(--cq-font-ui)!important;
 }
 
-/* Sidebar vine: one tiny vector drawn by the browser, reused by every role. */
+/* ===== SHARED SIDEBAR =====
+   A single vector vine is painted as a background layer so it remains lightweight,
+   visible at the bottom, and cannot block clicks or be clipped by menu content.
+*/
 #app-screen .sidebar{
   isolation:isolate;
-  position:sticky;
+  border-right:1px solid #d9ebe6!important;
+  background-color:#fff!important;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 330'%3E%3Cg fill='none' stroke='%2378cbb1' stroke-width='2.2' stroke-linecap='round' opacity='.62'%3E%3Cpath d='M16 330C18 280 42 250 31 207C22 169 38 130 71 102C88 87 98 65 94 39'/%3E%3Cpath d='M31 208C52 188 69 178 91 173'/%3E%3Cpath d='M36 151C53 137 66 125 74 109'/%3E%3Cpath d='M49 256C70 239 88 233 111 235'/%3E%3Cpath d='M23 287C42 273 57 270 73 272'/%3E%3C/g%3E%3Cg fill='%239edac7' opacity='.38'%3E%3Cellipse cx='18' cy='300' rx='13' ry='29' transform='rotate(-18 18 300)'/%3E%3Cellipse cx='45' cy='267' rx='12' ry='27' transform='rotate(45 45 267)'/%3E%3Cellipse cx='80' cy='236' rx='13' ry='30' transform='rotate(70 80 236)'/%3E%3Cellipse cx='63' cy='186' rx='11' ry='25' transform='rotate(58 63 186)'/%3E%3Cellipse cx='45' cy='143' rx='10' ry='23' transform='rotate(-36 45 143)'/%3E%3Cellipse cx='82' cy='110' rx='10' ry='24' transform='rotate(35 82 110)'/%3E%3Cellipse cx='96' cy='57' rx='9' ry='21' transform='rotate(-8 96 57)'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg,#ffffff 0%,#f1faf7 100%)!important;
+  background-repeat:no-repeat,no-repeat!important;
+  background-position:left bottom,left top!important;
+  background-size:190px 330px,100% 100%!important;
 }
-#app-screen .sidebar::after{
-  content:'';
-  position:absolute;
-  left:0;
-  bottom:0;
-  width:min(92%,190px);
-  height:330px;
-  z-index:0;
-  pointer-events:none;
-  opacity:.58;
-  background-repeat:no-repeat;
-  background-position:left bottom;
-  background-size:contain;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 330'%3E%3Cg fill='none' stroke='%2378cbb1' stroke-width='2.2' stroke-linecap='round' opacity='.62'%3E%3Cpath d='M16 330C18 280 42 250 31 207C22 169 38 130 71 102C88 87 98 65 94 39'/%3E%3Cpath d='M31 208C52 188 69 178 91 173'/%3E%3Cpath d='M36 151C53 137 66 125 74 109'/%3E%3Cpath d='M49 256C70 239 88 233 111 235'/%3E%3Cpath d='M23 287C42 273 57 270 73 272'/%3E%3C/g%3E%3Cg fill='%239edac7' opacity='.38'%3E%3Cellipse cx='18' cy='300' rx='13' ry='29' transform='rotate(-18 18 300)'/%3E%3Cellipse cx='45' cy='267' rx='12' ry='27' transform='rotate(45 45 267)'/%3E%3Cellipse cx='80' cy='236' rx='13' ry='30' transform='rotate(70 80 236)'/%3E%3Cellipse cx='63' cy='186' rx='11' ry='25' transform='rotate(58 63 186)'/%3E%3Cellipse cx='45' cy='143' rx='10' ry='23' transform='rotate(-36 45 143)'/%3E%3Cellipse cx='82' cy='110' rx='10' ry='24' transform='rotate(35 82 110)'/%3E%3Cellipse cx='96' cy='57' rx='9' ry='21' transform='rotate(-8 96 57)'/%3E%3C/g%3E%3C/svg%3E");
-}
+#app-screen .sidebar::after{display:none!important}
 #app-screen .sidebar>*{position:relative;z-index:1}
 
-/* Existing dashboard heroes inherit the Akademik building treatment. */
+/* ===== BUILDING HERO ===== */
 #app-screen .rd-hero,
-#app-screen .hrd-hero{
+#app-screen .hrd-hero,
+#app-screen .cq-role-hero{
   background-image:
-    linear-gradient(90deg,rgba(4,72,67,.94) 0%,rgba(8,117,104,.87) 42%,rgba(19,132,112,.63) 68%,rgba(255,255,255,.12) 100%),
+    linear-gradient(90deg,rgba(4,72,67,.95) 0%,rgba(8,117,104,.88) 43%,rgba(15,133,111,.60) 70%,rgba(255,255,255,.08) 100%),
     var(--cq-hero-image)!important;
   background-position:center 48%!important;
   background-size:cover!important;
   background-repeat:no-repeat!important;
-  border:1px solid rgba(255,255,255,.76)!important;
+  border:1px solid rgba(255,255,255,.78)!important;
   box-shadow:0 16px 38px rgba(7,59,56,.10)!important;
 }
 #app-screen .hrd-hero{color:#fff!important}
 
-/* Shared fallback hero for dashboards that render without a native hero at first paint. */
 #app-screen .cq-role-hero{
   min-height:142px;
   border-radius:24px;
@@ -69,28 +69,24 @@ html,body,#app-screen,#app-screen button,#app-screen input,#app-screen select,#a
   position:relative;
   overflow:hidden;
   color:#fff;
-  border:1px solid rgba(255,255,255,.78);
-  box-shadow:0 16px 38px rgba(7,59,56,.10);
-  background-image:
-    linear-gradient(90deg,rgba(4,72,67,.95) 0%,rgba(8,117,104,.88) 43%,rgba(15,133,111,.60) 70%,rgba(255,255,255,.08) 100%),
-    var(--cq-hero-image);
-  background-position:center 48%;
-  background-size:cover;
 }
 #app-screen .cq-role-hero::after{
   content:'';position:absolute;right:-75px;top:-105px;width:300px;height:300px;border-radius:50%;
   border:1px solid rgba(255,255,255,.20);box-shadow:0 0 0 35px rgba(255,255,255,.045),0 0 0 70px rgba(255,255,255,.025);
 }
 #app-screen .cq-role-hero-copy{position:relative;z-index:1;max-width:760px}
-#app-screen .cq-role-hero-eye{font:800 10px/1.3 var(--cq-font-ui);letter-spacing:.13em;text-transform:uppercase;opacity:.83}
-#app-screen .cq-role-hero-title{margin-top:6px;font-size:clamp(24px,3vw,31px);font-weight:800;line-height:1.12;letter-spacing:-.025em}
-#app-screen .cq-role-hero-sub{margin-top:7px;font-size:11.5px;font-weight:600;line-height:1.5;opacity:.88}
+#app-screen .cq-role-hero-eye{font-size:10px!important;font-weight:800!important;line-height:1.3;letter-spacing:.13em;text-transform:uppercase;opacity:.83}
+#app-screen .cq-role-hero-title{margin-top:6px;font-size:clamp(24px,3vw,31px)!important;font-weight:800!important;line-height:1.12;letter-spacing:-.025em}
+#app-screen .cq-role-hero-sub{margin-top:7px;font-size:11.5px!important;font-weight:600!important;line-height:1.5;opacity:.88}
 
-/* Hard visual guard: at most one dashboard hero stays visible. */
+/* Hard visual guard: exactly one role-dashboard hero remains visible. */
 #app-screen .cq-theme-hero-hidden{display:none!important}
 
 @media(max-width:760px){
-  #app-screen .sidebar::after{display:none}
+  #app-screen .sidebar{
+    background-image:linear-gradient(180deg,#ffffff 0%,#f1faf7 100%)!important;
+    background-size:100% 100%!important;
+  }
   #app-screen .cq-role-hero{min-height:126px;padding:19px 20px;border-radius:19px}
-  #app-screen .cq-role-hero-title{font-size:23px}
+  #app-screen .cq-role-hero-title{font-size:23px!important}
 }
