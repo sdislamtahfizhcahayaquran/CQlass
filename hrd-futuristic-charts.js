@@ -4,25 +4,27 @@
   if(window.__cqHrdFuturisticCharts) return;
   window.__cqHrdFuturisticCharts=true;
 
-  const ADMIN_URL=window.SUPABASE_URL+'/functions/v1/hrd-administration';
-  const STUDENT_URL=window.SUPABASE_URL+'/functions/v1/hrd-student-affairs-trends';
-  const PERF_URL=window.SUPABASE_URL+'/functions/v1/hrd-performance-range';
-  const esc=v=>typeof window.escapeHtml==='function'?window.escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const BASE=typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co';
+  const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
+  const ADMIN_URL=BASE+'/functions/v1/hrd-administration';
+  const STUDENT_URL=BASE+'/functions/v1/hrd-student-affairs-trends';
+  const PERF_URL=BASE+'/functions/v1/hrd-performance-range';
+  const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   const num=v=>Number(v||0).toLocaleString('id-ID');
   const pct=v=>Math.max(0,Math.min(100,Number(v||0)));
 
   function isHRD(){
     try{
-      if(String(window.currentUser?.role||'').toLowerCase()==='hrd') return true;
+      if(typeof currentUser!=='undefined'&&String(currentUser?.role||'').toLowerCase()==='hrd') return true;
       const u=JSON.parse(localStorage.getItem('cqlass_user')||'{}');
       return String(u.role||u.primary_role||u.role_code||'').toLowerCase()==='hrd';
     }catch(_){return false}
   }
   async function api(url,payload){
-    const token=typeof window.getAuthToken==='function'?window.getAuthToken():localStorage.getItem('cqlass_session_token')||'';
+    const token=typeof getAuthToken==='function'?getAuthToken():localStorage.getItem('cqlass_session_token')||'';
     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),45000);
     try{
-      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':window.SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+window.SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify(payload||{}),signal:ctrl.signal});
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':token},body:JSON.stringify(payload||{}),signal:ctrl.signal});
       const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw Error('Respons grafik tidak valid.')}
       if(!r.ok||d.success===false)throw Error(d.message||d.error||'Data grafik gagal dimuat.');
       return d;
