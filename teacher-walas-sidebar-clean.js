@@ -1,6 +1,7 @@
 /* CQlass — clean sidebar for Guru Mapel & Walas
    Guru: Pembelajaran + Kesiswaan + Laporan.
    Walas: sama, ditambah Cetak Rapor sebagai grup terakhir.
+   Request/Laporan Kesiswaan tidak boleh tampil untuk Guru/Walas.
    Laporan Guru Bulanan disembunyikan karena sudah tidak relevan.
 */
 (function(){
@@ -30,10 +31,26 @@
     const i=MODULE_GROUPS.findIndex(g=>g&&g.id===id);
     if(i>=0) MODULE_GROUPS.splice(i,1);
   }
+  function isKesiswaanReportRequest(item){
+    if(!item) return false;
+    const text=`${item.id||''} ${item.label||''}`.toLowerCase();
+    return (text.includes('request')||text.includes('permintaan')) && text.includes('laporan');
+  }
 
   function cleanStructure(){
     try{
       if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS)) return false;
+
+      // Guard utama: Request Laporan adalah fitur internal HRD/Kesiswaan,
+      // sehingga role guru dan walas tidak pernah mendapat item tersebut.
+      for(const group of MODULE_GROUPS){
+        if(!group) continue;
+        if(Array.isArray(group.items)){
+          group.items.forEach(item=>{
+            if(isKesiswaanReportRequest(item)) item.roles=without(item.roles,TEACHER_ROLES);
+          });
+        }
+      }
 
       // Laporan Guru Bulanan sudah tidak dipakai lagi.
       const reports=MODULE_GROUPS.find(g=>g&&g.id==='laporan');
