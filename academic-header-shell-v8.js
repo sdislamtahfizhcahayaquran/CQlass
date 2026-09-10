@@ -9,7 +9,7 @@
     if(document.querySelector('link[data-cq-global-role-theme]')) return;
     var l=document.createElement('link');
     l.rel='stylesheet';
-    l.href='cq-global-role-theme.css?v=20260910-theme1';
+    l.href='cq-global-role-theme.css?v=20260910-theme2';
     l.dataset.cqGlobalRoleTheme='1';
     document.head.appendChild(l);
   }
@@ -17,7 +17,7 @@
   function ensureGlobalRuntime(){
     if(window.__CQ_GLOBAL_ROLE_THEME__ || document.querySelector('script[data-cq-global-role-theme]')) return;
     var g=document.createElement('script');
-    g.src='cq-global-role-theme.js?v=20260910-theme1';
+    g.src='cq-global-role-theme.js?v=20260910-theme2';
     g.dataset.cqGlobalRoleTheme='1';
     g.async=false;
     document.head.appendChild(g);
