@@ -1,0 +1,17 @@
+{
+  "name": "CQlass — SDIT Cahaya Qur'an",
+  "short_name": "CQlass",
+  "description": "Sistem terintegrasi SD Islam Tahfizh Cahaya Qur'an",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#dff6ef",
+  "theme_color": "#0A6E6E",
+  "icons": [
+    {
+      "src": "./logo_sd.png",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
