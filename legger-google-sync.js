@@ -7,20 +7,37 @@
   const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
   const QUEUE_URL=BASE+'/functions/v1/legger-sync-queue';
   const SHEET_URL='https://docs.google.com/spreadsheets/d/1g5WfGQtS35kYaK8jU60pFkvFm4B_gy6bO_yg0ivKvRI/edit';
+  const LEGGER_TIMEOUT_MS=120000;
+  const CLAIM_LIMIT=20;
+  const MAX_BATCHES_PER_DRAIN=12;
   let draining=false;
   const getUser=()=>{try{return typeof currentUser!=='undefined'?currentUser:null}catch(_){return null}};
   const getState=()=>{try{return typeof academicGridState!=='undefined'?academicGridState:null}catch(_){return null}};
   const getToken=()=>{try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){return ''}};
   function headers(){const key=(typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'');const token=getToken();const h={'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key};if(token)h['x-session-token']=token;return h}
   async function queueReq(action,payload={}){const r=await fetch(QUEUE_URL,{method:'POST',headers:headers(),body:JSON.stringify({action,...payload})});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons sinkronisasi tidak valid.')}if(!r.ok||d.success===false)throw new Error(d.detail||d.error||'Sinkronisasi belum berhasil.');return d}
+  async function callLeggerApi(action,params={}){
+    if(typeof APPS_SCRIPT_URL==='undefined'||typeof APP_SECRET==='undefined')throw new Error('Konfigurasi Legger belum tersedia.');
+    const controller=new AbortController();
+    const timeoutId=setTimeout(()=>controller.abort(),LEGGER_TIMEOUT_MS);
+    try{
+      const r=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,secret:APP_SECRET,...params}),redirect:'follow',signal:controller.signal});
+      const raw=await r.text();let d={};
+      try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons Google Legger tidak valid.');}
+      if(!r.ok||d.success===false)throw new Error(d.error||`Google Legger HTTP ${r.status}`);
+      return d;
+    }catch(err){
+      if(err?.name==='AbortError')throw new Error('Google Legger terlalu lama merespons.');
+      throw err;
+    }finally{clearTimeout(timeoutId)}
+  }
   function valueKey(jenis,urutan){return `${jenis}|${Number(urutan)}`}
   function equalValue(actual,expected){
     if(expected===''||expected===null||expected===undefined)return actual===''||actual===null||actual===undefined;
     const a=Number(actual),e=Number(expected);return Number.isFinite(a)&&Number.isFinite(e)&&Math.abs(a-e)<0.000001;
   }
   async function verifyGroup(group){
-    const check=await callApi('getLeggerNilai',{kelas:group.kelas,tahunAjaran:group.tahunAjaran,semester:group.semester,mapel:group.mapel});
-    if(!check?.success)throw new Error(check?.error||'Legger belum dapat diverifikasi.');
+    const check=await callLeggerApi('getLeggerNilai',{kelas:group.kelas,tahunAjaran:group.tahunAjaran,semester:group.semester,mapel:group.mapel});
     const nilai=check.nilai||{};const mismatch=[];
     for(const ch of (group.changes||[])){
       const actual=nilai?.[String(ch.nis)]?.[valueKey(ch.jenisKomponen,ch.urutan)];
@@ -32,8 +49,7 @@
   async function syncGroup(group){
     const u=getUser();
     try{
-      const res=await callApi('saveLeggerNilai',{kelas:group.kelas,tahunAjaran:group.tahunAjaran,semester:group.semester,mapel:group.mapel,dicatatOleh:String(u?.nama||u?.name||'CQlass'),username:String(u?.username||'system_sync'),changes:Array.isArray(group.changes)?group.changes:[]});
-      if(!res?.success)throw new Error(res?.error||'Legger belum berhasil diperbarui.');
+      await callLeggerApi('saveLeggerNilai',{kelas:group.kelas,tahunAjaran:group.tahunAjaran,semester:group.semester,mapel:group.mapel,dicatatOleh:String(u?.nama||u?.name||'CQlass'),username:String(u?.username||'system_sync'),changes:Array.isArray(group.changes)?group.changes:[]});
       await verifyGroup(group);
       await queueReq('ack',{items:group.items||[]});
       return true;
@@ -43,17 +59,17 @@
     }
   }
   async function drain(){
-    if(draining||!navigator.onLine||typeof callApi!=='function'||!getToken())return;
+    if(draining||!navigator.onLine||!getToken())return;
     draining=true;
     try{
-      for(let batch=0;batch<3;batch++){
-        const claimed=await queueReq('claim',{limit:80});
+      for(let batch=0;batch<MAX_BATCHES_PER_DRAIN;batch++){
+        const claimed=await queueReq('claim',{limit:CLAIM_LIMIT});
         const groups=Array.isArray(claimed.groups)?claimed.groups:[];
         if(!groups.length)break;
         for(const group of groups)await syncGroup(group);
-        if(Number(claimed.count||0)<80)break;
+        if(Number(claimed.count||0)<CLAIM_LIMIT)break;
       }
-    }catch(_){}finally{draining=false}
+    }catch(err){console.warn('Legger drain tertunda:',err)}finally{draining=false}
   }
   function installAcademicHook(){
     if(typeof academicGridSave!=='function'||academicGridSave.__leggerGoogleHook)return false;
@@ -81,8 +97,8 @@
     enhanceMonitoringUI();
     const content=document.getElementById('content');if(content)new MutationObserver(enhanceMonitoringUI).observe(content,{childList:true,subtree:true});
     window.addEventListener('online',()=>void drain());
-    setInterval(()=>void drain(),20000);
-    setTimeout(()=>void drain(),1200);
+    setInterval(()=>void drain(),15000);
+    setTimeout(()=>void drain(),800);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
   window.CQlassLeggerGoogleSync={drain,open:()=>window.open(SHEET_URL,'_blank','noopener')};
