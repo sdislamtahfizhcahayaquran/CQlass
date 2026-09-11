@@ -1,6 +1,6 @@
 (function(){
 const URL=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/admin-users';
-let roles={admin:'Admin',pimpinan:'Pimpinan',kesiswaan:'Kabid Kesiswaan',akademik:'Kabid Akademik',tahfizh:'Kabid Tahfizh',kegiatan:'Kabid Kegiatan',walas:'Wali Kelas',guru:'Guru'};
+let roles={admin:'Admin',pimpinan:'Pimpinan',hrd:'HRD',kesiswaan:'Kabid Kesiswaan',akademik:'Kabid Akademik',tahfizh:'Kabid Tahfizh',kegiatan:'Kabid Kegiatan',guru_partner:'Guru Partner / Tahfizh',sapras:'Sapras',walas:'Wali Kelas',guru:'Guru'};
 let st={users:[],q:'',edit:null,adding:false};
 const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function say(v,f='Perubahan belum dapat disimpan.'){if(!v)return f;if(typeof v==='string')return v;if(v instanceof Error)return v.message||f;return v.message||v.details||v.error||v.hint||f}
