@@ -53,3 +53,15 @@
 
   window.__cqBackgroundApiFixInstalled = true;
 })();
+
+/* Load CQlass Web Push as an additive, non-blocking enhancement. */
+(function(){
+  'use strict';
+  if(window.__cqPushLoaderInstalled) return;
+  window.__cqPushLoaderInstalled = true;
+  const script = document.createElement('script');
+  script.src = './push-notifications.js?v=20260911-push1';
+  script.async = true;
+  script.onerror = function(){ console.warn('CQlass push client gagal dimuat.'); };
+  document.head.appendChild(script);
+})();
