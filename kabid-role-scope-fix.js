@@ -254,7 +254,16 @@
 (function(){
   if(document.querySelector('script[data-cq-teacher-walas-clean]')) return;
   const s=document.createElement('script');
-  s.src='teacher-walas-sidebar-clean.js?v=20260908-teacherwalas1';
+  s.src='teacher-walas-sidebar-clean.js?v=20260911-teacherwalas2';
   s.dataset.cqTeacherWalasClean='1';
+  document.head.appendChild(s);
+})();
+
+/* Load internal feedback/report routing after sidebar cleanup. */
+(function(){
+  if(document.querySelector('script[data-cq-internal-report-center]')) return;
+  const s=document.createElement('script');
+  s.src='internal-report-center.js?v=20260911-report1';
+  s.dataset.cqInternalReportCenter='1';
   document.head.appendChild(s);
 })();
