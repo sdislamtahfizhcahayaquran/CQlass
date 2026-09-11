@@ -1,62 +1,36 @@
-/* CQlass — Google Legger Live bridge
-   Nilai utama disimpan cepat di CQlass.
-   Sinkronisasi Legger berjalan terpisah melalui antrean persisten dan
-   baru dianggap berhasil setelah nilai dibaca kembali dan cocok.
-*/
+/* CQlass — Google Legger sync repair
+   Nilai utama tetap di Supabase. Sinkron ke Google Legger berjalan bertahap
+   agar Apps Script tidak timeout. */
 (function(){
   const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
   const QUEUE_URL=BASE+'/functions/v1/legger-sync-queue';
   const SHEET_URL='https://docs.google.com/spreadsheets/d/1g5WfGQtS35kYaK8jU60pFkvFm4B_gy6bO_yg0ivKvRI/edit';
-  const LEGGER_TIMEOUT_MS=120000;
-  const CLAIM_LIMIT=20;
-  const MAX_BATCHES_PER_DRAIN=12;
+  const CLAIM_LIMIT=5;
+  const MAX_BATCHES_PER_DRAIN=20;
+  const LEGGER_TIMEOUT_MS=180000;
   let draining=false;
+
   const getUser=()=>{try{return typeof currentUser!=='undefined'?currentUser:null}catch(_){return null}};
-  const getState=()=>{try{return typeof academicGridState!=='undefined'?academicGridState:null}catch(_){return null}};
   const getToken=()=>{try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){return ''}};
   function headers(){const key=(typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'');const token=getToken();const h={'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key};if(token)h['x-session-token']=token;return h}
-  async function queueReq(action,payload={}){const r=await fetch(QUEUE_URL,{method:'POST',headers:headers(),body:JSON.stringify({action,...payload})});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons sinkronisasi tidak valid.')}if(!r.ok||d.success===false)throw new Error(d.detail||d.error||'Sinkronisasi belum berhasil.');return d}
-  async function callLeggerApi(action,params={}){
-    if(typeof APPS_SCRIPT_URL==='undefined'||typeof APP_SECRET==='undefined')throw new Error('Konfigurasi Legger belum tersedia.');
-    const controller=new AbortController();
-    const timeoutId=setTimeout(()=>controller.abort(),LEGGER_TIMEOUT_MS);
+  async function queueReq(action,payload={}){const r=await fetch(QUEUE_URL,{method:'POST',headers:headers(),body:JSON.stringify({action,...payload})});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons antrean Legger tidak valid.')}if(!r.ok||d.success===false)throw new Error(d.detail||d.error||'Antrean Legger gagal.');return d}
+  async function callLegger(action,params={}){
+    if(typeof APPS_SCRIPT_URL==='undefined'||typeof APP_SECRET==='undefined')throw new Error('Konfigurasi Legger tidak tersedia.');
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),LEGGER_TIMEOUT_MS);
     try{
       const r=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,secret:APP_SECRET,...params}),redirect:'follow',signal:controller.signal});
-      const raw=await r.text();let d={};
-      try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons Google Legger tidak valid.');}
+      const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons Google Legger tidak valid.');}
       if(!r.ok||d.success===false)throw new Error(d.error||`Google Legger HTTP ${r.status}`);
       return d;
-    }catch(err){
-      if(err?.name==='AbortError')throw new Error('Google Legger terlalu lama merespons.');
-      throw err;
-    }finally{clearTimeout(timeoutId)}
-  }
-  function valueKey(jenis,urutan){return `${jenis}|${Number(urutan)}`}
-  function equalValue(actual,expected){
-    if(expected===''||expected===null||expected===undefined)return actual===''||actual===null||actual===undefined;
-    const a=Number(actual),e=Number(expected);return Number.isFinite(a)&&Number.isFinite(e)&&Math.abs(a-e)<0.000001;
-  }
-  async function verifyGroup(group){
-    const check=await callLeggerApi('getLeggerNilai',{kelas:group.kelas,tahunAjaran:group.tahunAjaran,semester:group.semester,mapel:group.mapel});
-    const nilai=check.nilai||{};const mismatch=[];
-    for(const ch of (group.changes||[])){
-      const actual=nilai?.[String(ch.nis)]?.[valueKey(ch.jenisKomponen,ch.urutan)];
-      if(!equalValue(actual,ch.nilai))mismatch.push(`${ch.nis}:${valueKey(ch.jenisKomponen,ch.urutan)}`);
-    }
-    if(mismatch.length)throw new Error(`Verifikasi Legger belum cocok (${mismatch.slice(0,5).join(', ')}).`);
-    return true;
+    }catch(err){if(err?.name==='AbortError')throw new Error('Google Legger terlalu lama merespons.');throw err}finally{clearTimeout(timer)}
   }
   async function syncGroup(group){
     const u=getUser();
     try{
-      await callLeggerApi('saveLeggerNilai',{kelas:group.kelas,tahunAjaran:group.tahunAjaran,semester:group.semester,mapel:group.mapel,dicatatOleh:String(u?.nama||u?.name||'CQlass'),username:String(u?.username||'system_sync'),changes:Array.isArray(group.changes)?group.changes:[]});
-      await verifyGroup(group);
+      await callLegger('saveLeggerNilai',{kelas:group.kelas,tahunAjaran:group.tahunAjaran,semester:group.semester,mapel:group.mapel,dicatatOleh:String(u?.nama||u?.name||'CQlass'),username:String(u?.username||'system_sync'),changes:Array.isArray(group.changes)?group.changes:[]});
       await queueReq('ack',{items:group.items||[]});
       return true;
-    }catch(err){
-      try{await queueReq('fail',{items:group.items||[],error:String(err?.message||err||'sync_failed')})}catch(_){}
-      return false;
-    }
+    }catch(err){try{await queueReq('fail',{items:group.items||[],error:String(err?.message||err||'sync_failed')})}catch(_){}return false}
   }
   async function drain(){
     if(draining||!navigator.onLine||!getToken())return;
@@ -69,36 +43,12 @@
         for(const group of groups)await syncGroup(group);
         if(Number(claimed.count||0)<CLAIM_LIMIT)break;
       }
-    }catch(err){console.warn('Legger drain tertunda:',err)}finally{draining=false}
-  }
-  function installAcademicHook(){
-    if(typeof academicGridSave!=='function'||academicGridSave.__leggerGoogleHook)return false;
-    const original=academicGridSave;
-    const wrapped=async function(){
-      const before=getState();const hadChanges=Boolean(before?.dirty?.size);
-      await original.apply(this,arguments);
-      const after=getState();if(hadChanges&&after?.dirty?.size===0)setTimeout(()=>void drain(),0);
-    };
-    wrapped.__leggerGoogleHook=true;window.academicGridSave=wrapped;return true;
-  }
-  function ensureFastSave(){
-    if(window.CQlassAcademicFastSave)return;
-    if(document.querySelector('script[data-cqlass-fast-save]'))return;
-    const s=document.createElement('script');s.src='academic-fast-save.js?v=20260905-fast1';s.dataset.cqlassFastSave='1';document.head.appendChild(s);
-  }
-  function enhanceMonitoringUI(){
-    const old=document.getElementById('ll-xls');if(old)old.remove();
-    const anchor=document.getElementById('am-load')||document.getElementById('ll-load');
-    if(anchor&&!document.getElementById('am-google-sheet')){const a=document.createElement('a');a.id='am-google-sheet';a.className='btn btn-sm';a.href=SHEET_URL;a.target='_blank';a.rel='noopener';a.textContent='Buka Legger Nilai';a.style.textDecoration='none';anchor.insertAdjacentElement('afterend',a)}
+    }catch(err){console.warn('Legger sync:',err)}finally{draining=false}
   }
   function start(){
-    ensureFastSave();
-    let tries=0;const hookTimer=setInterval(()=>{tries++;if(installAcademicHook()||tries>80)clearInterval(hookTimer)},500);
-    enhanceMonitoringUI();
-    const content=document.getElementById('content');if(content)new MutationObserver(enhanceMonitoringUI).observe(content,{childList:true,subtree:true});
-    window.addEventListener('online',()=>void drain());
+    setTimeout(()=>void drain(),1200);
     setInterval(()=>void drain(),15000);
-    setTimeout(()=>void drain(),800);
+    window.addEventListener('online',()=>void drain());
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
   window.CQlassLeggerGoogleSync={drain,open:()=>window.open(SHEET_URL,'_blank','noopener')};
