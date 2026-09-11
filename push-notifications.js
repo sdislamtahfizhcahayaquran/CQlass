@@ -41,7 +41,6 @@
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPABASE_PUBLISHABLE_KEY,
-        'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         'x-session-token':token
       },
       body:JSON.stringify({action, ...payload})
@@ -124,7 +123,6 @@
       return false;
     }
 
-    // Check backend readiness before browser permission prompt.
     const status=await api('status');
     if(!status?.configured || !status?.public_key) throw new Error('push_backend_not_configured');
 
@@ -200,7 +198,6 @@
     }
   }
 
-  // Add lightweight PWA metadata dynamically; no permission prompt is triggered here.
   function installPwaMeta(){
     if(!document.querySelector('link[rel="manifest"]')){
       const link=document.createElement('link');
