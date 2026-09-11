@@ -12,7 +12,7 @@
   const API=BASE+'/functions/v1/internal-reporting';
   const REPORTER_ROLES=['walas'];
   const RECEIVER_ROLES=['sapras','kesiswaan'];
-  const state={type:'SAPRAS',photo:null,preview:'',busy:false,mine:[],inbox:[]};
+  const state={type:'SAPRAS',photo:null,preview:'',description:'',requested:'',busy:false,mine:[],inbox:[]};
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const role=()=>{try{return String(currentUser?.role||'').toLowerCase()}catch(_){return ''}};
@@ -147,8 +147,8 @@
         <div class="cq-ir-route"><span>●</span><span>${state.type==='SAPRAS'?'Laporan fasilitas/sarana-prasarana':'Saran atau masukan non-sapras'} akan otomatis masuk ke <strong>${targetLabel(state.type)}</strong>.</span></div>
         <div style="font-size:12px;color:#718987;margin:11px 0 17px">Pengirim: <strong>${name}</strong>${kelas?' · '+kelas:''} · Tanggal/jam direkam otomatis oleh sistem saat dikirim.</div>
         <div class="cq-ir-grid">
-          <div class="cq-ir-field full"><label>${state.type==='SAPRAS'?'Deskripsi masalah/kondisi':'Deskripsi saran atau masukan'} <span class="cq-ir-required">*</span></label><textarea id="cq-ir-description" placeholder="${state.type==='SAPRAS'?'Jelaskan kerusakan, kondisi, lokasi, atau masalah secara detail...':'Jelaskan saran, masukan, atau hal yang perlu diperhatikan secara jelas...'}"></textarea></div>
-          <div class="cq-ir-field full"><label>Harapan yang diinginkan <span class="cq-ir-required">*</span></label><textarea id="cq-ir-requested" placeholder="Tuliskan perbaikan, solusi, atau tindak lanjut yang diharapkan..."></textarea></div>
+          <div class="cq-ir-field full"><label>${state.type==='SAPRAS'?'Deskripsi masalah/kondisi':'Deskripsi saran atau masukan'} <span class="cq-ir-required">*</span></label><textarea id="cq-ir-description" placeholder="${state.type==='SAPRAS'?'Jelaskan kerusakan, kondisi, lokasi, atau masalah secara detail...':'Jelaskan saran, masukan, atau hal yang perlu diperhatikan secara jelas...'}">${esc(state.description)}</textarea></div>
+          <div class="cq-ir-field full"><label>Harapan yang diinginkan <span class="cq-ir-required">*</span></label><textarea id="cq-ir-requested" placeholder="Tuliskan perbaikan, solusi, atau tindak lanjut yang diharapkan...">${esc(state.requested)}</textarea></div>
           <div class="cq-ir-field full"><label>${state.type==='SAPRAS'?'Foto kondisi/kerusakan':'Foto pendukung'} ${state.type==='SAPRAS'?'<span class="cq-ir-required">*</span>':'<span class="cq-ir-help">(opsional)</span>'}</label>
             <input id="cq-ir-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
             <label class="cq-ir-upload" for="cq-ir-file">${state.preview?`<img class="cq-ir-upload-preview" src="${state.preview}" alt="Preview foto">`:'<span class="cq-ir-upload-icon">📷</span>'}<span><strong>${state.preview?'Foto siap dikirim':'Pilih / ambil foto'}</strong><br><span class="cq-ir-help">Foto otomatis diperkecil agar ringan sebelum dikirim.</span></span></label>
@@ -165,9 +165,18 @@
     return `<div class="cq-ir-list">${state.mine.map(r=>`<div class="cq-ir-row"><div class="cq-ir-row-head"><div><div class="cq-ir-ticket">${esc(r.ticket_no||'Laporan')} · ${typeLabel(r.report_type)}</div><div class="cq-ir-meta">${formatDate(r.created_at)}${r.location?' · '+esc(r.location):''} · Tujuan: ${targetLabel(r.report_type)}</div></div><span class="cq-ir-badge ${statusClass(r.status)}">${statusLabel(r.status)}</span></div><p><strong>Deskripsi:</strong> ${esc(r.description)}</p><p><strong>Harapan:</strong> ${esc(r.requested_action)}</p>${r.photo_signed_url?`<a class="cq-ir-photo" href="${esc(r.photo_signed_url)}" target="_blank" rel="noopener">Lihat foto ↗</a>`:''}${r.resolution_note?`<p><strong>Catatan penyelesaian:</strong> ${esc(r.resolution_note)}</p>`:''}</div>`).join('')}</div>`;
   }
 
+  function syncReporterDraft(content){
+    const description=content?.querySelector('#cq-ir-description');
+    const requested=content?.querySelector('#cq-ir-requested');
+    if(description)state.description=description.value;
+    if(requested)state.requested=requested.value;
+  }
+
   function bindReporter(content){
-    content.querySelectorAll('[data-ir-type]').forEach(b=>b.onclick=()=>{state.type=b.dataset.irType;state.photo=null;state.preview='';renderReporter(content)});
-    const f=content.querySelector('#cq-ir-file'); if(f)f.onchange=async()=>{const file=f.files?.[0];if(!file)return;try{state.photo=await compressImage(file);state.preview=state.photo.preview;renderReporter(content)}catch(e){toast(e.message||'Foto gagal diproses.',true)}};
+    content.querySelectorAll('[data-ir-type]').forEach(b=>b.onclick=()=>{state.type=b.dataset.irType;state.photo=null;state.preview='';state.description='';state.requested='';renderReporter(content)});
+    const description=content.querySelector('#cq-ir-description');if(description)description.oninput=()=>{state.description=description.value};
+    const requested=content.querySelector('#cq-ir-requested');if(requested)requested.oninput=()=>{state.requested=requested.value};
+    const f=content.querySelector('#cq-ir-file'); if(f)f.onchange=async()=>{const file=f.files?.[0];if(!file)return;syncReporterDraft(content);try{state.photo=await compressImage(file);state.preview=state.photo.preview;renderReporter(content)}catch(e){toast(e.message||'Foto gagal diproses.',true)}};
     const submit=content.querySelector('#cq-ir-submit'); if(submit)submit.onclick=()=>submitReport(content);
   }
 
@@ -177,8 +186,9 @@
 
   async function submitReport(content){
     if(state.busy)return;
-    const description=String(content.querySelector('#cq-ir-description')?.value||'').trim();
-    const requested=String(content.querySelector('#cq-ir-requested')?.value||'').trim();
+    syncReporterDraft(content);
+    const description=String(state.description||'').trim();
+    const requested=String(state.requested||'').trim();
     if(description.length<5)return toast('Mohon isi deskripsi laporan dengan lebih jelas.',true);
     if(requested.length<3)return toast('Mohon isi harapan yang diinginkan.',true);
     if(state.type==='SAPRAS'&&!state.photo)return toast('Foto wajib untuk laporan Sapras.',true);
@@ -186,7 +196,7 @@
     try{
       await req('create',{report_type:state.type,description,requested_action:requested,photo_base64:state.photo?.base64||'',photo_mime:state.photo?.mime||''});
       toast(`Laporan berhasil dikirim ke ${targetLabel(state.type)}.`);
-      state.photo=null;state.preview='';state.busy=false;renderReporter(content);
+      state.photo=null;state.preview='';state.description='';state.requested='';state.busy=false;renderReporter(content);
     }catch(e){state.busy=false;const map={photo_required:'Foto wajib untuk laporan Sapras.',photo_too_large:'Foto masih terlalu besar. Coba gunakan foto lain.',forbidden:'Sesi tidak memiliki izin untuk mengirim laporan.'};toast(map[e.message]||'Laporan gagal dikirim. Silakan coba lagi.',true);if(btn){btn.disabled=false;btn.textContent='Kirim Laporan'}}
   }
 
