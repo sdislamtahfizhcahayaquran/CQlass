@@ -60,9 +60,10 @@
     if(!btn) return;
     btn.dataset.state=state;
     if(state==='active'){
-      btn.innerHTML='<span aria-hidden="true">✓</span><span>Notif HP</span>';
-      btn.title='Notifikasi HP aktif. Klik untuk kirim tes.';
+      btn.innerHTML='<span aria-hidden="true">✓</span><span>Notif Aktif</span>';
+      btn.title='Notifikasi CQlass aktif di perangkat ini. Notifikasi berikutnya masuk otomatis.';
       btn.style.background='rgba(255,255,255,.18)';
+      btn.style.opacity='1';
     }else if(state==='blocked'){
       btn.innerHTML='<span aria-hidden="true">×</span><span>Notif HP</span>';
       btn.title='Notifikasi diblokir browser';
@@ -151,10 +152,10 @@
 
     if(sendTest){
       const result=await api('test');
-      if(result?.sent>0) showToast?.('Notifikasi HP aktif. Notifikasi tes sudah dikirim.');
-      else showToast?.('Notifikasi HP tersimpan, tetapi tes belum terkirim.', true);
+      if(result?.sent>0) showToast?.('Notifikasi aktif. Setelah ini notifikasi CQlass masuk otomatis.');
+      else showToast?.('Notifikasi tersimpan, tetapi tes belum terkirim.', true);
     }else{
-      showToast?.('Notifikasi HP aktif.');
+      showToast?.('Notifikasi aktif. Setelah ini notifikasi CQlass masuk otomatis.');
     }
     return true;
   }
@@ -179,9 +180,7 @@
     }
     try{
       if(btn?.dataset.state==='active'){
-        const result=await api('test');
-        if(result?.sent>0) showToast?.('Notifikasi tes sudah dikirim ke perangkat ini.');
-        else showToast?.('Belum ada subscription aktif untuk perangkat ini.', true);
+        showToast?.('Notifikasi sudah aktif. Tidak perlu ditekan lagi; pemberitahuan berikutnya masuk otomatis.');
       }else{
         await enablePush(true);
       }
