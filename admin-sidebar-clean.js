@@ -30,7 +30,8 @@
     dashboard:'<svg viewBox="0 0 24 24"><path d="M4 13h7V4H4zM13 20h7v-9h-7zM4 20h7v-5H4zM13 9h7V4h-7z"/></svg>',
     master:'<svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
     users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-4 2.5-6 6-6s6 2 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15 15c3 0 5 1.6 5 5"/></svg>',
-    students:'<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>'
+    students:'<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>',
+    uks:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>'
   };
 
   function button(id,label,icon,onclick){
@@ -50,7 +51,8 @@
       ${button('data-master','Data Master',icons.master,"openCleanAdminMaster()")}
       ${button('users','Guru & Pengguna',icons.users,"openCleanAdminUsers()")}
       ${button('students','Siswa & Kelas',icons.students,"openCleanAdminStudents()")}
-      <div class="cq-admin-note">Admin mengelola master, akun, role, siswa, kelas, jadwal, dan kalender. Input operasional tetap dikerjakan role masing-masing.</div>
+      ${button('uks','Jadwal UKS',icons.uks,"openCleanAdminUks()")}
+      <div class="cq-admin-note">Admin mengelola master, akun, role, siswa, kelas, jadwal, kalender, dan petugas UKS. Input operasional tetap dikerjakan role masing-masing.</div>
     </div>`;
     return true;
   }
@@ -104,6 +106,21 @@
     window.location.href='master-data.html';
   };
 
+  window.openCleanAdminUks=function(){
+    if(!isAdmin()) return;
+    setActive('uks');
+    try{if(typeof activeModule!=='undefined') activeModule='admin-uks'}catch(_){ }
+    const c=document.getElementById('content');
+    if(!c) return;
+    if(typeof window.renderAdminUksSchedule==='function') return window.renderAdminUksSchedule(c);
+    c.innerHTML='<div class="card">Memuat pengaturan UKS...</div>';
+    let n=0;const t=setInterval(()=>{
+      if(typeof window.renderAdminUksSchedule==='function'){
+        clearInterval(t);window.renderAdminUksSchedule(c);
+      }else if(++n>40){clearInterval(t);c.innerHTML='<div class="card">Pengaturan UKS belum dapat dimuat. Silakan muat ulang halaman.</div>'}
+    },100);
+  };
+
   if(typeof renderSidebar==='function'){
     const originalRenderSidebar=renderSidebar;
     renderSidebar=function(){
@@ -125,4 +142,13 @@
   });
 
   window.__cqAdminSidebarClean=true;
+})();
+
+/* Admin UKS schedule editor */
+(function(){
+  if(document.querySelector('script[data-cq-admin-uks]')) return;
+  const s=document.createElement('script');
+  s.src='admin-uks-schedule.js?v=20260914-uksadmin1';
+  s.dataset.cqAdminUks='1';
+  document.head.appendChild(s);
 })();
