@@ -128,7 +128,14 @@
 (function(){
   if(document.querySelector('script[data-cq-uks-duty]')) return;
   const s=document.createElement('script');
-  s.src='uks-duty.js?v=20260914-uks1';
+  s.src='uks-duty.js?v=20260914-uks2';
   s.dataset.cqUksDuty='1';
+  s.onload=function(){
+    if(document.querySelector('script[data-cq-uks-camera-compat]')) return;
+    const c=document.createElement('script');
+    c.src='uks-camera-compat.js?v=20260914-camera1';
+    c.dataset.cqUksCameraCompat='1';
+    document.head.appendChild(c);
+  };
   document.head.appendChild(s);
 })();
