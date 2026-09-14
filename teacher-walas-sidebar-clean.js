@@ -123,3 +123,12 @@
   else install();
   window.__cqTeacherWalasSidebarClean=true;
 })();
+
+/* Load realtime UKS duty report after the teacher/walas menu structure is ready. */
+(function(){
+  if(document.querySelector('script[data-cq-uks-duty]')) return;
+  const s=document.createElement('script');
+  s.src='uks-duty.js?v=20260914-uks1';
+  s.dataset.cqUksDuty='1';
+  document.head.appendChild(s);
+})();
