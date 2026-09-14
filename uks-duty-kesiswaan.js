@@ -1,0 +1,60 @@
+/* CQlass — UKS duty inbox for Kesiswaan */
+(function(){
+  'use strict';
+  if(window.__cqUksDutyKesiswaan) return;
+  window.__cqUksDutyKesiswaan=true;
+
+  const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
+  const KEY=(typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'');
+  const API=BASE+'/functions/v1/uks-duty';
+  const MODULE_ID='uks-duty-inbox';
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]||m));
+  const role=()=>{try{return String(currentUser?.role||'').toLowerCase()}catch(_){return ''}};
+  const token=()=>{try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){return ''}};
+  const fmt=v=>{try{return new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date(v))+' WIB'}catch(_){return String(v||'')}};
+  const day=n=>({1:'Senin',2:'Selasa',3:'Rabu',4:'Kamis',5:'Jumat',6:'Sabtu',7:'Ahad'}[Number(n)]||'-');
+  const hm=v=>String(v||'').slice(0,5).replace(':','.');
+
+  function headers(){const h={'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY};const t=token();if(t)h['x-session-token']=t;return h}
+  async function req(payload={}){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify({action:'inbox',...payload})});const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw new Error(d.error||'request_failed');return d}
+
+  function ensureMenu(){
+    if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
+    let g=MODULE_GROUPS.find(x=>x&&x.id==='laporan');
+    if(!g){g={id:'laporan',label:'Laporan',roles:[],items:[]};MODULE_GROUPS.push(g)}
+    if(!Array.isArray(g.roles))g.roles=[];if(!g.roles.includes('kesiswaan'))g.roles.push('kesiswaan');
+    if(!Array.isArray(g.items))g.items=[];
+    let it=g.items.find(x=>x&&x.id===MODULE_ID);
+    if(!it){it={id:MODULE_ID,label:'Laporan Jaga UKS',roles:['kesiswaan'],built:true,render:renderInbox};g.items.push(it)}
+    else Object.assign(it,{label:'Laporan Jaga UKS',roles:['kesiswaan'],built:true,render:renderInbox});
+    return true;
+  }
+
+  function css(){
+    if(document.getElementById('cq-uks-kes-css'))return;
+    const s=document.createElement('style');s.id='cq-uks-kes-css';s.textContent=`
+      .cq-uksk{max-width:1150px;margin:0 auto;padding:2px 0 28px}.cq-uksk-head{background:linear-gradient(135deg,#0d6663,#148f86);color:#fff;border-radius:22px;padding:23px 25px;margin-bottom:15px}.cq-uksk-head h1{margin:2px 0 5px;font-size:26px}.cq-uksk-head p{margin:0;font-size:12px;opacity:.86}.cq-uksk-card{background:#fff;border:1px solid #dfeceb;border-radius:16px;padding:16px;margin-bottom:12px}.cq-uksk-row{display:grid;grid-template-columns:135px 1fr auto;gap:14px;align-items:center}.cq-uksk-photo{width:135px;height:95px;border-radius:12px;object-fit:cover;background:#eef5f4}.cq-uksk-name{font-size:14px;font-weight:900;color:#1a403e}.cq-uksk-meta{font-size:11px;color:#708986;line-height:1.55;margin-top:4px}.cq-uksk-badge{font-size:10px;font-weight:900;padding:6px 9px;border-radius:999px;background:#e9f7f4;color:#176e68}.cq-uksk-empty{text-align:center;padding:34px 15px;color:#79918e}.cq-uksk-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.cq-uksk-btn{border:0;border-radius:11px;background:#edf7f5;color:#176e68;padding:9px 12px;font-weight:800;cursor:pointer}
+      @media(max-width:700px){.cq-uksk-head{border-radius:17px;padding:18px}.cq-uksk-row{grid-template-columns:90px 1fr}.cq-uksk-photo{width:90px;height:72px}.cq-uksk-badge{grid-column:2;justify-self:start}.cq-uksk-card{padding:12px}}
+    `;document.head.appendChild(s);
+  }
+
+  async function renderInbox(content){
+    css();
+    content.innerHTML=`<div class="cq-uksk"><div class="cq-uksk-head"><div style="font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;opacity:.72">Kesiswaan · UKS</div><h1>Laporan Jaga UKS</h1><p>Foto bukti jaga UKS dari guru piket, tercatat otomatis berdasarkan shift.</p></div><div class="cq-uksk-card">Memuat laporan...</div></div>`;
+    try{
+      const d=await req({limit:120});const rows=d.reports||[];
+      content.innerHTML=`<div class="cq-uksk"><div class="cq-uksk-head"><div style="font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;opacity:.72">Kesiswaan · UKS</div><h1>Laporan Jaga UKS</h1><p>Foto bukti jaga UKS dari guru piket, tercatat otomatis berdasarkan shift.</p></div><div class="cq-uksk-toolbar"><strong>${rows.length} laporan terbaru</strong><button class="cq-uksk-btn" type="button" onclick="window.renderUksKesiswaanInbox(document.getElementById('content'))">Muat Ulang</button></div>${rows.length?rows.map(r=>`<div class="cq-uksk-card"><div class="cq-uksk-row">${r.photo_signed_url?`<a href="${esc(r.photo_signed_url)}" target="_blank" rel="noopener"><img class="cq-uksk-photo" src="${esc(r.photo_signed_url)}" alt="Foto jaga UKS"></a>`:'<div class="cq-uksk-photo"></div>'}<div><div class="cq-uksk-name">${esc(r.teacher_name||'Guru')}</div><div class="cq-uksk-meta">${day(r.weekday)}, ${esc(r.duty_date||'')} · Shift ${Number(r.shift_no)||'-'} · ${hm(r.scheduled_start)}–${hm(r.scheduled_end)}<br>Dikirim ${fmt(r.captured_at||r.created_at)}</div></div><span class="cq-uksk-badge">Terkirim</span></div></div>`).join(''):`<div class="cq-uksk-card cq-uksk-empty">Belum ada laporan jaga UKS.</div>`}</div>`;
+    }catch(e){content.innerHTML=`<div class="cq-uksk"><div class="cq-uksk-card cq-uksk-empty">Laporan UKS belum dapat dimuat.</div></div>`}
+  }
+
+  window.renderUksKesiswaanInbox=renderInbox;
+
+  function install(){
+    ensureMenu();
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqUksKes){
+      const base=renderSidebar;const wrapped=function(){ensureMenu();return base.apply(this,arguments)};wrapped.__cqUksKes=true;renderSidebar=wrapped;
+    }
+    try{if(role()==='kesiswaan'&&typeof renderSidebar==='function')renderSidebar()}catch(_){ }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+})();
