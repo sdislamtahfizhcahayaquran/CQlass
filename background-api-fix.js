@@ -48,7 +48,7 @@
   window.__cqBackgroundApiFixInstalled=true;
 })();
 
-/* Load profile dropdown first, then push permission helper. */
+/* Load profile dropdown, push helper, and critical reminder center. */
 (function(){
   'use strict';
   if(window.__cqShellEnhancementLoaderInstalled) return;
@@ -67,5 +67,14 @@
     push.async=true;
     push.onerror=function(){console.warn('CQlass push client gagal dimuat.')};
     document.head.appendChild(push);
+  }
+
+  if(!window.__cqReminderCenterLoaderInstalled){
+    window.__cqReminderCenterLoaderInstalled=true;
+    const reminder=document.createElement('script');
+    reminder.src='./reminder-center.js?v=20260914-reminder1';
+    reminder.async=true;
+    reminder.onerror=function(){console.warn('CQlass reminder center gagal dimuat.')};
+    document.head.appendChild(reminder);
   }
 })();
