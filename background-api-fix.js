@@ -48,14 +48,24 @@
   window.__cqBackgroundApiFixInstalled=true;
 })();
 
-/* Load CQlass Web Push as an additive, non-blocking enhancement. */
+/* Load profile dropdown first, then push permission helper. */
 (function(){
   'use strict';
-  if(window.__cqPushLoaderInstalled) return;
-  window.__cqPushLoaderInstalled=true;
-  const script=document.createElement('script');
-  script.src='./push-notifications.js?v=20260911-push2';
-  script.async=true;
-  script.onerror=function(){console.warn('CQlass push client gagal dimuat.')};
-  document.head.appendChild(script);
+  if(window.__cqShellEnhancementLoaderInstalled) return;
+  window.__cqShellEnhancementLoaderInstalled=true;
+
+  const profile=document.createElement('script');
+  profile.src='./profile-dropdown.js?v=20260914-profile1';
+  profile.async=false;
+  profile.onerror=function(){console.warn('CQlass profile dropdown gagal dimuat.')};
+  document.head.appendChild(profile);
+
+  if(!window.__cqPushLoaderInstalled){
+    window.__cqPushLoaderInstalled=true;
+    const push=document.createElement('script');
+    push.src='./push-notifications.js?v=20260914-push3';
+    push.async=true;
+    push.onerror=function(){console.warn('CQlass push client gagal dimuat.')};
+    document.head.appendChild(push);
+  }
 })();
