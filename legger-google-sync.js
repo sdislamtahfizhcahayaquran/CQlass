@@ -1,12 +1,13 @@
 /* CQlass — Google Legger sync repair
-   Nilai utama tetap di Supabase. Sinkron ke Google Legger dibuat per nilai
-   supaya Apps Script tidak timeout saat menulis batch besar. */
+   Nilai utama tetap di Supabase. Sinkron ke Google Legger diproses berkelompok
+   agar cepat, tetapi tetap diserialkan oleh antrean backend supaya Apps Script
+   tidak saling berebut LockService. */
 (function(){
   const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
   const QUEUE_URL=BASE+'/functions/v1/legger-sync-queue';
   const SHEET_URL='https://docs.google.com/spreadsheets/d/1g5WfGQtS35kYaK8jU60pFkvFm4B_gy6bO_yg0ivKvRI/edit';
-  const CLAIM_LIMIT=1;
-  const MAX_BATCHES_PER_DRAIN=60;
+  const CLAIM_LIMIT=80;
+  const MAX_BATCHES_PER_DRAIN=20;
   const LEGGER_TIMEOUT_MS=45000;
   let draining=false;
 
