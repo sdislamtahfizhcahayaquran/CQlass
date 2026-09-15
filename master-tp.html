@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Master TP — CQlass</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#f4f8f9;color:#17343a}.top{background:#123f52;color:#fff;padding:17px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px}.top h1{margin:0;font-size:22px}.top p{margin:4px 0 0;font-size:12px;opacity:.82}.back{color:#fff;text-decoration:none;border:1px solid #ffffff55;padding:9px 12px;border-radius:9px;font-weight:800;font-size:12px}.wrap{max-width:1320px;margin:auto;padding:18px}.status{padding:11px 13px;background:#eaf5f4;border:1px solid #d1e8e5;border-radius:10px;font-size:12px;margin-bottom:13px}.status.err{background:#fff0f0;border-color:#f0cccc;color:#a32c2c}.status.ok{background:#edf8f2;border-color:#cce9d7;color:#216341}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.kpi{background:#fff;border:1px solid #dfe9e8;border-radius:13px;padding:12px 14px}.kpi b{display:block;font-size:22px;color:#0b7773}.kpi span{font-size:10.5px;color:#708589}.grid{display:grid;grid-template-columns:.9fr 1.35fr;gap:14px}.panel{background:#fff;border:1px solid #dfe9e8;border-radius:15px;padding:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(18,63,82,.035)}.panel h2{margin:0 0 5px;font-size:17px}.sub{font-size:11px;color:#74898e;line-height:1.55;margin-bottom:13px}.callout{padding:11px 12px;border-radius:10px;background:#fff8e8;border:1px solid #f0dfad;font-size:11px;line-height:1.55;color:#765b13;margin:10px 0}.callout.good{background:#eef8f4;border-color:#cae8da;color:#28684c}.row{display:flex;gap:9px;flex-wrap:wrap;align-items:end}.field{min-width:140px;flex:1}.field label{display:block;font-size:10.5px;font-weight:800;color:#61777b;margin-bottom:5px}.field select,.field input,.field textarea{width:100%;border:1px solid #cbd9d8;border-radius:9px;background:#fff;padding:9px 10px;font:inherit;font-size:12px}.field select,.field input{height:40px}.field textarea{min-height:100px;resize:vertical}.btn{height:40px;border:0;border-radius:9px;background:#0b7773;color:#fff;font-weight:800;padding:0 14px;cursor:pointer}.btn:hover{filter:brightness(.97)}.btn.alt{background:#e8f3f2;color:#0b6d69}.btn.dark{background:#123f52}.btn.warn{background:#a87513}.btn:disabled{opacity:.45;cursor:not-allowed}.file{width:100%;border:1px dashed #b9cecc;border-radius:10px;padding:12px;background:#f9fbfb}.mini{font-size:10.5px;color:#74898e;line-height:1.55}.tablewrap{overflow:auto;border:1px solid #dfe9e7;border-radius:10px;max-height:560px}table{width:100%;border-collapse:collapse;min-width:780px}th,td{font-size:10.5px;padding:8px 9px;border-bottom:1px solid #e6eeee;vertical-align:top;text-align:left}th{position:sticky;top:0;background:#eef5f4;z-index:1;color:#315256}.tpbadge{display:inline-flex;min-width:38px;justify-content:center;padding:4px 7px;border-radius:999px;background:#e8f3f2;color:#0b6d69;font-weight:900}.edit{border:0;background:#eaf1f6;color:#204d65;border-radius:7px;padding:6px 9px;font-weight:800;cursor:pointer}.empty{padding:25px;text-align:center;color:#829497;font-size:12px}.previewstats{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.chip{font-size:10.5px;padding:6px 9px;border-radius:999px;background:#eef5f4;color:#385d5a;font-weight:800}.chip.lock{background:#fff0e8;color:#9a4d20}.modalback{position:fixed;inset:0;background:rgba(8,31,39,.48);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999}.modalback.show{display:flex}.modal{width:min(650px,100%);background:#fff;border-radius:16px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.2)}.modal h3{margin:0 0 5px}.modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.lockedinput{background:#f1f5f5!important;color:#77898c}.sectionhead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:11px}.sectionhead h2{margin:0}.hidden{display:none!important}@media(max-width:900px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.top{align-items:flex-start}.row{align-items:stretch}.field{min-width:calc(50% - 9px)}}@media(max-width:560px){.kpis{grid-template-columns:1fr}.field{min-width:100%}.top h1{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="top"><div><h1>Master Tujuan Pembelajaran</h1><p>Import awal via Excel, lalu kelola perubahan TP secara manual tanpa memutus nilai siswa.</p></div><a class="back" href="./">← CQlass</a></div>
+<div class="wrap">
+  <div id="status" class="status">Memeriksa akses Admin...</div>
+  <div id="kpis" class="kpis"></div>
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <h2>Import TP Awal</h2>
+        <div class="sub">Dipakai saat awal tahun/semester ketika data TP masih kosong. Satu sheet = satu mapel, berisi seluruh kelas yang memiliki mapel tersebut.</div>
+        <div id="lockbox"></div>
+        <div class="row" style="margin:11px 0">
+          <div class="field"><label>Isi Template</label><select id="templateSem"><option value="both">Semester 1 & 2</option><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div>
+          <button class="btn alt" id="downloadTemplate">Download Template Excel</button>
+          <button class="btn dark" id="exportCurrent">Export TP Saat Ini</button>
+        </div>
+        <div class="file"><input id="file" type="file" accept=".xlsx,.xls"><div class="mini" style="margin-top:7px">Kolom standar: <b>Kelas, Semester, Urutan TP, Topik/Materi, Tujuan Pembelajaran</b>. Baris kosong boleh dibiarkan kosong.</div></div>
+        <div class="row" style="margin-top:10px"><button class="btn alt" id="preview">Preview Import</button><button class="btn" id="import" disabled>Import TP Awal</button></div>
+      </div>
+      <div class="panel">
+        <h2>Preview Import</h2>
+        <div id="previewStats" class="previewstats"></div>
+        <div id="previewBox" class="tablewrap"><div class="empty">Belum ada file dipreview.</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="sectionhead"><div><h2>Kelola TP Manual</h2><div class="sub" style="margin:4px 0 0">Untuk perubahan setelah TP sudah dipakai: edit teks/topik atau tambah TP baru.</div></div><button class="btn" id="add">+ Tambah TP</button></div>
+        <div class="row" style="margin-bottom:11px">
+          <div class="field"><label>Semester</label><select id="semester"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div>
+          <div class="field"><label>Kelas</label><select id="grade"><option value="1">Kelas 1</option><option value="2">Kelas 2</option><option value="3">Kelas 3</option><option value="4">Kelas 4</option><option value="5">Kelas 5</option><option value="6">Kelas 6</option></select></div>
+          <div class="field" style="flex:1.5"><label>Mapel</label><select id="subject"></select></div>
+        </div>
+        <div id="listBox" class="tablewrap"><div class="empty">Memuat TP...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="modalBack" class="modalback"><div class="modal">
+  <h3 id="modalTitle">Tambah TP</h3><div class="sub">Mapel dan kelas pada TP yang sudah tersimpan tidak dipindahkan agar relasi nilai tetap aman.</div>
+  <div class="row">
+    <div class="field"><label>Semester</label><select id="mSem"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div>
+    <div class="field"><label>Kelas</label><select id="mGrade"><option value="1">Kelas 1</option><option value="2">Kelas 2</option><option value="3">Kelas 3</option><option value="4">Kelas 4</option><option value="5">Kelas 5</option><option value="6">Kelas 6</option></select></div>
+    <div class="field"><label>Mapel</label><select id="mSubject"></select></div>
+    <div class="field"><label>Urutan TP</label><input id="mOrder" inputmode="numeric" placeholder="1"></div>
+    <div class="field" style="flex-basis:100%"><label>Topik / Materi</label><input id="mTopic" placeholder="Contoh: Sekolahku"></div>
+    <div class="field" style="flex-basis:100%"><label>Tujuan Pembelajaran</label><textarea id="mDesc" placeholder="Tuliskan tujuan pembelajaran..."></textarea></div>
+  </div>
+  <div class="actions"><button class="btn alt" id="cancel">Batal</button><button class="btn" id="save">Simpan TP</button></div>
+</div></div>
+<script>
+const URL='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/admin-master-tp';
+const KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
+const TOKEN=localStorage.getItem('cqlass_session_token')||'';
+const $=id=>document.getElementById(id);let boot=null,current=[],parsed=[],previewResult=null,editId='';
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function st(t,type=''){const el=$('status');el.textContent=t;el.className='status'+(type?' '+type:'')}
+async function api(body){
+  if(!TOKEN)throw Error('Sesi CQlass tidak ditemukan. Login ulang dari halaman utama.');
+  const r=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.success===false){const e=new Error(j.error||'Proses gagal.');e.payload=j;e.status=r.status;throw e}return j;
+}
+function canonical(v){const x=String(v||'').toLowerCase().replace(/[._-]+/g,' ').replace(/\s+/g,' ').trim();if(x==='pkn'||x.includes('pancasila'))return'Pancasila';if(x.includes('sospan')||x==='sosial'||x.includes('ilmu sosial'))return'Sosial';if(x.includes('bahasa indonesia')||x==='b indo'||x==='bindo'||x==='bahasa')return'Bahasa Indonesia';if(x.includes('bahasa inggris')||x.includes('english')||x==='b inggris')return'Bahasa Inggris';if(x.includes('bahasa arab')||x==='b arab'||x==='arab')return'Bahasa Arab';if(x.includes('bahasa sunda')||x==='sunda')return'Bahasa Sunda';if(x.includes('matematika')||x==='math')return'Matematika';if(x.includes('akidah')||x.includes('aqidah'))return'Akidah';if(x.includes('akhlak')||x==='adab')return'Akhlak';if(x.includes('fikih')||x.includes('fiqih'))return'Fikih';if(x.includes('hadits')||x.includes('hadist'))return'Hadits';if(x.includes('siroh')||x.includes('sirah'))return'Siroh';if(x.includes('sains')||x==='science')return'Sains';if(x.includes('pjok')||x.includes('penjas'))return'PJOK';return String(v||'').trim()}
+function gradeVal(v){const m=String(v??'').match(/[1-6]/);return m?+m[0]:0}function semVal(v){const m=String(v??'').match(/[12]/);return m?+m[0]:0}function orderVal(v){const m=String(v??'').match(/\d+/);return m?+m[0]:0}
+function pick(o,names){for(const k of Object.keys(o)){const nk=k.toLowerCase().replace(/[^a-z0-9]/g,'');if(names.includes(nk))return o[k]}return''}
+function groupFor(name){return (boot?.subjects||[]).find(x=>x.name===canonical(name))}
+function subjectFor(name,grade){return groupFor(name)?.grades.find(x=>+x.grade_level===+grade)}
+function renderBoot(){
+  $('kpis').innerHTML=`<div class="kpi"><b>${esc(boot.academic_year)}</b><span>Tahun Ajaran Aktif</span></div><div class="kpi"><b>${boot.subjects.length}</b><span>Mapel Template</span></div><div class="kpi"><b>${boot.counts.semester_1}</b><span>TP Aktif Semester 1</span></div><div class="kpi"><b>${boot.counts.semester_2}</b><span>TP Aktif Semester 2</span></div>`;
+  const s1=boot.import_locked['1'],s2=boot.import_locked['2'];
+  $('lockbox').innerHTML=`<div class="callout ${!s1&&!s2?'good':''}"><b>Status import awal:</b><br>Semester 1: ${s1?'🔒 terkunci — sudah ada '+boot.counts.total_semester_1+' data TP':'✅ masih kosong, boleh import'}<br>Semester 2: ${s2?'🔒 terkunci — sudah ada '+boot.counts.total_semester_2+' data TP':'✅ masih kosong, boleh import'}<br><span class="mini">Semester yang sudah memiliki data hanya dikelola lewat Tambah/Edit manual.</span></div>`;
+  $('semester').value=String(boot.active_semester||1);fillSubjects();
+}
+function fillSubjects(target='subject',gradeId='grade',selected=''){
+  const grade=+$(`${gradeId}`).value,sel=$(`${target}`),groups=(boot?.subjects||[]).filter(g=>g.grades.some(x=>+x.grade_level===grade));
+  sel.innerHTML=groups.map(g=>{const s=g.grades.find(x=>+x.grade_level===grade);return `<option value="${s.subject_id}" data-name="${esc(g.name)}">${esc(g.name)}</option>`}).join('');
+  if(selected&&[...sel.options].some(o=>o.value===selected))sel.value=selected;
+}
+async function init(){try{boot=await api({action:'bootstrap'});renderBoot();await loadList();st('Master TP siap. Import massal dilindungi agar tidak menimpa TP yang sudah berjalan.','ok')}catch(e){st(e.message,'err')}}
+function templateSemesters(){const v=$('templateSem').value;return v==='both'?[1,2]:[+v]}
+function downloadTemplate(){if(!boot)return;const wb=XLSX.utils.book_new(),sems=templateSemesters();for(const g of boot.subjects){const rows=[];for(const gr of g.grades)for(const sem of sems)for(let i=1;i<=7;i++)rows.push({'Kelas':gr.grade_level,'Semester':sem,'Urutan TP':'TP'+i,'Topik/Materi':'','Tujuan Pembelajaran':''});const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:10},{wch:11},{wch:12},{wch:30},{wch:85}];XLSX.utils.book_append_sheet(wb,ws,g.name.slice(0,31))}XLSX.writeFile(wb,`Template_TP_CQlass_${String(boot.academic_year).replace(/\//g,'-')}.xlsx`)}
+async function exportCurrent(){try{st('Menyiapkan export TP...');const sem=+$('semester').value,j=await api({action:'list_objectives',semester_no:sem}),wb=XLSX.utils.book_new();for(const g of boot.subjects){const items=j.items.filter(x=>canonical(x.subjects?.name)===g.name);if(!items.length)continue;const rows=items.map(x=>({'Kelas':x.grade_level,'Semester':x.semester_no,'Urutan TP':'TP'+x.sort_order,'Topik/Materi':x.topic||'','Tujuan Pembelajaran':x.description||''}));const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:10},{wch:11},{wch:12},{wch:30},{wch:85}];XLSX.utils.book_append_sheet(wb,ws,g.name.slice(0,31))}XLSX.writeFile(wb,`Master_TP_CQlass_${String(boot.academic_year).replace(/\//g,'-')}_S${sem}.xlsx`);st('Export TP selesai.','ok')}catch(e){st(e.message,'err')}}
+async function parseFile(){const f=$('file').files[0];if(!f)throw Error('Pilih file Excel TP terlebih dahulu.');const ab=await f.arrayBuffer(),wb=XLSX.read(ab,{type:'array',cellDates:false});const out=[];for(const sn of wb.SheetNames){const ws=wb.Sheets[sn],rows=XLSX.utils.sheet_to_json(ws,{defval:''});rows.forEach((r,i)=>{const desc=String(pick(r,['tujuanpembelajaran','tp','deskripsi','description'])).trim();if(!desc)return;out.push({sheet_name:sn,subject_name:sn,row_no:i+2,grade_level:gradeVal(pick(r,['kelas','grade','gradelevel'])),semester_no:semVal(pick(r,['semester','semesterno','sem'])),sort_order:orderVal(pick(r,['urutantp','urutan','sortorder','nomortp','tpke'])),topic:String(pick(r,['topikmateri','topik','materi','topic'])).trim(),description:desc})})}if(!out.length)throw Error('Tidak ada Tujuan Pembelajaran yang terisi di file.');return out}
+function drawPreview(data){previewResult=data;const stats=[];for(const [sem,x] of Object.entries(data.semester_status||{}))stats.push(`<span class="chip ${x.locked?'lock':''}">S${sem}: ${x.rows} TP · ${x.locked?'TERKUNCI ('+x.existing+' sudah ada)':'siap import'}</span>`);$('previewStats').innerHTML=stats.join('');const arr=data.preview||[];$('previewBox').innerHTML=arr.length?`<table><thead><tr><th>Mapel</th><th>Kelas</th><th>Sem</th><th>TP</th><th>Topik</th><th>Tujuan Pembelajaran</th></tr></thead><tbody>${arr.slice(0,120).map(x=>`<tr><td>${esc(x.subject_name)}</td><td>${x.grade_level}</td><td>${x.semester_no}</td><td><span class="tpbadge">TP${x.sort_order}</span></td><td>${esc(x.topic||'—')}</td><td>${esc(x.description)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Tidak ada baris valid.</div>';const hasLocked=Object.values(data.semester_status||{}).some(x=>x.locked);$('import').disabled=!arr.length||hasLocked}
+async function preview(){try{parsed=await parseFile();st(`Memvalidasi ${parsed.length} TP...`);const j=await api({action:'preview_import',items:parsed});drawPreview(j);st(`Preview valid: ${j.row_count} TP terbaca.`,'ok')}catch(e){previewResult=e.payload||null;$('import').disabled=true;const errs=e.payload?.errors||[e.message];$('previewStats').innerHTML='<span class="chip lock">File perlu diperbaiki</span>';$('previewBox').innerHTML=`<div style="padding:12px;font-size:11px;color:#9a2f2f;line-height:1.65">${errs.slice(0,40).map(x=>'• '+esc(x)).join('<br>')}</div>`;st(e.message,'err')}}
+async function doImport(){try{if(!parsed.length)parsed=await parseFile();if(!confirm(`Import ${parsed.length} TP ke CQlass? Import awal tidak dapat dipakai untuk menimpa semester yang sudah berisi TP.`))return;st('Mengimport TP awal...');const j=await api({action:'import_initial',items:parsed,file_name:$('file').files[0]?.name||'Template TP CQlass'});st(`Import berhasil: ${j.inserted} TP masuk ke semester ${j.semesters.join(', ')}.`,'ok');parsed=[];previewResult=null;$('file').value='';$('import').disabled=true;await init()}catch(e){st(e.message,'err')}}
+async function loadList(){try{const sem=+$('semester').value,grade=+$('grade').value,subjectId=$('subject').value;if(!subjectId){$('listBox').innerHTML='<div class="empty">Tidak ada mapel untuk kelas ini.</div>';return}const j=await api({action:'list_objectives',semester_no:sem,grade_level:grade,subject_id:subjectId});current=j.items||[];drawList()}catch(e){$('listBox').innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
+function drawList(){if(!current.length){$('listBox').innerHTML='<div class="empty">Belum ada TP untuk pilihan ini. Klik <b>+ Tambah TP</b>.</div>';return}$('listBox').innerHTML=`<table><thead><tr><th style="width:65px">TP</th><th style="width:180px">Topik / Materi</th><th>Tujuan Pembelajaran</th><th style="width:65px"></th></tr></thead><tbody>${current.map(x=>`<tr><td><span class="tpbadge">TP${x.sort_order}</span></td><td>${esc(x.topic||'—')}</td><td>${esc(x.description)}</td><td><button class="edit" data-id="${x.id}">Edit</button></td></tr>`).join('')}</tbody></table>`;document.querySelectorAll('.edit').forEach(b=>b.onclick=()=>openEdit(b.dataset.id))}
+function openAdd(){editId='';$('modalTitle').textContent='Tambah TP';$('mSem').disabled=false;$('mGrade').disabled=false;$('mSubject').disabled=false;$('mSem').classList.remove('lockedinput');$('mGrade').classList.remove('lockedinput');$('mSubject').classList.remove('lockedinput');$('mSem').value=$('semester').value;$('mGrade').value=$('grade').value;fillSubjects('mSubject','mGrade',$('subject').value);$('mOrder').value=(Math.max(0,...current.map(x=>+x.sort_order||0))+1);$('mTopic').value='';$('mDesc').value='';$('modalBack').classList.add('show')}
+function openEdit(id){const x=current.find(y=>y.id===id);if(!x)return;editId=id;$('modalTitle').textContent=`Edit TP${x.sort_order}`;$('mSem').value=x.semester_no;$('mGrade').value=x.grade_level;fillSubjects('mSubject','mGrade',x.subject_id);$('mSubject').value=x.subject_id;[$('mSem'),$('mGrade'),$('mSubject')].forEach(el=>{el.disabled=true;el.classList.add('lockedinput')});$('mOrder').value=x.sort_order;$('mTopic').value=x.topic||'';$('mDesc').value=x.description||'';$('modalBack').classList.add('show')}
+function closeModal(){$('modalBack').classList.remove('show')}
+async function save(force=false){try{const body={action:'save_objective',id:editId||undefined,semester_no:+$('mSem').value,grade_level:+$('mGrade').value,subject_id:$('mSubject').value,sort_order:orderVal($('mOrder').value),topic:$('mTopic').value.trim(),description:$('mDesc').value.trim(),force};if(!body.description)throw Error('Tujuan Pembelajaran wajib diisi.');$('save').disabled=true;await api(body);closeModal();st(editId?'TP berhasil diperbarui.':'TP baru berhasil ditambahkan.','ok');await loadList();boot=await api({action:'bootstrap'});renderBoot()}catch(e){if(e.payload?.warning&&e.payload?.warning_code==='order_has_scores'){if(confirm(e.message+'\n\nTetap ubah urutan TP?'))return save(true)}st(e.message,'err')}finally{$('save').disabled=false}}
+$('downloadTemplate').onclick=downloadTemplate;$('exportCurrent').onclick=exportCurrent;$('preview').onclick=preview;$('import').onclick=doImport;$('add').onclick=openAdd;$('cancel').onclick=closeModal;$('save').onclick=()=>save(false);$('grade').onchange=()=>{fillSubjects();loadList()};$('semester').onchange=loadList;$('subject').onchange=loadList;$('mGrade').onchange=()=>fillSubjects('mSubject','mGrade');$('modalBack').addEventListener('click',e=>{if(e.target===$('modalBack'))closeModal()});init();
+</script>
+</body></html>
