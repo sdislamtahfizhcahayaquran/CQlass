@@ -263,7 +263,7 @@
 (function(){
   if(document.querySelector('script[data-cq-internal-report-center]')) return;
   const s=document.createElement('script');
-  s.src='internal-report-center.js?v=20260911-report1';
+  s.src='internal-report-center.js?v=20260915-sapras-dashboard2';
   s.dataset.cqInternalReportCenter='1';
   document.head.appendChild(s);
 })();
