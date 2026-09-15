@@ -48,7 +48,7 @@
   window.__cqBackgroundApiFixInstalled=true;
 })();
 
-/* Load profile dropdown, push helper, and critical reminder center. */
+/* Load profile dropdown, push helper, critical reminder center, and lightweight role polish. */
 (function(){
   'use strict';
   if(window.__cqShellEnhancementLoaderInstalled) return;
@@ -76,5 +76,14 @@
     reminder.async=true;
     reminder.onerror=function(){console.warn('CQlass reminder center gagal dimuat.')};
     document.head.appendChild(reminder);
+  }
+
+  if(!window.__cqKegiatanPolishLoaderInstalled){
+    window.__cqKegiatanPolishLoaderInstalled=true;
+    const kegiatan=document.createElement('script');
+    kegiatan.src='./kegiatan-role-polish.js?v=20260915-kegiatan-polish1';
+    kegiatan.async=true;
+    kegiatan.onerror=function(){console.warn('CQlass kegiatan polish gagal dimuat.')};
+    document.head.appendChild(kegiatan);
   }
 })();
