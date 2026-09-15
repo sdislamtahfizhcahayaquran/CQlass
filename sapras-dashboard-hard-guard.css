@@ -1,0 +1,4 @@
+/* CQlass Sapras hard-guard companion CSS */
+body:has([data-cq-sapras-dashboard="1"]) .cq-role-hero[data-cq-role-theme="1"]{display:none!important;}
+body:has([data-cq-sapras-dashboard="1"]) #content>.page-title,
+body:has([data-cq-sapras-dashboard="1"]) #content>.page-sub{display:none!important;}
