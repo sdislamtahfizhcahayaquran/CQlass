@@ -2,10 +2,12 @@
    1) Shared typography, sidebar vine, and single building hero for every role.
    2) School logo favicon for every role/page.
    3) Kabid Akademik deterministic header V9 compatibility.
+   4) Sapras dashboard hard guard so generic role dashboard cannot override Sapras.
 */
 (function(){
   'use strict';
-  var THEME='20260910-theme4';
+  var THEME='20260915-theme5';
+  var SAPRAS_FIX='20260915-sapras-hard1';
   var FAVICON='logo_sd.png?v=20260910-favicon1';
 
   function ensureFavicon(){
@@ -76,8 +78,26 @@
     document.head.appendChild(s);
   }
 
+  function ensureSaprasHardGuard(){
+    var css=document.querySelector('link[data-cq-sapras-hard-css]');
+    if(!css){
+      css=document.createElement('link');
+      css.rel='stylesheet';
+      css.href='sapras-dashboard-hard-guard.css?v='+SAPRAS_FIX;
+      css.dataset.cqSaprasHardCss='1';
+      document.head.appendChild(css);
+    }
+    if(window.__CQ_SAPRAS_HARD_GUARD__ || document.querySelector('script[data-cq-sapras-hard-guard]')) return;
+    var s=document.createElement('script');
+    s.src='sapras-dashboard-hard-guard.js?v='+SAPRAS_FIX;
+    s.dataset.cqSaprasHardGuard='1';
+    s.async=false;
+    document.head.appendChild(s);
+  }
+
   ensureFavicon();
   ensureStyle();
   ensureGlobalRuntime();
   ensureAcademicHeader();
+  ensureSaprasHardGuard();
 })();
