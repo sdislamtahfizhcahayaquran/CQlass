@@ -90,7 +90,7 @@
   if(!window.__cqKegiatanSidebarCleanLoaderInstalled){
     window.__cqKegiatanSidebarCleanLoaderInstalled=true;
     const kegiatanSidebar=document.createElement('script');
-    kegiatanSidebar.src='./kegiatan-sidebar-clean.js?v=20260915-kegiatan-sidebar1';
+    kegiatanSidebar.src='./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2';
     kegiatanSidebar.async=true;
     kegiatanSidebar.onerror=function(){console.warn('CQlass kegiatan sidebar cleanup gagal dimuat.')};
     document.head.appendChild(kegiatanSidebar);
