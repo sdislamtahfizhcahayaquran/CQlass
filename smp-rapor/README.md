@@ -4,15 +4,16 @@ Web terpisah untuk pengumpulan nilai PTS SMP dengan pola **download template →
 
 ## Konsep data
 
-Tidak menggunakan Supabase CQlass SD. Penyimpanan file diarahkan ke Google Drive root:
+Tidak menggunakan Supabase CQlass SD. Penyimpanan file khusus SMP menggunakan akun Google Drive:
 
-- Root folder ID: `18ot3_A8wgHJ0KUOTW6mlfdeyVV42k4JG`
+- Akun: `sditcqdepok@gmail.com`
+- Root folder: **Rapor SMP Tahfizhpreneur**
 - `00_MASTER` — file master/template
 - `01_UPLOAD_GURU/<kelas>/<mapel>` — upload guru mapel dan tahfizh
 - `02_UPLOAD_WALAS/<kelas>` — upload wali kelas
 - `03_PDF_RAPOR/<kelas>` — PDF rapor hasil cetak
 
-Folder yang belum ada dibuat otomatis oleh Apps Script saat pertama dipakai.
+**Catatan keamanan:** tidak ada lagi fallback ke folder Drive akun kurikulum. Backend Apps Script hanya membaca root folder dari Script Property `ROOT_FOLDER_ID`. Jika properti itu belum diisi, upload ke Drive akan ditolak agar file tidak pernah tersimpan ke akun yang salah.
 
 ## Tiga format input
 
@@ -24,16 +25,20 @@ Folder yang belum ada dibuat otomatis oleh Apps Script saat pertama dipakai.
 
 Buka `index.html` melalui static hosting. Semua fungsi download template, import, validasi, preview, dan PDF bisa dicoba tanpa backend. Data percobaan tersimpan di `localStorage` browser.
 
-## Menghubungkan Google Drive
+## Menghubungkan Google Drive SMP
 
-1. Buat project baru di Google Apps Script.
-2. Salin isi `apps-script/Code.gs`.
-3. Deploy → **New deployment** → Web app.
-4. Execute as: pemilik akun Drive.
-5. Who has access: akun yang akan menggunakan aplikasi / sesuai kebijakan sekolah.
-6. Salin URL `/exec` ke menu **Pengaturan → Apps Script Web App URL** di web.
+1. Login ke akun `sditcqdepok@gmail.com`.
+2. Buat / gunakan folder **Rapor SMP Tahfizhpreneur**.
+3. Catat ID folder tersebut.
+4. Buat project Google Apps Script dari akun yang sama.
+5. Salin isi `apps-script/Code.gs`.
+6. Buka **Project Settings → Script Properties** lalu buat `ROOT_FOLDER_ID` dengan nilai ID folder SMP.
+7. Deploy → **New deployment** → Web app.
+8. Execute as: pemilik akun Drive SMP.
+9. Who has access: akun yang akan menggunakan aplikasi / sesuai kebijakan sekolah.
+10. Salin URL `/exec` ke menu **Pengaturan → Apps Script Web App URL** di web.
 
-Setelah URL terisi, upload Excel akan tetap digabung ke browser untuk proses rapor sekaligus dikirim ke Google Drive.
+Setelah URL terisi, upload Excel akan tetap digabung ke browser untuk proses rapor sekaligus dikirim ke Google Drive SMP.
 
 ## Format rapor
 
