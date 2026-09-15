@@ -222,7 +222,7 @@
     css.id='cq-reminder-center-css';
     css.textContent=`
       #bell-wrap,.bell-wrap,[data-cq-bell-wrap]{position:relative}
-      .cq-reminder-dot{position:absolute;right:-2px;top:-1px;width:8px;height:8px;border-radius:50%;background:#e65045;box-shadow:0 0 0 2px #fff;z-index:6;pointer-events:none}
+      .cq-reminder-dot{position:absolute;right:0;top:1px;width:5px;height:5px;border-radius:50%;background:#e65045;box-shadow:0 0 0 1px #fff;z-index:6;pointer-events:none}
       .cq-reminder-section{border-top:1px solid rgba(18,105,101,.12);margin-top:7px;padding-top:7px;max-height:360px;overflow:auto}
       .cq-reminder-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 11px;color:#244a49;position:sticky;top:0;background:#fff;z-index:1}
       .cq-reminder-head strong{font-size:12px}.cq-reminder-head span{font-size:10px;color:#78908e}
