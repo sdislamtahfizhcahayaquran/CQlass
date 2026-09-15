@@ -17,6 +17,13 @@
       z.async=false;
       (document.body||document.head).appendChild(z);
     }
+    if(!document.querySelector('script[data-cq-badal-v2]')&&!window.__CQ_BADAL_V2__){
+      const b=document.createElement('script');
+      b.src='academic-badal-v2.js?v=20260915-1';
+      b.dataset.cqBadalV2='1';
+      b.async=false;
+      (document.body||document.head).appendChild(b);
+    }
   }
   if(document.readyState==='complete') setTimeout(loadFinal,0);
   else window.addEventListener('load',()=>setTimeout(loadFinal,0),{once:true});
