@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#173b72" />
+  <title>Rapor PTS SMP Tahfizhpreneur Cahaya Qur'an</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">CQ</div>
+        <div><strong>Rapor SMP</strong><span>Tahfizhpreneur</span></div>
+      </div>
+      <nav id="nav">
+        <button class="nav-item active" data-page="dashboard">Dashboard</button>
+        <button class="nav-item" data-page="master">Master Siswa</button>
+        <button class="nav-item" data-page="template">Template Guru</button>
+        <button class="nav-item" data-page="upload">Upload Nilai</button>
+        <button class="nav-item" data-page="report">Cetak Rapor</button>
+        <button class="nav-item" data-page="settings">Pengaturan</button>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="dot" id="driveDot"></span>
+        <div><strong id="driveStatus">Drive belum terhubung</strong><small>Storage khusus SMP</small></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">Dashboard Rapor PTS SMP</h1>
+          <p id="pageSubtitle">Tahun Ajaran 2026/2027 • Semester I</p>
+        </div>
+        <div class="top-actions">
+          <span class="pill">Branch SMP terpisah</span>
+          <button class="btn btn-soft" id="refreshBtn">Refresh</button>
+        </div>
+      </header>
+
+      <section class="page active" id="page-dashboard">
+        <div class="hero-card">
+          <div>
+            <span class="eyebrow">MID-SEMESTER STUDENT PROGRESS REPORT</span>
+            <h2>Satu alur sederhana untuk guru mapel, tahfizh, dan wali kelas.</h2>
+            <p>Guru mengunduh format, mengisi Excel, lalu mengunggah kembali. Sistem memvalidasi data dan menyusun rapor per siswa atau satu kelas.</p>
+          </div>
+          <div class="hero-flow">
+            <div><b>1</b><span>Download format</span></div>
+            <div><b>2</b><span>Isi nilai</span></div>
+            <div><b>3</b><span>Upload kembali</span></div>
+            <div><b>4</b><span>Cetak PDF</span></div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat"><span>Siswa aktif</span><strong id="statStudents">0</strong><small>berdasarkan master siswa</small></article>
+          <article class="stat"><span>Kelas</span><strong id="statClasses">0</strong><small>terdeteksi dari master</small></article>
+          <article class="stat"><span>Upload nilai</span><strong id="statUploads">0</strong><small>berkas berhasil dibaca</small></article>
+          <article class="stat"><span>Siap cetak</span><strong id="statReady">0</strong><small>siswa memiliki data</small></article>
+        </div>
+
+        <div class="grid-2">
+          <article class="panel">
+            <div class="panel-head"><div><h3>Kelengkapan Kelas</h3><p>Ringkasan data yang sudah masuk.</p></div></div>
+            <div id="classCompletion" class="empty-state">Belum ada master siswa.</div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><h3>Struktur Penilaian</h3><p>Disesuaikan dengan Master Raport PTS SMP.</p></div></div>
+            <div class="subject-groups" id="subjectGroups"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-master">
+        <div class="grid-2 master-grid">
+          <article class="panel">
+            <div class="panel-head"><div><h3>Upload Master Siswa</h3><p>Cukup sekali. File minimal berisi NISN, Nama Siswa, dan Kelas.</p></div></div>
+            <div class="dropzone" id="masterDropzone">
+              <input type="file" id="masterFile" accept=".xlsx,.xls,.csv" hidden>
+              <div class="drop-icon">⇧</div>
+              <strong>Pilih file master siswa</strong>
+              <span>Excel / CSV</span>
+              <button class="btn" id="masterChooseBtn">Pilih File</button>
+            </div>
+            <div class="helper-row">
+              <button class="btn btn-soft" id="downloadMasterTemplate">Download contoh format master</button>
+              <button class="btn btn-danger-soft" id="clearMaster">Hapus master lokal</button>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><h3>Hasil Import</h3><p id="masterSummary">Belum ada data.</p></div></div>
+            <div class="table-wrap"><table><thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Kelas</th></tr></thead><tbody id="masterTable"></tbody></table></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-template">
+        <article class="panel">
+          <div class="panel-head"><div><h3>Buat Template Pengisian</h3><p>Template otomatis berisi daftar siswa sesuai kelas yang dipilih.</p></div></div>
+          <div class="form-grid">
+            <label><span>Jenis Input</span><select id="templateType"><option value="subject">Guru Mapel</option><option value="tahfizh">Guru Tahfizh</option><option value="homeroom">Wali Kelas</option></select></label>
+            <label><span>Kelas</span><select id="templateClass"></select></label>
+            <label id="templateSubjectWrap"><span>Mata Pelajaran</span><select id="templateSubject"></select></label>
+            <label><span>Nama Guru</span><input id="templateTeacher" placeholder="Nama guru pengampu"></label>
+          </div>
+          <div class="template-preview" id="templatePreview"></div>
+          <div class="action-row"><button class="btn" id="downloadTemplateBtn">Download Template Excel</button></div>
+        </article>
+      </section>
+
+      <section class="page" id="page-upload">
+        <div class="grid-2">
+          <article class="panel">
+            <div class="panel-head"><div><h3>Upload Hasil Pengisian</h3><p>Sistem membaca metadata dari file dan memeriksa kolom wajib.</p></div></div>
+            <div class="dropzone" id="scoreDropzone">
+              <input type="file" id="scoreFile" accept=".xlsx,.xls" hidden>
+              <div class="drop-icon">⇧</div>
+              <strong>Upload file yang sudah diisi guru</strong>
+              <span>Gunakan template dari sistem agar data terbaca sempurna.</span>
+              <button class="btn" id="scoreChooseBtn">Pilih File</button>
+            </div>
+            <div id="uploadValidation" class="validation-box neutral">Belum ada file dipilih.</div>
+            <div class="action-row"><button class="btn" id="saveUploadBtn" disabled>Simpan & Gabungkan</button></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><h3>Riwayat Upload</h3><p>File terakhir yang berhasil diproses.</p></div></div>
+            <div id="uploadHistory" class="empty-state">Belum ada upload.</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-report">
+        <div class="report-toolbar panel">
+          <div class="form-grid report-filter">
+            <label><span>Kelas</span><select id="reportClass"></select></label>
+            <label><span>Siswa</span><select id="reportStudent"></select></label>
+          </div>
+          <div class="action-row compact">
+            <button class="btn btn-soft" id="previewReportBtn">Tampilkan</button>
+            <button class="btn" id="pdfStudentBtn">PDF Siswa</button>
+            <button class="btn btn-dark" id="pdfClassBtn">PDF 1 Kelas</button>
+          </div>
+        </div>
+        <div id="reportPreview" class="report-preview empty-state">Pilih kelas dan siswa untuk melihat rapor.</div>
+      </section>
+
+      <section class="page" id="page-settings">
+        <div class="grid-2">
+          <article class="panel">
+            <div class="panel-head"><div><h3>Identitas Sekolah</h3><p>Ditampilkan pada rapor.</p></div></div>
+            <div class="form-stack">
+              <label><span>Nama Sekolah</span><input id="schoolName"></label>
+              <label><span>Tahun Ajaran</span><input id="schoolYear"></label>
+              <label><span>Semester</span><input id="semester"></label>
+              <label><span>Nama Kepala Sekolah</span><input id="principalName" placeholder="Isi saat data sudah tersedia"></label>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><h3>Google Drive</h3><p>Upload menggunakan Google Apps Script Web App.</p></div></div>
+            <div class="form-stack">
+              <label><span>Root Folder ID</span><input id="driveRootId"></label>
+              <label><span>Apps Script Web App URL</span><input id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec"></label>
+            </div>
+            <div class="info-box">Root folder sudah disiapkan. Apps Script perlu dideploy satu kali agar browser boleh menyimpan file ke Drive.</div>
+          </article>
+        </div>
+        <div class="action-row"><button class="btn" id="saveSettingsBtn">Simpan Pengaturan</button></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
