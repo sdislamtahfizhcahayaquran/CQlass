@@ -24,6 +24,13 @@
       b.async=false;
       (document.body||document.head).appendChild(b);
     }
+    if(!document.querySelector('script[data-cq-tahfizh-badal]')&&!window.__CQ_TAHFIZH_BADAL__){
+      const t=document.createElement('script');
+      t.src='tahfizh-badal.js?v=20260915-1';
+      t.dataset.cqTahfizhBadal='1';
+      t.async=false;
+      (document.body||document.head).appendChild(t);
+    }
   }
   if(document.readyState==='complete') setTimeout(loadFinal,0);
   else window.addEventListener('load',()=>setTimeout(loadFinal,0),{once:true});
