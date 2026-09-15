@@ -72,7 +72,7 @@
   if(!window.__cqReminderCenterLoaderInstalled){
     window.__cqReminderCenterLoaderInstalled=true;
     const reminder=document.createElement('script');
-    reminder.src='./reminder-center.js?v=20260914-reminder1';
+    reminder.src='./reminder-center.js?v=20260915-bell-all-role1';
     reminder.async=true;
     reminder.onerror=function(){console.warn('CQlass reminder center gagal dimuat.')};
     document.head.appendChild(reminder);
