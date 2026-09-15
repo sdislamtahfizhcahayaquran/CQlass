@@ -1,5 +1,5 @@
 /* CQlass — Badal Guru V2
-   Alur: pilih tanggal -> pilih guru yang dibadal -> tentukan guru badal per jam.
+   Semua jadwal tampil lebih dahulu; filter guru bersifat opsional.
    Kandidat pembadal berasal dari semua guru aktif + seluruh Kabid. */
 (function(){
   'use strict';
@@ -56,29 +56,29 @@
     const d=STATE||{date:'',slots:[],substitutions:[],teachers:[]};
     const originals=teacherOptions(d);
     const sm=new Map((d.substitutions||[]).map(x=>[String(x.schedule_entry_id),x]));
-    const rows=SELECTED_ORIGINAL?(d.slots||[]).filter(s=>String(s.teacher_id)===String(SELECTED_ORIGINAL)):[];
+    const rows=SELECTED_ORIGINAL
+      ?(d.slots||[]).filter(s=>String(s.teacher_id)===String(SELECTED_ORIGINAL))
+      :(d.slots||[]);
     const originalName=(originals.find(x=>String(x[0])===String(SELECTED_ORIGINAL))||[])[1]||'';
 
     c.innerHTML=`<div class="akv2">
       <section class="av-hero">
         <div class="av-title">Badal <span>Guru</span></div>
-        <div class="av-sub">Pilih guru yang tidak hadir terlebih dahulu, lalu tentukan pembadal untuk tiap jam. Kandidat pembadal mencakup semua guru aktif dan seluruh Kabid; bentrok jadwal tetap dicek otomatis.</div>
+        <div class="av-sub">Semua jadwal pada tanggal terpilih langsung ditampilkan. Pilih guru hanya jika ingin memfilter jadwal, lalu tentukan pembadal pada baris yang diperlukan. Kandidat pembadal mencakup semua guru aktif dan seluruh Kabid; bentrok jadwal tetap dicek otomatis.</div>
       </section>
       <section class="av-card">
         <div class="av-tools">
           <div class="av-field"><label>TANGGAL</label><input id="av2-date" type="date" value="${esc(d.date)}"></div>
-          <div class="av-field"><label>GURU YANG DIBADAL</label><select id="av2-original"><option value="">Pilih guru yang tidak hadir...</option>${originals.map(([id,name])=>`<option value="${esc(id)}" ${String(id)===String(SELECTED_ORIGINAL)?'selected':''}>${esc(name)}</option>`).join('')}</select></div>
+          <div class="av-field"><label>FILTER GURU YANG DIBADAL</label><select id="av2-original"><option value="">Semua guru / semua kelas</option>${originals.map(([id,name])=>`<option value="${esc(id)}" ${String(id)===String(SELECTED_ORIGINAL)?'selected':''}>${esc(name)}</option>`).join('')}</select></div>
           <button class="av-btn sec" id="av2-load">Muat Jadwal</button>
         </div>
         <div id="av2-editor"></div>
         <div class="av-wrap">
           <table class="av-table">
             <thead><tr><th>Jam</th><th>Kelas</th><th>Mapel</th><th>Guru Asal</th><th>Guru Badal</th><th>Aksi</th></tr></thead>
-            <tbody>${!SELECTED_ORIGINAL
-              ?'<tr><td colspan="6" class="av-empty">Pilih guru yang tidak hadir terlebih dahulu.</td></tr>'
-              :rows.length
-                ?rows.map(s=>{const q=sm.get(String(s.id));return`<tr><td><b>${esc(String(s.start_time||'').slice(0,5))}–${esc(String(s.end_time||'').slice(0,5))}</b></td><td>${esc(s.class_name||'—')}</td><td>${esc(s.subject_name||'—')}</td><td><b>${esc(s.teacher_name||originalName||'—')}</b></td><td>${q?`<span class="av-badge">${esc(q.substitute_teacher_name||'—')}</span>`:'<span class="av-badge warn">Belum dibadalkan</span>'}</td><td>${q?`<button class="av-btn danger" data-av2-cancel="${esc(q.id)}">Batalkan</button>`:`<button class="av-btn" data-av2-slot="${esc(s.id)}">Tentukan Badal</button>`}</td></tr>`}).join('')
-                :'<tr><td colspan="6" class="av-empty">Guru ini tidak memiliki jadwal mengajar pada tanggal tersebut.</td></tr>'}
+            <tbody>${rows.length
+              ?rows.map(s=>{const q=sm.get(String(s.id));return`<tr><td><b>${esc(String(s.start_time||'').slice(0,5))}–${esc(String(s.end_time||'').slice(0,5))}</b></td><td>${esc(s.class_name||'—')}</td><td>${esc(s.subject_name||'—')}</td><td><b>${esc(s.teacher_name||originalName||'—')}</b></td><td>${q?`<span class="av-badge">${esc(q.substitute_teacher_name||'—')}</span>`:'<span class="av-badge warn">Belum dibadalkan</span>'}</td><td>${q?`<button class="av-btn danger" data-av2-cancel="${esc(q.id)}">Batalkan</button>`:`<button class="av-btn" data-av2-slot="${esc(s.id)}">Tentukan Badal</button>`}</td></tr>`}).join('')
+              :'<tr><td colspan="6" class="av-empty">Tidak ada jadwal mengajar pada tanggal tersebut.</td></tr>'}
             </tbody>
           </table>
         </div>
