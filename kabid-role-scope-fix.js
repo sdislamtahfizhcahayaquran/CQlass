@@ -1,6 +1,7 @@
 /* CQlass — Kabid role scope cleanup + Admin Data Master visibility
    Absensi/Morning Talk adalah domain Kesiswaan.
    Kabid Akademik, Tahfizh, dan Kegiatan tidak diarahkan atau diberi popup dari proses absensi.
+   Kedisiplinan dan Reward dapat dicatat oleh Guru, seluruh Kabid, dan Pimpinan.
    Data Master harus selalu terlihat jelas untuk Admin. */
 (function(){
   'use strict';
@@ -8,6 +9,8 @@
 
   const NON_KESISWAAN_KABID = new Set(['akademik','tahfizh','kegiatan']);
   const KABID_ALL = new Set(['akademik','tahfizh','kesiswaan','kegiatan']);
+  const POINT_ROLE_LIST = ['guru','walas','akademik','tahfizh','kesiswaan','kegiatan','pimpinan'];
+  const POINT_IDS = new Set(['kedisiplinan','reward']);
   const ATTENDANCE_IDS = new Set(['absensi','attendance','morning-talk','morning_talk']);
   const ATTENDANCE_TEXT = /\b(absen|absensi|attendance|morning\s*talk|kehadiran)\b/i;
   const ATTENDANCE_ROW_TEXT = /\b(absen|absensi|attendance|morning\s*talk|kehadiran|hadir)\b/i;
@@ -104,13 +107,16 @@
           const id=String(item.id||'').toLowerCase();
           const label=String(item.label||'');
           const isAttendance=ATTENDANCE_IDS.has(id) || ATTENDANCE_TEXT.test(label);
-          if(!isAttendance) continue;
-          item.roles=['walas','kesiswaan','pimpinan'];
+          if(isAttendance){
+            item.roles=['walas','kesiswaan','pimpinan'];
+            continue;
+          }
+          if(POINT_IDS.has(id)) item.roles=POINT_ROLE_LIST.slice();
         }
       }
 
       const kg=MODULE_GROUPS.find(g=>g&&g.id==='kesiswaan');
-      if(kg) kg.roles=['guru','walas','kesiswaan','pimpinan'];
+      if(kg) kg.roles=POINT_ROLE_LIST.slice();
     }catch(err){console.warn('Kabid role scope:',err)}
   }
 
