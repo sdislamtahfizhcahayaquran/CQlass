@@ -1,9 +1,18 @@
-const DEFAULT_ROOT_FOLDER_ID = '18ot3_A8wgHJ0KUOTW6mlfdeyVV42k4JG';
+const ROOT_PROPERTY = 'ROOT_FOLDER_ID';
+
+function getRootFolderId_() {
+  const id = PropertiesService.getScriptProperties().getProperty(ROOT_PROPERTY);
+  if (!id) throw new Error('ROOT_FOLDER_ID belum dikonfigurasi untuk Drive SMP.');
+  return id;
+}
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'health';
-  if (action === 'health') return json_({ ok: true, service: 'SMP Rapor PTS Drive Backend', rootFolderId: DEFAULT_ROOT_FOLDER_ID });
-  if (action === 'list') return json_({ ok: true, files: listRecent_(DEFAULT_ROOT_FOLDER_ID, 50) });
+  if (action === 'health') {
+    const id = PropertiesService.getScriptProperties().getProperty(ROOT_PROPERTY) || '';
+    return json_({ ok: true, service: 'SMP Rapor PTS Drive Backend', driveConfigured: !!id });
+  }
+  if (action === 'list') return json_({ ok: true, files: listRecent_(getRootFolderId_(), 50) });
   return json_({ ok: false, error: 'Unknown action' });
 }
 
@@ -19,7 +28,9 @@ function doPost(e) {
 }
 
 function saveUpload_(body) {
-  const root = DriveApp.getFolderById(body.rootFolderId || DEFAULT_ROOT_FOLDER_ID);
+  // Root Drive hanya dibaca dari Script Properties. rootFolderId dari browser sengaja diabaikan
+  // agar file SMP tidak pernah nyasar ke akun/folder lama.
+  const root = DriveApp.getFolderById(getRootFolderId_());
   const categoryFolder = getOrCreate_(root, body.category === 'homeroom' ? '02_UPLOAD_WALAS' : '01_UPLOAD_GURU');
   const classFolder = getOrCreate_(categoryFolder, clean_(body.className || 'Tanpa Kelas'));
   const subjectFolder = body.category === 'subject' ? getOrCreate_(classFolder, clean_(body.subject || 'Tanpa Mapel')) : classFolder;
@@ -35,7 +46,7 @@ function saveUpload_(body) {
 }
 
 function savePdf_(body) {
-  const root = DriveApp.getFolderById(body.rootFolderId || DEFAULT_ROOT_FOLDER_ID);
+  const root = DriveApp.getFolderById(getRootFolderId_());
   const pdfRoot = getOrCreate_(root, '03_PDF_RAPOR');
   const classFolder = getOrCreate_(pdfRoot, clean_(body.className || 'Tanpa Kelas'));
   const bytes = Utilities.base64Decode(body.base64 || '');
