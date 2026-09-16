@@ -1,53 +1,30 @@
-/* CQlass — pisahkan Nilai PTS dan Laporan Bulanan Tahfizh untuk Guru Partner */
+/* CQlass — Guru Partner menu + fresh module loaders */
 (function(){
   let patched=false;
-  function loadPartnerPoints(){
-    if(document.querySelector('script[data-cq-partner-points]'))return;
-    const s=document.createElement('script');
-    s.src='guru-partner-points.js?v=20260917-points1';
-    s.defer=true;
-    s.dataset.cqPartnerPoints='1';
-    document.head.appendChild(s);
+  function loadFresh(src,key){
+    if(document.querySelector(`script[data-cq-${key}]`))return;
+    const s=document.createElement('script');s.src=src;s.defer=true;s.dataset[`cq${key.replace(/(^|-)([a-z])/g,(_,a,b)=>b.toUpperCase())}`]='1';document.head.appendChild(s);
+  }
+  function loadPartnerModules(){
+    loadFresh('guru-partner-class-picker.js?v=20260917-ptslock3','partner-pts-lock');
+    loadFresh('guru-partner-points.js?v=20260917-scope2','partner-points');
   }
   function patch(){
-    if(patched||typeof MODULE_GROUPS==='undefined')return false;
+    if(typeof MODULE_GROUPS==='undefined')return false;
     const g=MODULE_GROUPS.find(x=>x.id==='partner-tasks');
     if(!g)return false;
     const pts=(g.items||[]).find(x=>x.id==='partner-pts');
     if(!pts)return false;
     pts.label='Nilai PTS';
-    if(!pts.__cqPtsWrapped){
-      const old=pts.render;
-      pts.render=async function(content){
-        const r=old?old(content):null;
-        if(r&&typeof r.then==='function')await r;
-        setTimeout(function(){
-          const title=content&&content.querySelector('.page-title');
-          if(title&&title.textContent.trim()==='Nilai Tahfizh')title.textContent='Nilai PTS';
-          const sub=content&&content.querySelector('.page-sub');
-          if(sub&&sub.textContent.includes('Daftar siswa otomatis mengikuti halaqah'))sub.textContent='Input nilai PTS Tahfizh sesuai halaqah. Nama siswa mengikuti data resmi CQlass.';
-        },0);
-      };
-      pts.__cqPtsWrapped=true;
-    }
     if(!(g.items||[]).some(x=>x.id==='partner-monthly')){
-      g.items.push({
-        id:'partner-monthly',
-        label:'Laporan Bulanan',
-        roles:['partner'],
-        built:true,
-        render:function(content){
-          content.innerHTML='<div class="card"><span class="spinner"></span> Membuka Laporan Bulanan Tahfizh...</div>';
-          setTimeout(function(){window.location.href='tahfizh-monthly.html?v=20260907-datafix2'},30);
-        }
-      });
+      g.items.push({id:'partner-monthly',label:'Laporan Bulanan',roles:['partner'],built:true,render:function(content){content.innerHTML='<div class="card"><span class="spinner"></span> Membuka Laporan Bulanan Tahfizh...</div>';setTimeout(function(){window.location.href='tahfizh-monthly.html?v=20260907-datafix2'},30)}});
     }
-    loadPartnerPoints();
+    loadPartnerModules();
+    if(!patched&&typeof renderSidebar==='function'&&window.currentUser?.role==='partner')setTimeout(renderSidebar,80);
     patched=true;
-    if(typeof renderSidebar==='function'&&window.currentUser?.role==='partner')renderSidebar();
     return true;
   }
-  loadPartnerPoints();
+  loadPartnerModules();
   if(!patch()){
     const timer=setInterval(function(){if(patch())clearInterval(timer)},150);
     setTimeout(function(){clearInterval(timer);patch()},5000);
