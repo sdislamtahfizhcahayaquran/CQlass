@@ -1,4 +1,4 @@
-/* CQlass — preview, rotate, preserve transparent uploads, center/nudge positioning, and clean paper backgrounds */
+/* CQlass — signature normalization: preserve transparent uploads, auto-crop, auto-center, and clean paper backgrounds */
 (function(){
   'use strict';
 
@@ -6,9 +6,6 @@
   let busy=false;
   let boundHandler=null;
   let lastInputWasTransparent=false;
-  let positionBase='';
-  let positionOffsetX=0;
-  let positionOffsetY=0;
 
   function state(){
     try{ return typeof teacherSignatureState!=='undefined' ? teacherSignatureState : null; }
@@ -45,14 +42,9 @@
           <button type="button" onclick="rotateTeacherSignature(-90)" title="Putar 90 derajat ke kiri">↶ Putar kiri</button>
           <button type="button" onclick="rotateTeacherSignature(90)" title="Putar 90 derajat ke kanan">↷ Putar kanan</button>
           <button type="button" onclick="rotateTeacherSignature(180)" title="Balik posisi 180 derajat">↕ Balik 180°</button>
-          <button type="button" onclick="centerTeacherSignature()" title="Posisikan otomatis ke tengah">◎ Tengah Otomatis</button>
-          <button type="button" onclick="nudgeTeacherSignature(0,-1)" title="Geser ke atas">↑ Atas</button>
-          <button type="button" onclick="nudgeTeacherSignature(-1,0)" title="Geser ke kiri">← Kiri</button>
-          <button type="button" onclick="nudgeTeacherSignature(1,0)" title="Geser ke kanan">→ Kanan</button>
-          <button type="button" onclick="nudgeTeacherSignature(0,1)" title="Geser ke bawah">↓ Bawah</button>
-          <button type="button" onclick="resetTeacherSignaturePreview()" title="Kembalikan posisi awal">Reset</button>
+          <button type="button" onclick="resetTeacherSignaturePreview()" title="Kembalikan hasil awal">Reset</button>
         </div>
-        <div class="cq-sign-preview-note">Kotak-kotak menandakan area transparan. File yang sudah remove background akan dipertahankan, tidak diproses ulang. Gunakan tombol arah atau “Tengah Otomatis” agar posisi pas di tengah.</div>
+        <div class="cq-sign-preview-note">Kotak-kotak menandakan area transparan. Sistem otomatis memotong ruang kosong, memusatkan tanda tangan, dan menyamakan area tampil dengan tanda tangan Kepala Sekolah. File yang sudah remove background tetap dipertahankan.</div>
       </div>`;
   }
 
@@ -289,30 +281,49 @@
     });
   }
 
-  async function renderPositionedSignature(){
-    const src=positionBase||current();
+  async function trimTransparentDataUrl(src,padRatio=.025){
     if(!src) return '';
     const img=await loadImageFromDataUrl(src);
-    const iw=img.naturalWidth||img.width;
-    const ih=img.naturalHeight||img.height;
-    if(!iw||!ih) throw new Error('Preview tanda tangan tidak dapat diatur.');
-
-    const padX=Math.max(36,Math.round(iw*0.18));
-    const padY=Math.max(32,Math.round(ih*0.22));
-    const cw=iw+padX*2;
-    const ch=ih+padY*2;
+    const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    if(!w||!h) return src;
     const canvas=document.createElement('canvas');
-    canvas.width=cw;
-    canvas.height=ch;
-    const ctx=canvas.getContext('2d');
-    ctx.clearRect(0,0,cw,ch);
-
-    const stepX=Math.max(5,Math.round(iw*0.035));
-    const stepY=Math.max(5,Math.round(ih*0.035));
-    const x=clamp(Math.round((cw-iw)/2 + positionOffsetX*stepX),0,cw-iw);
-    const y=clamp(Math.round((ch-ih)/2 + positionOffsetY*stepY),0,ch-ih);
-    ctx.drawImage(img,x,y,iw,ih);
-    return canvas.toDataURL('image/png');
+    canvas.width=w; canvas.height=h;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(img,0,0,w,h);
+    const data=ctx.getImageData(0,0,w,h), p=data.data;
+    let minX=w,minY=h,maxX=-1,maxY=-1;
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const a=p[(y*w+x)*4+3];
+        if(a>18){
+          if(x<minX)minX=x;if(x>maxX)maxX=x;
+          if(y<minY)minY=y;if(y>maxY)maxY=y;
+        }
+      }
+    }
+    if(maxX<0) return src;
+    const inkW=maxX-minX+1, inkH=maxY-minY+1;
+    const pad=Math.max(6,Math.round(Math.max(inkW,inkH)*padRatio));
+    minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);
+    maxX=Math.min(w-1,maxX+pad);maxY=Math.min(h-1,maxY+pad);
+    const cw=maxX-minX+1,ch=maxY-minY+1;
+    let out=document.createElement('canvas');
+    out.width=cw;out.height=ch;
+    let octx=out.getContext('2d');
+    octx.clearRect(0,0,cw,ch);
+    octx.drawImage(canvas,minX,minY,cw,ch,0,0,cw,ch);
+    let url=out.toDataURL('image/png');
+    while(bytesFromDataUrl(url)>1024*1024 && out.width>420){
+      const next=document.createElement('canvas');
+      next.width=Math.max(420,Math.round(out.width*.84));
+      next.height=Math.max(1,Math.round(out.height*(next.width/out.width)));
+      const nctx=next.getContext('2d');
+      nctx.clearRect(0,0,next.width,next.height);
+      nctx.drawImage(out,0,0,next.width,next.height);
+      out=next;url=out.toDataURL('image/png');
+    }
+    return url;
   }
 
   window.rotateTeacherSignature=async function(degrees){
@@ -320,15 +331,12 @@
     busy=true;
     const buttons=document.querySelectorAll('.cq-sign-preview-tools button');
     buttons.forEach(b=>b.disabled=true);
-    msg('Memutar preview tanda tangan...');
+    msg('Memutar dan merapikan preview tanda tangan...');
     try{
-      const source=positionBase||current();
-      positionBase=await rotateDataUrl(source,degrees);
-      positionOffsetX=0;
-      positionOffsetY=0;
-      setCurrent(positionBase);
+      const rotated=await rotateDataUrl(current(),degrees);
+      setCurrent(await trimTransparentDataUrl(rotated));
       render();
-      msg('Periksa preview. Jika posisinya sudah benar, klik Simpan Tanda Tangan.');
+      msg('Preview sudah dirapikan otomatis. Jika sudah benar, klik Simpan Tanda Tangan.');
     }catch(err){
       msg(err?.message||'Preview tidak dapat diputar.',true);
     }finally{
@@ -337,59 +345,13 @@
     }
   };
 
-  window.nudgeTeacherSignature=async function(dx,dy){
-    if(busy || !current()) return;
-    busy=true;
-    const buttons=document.querySelectorAll('.cq-sign-preview-tools button');
-    buttons.forEach(b=>b.disabled=true);
-    msg('Menggeser posisi tanda tangan...');
-    try{
-      positionOffsetX=clamp(positionOffsetX+Number(dx||0),-5,5);
-      positionOffsetY=clamp(positionOffsetY+Number(dy||0),-5,5);
-      const updated=await renderPositionedSignature();
-      if(updated) setCurrent(updated);
-      render();
-      msg('Posisi tanda tangan diperbarui. Ulangi jika masih ingin digeser, lalu klik Simpan Tanda Tangan.');
-    }catch(err){
-      msg(err?.message||'Posisi tanda tangan tidak dapat diubah.',true);
-    }finally{
-      buttons.forEach(b=>b.disabled=false);
-      busy=false;
-    }
-  };
-
-  window.centerTeacherSignature=async function(){
-    if(busy || !current()) return;
-    busy=true;
-    const buttons=document.querySelectorAll('.cq-sign-preview-tools button');
-    buttons.forEach(b=>b.disabled=true);
-    msg('Menempatkan tanda tangan ke tengah...');
-    try{
-      if(!positionBase) positionBase=current();
-      positionOffsetX=0;
-      positionOffsetY=0;
-      const updated=await renderPositionedSignature();
-      if(updated) setCurrent(updated);
-      render();
-      msg('Tanda tangan sudah tepat di tengah. Jika sudah pas, klik Simpan Tanda Tangan.');
-    }catch(err){
-      msg(err?.message||'Tanda tangan tidak dapat diposisikan ke tengah.',true);
-    }finally{
-      buttons.forEach(b=>b.disabled=false);
-      busy=false;
-    }
-  };
-
   window.resetTeacherSignaturePreview=function(){
     if(!originalProcessed) return;
-    positionBase=originalProcessed;
-    positionOffsetX=0;
-    positionOffsetY=0;
     setCurrent(originalProcessed);
     render();
     msg(lastInputWasTransparent
-      ? 'Posisi dikembalikan. File transparan tetap dipertahankan tanpa remove background ulang.'
-      : 'Posisi dikembalikan ke hasil awal. Periksa lagi sebelum menyimpan.');
+      ? 'Hasil dikembalikan ke versi awal. File transparan tetap dipertahankan tanpa remove background ulang.'
+      : 'Hasil dikembalikan ke versi awal. Periksa lagi sebelum menyimpan.');
   };
 
   function wrapHandler(){
@@ -397,21 +359,16 @@
     if(typeof fn!=='function' || fn===boundHandler || fn.__cqPreviewWrapped) return false;
     const wrapped=async function(event){
       originalProcessed='';
-      positionBase='';
-      positionOffsetX=0;
-      positionOffsetY=0;
       lastInputWasTransparent=false;
       const out=await fn.apply(this,arguments);
-      const url=current();
+      let url=current();
       if(url){
+        try{ url=await trimTransparentDataUrl(url); setCurrent(url); }catch(_){}
         originalProcessed=url;
-        positionBase=url;
-        positionOffsetX=0;
-        positionOffsetY=0;
         render();
         msg(lastInputWasTransparent
-          ? 'File transparan terdeteksi dan diterima. Background tidak diproses ulang. Atur posisinya bila perlu lalu klik Simpan Tanda Tangan.'
-          : 'Preview siap. Background foto sudah dibersihkan. Atur posisi bila perlu lalu klik Simpan Tanda Tangan.');
+          ? 'File transparan terdeteksi dan diterima. Ukuran dan posisi dirapikan otomatis. Klik Simpan Tanda Tangan.'
+          : 'Preview siap. Background, ukuran, dan posisi sudah dirapikan otomatis. Klik Simpan Tanda Tangan.');
       }
       return out;
     };
@@ -419,6 +376,22 @@
     boundHandler=wrapped;
     window.handleTeacherSignatureSelect=wrapped;
     return true;
+  }
+
+
+  /* Existing saved signatures are normalized too, so principal and homeroom render consistently. */
+  const previousCleanStored=typeof window.cleanStoredTeacherSignature==='function' ? window.cleanStoredTeacherSignature : null;
+  if(previousCleanStored){
+    window.cleanStoredTeacherSignature=async function(url){
+      if(!url) return '';
+      try{
+        const prepared=await previousCleanStored(url);
+        return await trimTransparentDataUrl(prepared||url);
+      }catch(err){
+        console.warn('Normalisasi tanda tangan tersimpan gagal; memakai hasil sebelumnya.',err);
+        try{return await previousCleanStored(url)}catch(_){return url}
+      }
+    };
   }
 
   const css=document.createElement('style');
@@ -434,6 +407,7 @@
     .cq-sign-preview-tools button{border:1px solid rgba(10,110,110,.24);background:#fff;color:#08746f;border-radius:8px;padding:7px 10px;font:inherit;font-size:10.5px;font-weight:700;cursor:pointer}
     .cq-sign-preview-tools button:hover{background:#eaf6f4}.cq-sign-preview-tools button:disabled{opacity:.45;cursor:wait}
     .cq-sign-preview-note{font-size:10px;line-height:1.45;color:var(--muted,#70817f);text-align:center;margin-top:8px}
+    .rpv-signature-img{width:46mm!important;height:24mm!important;max-width:46mm!important;max-height:24mm!important;object-fit:contain!important;object-position:center center!important}
     @media(max-width:520px){.cq-sign-preview-head{align-items:flex-start;flex-direction:column}.cq-sign-preview-tools button{flex:1 1 calc(50% - 8px)}}`;
   const oldCss=document.getElementById(css.id); if(oldCss) oldCss.remove();
   document.head.appendChild(css);
