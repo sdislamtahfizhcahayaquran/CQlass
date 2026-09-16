@@ -1,214 +1,70 @@
-/* CQlass — Data Ekskul Kabid Kegiatan: ringkas, fokus tindak lanjut, kapasitas dapat dilipat */
+/* CQlass — Kabid Kegiatan: pengelolaan ekskul penuh, multi-ekskul, internal/eksternal/tidak ikut */
 (function(){
   'use strict';
   const URL=SUPABASE_URL+'/functions/v1/activity-extracurricular';
-  const S={summary:null,capacities:[],rows:[],state:'unknown'};
+  const S={rows:[],summary:{},extracurriculars:[],assignments:[],filter:'unknown',canEdit:false,modalStudent:null,sourceKind:'new',sourceId:''};
   const esc=v=>escapeHtml(String(v==null?'':v));
   const role=()=>String(currentUser?.role||'').toLowerCase();
-  const canEdit=()=>role()==='kegiatan';
+  const localCanEdit=()=>['kegiatan','kabid_kegiatan'].includes(role());
 
   async function req(action,payload={}){
-    const token=getAuthToken();
-    const r=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify({action,...payload})});
-    let d={};try{d=JSON.parse(await r.text()||'{}')}catch(_){throw new Error('Respons data ekskul tidak valid.');}
+    const r=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':getAuthToken()},body:JSON.stringify({action,...payload})});
+    let d={};try{d=JSON.parse(await r.text()||'{}')}catch(_){throw new Error('Respons Data Ekskul tidak valid.');}
     if(!r.ok||d.success===false){
-      const m={forbidden:'Akun tidak memiliki akses ke Data Ekskul.',readonly:'Data hanya dapat diubah Kabid Kegiatan.',student_internal:'Siswa sudah tercatat di ekskul internal.',extracurricular_full:'Ekskul yang dipilih sudah penuh.',invalid_internal_target:'Pilih ekskul internal terlebih dahulu.',student_not_enrolled:'Siswa tidak terdaftar aktif pada semester ini.',extracurricular_not_found:'Ekskul tidak ditemukan.'};
+      const m={forbidden:'Akun tidak memiliki akses ke Data Ekskul.',readonly:'Perubahan data hanya dapat dilakukan Kabid Kegiatan.',student_not_enrolled:'Siswa tidak terdaftar aktif pada semester ini.',extracurricular_required:'Pilih jenis ekskul internal.',extracurricular_not_found:'Ekskul internal tidak ditemukan.',group_invalid:'Kelompok/pelatih yang dipilih tidak sesuai dengan ekskul.',external_name_required:'Isi nama kegiatan ekskul eksternal.',invalid_target:'Pilih status ekskul terlebih dahulu.'};
       throw new Error(m[d.error]||d.error||'Data ekskul belum berhasil diproses.');
     }
     return d;
   }
-
-  async function loadAll(state){
-    S.state=state||S.state||'unknown';
-    const [a,b,c]=await Promise.all([req('summary'),req('capacities'),req('list',{state:S.state})]);
-    S.summary=a.summary||{};
-    S.capacities=b.rows||[];
-    S.rows=c.rows||[];
+  function absorb(d){
+    const x=d.model||d;
+    S.rows=x.rows||S.rows;S.summary=x.summary||S.summary;S.extracurriculars=x.extracurriculars||S.extracurriculars;S.assignments=x.assignments||S.assignments;
+    if(typeof d.can_edit==='boolean')S.canEdit=d.can_edit;else if(typeof x.can_edit==='boolean')S.canEdit=x.can_edit;
   }
+  async function load(){const d=await req('bootstrap');absorb(d);S.canEdit=typeof d.can_edit==='boolean'?d.can_edit:localCanEdit();}
 
-  function inject(){
-    if(document.getElementById('kx-cap-style-v2'))return;
-    const s=document.createElement('style');
-    s.id='kx-cap-style-v2';
-    s.textContent=`
-      #kx-root{max-width:1240px;margin:0 auto}
-      #kx-root .kv2-head{margin-bottom:12px}
-      #kx-root .kv2-head h2{font-size:25px;letter-spacing:-.02em}
-      #kx-root .kv2-head p{max-width:760px;font-size:10.5px;line-height:1.55}
-      .kx-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px}
-      .kx-summary-btn{appearance:none;border:1px solid var(--border);background:#fff;border-radius:13px;padding:12px 13px;text-align:left;cursor:pointer;transition:.16s ease;min-width:0}
-      .kx-summary-btn:hover{transform:translateY(-1px);border-color:#9ecbc7;box-shadow:0 6px 18px rgba(10,78,76,.07)}
-      .kx-summary-btn.active{border-color:var(--primary);box-shadow:0 0 0 2px rgba(10,110,110,.08)}
-      .kx-summary-btn.priority{background:#fff9ef;border-color:#f0d49b}
-      .kx-summary-btn strong{display:block;font-size:25px;line-height:1;color:#075b59}
-      .kx-summary-btn.priority strong{color:#9a6400}
-      .kx-summary-btn span{display:block;margin-top:6px;font-size:9.5px;font-weight:850;color:var(--muted)}
-      .kx-workcard{background:#fff;border:1px solid var(--border);border-radius:15px;padding:13px;margin-bottom:10px}
-      .kx-toolbar{display:grid;grid-template-columns:1fr 170px auto;gap:7px;align-items:center;margin-top:10px}
-      .kx-toolbar .kv2-input,.kx-toolbar .kv2-select{width:100%;box-sizing:border-box}
-      .kx-table-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
-      .kx-table-head .kv2-title{margin:0}
-      .kx-count{white-space:nowrap}
-      .kx-cap-details{background:#fff;border:1px solid var(--border);border-radius:15px;margin-bottom:12px;overflow:hidden}
-      .kx-cap-details>summary{list-style:none;cursor:pointer;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;font-weight:900;color:var(--text)}
-      .kx-cap-details>summary::-webkit-details-marker{display:none}
-      .kx-cap-details>summary:after{content:'▾';font-size:13px;color:var(--muted);transition:transform .15s ease}
-      .kx-cap-details[open]>summary:after{transform:rotate(180deg)}
-      .kx-cap-summary-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto;margin-right:4px}
-      .kx-mini{display:inline-flex;padding:4px 7px;border-radius:999px;background:#eef6f5;color:#47706d;font-size:8.5px;font-weight:850}
-      .kx-mini.warn{background:#fff2de;color:#936500}.kx-mini.full{background:#fff0ec;color:#ad4c39}
-      .kx-cap-body{padding:0 13px 13px;border-top:1px solid var(--border)}
-      .kx-cap-help{font-size:9px;color:var(--muted);margin:10px 1px 9px;line-height:1.45}
-      .kx-cap-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-      .kx-cap{border:1px solid var(--border);border-radius:11px;padding:9px 10px;background:#fff;min-width:0}
-      .kx-cap h4{font-size:10.5px;margin:0 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .kx-cap-line{display:flex;justify-content:space-between;gap:7px;font-size:8.9px;color:var(--muted)}
-      .kx-meter{height:6px;border-radius:999px;background:#edf3f3;overflow:hidden;margin:6px 0}.kx-meter i{display:block;height:100%;background:var(--primary)}
-      .kx-status{display:inline-flex;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:900}.kx-status.ok{background:#e8f7ef;color:#357352}.kx-status.warn{background:#fff2de;color:#936500}.kx-status.full{background:#fff0ec;color:#ad4c39}.kx-status.over{background:#ffe7e2;color:#9d3424}
-      .kx-move{display:grid;grid-template-columns:minmax(175px,1fr) auto;gap:5px;align-items:center;margin-bottom:5px}.kx-move select{min-width:175px}
-      .kx-other{display:flex;gap:5px;flex-wrap:wrap}.kx-other input{min-width:145px;flex:1}
-      .kx-note{font-size:8.6px;color:var(--muted);margin-top:4px}
-      .kx-row-priority td{background:#fffdf8}
-      #kx-root .kv2-tablewrap{max-height:53vh}
-      #kx-root .kv2-table th{top:0}
-      @media(max-width:1000px){.kx-cap-grid{grid-template-columns:repeat(2,1fr)}.kx-toolbar{grid-template-columns:1fr 150px}.kx-toolbar .kx-count{grid-column:1/-1;justify-self:start}.kx-summary{grid-template-columns:repeat(2,1fr)}}
-      @media(max-width:620px){.kx-cap-grid,.kx-summary{grid-template-columns:1fr 1fr}.kx-move{grid-template-columns:1fr}.kx-move select{min-width:0}.kx-toolbar{grid-template-columns:1fr}.kx-toolbar .kx-count{grid-column:auto}.kx-cap-details>summary{align-items:flex-start;flex-wrap:wrap}.kx-cap-summary-meta{margin-left:0;width:100%}}
-      @media(max-width:430px){.kx-summary{grid-template-columns:1fr}}
-    `;
-    document.head.appendChild(s);
-  }
+  function inject(){if(document.getElementById('kx-v4-style'))return;const s=document.createElement('style');s.id='kx-v4-style';s.textContent=`
+    #kx-root{max-width:1280px;margin:0 auto}.kx-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:12px}.kx-head h2{margin:0;font-size:25px}.kx-head p{font-size:10.5px;line-height:1.55;color:var(--muted);max-width:820px;margin:5px 0 0}
+    .kx-kpi{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:12px}.kx-kpi button{border:1px solid var(--border);background:#fff;border-radius:14px;padding:11px 12px;text-align:left;cursor:pointer}.kx-kpi button.active{border-color:var(--primary);box-shadow:0 0 0 2px rgba(10,110,110,.08)}.kx-kpi button.warn{background:#fffaf0;border-color:#efd7a2}.kx-kpi strong{display:block;font-size:23px;color:#075b59}.kx-kpi span{font-size:9px;font-weight:800;color:var(--muted)}
+    .kx-card{background:#fff;border:1px solid var(--border);border-radius:15px;padding:13px;margin-bottom:11px}.kx-toolbar{display:grid;grid-template-columns:minmax(240px,1fr) 180px auto;gap:7px;align-items:center}.kx-toolbar input,.kx-toolbar select{width:100%}.kx-tablewrap{overflow:auto;max-height:57vh;border:1px solid var(--border);border-radius:12px;margin-top:10px}.kx-table{width:100%;border-collapse:collapse;min-width:900px}.kx-table th,.kx-table td{padding:10px;border-bottom:1px solid #edf1f2;text-align:left;vertical-align:top;font-size:10px}.kx-table th{position:sticky;top:0;background:#f7fafb;z-index:1;font-size:9px;color:var(--muted)}
+    .kx-name{font-weight:850;font-size:11px}.kx-sub{font-size:8.6px;color:var(--muted);margin-top:3px}.kx-tags{display:flex;gap:5px;flex-wrap:wrap}.kx-tag{display:inline-flex;align-items:center;gap:4px;padding:5px 7px;border-radius:999px;font-size:8.4px;font-weight:800;background:#eaf7f5;color:#17635e}.kx-tag.ext{background:#eef3ff;color:#405b9b}.kx-tag.none{background:#f2f3f5;color:#626a72}.kx-tag.unknown{background:#fff1d9;color:#926200}.kx-tag.multi{background:#f2edff;color:#6d4caf}
+    .kx-cap-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.kx-cap{border:1px solid var(--border);border-radius:12px;padding:9px}.kx-cap.over{background:#fff5f2;border-color:#f2b7aa}.kx-cap b{font-size:10px}.kx-cap small{display:block;color:var(--muted);font-size:8.5px;margin-top:4px}.kx-meter{height:6px;background:#edf2f2;border-radius:99px;overflow:hidden;margin:7px 0}.kx-meter i{display:block;height:100%;background:var(--primary)}.kx-over{font-size:8px;font-weight:900;color:#a23a28}
+    .kx-modal{position:fixed;inset:0;background:rgba(10,30,35,.42);display:none;align-items:center;justify-content:center;padding:18px;z-index:99999}.kx-modal.show{display:flex}.kx-box{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;border:1px solid var(--border);box-shadow:0 24px 70px rgba(0,0,0,.18)}.kx-mhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:16px 17px;border-bottom:1px solid var(--border)}.kx-mbody{padding:16px 17px}.kx-entry{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--border);border-radius:11px;padding:9px 10px;margin-bottom:7px}.kx-entry-main{min-width:0}.kx-entry-title{font-size:10px;font-weight:850}.kx-entry-sub{font-size:8.5px;color:var(--muted);margin-top:2px}.kx-entry-actions{display:flex;gap:5px;flex-shrink:0}.kx-form{border-top:1px solid var(--border);margin-top:14px;padding-top:14px}.kx-grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.kx-field label{display:block;font-size:8.8px;font-weight:850;color:var(--muted);margin:0 0 5px}.kx-field input,.kx-field select,.kx-field textarea{width:100%;box-sizing:border-box}.kx-field textarea{min-height:70px}.kx-note{font-size:8.7px;color:var(--muted);line-height:1.45}.kx-warning{background:#fff7e8;border:1px solid #f0d49b;color:#855b08;padding:9px 10px;border-radius:10px;font-size:9px;margin-top:8px}.kx-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:13px;flex-wrap:wrap}
+    @media(max-width:900px){.kx-kpi{grid-template-columns:repeat(3,1fr)}.kx-cap-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.kx-kpi{grid-template-columns:repeat(2,1fr)}.kx-toolbar,.kx-grid2{grid-template-columns:1fr}.kx-cap-grid{grid-template-columns:1fr}.kx-entry{align-items:flex-start;flex-direction:column}.kx-entry-actions{width:100%}}
+  `;document.head.appendChild(s);}
 
-  function fullnessLabel(x){
-    const active=Number(x.active_students||0),quota=Number(x.quota||0);
-    if(quota>0&&active>quota)return['Melebihi Kuota','over'];
-    if(x.fullness==='FULL')return['Penuh','full'];
-    if(x.fullness==='ALMOST_FULL')return['Hampir Penuh','warn'];
-    return['Tersedia','ok'];
-  }
+  function matchesFilter(r){if(S.filter==='all')return true;if(S.filter==='internal')return r.internal?.length>0;if(S.filter==='external')return r.external?.length>0;if(S.filter==='none')return r.state==='none';if(S.filter==='multi')return Number(r.activity_count||0)>1;return r.state==='unknown';}
+  function activityText(r){const a=[];(r.internal||[]).forEach(x=>a.push(x.extracurricular_name+' '+(x.group_label?'('+x.group_label+')':'')));(r.external||[]).forEach(x=>a.push(x.activity_name+' '+(x.institution_name?'('+x.institution_name+')':'')));return a.join(' ')}
+  function visibleRows(){const q=(document.getElementById('kx-search')?.value||'').toLowerCase().trim(),cl=(document.getElementById('kx-class')?.value||'').trim();return S.rows.filter(r=>matchesFilter(r)&&(!cl||r.class_name===cl)&&(!q||(r.name+' '+r.nis+' '+r.class_name+' '+activityText(r)).toLowerCase().includes(q)))}
+  function classOptions(){return [...new Set(S.rows.map(r=>r.class_name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true})).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}
+  function tags(r){let h='';(r.internal||[]).forEach(x=>h+=`<span class="kx-tag">Internal · ${esc(x.extracurricular_name)}${x.group_label?' · '+esc(x.group_label):''}</span>`);(r.external||[]).forEach(x=>h+=`<span class="kx-tag ext">Eksternal · ${esc(x.activity_name)}</span>`);if(r.state==='none')h+='<span class="kx-tag none">Tidak Mengikuti</span>';if(r.state==='unknown')h+='<span class="kx-tag unknown">Belum Ditentukan</span>';if(Number(r.activity_count||0)>1)h+=`<span class="kx-tag multi">${r.activity_count} ekskul</span>`;return h}
+  function capCards(){return S.extracurriculars.map(x=>{const q=Number(x.quota||0),a=Number(x.active_students||0),pct=q?Math.min(100,Math.round(a/q*100)):0,over=q>0&&a>q;return`<div class="kx-cap ${over?'over':''}"><b>${esc(x.name)}</b><small>${a} peserta${q?' / kuota '+q:' · tanpa kuota'}</small><div class="kx-meter"><i style="width:${pct}%"></i></div>${over?`<div class="kx-over">Melebihi kuota ${a-q} siswa · tetap boleh tambah</div>`:`<small>${q?Math.max(q-a,0)+' slot tersisa':'Kuota hanya informasi'}</small>`}</div>`}).join('')}
+  function table(){const rows=visibleRows(),tb=document.getElementById('kx-body');if(!tb)return;tb.innerHTML=rows.length?rows.map(r=>`<tr><td><div class="kx-name">${esc(r.name)}</div><div class="kx-sub">${esc(r.nis||'')}</div></td><td>${esc(r.class_name)}</td><td><div class="kx-tags">${tags(r)}</div></td><td style="width:130px">${S.canEdit?`<button class="kv2-btn" onclick="kxManage('${r.student_id}')">Edit / Tambah</button>`:'<span class="kx-sub">Mode lihat</span>'}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">Tidak ada siswa pada filter ini.</td></tr>';const c=document.getElementById('kx-count');if(c)c.textContent=rows.length+' siswa'}
+  function render(content){inject();const x=S.summary||{};content.innerHTML=`<div class="kv2" id="kx-root"><div class="kx-head"><div><h2>Data Ekskul Siswa</h2><p>Kabid Kegiatan dapat mengedit, menambah, memindahkan jenis ekskul dan kelompok. Satu siswa dapat mengikuti lebih dari satu ekskul. Kuota hanya peringatan dan tidak mengunci penambahan peserta.</p></div>${S.canEdit?'<button class="kv2-btn" onclick="kxAddParticipant()">+ Tambah Peserta</button>':''}</div>
+    <div class="kx-kpi"><button onclick="kxTab('internal')" class="${S.filter==='internal'?'active':''}"><strong>${x.internal||0}</strong><span>Internal</span></button><button onclick="kxTab('external')" class="${S.filter==='external'?'active':''}"><strong>${x.external||0}</strong><span>Eksternal</span></button><button onclick="kxTab('none')" class="${S.filter==='none'?'active':''}"><strong>${x.none||0}</strong><span>Tidak Mengikuti</span></button><button onclick="kxTab('unknown')" class="warn ${S.filter==='unknown'?'active':''}"><strong>${x.unknown||0}</strong><span>Belum Ditentukan</span></button><button onclick="kxTab('multi')" class="${S.filter==='multi'?'active':''}"><strong>${x.multi||0}</strong><span>Ikut > 1 Ekskul</span></button></div>
+    <div class="kx-card"><div class="kx-toolbar"><input id="kx-search" class="kv2-input" placeholder="Cari siswa, kelas, ekskul..." oninput="kxFilter()"><select id="kx-class" class="kv2-select" onchange="kxFilter()"><option value="">Semua kelas</option>${classOptions()}</select><button class="kv2-btn ghost" onclick="kxTab('all')">Semua Siswa</button></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px"><div class="kv2-title">Daftar Peserta</div><span id="kx-count" class="kv2-badge"></span></div><div class="kx-tablewrap"><table class="kx-table"><thead><tr><th>Nama Siswa</th><th>Kelas</th><th>Status & Keikutsertaan</th><th>Aksi</th></tr></thead><tbody id="kx-body"></tbody></table></div></div>
+    <details class="kx-card"><summary style="cursor:pointer;font-weight:850;font-size:10px">Kapasitas Ekskul <span class="kx-sub">· ${x.over_quota||0} melebihi kuota · kuota tidak memblokir penambahan</span></summary><div class="kx-cap-grid" style="margin-top:11px">${capCards()}</div></details>
+    <div class="kx-modal" id="kx-modal" onclick="if(event.target===this)kxCloseModal()"><div class="kx-box"><div class="kx-mhead"><div><div class="kx-name" id="kx-modal-name">Kelola Ekskul</div><div class="kx-sub" id="kx-modal-sub"></div></div><button class="kv2-btn ghost" onclick="kxCloseModal()">Tutup</button></div><div class="kx-mbody"><div id="kx-current"></div><div class="kx-form" id="kx-form"></div></div></div></div></div>`;table()}
 
-  function capacityOptions(){
-    return S.capacities.filter(x=>x.selectable).map(x=>`<option value="${esc(x.id)}">${esc(x.name)} — sisa ${Math.max(0,Number(x.available_slots||0))} (${x.active_students}/${x.quota})${x.fullness==='ALMOST_FULL'?' • hampir penuh':''}</option>`).join('');
-  }
+  function groupsFor(exid){return S.assignments.filter(a=>a.extracurricular_id===exid&&a.is_active!==false)}
+  function exOptions(selected=''){return '<option value="">Pilih jenis ekskul...</option>'+S.extracurriculars.map(x=>{const q=Number(x.quota||0),a=Number(x.active_students||0),over=q>0&&a>=q;return`<option value="${x.id}" ${x.id===selected?'selected':''}>${esc(x.name)} · ${a}${q?'/'+q:''}${over?' · kuota penuh (tetap bisa)':''}</option>`}).join('')}
+  function groupOptions(exid,selected=''){const g=groupsFor(exid);if(!g.length)return'<option value="">Tidak ada kelompok khusus</option>';return'<option value="">'+(g.length>1?'Pilih kelompok / pelatih...':'Otomatis')+'</option>'+g.map(x=>`<option value="${x.id}" ${x.id===selected?'selected':''}>${esc(x.assignment_label||x.coach_name||'Kelompok')}${x.coach_name&&x.assignment_label?' · '+esc(x.coach_name):''}</option>`).join('')}
+  function currentEntries(r){let h='<div class="kv2-title" style="margin-bottom:8px">Keikutsertaan Saat Ini</div>';const all=[];(r.internal||[]).forEach(x=>all.push({kind:'internal',id:x.id,title:'Internal · '+x.extracurricular_name,sub:[x.group_label,x.coach_name].filter(Boolean).join(' · '),raw:x}));(r.external||[]).forEach(x=>all.push({kind:'external',id:x.id,title:'Eksternal · '+x.activity_name,sub:[x.institution_name,x.notes].filter(Boolean).join(' · '),raw:x}));if(!all.length)h+=`<div class="kx-warning">${r.state==='none'?'Siswa saat ini berstatus Tidak Mengikuti Ekskul.':'Siswa belum memiliki status ekskul.'}</div>`;else h+=all.map(x=>`<div class="kx-entry"><div class="kx-entry-main"><div class="kx-entry-title">${esc(x.title)}</div><div class="kx-entry-sub">${esc(x.sub||'')}</div></div><div class="kx-entry-actions"><button class="kv2-btn secondary" onclick="kxEditEntry('${x.kind}','${x.id}')">Edit</button><button class="kv2-btn ghost" onclick="kxRemoveEntry('${x.kind}','${x.id}')">Nonaktifkan</button></div></div>`).join('');return h}
+  function form(r,kind='new',id=''){S.sourceKind=kind;S.sourceId=id;let target='internal',exid='',assignment='',activity='',institution='',notes='';if(kind==='internal'){const x=(r.internal||[]).find(v=>v.id===id);if(x){target='internal';exid=x.extracurricular_id;assignment=x.assignment_id;notes=x.notes||''}}if(kind==='external'){const x=(r.external||[]).find(v=>v.id===id);if(x){target='external';activity=x.activity_name||'';institution=x.institution_name||'';notes=x.notes||''}}document.getElementById('kx-form').innerHTML=`<div class="kv2-title">${kind==='new'?'Tambah Keikutsertaan':'Edit / Pindahkan'}</div><div class="kx-grid2" style="margin-top:9px"><div class="kx-field"><label>Status / Jenis</label><select id="kx-target" class="kv2-select" onchange="kxTargetChanged()"><option value="internal" ${target==='internal'?'selected':''}>Internal</option><option value="external" ${target==='external'?'selected':''}>Eksternal</option><option value="none">Tidak Mengikuti</option></select></div><div class="kx-field"><label>Catatan</label><input id="kx-notes" class="kv2-input" value="${esc(notes)}" placeholder="Opsional"></div></div><div id="kx-dynamic"></div><div class="kx-actions"><button class="kv2-btn ghost" onclick="kxResetForm()">Batal</button><button class="kv2-btn" onclick="kxSaveEntry()">Simpan</button></div>`;window.kxTargetChanged(exid,assignment,activity,institution)}
 
-  function actionCell(r){
-    if(!canEdit()||S.state==='internal')return'';
-    const sid=esc(r.student_id),opts=capacityOptions();
-    return `<td><div class="kx-move"><select id="kx-int-${sid}" class="kv2-select"><option value="">Pilih ekskul internal...</option>${opts}</select><button class="kv2-btn" onclick="kxMoveInternal('${sid}')">Pindah Internal</button></div>${S.state==='unknown'?`<div class="kx-other"><input id="kx-ext-${sid}" class="kv2-input" placeholder="Nama ekskul di luar"><button class="kv2-btn secondary" onclick="kxSetStatus('${sid}','external')">Ekskul Luar</button><button class="kv2-btn ghost" onclick="kxSetStatus('${sid}','none')">Tidak Ikut</button></div>`:''}</td>`;
-  }
-
-  function stateLabel(state){return{internal:'Ekskul Internal',external:'Ekskul di Luar',none:'Tidak Ikut Ekskul',unknown:'Belum Ada Status'}[state]||state;}
-
-  function classOptions(){
-    const list=[...new Set(S.rows.map(r=>String(r.class_name||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
-    return '<option value="">Semua kelas</option>'+list.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
-  }
-
-  function capacitySummary(){
-    const available=S.capacities.filter(c=>c.fullness!=='FULL'&&Number(c.active_students||0)<=Number(c.quota||0)).length;
-    const almost=S.capacities.filter(c=>c.fullness==='ALMOST_FULL').length;
-    const full=S.capacities.filter(c=>c.fullness==='FULL'||Number(c.active_students||0)>Number(c.quota||0)).length;
-    return {available,almost,full};
-  }
-
-  function capacityCards(){
-    return S.capacities.map(c=>{
-      const [lab,cls]=fullnessLabel(c);
-      const pct=Math.min(100,Math.max(0,Number(c.fill_pct||0)));
-      const remaining=Math.max(0,Number(c.available_slots||0));
-      return `<div class="kx-cap" title="${esc(c.name)}"><h4>${esc(c.name)}</h4><div class="kx-cap-line"><span>${c.active_students} / ${c.quota} siswa</span><span>sisa ${remaining}</span></div><div class="kx-meter"><i style="width:${pct}%"></i></div><div class="kx-cap-line"><span>${c.fill_pct}% terisi</span><span class="kx-status ${cls}">${lab}</span></div>${c.day_text||c.time_text?`<div class="kx-note">${esc(c.day_text||'')}${c.time_text?' · '+esc(c.time_text):''}</div>`:''}</div>`;
-    }).join('');
-  }
-
-  function render(content){
-    inject();
-    const x=S.summary||{};
-    const edit=canEdit();
-    const cap=capacitySummary();
-    const priority=S.state==='unknown';
-    const colSpan=edit&&S.state!=='internal'?4:3;
-    content.innerHTML=`<div class="kv2" id="kx-root">
-      <div class="kv2-head"><div><h2>Data Ekskul Siswa</h2><p>Fokuskan tindak lanjut pada siswa yang belum memiliki status. Data ekskul internal dibaca langsung dari sistem dan kapasitas hanya perlu dibuka saat akan memindahkan siswa.</p></div><div class="kv2-actions"><button class="kv2-btn ghost" onclick="setActiveModule('dashboard')">Kembali ke Dashboard</button></div></div>
-
-      <div class="kx-summary">
-        <button class="kx-summary-btn ${S.state==='internal'?'active':''}" onclick="kxTab('internal')"><strong>${x.internal||0}</strong><span>Ekskul Internal</span></button>
-        <button class="kx-summary-btn ${S.state==='external'?'active':''}" onclick="kxTab('external')"><strong>${x.external||0}</strong><span>Ekskul di Luar</span></button>
-        <button class="kx-summary-btn ${S.state==='none'?'active':''}" onclick="kxTab('none')"><strong>${x.none||0}</strong><span>Tidak Ikut Ekskul</span></button>
-        <button class="kx-summary-btn priority ${S.state==='unknown'?'active':''}" onclick="kxTab('unknown')"><strong>${x.unknown||0}</strong><span>Belum Ada Status · perlu ditindaklanjuti</span></button>
-      </div>
-
-      <div class="kx-workcard">
-        <div class="kx-table-head"><div><div class="kv2-title">${esc(stateLabel(S.state))}</div><div class="kv2-sub" style="margin-bottom:0">${priority?'Prioritas: lengkapi status siswa agar rekap ekskul bersih dan tidak ada data menggantung.':'Gunakan pencarian dan filter kelas untuk menemukan siswa dengan cepat.'}</div></div><span class="kv2-badge kx-count" id="kx-visible-count">${S.rows.length} siswa</span></div>
-        <div class="kv2-tabs" style="margin-top:10px">${['unknown','internal','external','none'].map(k=>`<button class="kv2-tab ${S.state===k?'active':''}" onclick="kxTab('${k}')">${esc(stateLabel(k))}</button>`).join('')}</div>
-        <div class="kx-toolbar"><input id="kx-search" class="kv2-input" placeholder="Cari nama siswa, NIS, kelas, atau ekskul..." oninput="kxFilter()"><select id="kx-class" class="kv2-select" onchange="kxFilter()">${classOptions()}</select><span class="kv2-badge kx-count">${edit&&S.state!=='internal'?'Status dapat diperbarui':'Mode lihat'}</span></div>
-        <div style="height:9px"></div>
-        <div class="kv2-tablewrap"><table class="kv2-table" style="min-width:${edit&&S.state!=='internal'?'1020':'720'}px"><thead><tr><th>Nama</th><th>Kelas</th><th>Keterangan</th>${edit&&S.state!=='internal'?'<th>Ubah Status / Pindahkan</th>':''}</tr></thead><tbody>${S.rows.length?S.rows.map(r=>`<tr class="kx-row ${priority?'kx-row-priority':''}" data-class="${esc(r.class_name||'')}" data-search="${esc((r.name+' '+(r.nis||'')+' '+r.class_name+' '+(r.activity_name||'')+' '+(r.notes||'')).toLowerCase())}"><td><b>${esc(r.name)}</b><div class="kv2-note">${esc(r.nis||'')}</div></td><td>${esc(r.class_name)}</td><td>${esc(r.activity_name||r.notes||'—')}</td>${actionCell(r)}</tr>`).join(''):`<tr><td colspan="${colSpan}"><div class="kv2-empty">Tidak ada siswa pada status ini.</div></td></tr>`}</tbody></table></div>
-      </div>
-
-      <details class="kx-cap-details">
-        <summary><span>Kapasitas Ekskul Internal</span><span class="kx-cap-summary-meta"><span class="kx-mini">${cap.available} tersedia</span>${cap.almost?`<span class="kx-mini warn">${cap.almost} hampir penuh</span>`:''}${cap.full?`<span class="kx-mini full">${cap.full} penuh / lebih kuota</span>`:''}</span></summary>
-        <div class="kx-cap-body"><div class="kx-cap-help">Buka bagian ini hanya saat perlu mengecek kuota. Ekskul yang penuh atau melebihi kuota tidak dapat dipilih untuk pemindahan siswa.</div><div class="kx-cap-grid">${capacityCards()}</div></div>
-      </details>
-    </div>`;
-    kxFilter();
-  }
-
-  async function boot(content,state){
-    content.innerHTML='<div class="kv2"><div class="kv2-card"><span class="spinner"></span> Memuat data ekskul...</div></div>';
-    try{await loadAll(state);render(content);}catch(e){content.innerHTML='<div class="kv2"><div class="kv2-card kv2-empty">'+esc(e.message)+'</div></div>';}
-  }
-
-  window.renderKegiatanEkskul=function(content){boot(content,S.state||'unknown');};
-  window.kxTab=async function(state){const root=document.getElementById('content');if(root)await boot(root,state);};
-  window.kxFilter=function(){
-    const q=(document.getElementById('kx-search')?.value||'').toLowerCase().trim();
-    const cls=(document.getElementById('kx-class')?.value||'').trim();
-    let visible=0;
-    document.querySelectorAll('.kx-row').forEach(r=>{
-      const okQ=!q||(r.dataset.search||'').includes(q);
-      const okC=!cls||(r.dataset.class||'')===cls;
-      const show=okQ&&okC;
-      r.style.display=show?'':'none';
-      if(show)visible++;
-    });
-    const el=document.getElementById('kx-visible-count');if(el)el.textContent=visible+' siswa';
-  };
-
-  window.kxMoveInternal=async function(studentId){
-    const sel=document.getElementById('kx-int-'+studentId),id=sel?.value||'';
-    if(!id){showToast('Pilih ekskul internal terlebih dahulu.',true);return;}
-    const c=S.capacities.find(x=>x.id===id);
-    if(c?.fullness==='FULL'||Number(c?.active_students||0)>=Number(c?.quota||0)){showToast('Ekskul ini sudah penuh.',true);return;}
-    if(!confirm(`Pindahkan siswa ini ke ${c?.name||'ekskul internal'}?`))return;
-    try{
-      const d=await req('set',{student_id:studentId,state:'internal',extracurricular_id:id});
-      S.summary=d.summary||S.summary;S.capacities=d.capacities||S.capacities;
-      showToast('Siswa berhasil dipindahkan ke ekskul internal.');
-      await loadAll(S.state);render(document.getElementById('content'));
-    }catch(e){showToast(e.message||'Pemindahan belum berhasil.',true);}
-  };
-
-  window.kxSetStatus=async function(studentId,state){
-    try{
-      const activity=document.getElementById('kx-ext-'+studentId)?.value||'';
-      if(state==='external'&&!activity.trim()){showToast('Isi nama ekskul di luar terlebih dahulu.',true);return;}
-      const d=await req('set',{student_id:studentId,state,activity_name:activity});
-      S.summary=d.summary||S.summary;
-      showToast('Status ekskul berhasil disimpan.');
-      await loadAll(S.state);render(document.getElementById('content'));
-    }catch(e){showToast(e.message||'Status belum tersimpan.',true);}
-  };
-
-  function bind(){
-    try{
-      if(typeof MODULE_GROUPS!=='undefined'){
-        for(const g of MODULE_GROUPS){
-          const it=(g.items||[]).find(x=>x.id==='kegiatan-ekskul');
-          if(it)it.render=window.renderKegiatanEkskul;
-        }
-      }
-    }catch(e){console.warn('Bind kapasitas ekskul gagal',e);}
-  }
-
-  bind();
-  try{if(currentUser&&typeof renderSidebar==='function')renderSidebar();}catch(_){ }
+  window.kxTargetChanged=function(exid='',assignment='',activity='',institution=''){const t=document.getElementById('kx-target')?.value||'internal',d=document.getElementById('kx-dynamic');if(!d)return;if(t==='internal'){d.innerHTML=`<div class="kx-grid2" style="margin-top:9px"><div class="kx-field"><label>Jenis Ekskul Internal</label><select id="kx-ex" class="kv2-select" onchange="kxExChanged()">${exOptions(exid)}</select></div><div class="kx-field"><label>Kelompok / Pelatih</label><select id="kx-group" class="kv2-select">${groupOptions(exid,assignment)}</select></div></div><div class="kx-note" id="kx-quota-note" style="margin-top:7px"></div>`;window.kxExChanged(assignment)}else if(t==='external'){d.innerHTML=`<div class="kx-grid2" style="margin-top:9px"><div class="kx-field"><label>Nama Kegiatan Eksternal</label><input id="kx-ext-name" class="kv2-input" value="${esc(activity)}" placeholder="Contoh: Renang"></div><div class="kx-field"><label>Lembaga / Tempat</label><input id="kx-inst" class="kv2-input" value="${esc(institution)}" placeholder="Opsional"></div></div>`}else d.innerHTML='<div class="kx-warning">Memilih “Tidak Mengikuti” akan menonaktifkan seluruh ekskul internal dan eksternal siswa ini.</div>'}
+  window.kxExChanged=function(selected=''){const exid=document.getElementById('kx-ex')?.value||'',g=document.getElementById('kx-group');if(g)g.innerHTML=groupOptions(exid,selected);const ex=S.extracurriculars.find(x=>x.id===exid),n=document.getElementById('kx-quota-note');if(n&&ex){const q=Number(ex.quota||0),a=Number(ex.active_students||0);n.textContent=q?`Peserta saat ini ${a}/${q}. ${a>=q?'Kuota sudah penuh/melebihi, tetapi penambahan tetap diperbolehkan.':'Masih tersedia '+(q-a)+' slot.'}`:'Ekskul ini tidak memiliki batas kuota aktif.'}}
+  window.kxManage=function(sid){const r=S.rows.find(x=>x.student_id===sid);if(!r)return;S.modalStudent=r;document.getElementById('kx-modal-name').textContent=r.name;document.getElementById('kx-modal-sub').textContent=(r.class_name||'')+(r.nis?' · '+r.nis:'');document.getElementById('kx-current').innerHTML=currentEntries(r);form(r);document.getElementById('kx-modal').classList.add('show')}
+  window.kxEditEntry=function(kind,id){if(!S.modalStudent)return;form(S.modalStudent,kind,id)}
+  window.kxResetForm=function(){if(S.modalStudent)form(S.modalStudent)}
+  window.kxCloseModal=function(){document.getElementById('kx-modal')?.classList.remove('show');S.modalStudent=null}
+  window.kxSaveEntry=async function(){if(!S.modalStudent)return;const target=document.getElementById('kx-target')?.value||'',payload={student_id:S.modalStudent.student_id,source_kind:S.sourceKind,source_id:S.sourceId,target_kind:target,notes:document.getElementById('kx-notes')?.value||''};if(target==='internal'){payload.extracurricular_id=document.getElementById('kx-ex')?.value||'';payload.assignment_id=document.getElementById('kx-group')?.value||'';const gs=groupsFor(payload.extracurricular_id);if(gs.length>1&&!payload.assignment_id){showToast('Pilih kelompok/pelatih terlebih dahulu.',true);return}}if(target==='external'){payload.activity_name=document.getElementById('kx-ext-name')?.value||'';payload.institution_name=document.getElementById('kx-inst')?.value||''}if(target==='none'&&S.modalStudent.activity_count>0&&!confirm('Status Tidak Mengikuti akan menonaktifkan semua ekskul aktif siswa ini. Lanjutkan?'))return;try{const d=await req('save_entry',payload);absorb(d);showToast('Data ekskul berhasil disimpan.');const sid=S.modalStudent.student_id;render(document.getElementById('content'));window.kxManage(sid)}catch(e){showToast(e.message||'Perubahan belum berhasil.',true)}}
+  window.kxRemoveEntry=async function(kind,id){if(!S.modalStudent||!confirm('Nonaktifkan keikutsertaan ini? Ekskul lain siswa tidak akan berubah.'))return;try{const sid=S.modalStudent.student_id,d=await req('remove_entry',{student_id:sid,kind,id});absorb(d);showToast('Keikutsertaan dinonaktifkan.');render(document.getElementById('content'));window.kxManage(sid)}catch(e){showToast(e.message||'Belum berhasil.',true)}}
+  window.kxAddParticipant=function(){const opts=S.rows.map(r=>`<option value="${r.student_id}">${esc(r.class_name)} · ${esc(r.name)}</option>`).join('');const wrap=document.createElement('div');wrap.className='kx-modal show';wrap.id='kx-pick';wrap.innerHTML=`<div class="kx-box" style="max-width:520px"><div class="kx-mhead"><div><div class="kx-name">Tambah Peserta Ekskul</div><div class="kx-sub">Pilih siswa, lalu tentukan Internal / Eksternal.</div></div><button class="kv2-btn ghost" onclick="document.getElementById('kx-pick').remove()">Tutup</button></div><div class="kx-mbody"><div class="kx-field"><label>Siswa</label><select id="kx-pick-student" class="kv2-select"><option value="">Pilih siswa...</option>${opts}</select></div><div class="kx-actions"><button class="kv2-btn" onclick="kxPickStudent()">Lanjut</button></div></div></div>`;document.body.appendChild(wrap)}
+  window.kxPickStudent=function(){const sid=document.getElementById('kx-pick-student')?.value||'';if(!sid){showToast('Pilih siswa terlebih dahulu.',true);return}document.getElementById('kx-pick')?.remove();window.kxManage(sid)}
+  window.kxTab=function(f){S.filter=f||'all';render(document.getElementById('content'))}
+  window.kxFilter=table;
+  window.renderKegiatanEkskul=async function(content){content.innerHTML='<div class="kv2"><div class="kv2-card"><span class="spinner"></span> Memuat Data Ekskul...</div></div>';try{await load();render(content)}catch(e){content.innerHTML='<div class="kv2"><div class="kv2-card kv2-empty">'+esc(e.message)+'</div></div>'}}
+  function bind(){try{if(typeof MODULE_GROUPS!=='undefined')for(const g of MODULE_GROUPS){const it=(g.items||[]).find(x=>x.id==='kegiatan-ekskul');if(it)it.render=window.renderKegiatanEkskul}}catch(e){console.warn('Bind Data Ekskul gagal',e)}}
+  bind();setTimeout(bind,800);setTimeout(bind,2200);
 })();
