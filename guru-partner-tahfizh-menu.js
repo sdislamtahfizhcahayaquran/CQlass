@@ -1,13 +1,14 @@
 /* CQlass — Guru Partner menu + fresh module loaders */
 (function(){
   let patched=false;
-  function loadFresh(src,key){
-    if(document.querySelector(`script[data-cq-${key}]`))return;
-    const s=document.createElement('script');s.src=src;s.defer=true;s.dataset[`cq${key.replace(/(^|-)([a-z])/g,(_,a,b)=>b.toUpperCase())}`]='1';document.head.appendChild(s);
+  function loadFresh(src){
+    const base=src.split('?')[0];
+    if([...document.scripts].some(s=>(s.getAttribute('src')||'').includes(base)))return;
+    const s=document.createElement('script');s.src=src;s.defer=true;document.head.appendChild(s);
   }
   function loadPartnerModules(){
-    loadFresh('guru-partner-class-picker.js?v=20260917-ptslock3','partner-pts-lock');
-    loadFresh('guru-partner-points.js?v=20260917-scope2','partner-points');
+    loadFresh('guru-partner-class-picker.js?v=20260917-ptslock3');
+    loadFresh('guru-partner-points.js?v=20260917-scope2');
   }
   function patch(){
     if(typeof MODULE_GROUPS==='undefined')return false;
