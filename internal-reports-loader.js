@@ -7,7 +7,7 @@
     'kegiatan-exkul-layout-fix.js?v=20260916-layout1',
     'school-activity-report.js?v=20260916-activity3',
     'school-activity-sidebar-fallback.js?v=20260916-activity3',
-    'pramuka-special-access.js?v=20260916-pramuka1'
+    'pramuka-special-access.js?v=20260916-pramuka2'
   ].forEach(function(src){
     var s=document.createElement('script');
     s.src=src;
