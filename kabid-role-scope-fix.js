@@ -116,7 +116,8 @@
       }
 
       const kg=MODULE_GROUPS.find(g=>g&&g.id==='kesiswaan');
-      if(kg) kg.roles=POINT_ROLE_LIST.slice();
+      // Kabid Akademik tidak memiliki sidebar/grup Kesiswaan. Hak Akademik dipusatkan di grup Akademik.
+      if(kg) kg.roles=POINT_ROLE_LIST.filter(r=>r!=='akademik');
     }catch(err){console.warn('Kabid role scope:',err)}
   }
 
@@ -253,6 +254,15 @@
   const s=document.createElement('script');
   s.src='admin-sidebar-clean.js?v=20260916-mastertp1';
   s.dataset.cqAdminClean='1';
+  document.head.appendChild(s);
+})();
+
+/* Kabid Akademik — Master TP + scope Akademik bersih. */
+(function(){
+  if(document.querySelector('script[data-cq-ak-master-tp]')) return;
+  const s=document.createElement('script');
+  s.src='academic-master-tp.js?v=20260916-akmastertp1';
+  s.dataset.cqAkMasterTp='1';
   document.head.appendChild(s);
 })();
 
