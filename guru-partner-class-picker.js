@@ -32,7 +32,7 @@
   function cellAt(row,col){return document.querySelector(`#gpt2-body .gp-cell[data-row="${row}"][data-col="${col}"]`)}
   function focusAt(row,col){let c=col;if(c===8)c+=(col>=8?1:-1);if(c<0||c>=VISIBLE_COLS)return;const x=cellAt(row,c);if(x){x.focus();x.select?.();x.scrollIntoView({block:'nearest',inline:'nearest'})}}
   function removeFillHandle(){document.querySelectorAll('#gpt2-body .gp-fill-handle').forEach(x=>x.remove());document.querySelectorAll('#gpt2-body td.gp-active-cell').forEach(x=>x.classList.remove('gp-active-cell'))}
-  function showFillHandle(input){removeFillHandle();const td=input.closest('td');if(!td)return;td.classList.add('gp-active-cell');const h=document.createElement('span');h.className='gp-fill-handle';h.title='Tarik untuk menyalin ke bawah/atas';h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();state.fill={source:input,row:Number(input.dataset.row),col:Number(input.dataset.col),destRow:Number(input.dataset.row)};h.setPointerCapture?.(e.pointerId)});td.appendChild(h)}
+  function showFillHandle(input){removeFillHandle();const td=input.closest('td');if(!td)return;td.classList.add('gp-active-cell');const h=document.createElement('span');h.className='gp-fill-handle';h.title='Tarik untuk menyalin ke bawah/atas';h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();state.fill={source:input,row:Number(input.dataset.row),col:Number(input.dataset.col)};h.setPointerCapture?.(e.pointerId);const done=ev=>{document.removeEventListener('pointerup',done,true);if(state.fill)finishFill(ev.clientX,ev.clientY)};document.addEventListener('pointerup',done,true)});td.appendChild(h)}
 
   function pushHistory(changes){const clean=changes.filter(x=>x&&x.el&&x.before!==x.after);if(!clean.length)return;state.undo.push(clean);if(state.undo.length>100)state.undo.shift();state.redo=[]}
   function applyTransaction(tx,useAfter){state.applying=true;for(const x of tx){x.el.value=useAfter?x.after:x.before;x.el.dataset.editStart=x.el.value;recalcRow(x.el.closest('tr'))}state.applying=false;statusDirty()}
@@ -81,7 +81,6 @@
       el.addEventListener('keydown',e=>handleKeydown(e,el));
       el.addEventListener('paste',e=>handlePaste(e,el));
     });
-    document.addEventListener('pointerup',e=>{if(state.fill)finishFill(e.clientX,e.clientY)},{once:true,capture:true});
   }
 
   async function render(content){
