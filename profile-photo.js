@@ -253,7 +253,7 @@
   function loadSignaturePreviewControls(){
     if(document.querySelector('script[data-cq-signature-preview-controls]')) return;
     const script=document.createElement('script');
-    script.src='signature-preview-controls.js?v=20260916-autonorm1';
+    script.src='signature-preview-controls.js?v=20260916-wysiwyg2';
     script.dataset.cqSignaturePreviewControls='1';
     document.head.appendChild(script);
   }
