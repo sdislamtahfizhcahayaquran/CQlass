@@ -6,93 +6,38 @@
   if(window.__cqBackgroundApiFixInstalled || typeof callApi !== 'function') return;
 
   const originalCallApi = callApi;
-  const silentActions = new Set([
-    'logAktivitas',
-    'getMyPendingTasks',
-    'getKeterlambatanBelumDicatat',
-    'getFotoProfil'
-  ]);
+  const silentActions = new Set(['logAktivitas','getMyPendingTasks','getKeterlambatanBelumDicatat','getFotoProfil']);
 
   async function callBackgroundApi(action, params={}){
     const body = JSON.stringify({ action, secret: APP_SECRET, ...params });
     const controller = new AbortController();
     const timeoutId = setTimeout(()=>controller.abort(),30000);
-
     let res;
     try{
-      res=await fetch(APPS_SCRIPT_URL,{
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body,
-        redirect:'follow',
-        signal:controller.signal
-      });
+      res=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body,redirect:'follow',signal:controller.signal});
     }catch(err){
       if(err?.name==='AbortError') throw new Error('Server terlalu lama merespons.');
       throw new Error('Request latar belakang belum dapat diproses.');
-    }finally{
-      clearTimeout(timeoutId);
-    }
-
-    const raw=await res.text();
-    let data;
+    }finally{clearTimeout(timeoutId)}
+    const raw=await res.text();let data;
     try{data=JSON.parse(raw)}catch(_){throw new Error('Respons request latar belakang tidak valid.')}
     return data||{};
   }
-
-  callApi=function(action,params={}){
-    if(silentActions.has(String(action||''))) return callBackgroundApi(action,params);
-    return originalCallApi(action,params);
-  };
-
+  callApi=function(action,params={}){if(silentActions.has(String(action||''))) return callBackgroundApi(action,params);return originalCallApi(action,params)};
   window.__cqBackgroundApiFixInstalled=true;
 })();
 
-/* Load profile dropdown, push helper, critical reminder center, and lightweight role polish. */
+/* Load shell enhancements and role-specific dashboards. */
 (function(){
   'use strict';
   if(window.__cqShellEnhancementLoaderInstalled) return;
   window.__cqShellEnhancementLoaderInstalled=true;
-
-  const profile=document.createElement('script');
-  profile.src='./profile-dropdown.js?v=20260914-profile1';
-  profile.async=false;
-  profile.onerror=function(){console.warn('CQlass profile dropdown gagal dimuat.')};
-  document.head.appendChild(profile);
-
-  if(!window.__cqPushLoaderInstalled){
-    window.__cqPushLoaderInstalled=true;
-    const push=document.createElement('script');
-    push.src='./push-notifications.js?v=20260914-push3';
-    push.async=true;
-    push.onerror=function(){console.warn('CQlass push client gagal dimuat.')};
-    document.head.appendChild(push);
-  }
-
-  if(!window.__cqReminderCenterLoaderInstalled){
-    window.__cqReminderCenterLoaderInstalled=true;
-    const reminder=document.createElement('script');
-    reminder.src='./reminder-center.js?v=20260915-bell-all-role2';
-    reminder.async=true;
-    reminder.onerror=function(){console.warn('CQlass reminder center gagal dimuat.')};
-    document.head.appendChild(reminder);
-  }
-
-  if(!window.__cqKegiatanPolishLoaderInstalled){
-    window.__cqKegiatanPolishLoaderInstalled=true;
-    const kegiatan=document.createElement('script');
-    kegiatan.src='./kegiatan-role-polish.js?v=20260915-kegiatan-polish1';
-    kegiatan.async=true;
-    kegiatan.onerror=function(){console.warn('CQlass kegiatan polish gagal dimuat.')};
-    document.head.appendChild(kegiatan);
-  }
-
-  if(!window.__cqKegiatanSidebarCleanLoaderInstalled){
-    window.__cqKegiatanSidebarCleanLoaderInstalled=true;
-    const kegiatanSidebar=document.createElement('script');
-    kegiatanSidebar.src='./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2';
-    kegiatanSidebar.async=true;
-    kegiatanSidebar.onerror=function(){console.warn('CQlass kegiatan sidebar cleanup gagal dimuat.')};
-    document.head.appendChild(kegiatanSidebar);
-  }
+  function add(src,key,async=true){if(window[key])return;window[key]=true;const s=document.createElement('script');s.src=src;s.async=async;s.onerror=()=>console.warn('CQlass script gagal dimuat:',src);document.head.appendChild(s)}
+  add('./profile-dropdown.js?v=20260914-profile1','__cqProfileDropdownLoader',false);
+  add('./push-notifications.js?v=20260914-push3','__cqPushLoaderInstalled',true);
+  add('./reminder-center.js?v=20260915-bell-all-role2','__cqReminderCenterLoaderInstalled',true);
+  add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);
+  add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
+  /* Kabid Tahfizh: loader langsung dari shell agar tidak bergantung pada patch Akademik. */
+  add('./tahfizh-kabid-dashboard.js?v=20260916-kabid-final3','__cqTahfizhKabidDashboardLoaderInstalled',false);
 })();
