@@ -27,9 +27,10 @@
       roles:[...roles],
       built:true,
       render:function(content){
+        window.__cqPramukaInputOnly=false;
         if(typeof window.renderSchoolActivityReport==='function') return window.renderSchoolActivityReport(content);
         content.innerHTML='<div class="kv2"><div class="kv2-card"><span class="spinner"></span> Memuat Rapor Kegiatan...</div></div>';
-        let n=0;const t=setInterval(function(){n++;if(typeof window.renderSchoolActivityReport==='function'){clearInterval(t);window.renderSchoolActivityReport(content)}else if(n>30){clearInterval(t);content.innerHTML='<div class="kv2"><div class="kv2-card kv2-empty">Modul Rapor Kegiatan belum termuat. Silakan refresh halaman.</div></div>'}},100);
+        let n=0;const t=setInterval(function(){n++;if(typeof window.renderSchoolActivityReport==='function'){clearInterval(t);window.__cqPramukaInputOnly=false;window.renderSchoolActivityReport(content)}else if(n>30){clearInterval(t);content.innerHTML='<div class="kv2"><div class="kv2-card kv2-empty">Modul Rapor Kegiatan belum termuat. Silakan refresh halaman.</div></div>'}},100);
       }
     };
   }
@@ -104,7 +105,7 @@
         });
       }
 
-      // Akun pengisi Pramuka dapat membuka Rapor Kegiatan walau role utamanya bukan Walas.
+      // Akun pengisi Pramuka non-Walas tetap memiliki jalur khusus; menu generik akan dibersihkan oleh pramuka-special-access.
       removeGroup('akademik-pramuka-special');
       const user=(typeof currentUser!=='undefined'&&currentUser)?currentUser:null;
       const username=String(user?.username||'').toLowerCase();
