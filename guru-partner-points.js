@@ -15,7 +15,7 @@ async function req(action,payload={}){
     return d;
   }catch(e){if(e?.name==='AbortError')throw Error('Server terlalu lama merespons.');throw e}finally{clearTimeout(tm)}
 }
-function toast(msg,bad=false){if(typeof showToast==='function')showToast(msg,bad?'error':'success');else alert(msg)}
+function toast(msg,bad=false){if(typeof showToast==='function')showToast(msg,!!bad);else alert(msg)}
 function today(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
 function masters(){return state.kind==='violation'?(boot?.violation_masters||[]):(boot?.reward_masters||[])}
 function mName(m){return state.kind==='violation'?m.violation_name:m.reward_name}
@@ -70,7 +70,9 @@ async function loadHistory(sid){
 function openEdit(row){if(!row)return;const root=document.getElementById('gpp-modal-root');root.innerHTML=`<div class="gpp-modal"><div class="gpp-modal-box"><div class="card-title">Edit ${kindLabel()}</div><div class="gpp-fields"><div class="gpp-field"><label>Tanggal</label><input id="gpp-edit-date" type="date" max="${today()}" value="${esc(row.date)}"></div><div class="gpp-field"><label>Jenis</label><select id="gpp-edit-master">${masters().map(m=>`<option value="${esc(m.id)}" ${String(m.id)===String(row.master_id)?'selected':''}>${esc(mName(m))}</option>`).join('')}</select></div><div class="gpp-field full"><label>Catatan</label><textarea id="gpp-edit-note">${esc(row.note||'')}</textarea></div></div><div class="gpp-modal-actions"><button class="gpp-mini" id="gpp-cancel">Batal</button><button class="btn" id="gpp-edit-save">Simpan Perubahan</button></div></div></div>`;document.getElementById('gpp-cancel').onclick=()=>root.innerHTML='';document.getElementById('gpp-edit-save').onclick=async()=>{const b=document.getElementById('gpp-edit-save');b.disabled=true;try{await req('update_record',{record_type:state.kind,record_id:row.id,date:document.getElementById('gpp-edit-date').value,master_id:document.getElementById('gpp-edit-master').value,note:document.getElementById('gpp-edit-note').value});root.innerHTML='';toast('Catatan berhasil diperbarui.');await loadHistory(state.viewStudent)}catch(e){toast(e.message,true);b.disabled=false}}}
 async function removeRecord(id){if(!confirm(`Hapus catatan ${kindLabel().toLowerCase()} ini?`))return;try{await req('delete_record',{record_type:state.kind,record_id:id});toast('Catatan dihapus.');await loadHistory(state.viewStudent)}catch(e){toast(e.message,true)}}
 
-if(!install()){
-  const ob=new MutationObserver(()=>{if(install()){ob.disconnect();if(typeof renderSidebar==='function'&&currentUser?.role==='partner')renderSidebar()}});ob.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>{if(install()&&typeof renderSidebar==='function'&&currentUser?.role==='partner')renderSidebar()},900);
+const ready=install();
+if(ready){setTimeout(()=>{if(typeof renderSidebar==='function'&&window.currentUser?.role==='partner')renderSidebar()},0)}
+else{
+  const ob=new MutationObserver(()=>{if(install()){ob.disconnect();if(typeof renderSidebar==='function'&&window.currentUser?.role==='partner')renderSidebar()}});ob.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>{if(install()&&typeof renderSidebar==='function'&&window.currentUser?.role==='partner')renderSidebar()},900);
 }
 })();
