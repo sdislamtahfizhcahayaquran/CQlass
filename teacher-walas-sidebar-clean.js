@@ -1,6 +1,6 @@
 /* CQlass — clean sidebar for Guru Mapel & Walas
    Guru: Pembelajaran + Kesiswaan + Laporan.
-   Walas: sama, ditambah Cetak Rapor sebagai grup terakhir.
+   Walas: sama, ditambah Rapor Kegiatan + Cetak Rapor sebagai grup Akademik terakhir.
    Request/Laporan Kesiswaan tidak boleh tampil untuk Guru/Walas.
    Laporan Guru Bulanan disembunyikan karena sudah tidak relevan.
 */
@@ -11,6 +11,7 @@
   const TEACHER_ROLES=['guru','walas'];
   const LEARNING_IDS=['leger','rpp-lp','pjbl','bilingual'];
   const LABELS={leger:'Input Nilai','rpp-lp':'RPP & LP',pjbl:'PjBL',bilingual:'Bilingual'};
+  const PRAMUKA_USERS=['luthfi','aryobimo'];
 
   function without(arr,vals){
     arr=Array.isArray(arr)?arr:[];
@@ -18,6 +19,19 @@
   }
   function cloneItem(item,roles,label){
     return {...item,label:label||item.label,roles:[...roles]};
+  }
+  function activityItem(roles){
+    return {
+      id:'rapor-kegiatan',
+      label:'Rapor Kegiatan',
+      roles:[...roles],
+      built:true,
+      render:function(content){
+        if(typeof window.renderSchoolActivityReport==='function') return window.renderSchoolActivityReport(content);
+        content.innerHTML='<div class="kv2"><div class="kv2-card"><span class="spinner"></span> Memuat Rapor Kegiatan...</div></div>';
+        let n=0;const t=setInterval(function(){n++;if(typeof window.renderSchoolActivityReport==='function'){clearInterval(t);window.renderSchoolActivityReport(content)}else if(n>30){clearInterval(t);content.innerHTML='<div class="kv2"><div class="kv2-card kv2-empty">Modul Rapor Kegiatan belum termuat. Silakan refresh halaman.</div></div>'}},100);
+      }
+    };
   }
   function findItem(id){
     if(typeof MODULE_GROUPS==='undefined') return null;
@@ -41,8 +55,6 @@
     try{
       if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS)) return false;
 
-      // Guard utama: Request Laporan adalah fitur internal HRD/Kesiswaan,
-      // sehingga role guru dan walas tidak pernah mendapat item tersebut.
       for(const group of MODULE_GROUPS){
         if(!group) continue;
         if(Array.isArray(group.items)){
@@ -52,7 +64,6 @@
         }
       }
 
-      // Laporan Guru Bulanan sudah tidak dipakai lagi.
       const reports=MODULE_GROUPS.find(g=>g&&g.id==='laporan');
       if(reports&&Array.isArray(reports.items)){
         reports.items=reports.items.filter(x=>x&&x.id!=='laporan-guru');
@@ -63,27 +74,24 @@
       const academic=MODULE_GROUPS.find(g=>g&&g.id==='akademik');
       if(!academic||!Array.isArray(academic.items)) return false;
 
-      // Ambil modul inti guru dari struktur yang sudah ada.
       const learningItems=[];
       for(const id of LEARNING_IDS){
         const src=findItem(id);
         if(src) learningItems.push(cloneItem(src,TEACHER_ROLES,LABELS[id]));
       }
 
-      // Modul asli tetap tersedia untuk Kabid/Pimpinan, tetapi tidak dobel di guru/walas.
       for(const id of LEARNING_IDS){
         const src=findItem(id);
         if(src) src.roles=without(src.roles,TEACHER_ROLES);
       }
       academic.roles=without(academic.roles,TEACHER_ROLES);
 
-      // Pembelajaran khusus guru/walas.
       removeGroup('pembelajaran-guru');
       const learningGroup={id:'pembelajaran-guru',label:'Pembelajaran',roles:[...TEACHER_ROLES],items:learningItems};
       const studentIndex=MODULE_GROUPS.findIndex(g=>g&&g.id==='kesiswaan');
       MODULE_GROUPS.splice(studentIndex>=0?studentIndex:0,0,learningGroup);
 
-      // Cetak Rapor khusus Walas dibuat sebagai grup paling akhir.
+      // Akademik Walas hanya dua menu: Rapor Kegiatan dan Cetak Rapor.
       const rapor=academic.items.find(x=>x&&x.id==='rapor');
       removeGroup('akademik-walas');
       if(rapor){
@@ -92,7 +100,21 @@
           id:'akademik-walas',
           label:'Akademik',
           roles:['walas'],
-          items:[cloneItem(rapor,['walas'],'Cetak Rapor')]
+          items:[activityItem(['walas']),cloneItem(rapor,['walas'],'Cetak Rapor')]
+        });
+      }
+
+      // Akun pengisi Pramuka dapat membuka Rapor Kegiatan walau role utamanya bukan Walas.
+      removeGroup('akademik-pramuka-special');
+      const user=(typeof currentUser!=='undefined'&&currentUser)?currentUser:null;
+      const username=String(user?.username||'').toLowerCase();
+      const userRole=String(user?.role||'guru').toLowerCase();
+      if(PRAMUKA_USERS.includes(username)&&userRole!=='walas'){
+        MODULE_GROUPS.push({
+          id:'akademik-pramuka-special',
+          label:'Akademik',
+          roles:[userRole],
+          items:[activityItem([userRole])]
         });
       }
 
@@ -122,6 +144,16 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install);
   else install();
   window.__cqTeacherWalasSidebarClean=true;
+})();
+
+/* Load Rapor Kegiatan. */
+(function(){
+  if(document.querySelector('script[data-cq-school-activity-report]')) return;
+  const s=document.createElement('script');
+  s.src='school-activity-report.js?v=20260916-activity1';
+  s.dataset.cqSchoolActivityReport='1';
+  s.onload=function(){try{if(typeof currentUser!=='undefined'&&currentUser&&typeof renderSidebar==='function')renderSidebar()}catch(_){}};
+  document.head.appendChild(s);
 })();
 
 /* Load realtime UKS duty report after the teacher/walas menu structure is ready. */
