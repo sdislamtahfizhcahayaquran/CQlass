@@ -7,6 +7,8 @@
   const SPECIAL=['luthfi','aryobimo'];
   const username=()=>{try{return String(currentUser?.username||'').toLowerCase()}catch(_){return''}};
   const isSpecial=()=>SPECIAL.includes(username());
+  const isWalas=()=>{try{return String(currentUser?.role||'').toLowerCase()==='walas'||Boolean(currentUser?.is_walas)}catch(_){return false}};
+  const isPramukaMode=()=>isSpecial()&&window.__cqPramukaInputOnly===true;
   const DRAG={active:false,value:false,root:null,last:null};
 
   function fireChange(el){
@@ -25,7 +27,7 @@
 
     root.addEventListener('pointerdown',function(e){
       const el=e.target?.closest?.('.sar-check[data-code="PRAMUKA"]');
-      if(!el||el.disabled)return;
+      if(!el||el.disabled||!isPramukaMode())return;
       e.preventDefault();
       DRAG.active=true;
       DRAG.value=!el.checked;
@@ -63,7 +65,7 @@
   });
 
   function pruneToPramuka(){
-    if(!isSpecial())return;
+    if(!isPramukaMode())return;
     const root=document.getElementById('sar-root');
     if(!root)return;
     root.classList.add('pramuka-only');
@@ -95,7 +97,7 @@
 
   function watchReport(){
     let n=0;
-    const t=setInterval(()=>{pruneToPramuka();if(++n>40)clearInterval(t)},75);
+    const t=setInterval(()=>{pruneToPramuka();if(++n>120)clearInterval(t)},75);
   }
 
   function openInput(btn){
@@ -114,13 +116,13 @@
       const wait=setInterval(()=>{
         if(typeof window.renderSchoolActivityReport==='function'){
           clearInterval(wait);window.renderSchoolActivityReport(content);watchReport();
-        }else if(++tries>50){clearInterval(wait);content.innerHTML='<div class="kv2"><div class="kv2-card kv2-empty">Modul Input Pramuka belum termuat. Silakan refresh halaman.</div></div>'}
+        }else if(++tries>80){clearInterval(wait);content.innerHTML='<div class="kv2"><div class="kv2-card kv2-empty">Modul Input Pramuka belum termuat. Silakan refresh halaman.</div></div>'}
       },100);
     }
   }
 
   function removeGenericSpecialMenu(sb){
-    if(!isSpecial())return;
+    if(!isSpecial()||isWalas())return;
     [...sb.querySelectorAll('.nav-item')].forEach(item=>{
       if(String(item.textContent||'').trim()==='Rapor Kegiatan')item.remove();
     });
@@ -163,12 +165,16 @@
   `;
   document.head.appendChild(st);
 
-  const obs=new MutationObserver(()=>setTimeout(()=>{inject();pruneToPramuka()},0));
+  const sidebarObs=new MutationObserver(()=>setTimeout(inject,0));
+  const contentObs=new MutationObserver(()=>{if(isPramukaMode())requestAnimationFrame(pruneToPramuka)});
   function start(){
     const sb=document.getElementById('sidebar');
-    if(sb)obs.observe(sb,{childList:true,subtree:true});
+    const content=document.getElementById('content');
+    if(sb)sidebarObs.observe(sb,{childList:true,subtree:true});
+    if(content)contentObs.observe(content,{childList:true,subtree:true});
     inject();
+    pruneToPramuka();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-  setInterval(inject,900);
+  setInterval(()=>{inject();if(isPramukaMode())pruneToPramuka()},900);
 })();
