@@ -1,12 +1,18 @@
 (function(){
   window.__CQ_ATTENDANCE_RECAP_MODE_LEGACY_DISABLED__=true;
-  // MT V9 owns the existing Input / Leaderboard / Rekap feature set.
-  // Keep it loaded; additions to recap must not replace these features.
+  // MT V9 owns Input Morning Talk, Leaderboard Siswa, and Rekap. Never replace it.
   if(!document.querySelector('script[data-cq-mt-v9]') && !window.__CQMTV9){
     var mt=document.createElement('script');
-    mt.src='mt-v7.js?v=20260917-restore1';
+    mt.src='mt-v7.js?v=20260917-restore2';
     mt.dataset.cqMtV9='1';
     document.head.appendChild(mt);
+  }
+  // Add Hari Efektif only inside Rekap Editable; this script does not alter tabs/panels.
+  if(!document.querySelector('script[data-cq-mt-effective-safe]')){
+    var he=document.createElement('script');
+    he.src='mt-effective-days-safe.js?v=20260917-safe1';
+    he.dataset.cqMtEffectiveSafe='1';
+    document.head.appendChild(he);
   }
   if(!document.querySelector('script[data-cq-raw-exkul]')){
     var s=document.createElement('script');
