@@ -27,17 +27,33 @@
     }
     return null;
   }
-
   function install(){const it=findItem();if(!it)return false;it.render=render;return true;}
+
+  function toNum(v){
+    const raw=String(v??'').trim().replace(/,/g,'.').replace(/[^0-9.\-]/g,'');
+    if(!raw)return null;
+    const n=Number(raw);return Number.isFinite(n)?n:null;
+  }
+  function calcPct(baris,lp){
+    const a=toNum(baris),b=toNum(lp);
+    if(a===null||b===null||b<=0)return '';
+    return `${Math.round((a/b)*100)}%`;
+  }
+  function recalcRow(tr){
+    const b=tr.querySelector('[data-key="jumlah_baris"]');
+    const lp=tr.querySelector('[data-key="jumlah_baris_lp"]');
+    const p=tr.querySelector('[data-key="persentase"]');
+    if(p)p.value=calcPct(b?.value,lp?.value);
+  }
 
   async function render(content){
     content.innerHTML='<div class="card"><span class="spinner"></span>Memuat kelas Tahfizh...</div>';
     try{
       state.boot=await call('bootstrap');
       const classes=state.boot.classes||[];
-      if(!classes.length){content.innerHTML='<div class="empty-state">Belum ada kelas Tahfizh pada akun ini.</div>';return}
+      if(!classes.length){content.innerHTML='<div class="empty-state">Belum ada kelas halaqah Tahfizh pada akun ini.</div>';return}
       state.classId=''; state.students=[]; state.reports=new Map(); state.dirty=false;
-      content.innerHTML=`<div class="page-title">Nilai Tahfizh</div><div class="page-sub">Pilih kelas input, lalu sistem menampilkan siswa halaqah Anda pada kelas tersebut.</div><div class="card"><div class="gp-toolbar" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap"><div class="gp-field" style="min-width:240px"><label>Pilih Kelas Input</label><select id="gpt2-class" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fff"><option value="">— Pilih kelas —</option>${classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div><div class="gp-field"><label>Guru Pengisi</label><div class="gp-badge">${esc(state.boot.teacher_name||currentUser?.nama||'')}</div></div><span id="gpt2-status" class="gp-state">Pilih kelas terlebih dahulu</span><button class="btn gp-save" id="gpt2-save" disabled>Simpan</button></div><div id="gpt2-body" style="margin-top:12px"><div class="empty-state">Silakan pilih kelas input.</div></div></div>`;
+      content.innerHTML=`<div class="page-title">Nilai Tahfizh — PTS</div><div class="page-sub">Pilih kelas. Siswa yang tampil adalah siswa halaqah Anda. Persentase dihitung otomatis dari Jumlah Baris ÷ Jumlah Baris LP × 100.</div><div class="card"><div class="gp-toolbar" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap"><div class="gp-field" style="min-width:240px"><label>Pilih Kelas Input</label><select id="gpt2-class" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fff"><option value="">— Pilih kelas —</option>${classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div><div class="gp-field"><label>Guru Halaqah</label><div class="gp-badge">${esc(state.boot.teacher_name||currentUser?.nama||'')}</div></div><span id="gpt2-status" class="gp-state">Pilih kelas terlebih dahulu</span><button class="btn gp-save" id="gpt2-save" disabled>Simpan</button></div><div id="gpt2-body" style="margin-top:12px"><div class="empty-state">Silakan pilih kelas input.</div></div></div>`;
       document.getElementById('gpt2-class').addEventListener('change',e=>loadClass(e.target.value));
       document.getElementById('gpt2-save').addEventListener('click',save);
     }catch(e){
@@ -54,18 +70,21 @@
     catch(e){body.innerHTML=`<div class="empty-state">${esc(e.message)}</div>`;st.textContent='Gagal memuat';}
   }
 
-  const fields=[['materi_hafalan','Materi Hafalan',180],['lp_tahfizh','LP Tahfizh',180],['realisasi_saat_ini','Realisasi Saat Ini',180],['prestasi_tahfizh','Prestasi Tahfizh',180],['jumlah_surat','Jml Surat',90],['jumlah_baris','Jml Baris',90],['jumlah_ayat','Jml Ayat',90],['jumlah_baris_lp','Jml Baris LP',100],['persentase','Persentase',100],['mengikuti_kenaikan_juz','Kenaikan Juz',120]];
+  const fields=[
+    ['materi_hafalan','Materi Hafalan',180],['lp_tahfizh','LP Tahfizh',180],['realisasi_saat_ini','Realisasi Saat Ini',180],['prestasi_tahfizh','Prestasi Tahfizh',180],
+    ['jumlah_surat','Jml Surat',90],['jumlah_baris','Jml Baris',90],['jumlah_ayat','Jml Ayat',90],['jumlah_baris_lp','Jml Baris LP',100],['mengikuti_kenaikan_juz','Kenaikan Juz',120]
+  ];
   function renderGrid(body,d){
     if(!state.students.length){body.innerHTML='<div class="empty-state">Belum ada siswa pada halaqah ini.</div>';return}
-    body.innerHTML=`<div class="gp-note">${state.students.length} siswa · Halaqah ${esc(d.halaqah_name||state.boot?.teacher_name||'')}</div><div class="gp-tablewrap"><table class="gp-table"><thead><tr><th>No</th><th>Nama Siswa</th>${fields.map(f=>`<th>${f[1]}</th>`).join('')}</tr></thead><tbody>${state.students.map((s,i)=>{const r=state.reports.get(s.id)||{};return `<tr><td style="padding:8px;text-align:center">${i+1}</td><td class="name">${esc(s.full_name||s.name||'')}</td>${fields.map(f=>`<td><input class="gp-cell" style="min-width:${f[2]}px" data-student="${esc(s.id)}" data-key="${f[0]}" value="${esc(r[f[0]]??'')}"></td>`).join('')}</tr>`}).join('')}</tbody></table></div>`;
-    body.querySelectorAll('.gp-cell').forEach(el=>el.addEventListener('input',()=>{state.dirty=true;const st=document.getElementById('gpt2-status');if(st)st.textContent='Belum disimpan'}));
+    body.innerHTML=`<div class="gp-note">${state.students.length} siswa · Halaqah ${esc(d.halaqah_name||state.boot?.teacher_name||'')} · Persentase otomatis</div><div class="gp-tablewrap"><table class="gp-table"><thead><tr><th>No</th><th>Nama Siswa</th>${fields.map(f=>`<th>${f[1]}</th>`).join('')}<th>Persentase</th></tr></thead><tbody>${state.students.map((s,i)=>{const r=state.reports.get(s.id)||{};const pct=calcPct(r.jumlah_baris,r.jumlah_baris_lp);return `<tr><td style="padding:8px;text-align:center">${i+1}</td><td class="name">${esc(s.full_name||s.name||'')}</td>${fields.map(f=>`<td><input class="gp-cell" style="min-width:${f[2]}px" data-student="${esc(s.id)}" data-key="${f[0]}" value="${esc(r[f[0]]??'')}"></td>`).join('')}<td><input class="gp-formula" style="min-width:100px;background:#f5f7fa;font-weight:700" data-student="${esc(s.id)}" data-key="persentase" value="${esc(pct)}" readonly tabindex="-1" title="Otomatis: Jumlah Baris ÷ Jumlah Baris LP × 100"></td></tr>`}).join('')}</tbody></table></div>`;
+    body.querySelectorAll('.gp-cell').forEach(el=>el.addEventListener('input',()=>{state.dirty=true;recalcRow(el.closest('tr'));const st=document.getElementById('gpt2-status');if(st)st.textContent='Belum disimpan'}));
   }
 
   async function save(){
     const btn=document.getElementById('gpt2-save'),st=document.getElementById('gpt2-status');if(!state.classId||!state.students.length)return;
     const map=new Map(state.students.map(s=>[s.id,{student_id:s.id}]));document.querySelectorAll('#gpt2-body .gp-cell').forEach(el=>{const r=map.get(el.dataset.student);if(r)r[el.dataset.key]=el.value.trim()});
     btn.disabled=true;const old=btn.textContent;btn.textContent='Menyimpan...';
-    try{const d=await call('save',{class_id:state.classId,items:[...map.values()]});state.dirty=false;st.textContent=`Tersimpan (${d.saved||state.students.length} siswa)`;if(window.showToast)showToast('Nilai Tahfizh tersimpan.','success')}
+    try{const d=await call('save',{class_id:state.classId,items:[...map.values()]});state.dirty=false;st.textContent=`Tersimpan (${d.saved||state.students.length} siswa)`;if(window.showToast)showToast('Nilai PTS Tahfizh tersimpan.','success');await loadClass(state.classId)}
     catch(e){st.textContent='Gagal menyimpan';if(window.showToast)showToast(e.message,'error');else alert(e.message)}finally{btn.disabled=false;btn.textContent=old}
   }
 
