@@ -8,7 +8,8 @@
     'school-activity-report.js?v=20260916-activity3',
     'school-activity-drag-fill.js?v=20260916-drag1',
     'school-activity-sidebar-fallback.js?v=20260916-activity3',
-    'pramuka-special-access.js?v=20260916-pramuka2'
+    'pramuka-mode-reset.js?v=20260916-pramuka1',
+    'pramuka-special-access.js?v=20260916-pramuka3'
   ].forEach(function(src){
     var s=document.createElement('script');
     s.src=src;
