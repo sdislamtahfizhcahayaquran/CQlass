@@ -150,7 +150,7 @@
 (function(){
   if(document.querySelector('script[data-cq-school-activity-report]')) return;
   const s=document.createElement('script');
-  s.src='school-activity-report.js?v=20260916-activity1';
+  s.src='school-activity-report.js?v=20260916-activity2';
   s.dataset.cqSchoolActivityReport='1';
   s.onload=function(){try{if(typeof currentUser!=='undefined'&&currentUser&&typeof renderSidebar==='function')renderSidebar()}catch(_){}};
   document.head.appendChild(s);
