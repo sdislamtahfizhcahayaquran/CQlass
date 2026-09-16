@@ -1,6 +1,14 @@
 /* CQlass — pisahkan Nilai PTS dan Laporan Bulanan Tahfizh untuk Guru Partner */
 (function(){
   let patched=false;
+  function loadPartnerPoints(){
+    if(document.querySelector('script[data-cq-partner-points]'))return;
+    const s=document.createElement('script');
+    s.src='guru-partner-points.js?v=20260917-points1';
+    s.defer=true;
+    s.dataset.cqPartnerPoints='1';
+    document.head.appendChild(s);
+  }
   function patch(){
     if(patched||typeof MODULE_GROUPS==='undefined')return false;
     const g=MODULE_GROUPS.find(x=>x.id==='partner-tasks');
@@ -34,10 +42,12 @@
         }
       });
     }
+    loadPartnerPoints();
     patched=true;
     if(typeof renderSidebar==='function'&&window.currentUser?.role==='partner')renderSidebar();
     return true;
   }
+  loadPartnerPoints();
   if(!patch()){
     const timer=setInterval(function(){if(patch())clearInterval(timer)},150);
     setTimeout(function(){clearInterval(timer);patch()},5000);
