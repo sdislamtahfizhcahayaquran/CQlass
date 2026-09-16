@@ -1,5 +1,13 @@
 (function(){
   window.__CQ_ATTENDANCE_RECAP_MODE_LEGACY_DISABLED__=true;
+  // MT V9 owns the existing Input / Leaderboard / Rekap feature set.
+  // Keep it loaded; additions to recap must not replace these features.
+  if(!document.querySelector('script[data-cq-mt-v9]') && !window.__CQMTV9){
+    var mt=document.createElement('script');
+    mt.src='mt-v7.js?v=20260917-restore1';
+    mt.dataset.cqMtV9='1';
+    document.head.appendChild(mt);
+  }
   if(!document.querySelector('script[data-cq-raw-exkul]')){
     var s=document.createElement('script');
     s.src='extracurricular-raw-ui.js?v=20260916-raw2';
