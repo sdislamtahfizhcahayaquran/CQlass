@@ -1,5 +1,11 @@
 (function(){
   window.__CQ_ATTENDANCE_RECAP_MODE_LEGACY_DISABLED__=true;
+  if(!document.querySelector('script[data-cq-mt-effective]')){
+    var he=document.createElement('script');
+    he.src='mt-effective-days-recap.js?v=20260917-1';
+    he.dataset.cqMtEffective='1';
+    document.head.appendChild(he);
+  }
   if(!document.querySelector('script[data-cq-raw-exkul]')){
     var s=document.createElement('script');
     s.src='extracurricular-raw-ui.js?v=20260916-raw2';
