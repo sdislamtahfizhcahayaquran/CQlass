@@ -7,6 +7,60 @@
   const SPECIAL=['luthfi','aryobimo'];
   const username=()=>{try{return String(currentUser?.username||'').toLowerCase()}catch(_){return''}};
   const isSpecial=()=>SPECIAL.includes(username());
+  const DRAG={active:false,value:false,root:null,last:null};
+
+  function fireChange(el){
+    try{el.dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}
+  }
+  function applyDragBox(el){
+    if(!el||el.disabled||el.dataset.code!=='PRAMUKA')return;
+    if(el===DRAG.last)return;
+    el.checked=DRAG.value;
+    DRAG.last=el;
+    fireChange(el);
+  }
+  function installDragFill(root){
+    if(!root||root.dataset.pramukaDragInstalled==='1')return;
+    root.dataset.pramukaDragInstalled='1';
+
+    root.addEventListener('pointerdown',function(e){
+      const el=e.target?.closest?.('.sar-check[data-code="PRAMUKA"]');
+      if(!el||el.disabled)return;
+      e.preventDefault();
+      DRAG.active=true;
+      DRAG.value=!el.checked;
+      DRAG.root=root;
+      DRAG.last=null;
+      el.dataset.pramukaManualPointer='1';
+      applyDragBox(el);
+      document.body.classList.add('cq-pramuka-dragging');
+    });
+
+    root.addEventListener('click',function(e){
+      const el=e.target?.closest?.('.sar-check[data-code="PRAMUKA"]');
+      if(!el||el.disabled)return;
+      if(el.dataset.pramukaManualPointer==='1'){
+        e.preventDefault();
+        delete el.dataset.pramukaManualPointer;
+      }
+    },true);
+  }
+
+  document.addEventListener('pointermove',function(e){
+    if(!DRAG.active||!DRAG.root)return;
+    const under=document.elementFromPoint(e.clientX,e.clientY);
+    const el=under?.closest?.('.sar-check[data-code="PRAMUKA"]');
+    if(el&&DRAG.root.contains(el))applyDragBox(el);
+  },{passive:true});
+  document.addEventListener('pointerup',function(){
+    if(!DRAG.active)return;
+    DRAG.active=false;DRAG.root=null;DRAG.last=null;
+    document.body.classList.remove('cq-pramuka-dragging');
+  });
+  document.addEventListener('pointercancel',function(){
+    DRAG.active=false;DRAG.root=null;DRAG.last=null;
+    document.body.classList.remove('cq-pramuka-dragging');
+  });
 
   function pruneToPramuka(){
     if(!isSpecial())return;
@@ -16,11 +70,11 @@
     const h=root.querySelector('.sar-head h2');
     const p=root.querySelector('.sar-head p');
     if(h)h.textContent='Input Pramuka';
-    if(p)p.textContent='Pilih kelas, klik Edit, lalu centang siswa yang mengikuti Pramuka dan klik Simpan.';
+    if(p)p.textContent='Pilih kelas, klik Edit, lalu klik atau tahan dan tarik pada kolom Pramuka. Setelah selesai klik Simpan.';
     const range=root.querySelector('.sar-range');
     if(range)range.style.display='none';
     const info=root.querySelector('.sar-info');
-    if(info)info.textContent='Khusus akun Lutfi dan Bimo. Data Pramuka akan terbaca otomatis di Rapor Kegiatan wali kelas.';
+    if(info)info.textContent='Kolom Pramuka bisa diisi cepat: tahan kotak lalu tarik ke atas/bawah. Data tersimpan setelah menekan Simpan.';
 
     root.querySelectorAll('[data-head-code]').forEach(th=>{
       th.style.display=th.dataset.headCode==='PRAMUKA'?'':'none';
@@ -36,6 +90,7 @@
       const last=cells[cells.length-1];
       if(last&&last.querySelector('.sar-grade'))last.style.display='none';
     });
+    installDragFill(root);
   }
 
   function watchReport(){
@@ -99,7 +154,13 @@
   }
 
   const st=document.createElement('style');
-  st.textContent='#sar-root.pramuka-only .sar-table{min-width:520px!important}#sar-root.pramuka-only .sar-act-head{min-width:150px!important}';
+  st.textContent=`
+    #sar-root.pramuka-only .sar-table{min-width:520px!important}
+    #sar-root.pramuka-only .sar-act-head{min-width:150px!important}
+    #sar-root.pramuka-only .sar-check[data-code="PRAMUKA"]:not(:disabled){cursor:crosshair;touch-action:none}
+    #sar-root.pramuka-only td:has(.sar-check[data-code="PRAMUKA"]:not(:disabled)){cursor:crosshair;user-select:none}
+    body.cq-pramuka-dragging{user-select:none}
+  `;
   document.head.appendChild(st);
 
   const obs=new MutationObserver(()=>setTimeout(()=>{inject();pruneToPramuka()},0));
