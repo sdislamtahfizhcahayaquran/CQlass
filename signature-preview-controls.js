@@ -7,6 +7,7 @@
   const SLOT_RATIO=46/24;
   const FIT_X=.90;
   const FIT_Y=.82;
+  const DEFAULT_Y_OFFSET=SLOT_H*.05;
 
   let originalProcessed='';
   let busy=false;
@@ -272,7 +273,7 @@
     const dw=iw*fit*editor.scale,dh=ih*fit*editor.scale;
     clampEditorOffsets();
     ctx.save();
-    ctx.translate(SLOT_W/2+editor.offsetX,SLOT_H/2+editor.offsetY);
+    ctx.translate(SLOT_W/2+editor.offsetX,SLOT_H/2+DEFAULT_Y_OFFSET+editor.offsetY);
     ctx.rotate(editor.rotation*Math.PI/180);
     ctx.drawImage(img,-dw/2,-dh/2,dw,dh);
     ctx.restore();
@@ -335,7 +336,7 @@
           <button type="button" onclick="autoFitTeacherSignature()" title="Kembalikan ukuran dan posisi otomatis">◎ Auto-fit</button>
           <button type="button" onclick="resetTeacherSignaturePreview()" title="Kembalikan gambar awal">Reset</button>
         </div>
-        <div class="cq-sign-preview-note">Kotak ini memakai rasio area tanda tangan rapor asli 46 × 24 mm. Posisi, ukuran, dan rotasi yang terlihat di sini ikut tersimpan. PNG transparan yang sudah remove background tidak diproses ulang.</div>
+        <div class="cq-sign-preview-note">Kotak ini memakai rasio area tanda tangan rapor asli 46 × 24 mm. Auto-fit menempatkan tanda tangan sedikit lebih ke bawah agar lebih dekat ke nama. Posisi, ukuran, dan rotasi yang terlihat di sini ikut tersimpan. PNG transparan yang sudah remove background tidak diproses ulang.</div>
       </div>`;
     bindCanvasDrag();drawEditor();
   }
@@ -361,7 +362,7 @@
   window.autoFitTeacherSignature=function(){
     if(!editor.img)return;
     editor.scale=1;editor.offsetX=0;editor.offsetY=0;editor.rotation=0;drawEditor();
-    msg('Ukuran dan posisi dikembalikan ke Auto-fit.');
+    msg('Ukuran dan posisi dikembalikan ke Auto-fit (sedikit lebih ke bawah).');
   };
   window.resetTeacherSignaturePreview=function(){
     if(!originalProcessed)return;
