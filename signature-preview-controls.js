@@ -1,10 +1,11 @@
-/* CQlass — preview, rotate, and stronger background cleanup for walas signature */
+/* CQlass — preview, rotate, preserve transparent uploads, and clean paper backgrounds */
 (function(){
   'use strict';
 
   let originalProcessed='';
   let busy=false;
   let boundHandler=null;
+  let lastInputWasTransparent=false;
 
   function state(){
     try{ return typeof teacherSignatureState!=='undefined' ? teacherSignatureState : null; }
@@ -43,7 +44,7 @@
           <button type="button" onclick="rotateTeacherSignature(180)" title="Balik posisi 180 derajat">↕ Balik 180°</button>
           <button type="button" onclick="resetTeacherSignaturePreview()" title="Kembalikan posisi awal">Reset</button>
         </div>
-        <div class="cq-sign-preview-note">Kotak-kotak menandakan area transparan. Pastikan tidak ada kabut putih/abu-abu di sekitar tanda tangan.</div>
+        <div class="cq-sign-preview-note">Kotak-kotak menandakan area transparan. File yang sudah remove background akan dipertahankan, tidak diproses ulang.</div>
       </div>`;
   }
 
@@ -63,7 +64,52 @@
     return a.length?a[Math.floor(a.length/2)]:255;
   }
 
-  /* Stronger cleanup: remove paper + shadows, preserve dark ink, auto crop. */
+  function exportTransparentSignature(canvas,imageData,w,h){
+    const p=imageData.data;
+    let minX=w,minY=h,maxX=-1,maxY=-1,visible=0;
+
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const a=p[(y*w+x)*4+3];
+        if(a>8){
+          if(x<minX)minX=x;if(x>maxX)maxX=x;
+          if(y<minY)minY=y;if(y>maxY)maxY=y;
+          visible++;
+        }
+      }
+    }
+    if(maxX<0 || visible<8) throw new Error('Tanda tangan transparan tidak memiliki coretan yang dapat disimpan.');
+
+    const pad=Math.max(8,Math.round(Math.max(w,h)*.012));
+    minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad);
+    maxX=Math.min(w-1,maxX+pad); maxY=Math.min(h-1,maxY+pad);
+    const cw=maxX-minX+1, ch=maxY-minY+1;
+
+    let out=document.createElement('canvas');
+    const targetW=Math.min(1000,cw);
+    const ratio=targetW/cw;
+    out.width=Math.max(1,Math.round(cw*ratio));
+    out.height=Math.max(1,Math.round(ch*ratio));
+    const octx=out.getContext('2d');
+    octx.clearRect(0,0,out.width,out.height);
+    octx.drawImage(canvas,minX,minY,cw,ch,0,0,out.width,out.height);
+
+    let url=out.toDataURL('image/png');
+    while(bytesFromDataUrl(url)>1024*1024 && out.width>420){
+      const next=document.createElement('canvas');
+      next.width=Math.max(420,Math.round(out.width*.82));
+      next.height=Math.max(1,Math.round(out.height*(next.width/out.width)));
+      const nctx=next.getContext('2d');
+      nctx.clearRect(0,0,next.width,next.height);
+      nctx.drawImage(out,0,0,next.width,next.height);
+      out=next;
+      url=out.toDataURL('image/png');
+    }
+    if(bytesFromDataUrl(url)>1200*1024) throw new Error('File tanda tangan transparan terlalu besar. Gunakan gambar dengan ukuran lebih kecil.');
+    return url;
+  }
+
+  /* Paper cleanup only for files that do not already contain meaningful transparency. */
   async function cleanSignature(file){
     if(!file) throw new Error('Pilih foto tanda tangan.');
     if(!String(file.type||'').startsWith('image/')) throw new Error('File yang dipilih bukan gambar.');
@@ -80,8 +126,27 @@
     const canvas=document.createElement('canvas');
     canvas.width=w; canvas.height=h;
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.clearRect(0,0,w,h);
     ctx.drawImage(img,0,0,w,h);
     const image=ctx.getImageData(0,0,w,h), p=image.data;
+
+    /* Detect images that already had their background removed. */
+    let fullyTransparent=0, partiallyTransparent=0;
+    const totalPixels=Math.max(1,w*h);
+    for(let i=3;i<p.length;i+=4){
+      const a=p[i];
+      if(a<=24) fullyTransparent++;
+      else if(a<250) partiallyTransparent++;
+    }
+    const clearRatio=fullyTransparent/totalPixels;
+    const alphaRatio=(fullyTransparent+partiallyTransparent)/totalPixels;
+    const alreadyTransparent=clearRatio>=0.02 && alphaRatio>=0.04;
+
+    if(alreadyTransparent){
+      lastInputWasTransparent=true;
+      return exportTransparentSignature(canvas,image,w,h);
+    }
+    lastInputWasTransparent=false;
 
     /* Estimate paper tone from bright, low-chroma pixels, not just the border. */
     const rs=[],gs=[],bs=[],lums=[];
@@ -217,7 +282,7 @@
     try{
       setCurrent(await rotateDataUrl(current(),degrees));
       render();
-      msg('Periksa preview. Jika sudah bersih dan posisinya benar, klik Simpan Tanda Tangan.');
+      msg('Periksa preview. Jika posisinya sudah benar, klik Simpan Tanda Tangan.');
     }catch(err){
       msg(err?.message||'Preview tidak dapat diputar.',true);
     }finally{ busy=false; }
@@ -227,7 +292,9 @@
     if(!originalProcessed) return;
     setCurrent(originalProcessed);
     render();
-    msg('Posisi dikembalikan ke hasil awal. Periksa lagi sebelum menyimpan.');
+    msg(lastInputWasTransparent
+      ? 'Posisi dikembalikan. File transparan tetap dipertahankan tanpa remove background ulang.'
+      : 'Posisi dikembalikan ke hasil awal. Periksa lagi sebelum menyimpan.');
   };
 
   function wrapHandler(){
@@ -235,12 +302,15 @@
     if(typeof fn!=='function' || fn===boundHandler || fn.__cqPreviewWrapped) return false;
     const wrapped=async function(event){
       originalProcessed='';
+      lastInputWasTransparent=false;
       const out=await fn.apply(this,arguments);
       const url=current();
       if(url){
         originalProcessed=url;
         render();
-        msg('Preview siap. Pastikan hanya tinta tanda tangan yang terlihat; area kotak-kotak harus transparan.');
+        msg(lastInputWasTransparent
+          ? 'File transparan terdeteksi dan diterima. Background tidak diproses ulang. Klik Simpan Tanda Tangan.'
+          : 'Preview siap. Background foto sudah dibersihkan. Klik Simpan Tanda Tangan.');
       }
       return out;
     };
@@ -269,7 +339,7 @@
 
   let tries=0;
   (function bind(){
-    /* ensure our stronger processor wins even if another script initialized first */
+    /* ensure our processor wins even if another script initialized first */
     window.processTeacherSignatureImage=cleanSignature;
     wrapHandler();
     if(++tries<120 && (!window.handleTeacherSignatureSelect || !window.handleTeacherSignatureSelect.__cqPreviewWrapped)) setTimeout(bind,100);
