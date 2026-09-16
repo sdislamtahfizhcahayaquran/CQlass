@@ -14,7 +14,7 @@
     return vals.some(function(r){return r==='akademik'||r==='kabid_akademik'||r==='academic'||r.includes('kabid_akademik')||r.includes('academic');});
   }
   function isDashboard(){try{return typeof activeModule==='undefined'||String(activeModule)==='dashboard';}catch(_){return true;}}
-  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m];});}
 
   function showShell(){
     const u=getUser()||{};
@@ -175,4 +175,13 @@
   },true);
 
   window.__CQ_AK_BOOT_V6__=true;
+})();
+
+/* Kabid Akademik — Master TP + clean scope (tanpa sidebar Kesiswaan). */
+(function(){
+  if(document.querySelector('script[data-cq-ak-master-tp]')) return;
+  const s=document.createElement('script');
+  s.src='academic-master-tp.js?v=20260916-akmastertp1';
+  s.dataset.cqAkMasterTp='1';
+  document.head.appendChild(s);
 })();
