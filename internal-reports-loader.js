@@ -1,5 +1,6 @@
 (function(){
   [
+    'report-preview-v2-route.js?v=20260916-report2',
     'internal-report-center.js?v=20260911-sapras-dashboard1',
     'kesiswaan-points-recap.js?v=20260915-3',
     'extracurricular-raw-ui.js?v=20260916-raw2',
