@@ -29,3 +29,13 @@ function downloadExternal(url,fileName){const m=String(url||'').match(/\/d\/([^/
 async function source(id){const k=key();const r=await fetch(REST,{method:'POST',headers:{'Content-Type':'application/json','apikey':k,'Authorization':'Bearer '+k},body:JSON.stringify({p_id:id,p_session_token:token()||''})});const d=await r.json().catch(()=>({}));if(!r.ok||d?.success===false)throw new Error(d?.error==='admin_only'?'Akses hanya untuk Admin.':d?.error||'File sumber belum dapat diunduh.');return d}
 let n=0;(function hook(){if(typeof window.adminMasterDownload==='function'&&!window.adminMasterDownload.__sourceFallback){const f=async function(id){try{const d=await source(id);if(d.file_base64)downloadBase64(d);else if(d.external_url)downloadExternal(d.external_url,d.file_name);else throw new Error('File sumber belum tersedia.')}catch(e){if(typeof showToast==='function')showToast(e.message||'File sumber belum dapat diunduh.',true)}};f.__sourceFallback=true;window.adminMasterDownload=f;return}if(++n<80)setTimeout(hook,100)})();
 })();
+
+/* Load Admin table UX: sticky action column + reachable Save/Cancel controls. */
+(function(){
+  if(document.querySelector('script[data-cq-admin-sticky]'))return;
+  var s=document.createElement('script');
+  s.src='admin-table-sticky-actions.js?v=20260917-1';
+  s.defer=true;
+  s.dataset.cqAdminSticky='1';
+  document.head.appendChild(s);
+})();
