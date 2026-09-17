@@ -7,7 +7,7 @@
   function loadPartnerTahfizh(){loadScript('cq-partner-tahfizh-menu','guru-partner-tahfizh-menu.js?v=20260907-split1')}
   function loadHrdPeriodBar(){loadScript('cq-hrd-period-bar','hrd-period-bar.js?v=20260910-1')}
   function loadHrdCharts(){loadScript('cq-hrd-futuristic-charts','hrd-futuristic-charts.js?v=20260910-1')}
-  function loadAchievementStars(){loadScript('cq-rapor-achievement-stars','rapor-achievement-stars.js?v=20260917-stars4')}
+  function loadAchievementStars(){loadScript('cq-rapor-achievement-stars','rapor-achievement-stars.js?v=20260917-stars8')}
   function loadAdmin(){loadScript('cq-admin-dashboard-js','admin-dashboard.js?v=20260904-1',function(){setTimeout(function(){try{if(role()==='admin'&&typeof renderSidebar==='function'){renderSidebar();if(typeof setActiveModule==='function'&&typeof activeModule!=='undefined')setActiveModule('dashboard')}}catch(e){}},220)})}
   function loadLeggerLive(){loadScript('cq-academic-legger-live-js','academic-legger-live.js?v=20260904-4')}
   function loadAcademic(){loadScript('cq-academic-dashboard-js','academic-dashboard.js?v=20260904-2',function(){loadAdmin();loadLeggerLive();setTimeout(function(){try{if(role()==='akademik'&&typeof renderSidebar==='function'){renderSidebar();if(typeof setActiveModule==='function'&&typeof activeModule!=='undefined'&&activeModule!=='dashboard')setActiveModule('dashboard')}}catch(e){}},200)})}
