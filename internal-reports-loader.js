@@ -2,6 +2,7 @@
   [
     'report-preview-v2-route.js?v=20260916-report2',
     'rapor-identity-fix.js?v=20260917-nisnisn1',
+    'rapor-achievement-stars.js?v=20260917-stars1',
     'internal-report-center.js?v=20260911-sapras-dashboard1',
     'kesiswaan-points-recap.js?v=20260915-3',
     'extracurricular-raw-ui.js?v=20260916-raw2',
