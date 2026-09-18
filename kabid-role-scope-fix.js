@@ -91,7 +91,6 @@
     btn.addEventListener('click',openDataMaster);
     host.appendChild(btn);
   }
-
   function enforceModuleRoles(){
     try{
       ensureAdminMasterModule();
@@ -99,14 +98,18 @@
         KABID_ALL.forEach(r=>{if(!DASHBOARD_MODULE.roles.includes(r)) DASHBOARD_MODULE.roles.push(r)});
       }
       if(typeof MODULE_GROUPS==='undefined' || !Array.isArray(MODULE_GROUPS)) return;
-
       for(const group of MODULE_GROUPS){
         if(!group || !Array.isArray(group.items)) continue;
+        const isPartnerGroup=String(group.id||'').toLowerCase()==='partner-tasks';
         for(const item of group.items){
           if(!item) continue;
           const id=String(item.id||'').toLowerCase();
           const label=String(item.label||'');
           const isAttendance=ATTENDANCE_IDS.has(id) || ATTENDANCE_TEXT.test(label);
+          if(isAttendance&&isPartnerGroup){
+            item.roles=['partner'];
+            continue;
+          }
           if(isAttendance){
             item.roles=['walas','kesiswaan','pimpinan'];
             continue;
@@ -114,15 +117,11 @@
           if(POINT_IDS.has(id)) item.roles=POINT_ROLE_LIST.slice();
         }
       }
-
       const kg=MODULE_GROUPS.find(g=>g&&g.id==='kesiswaan');
-      // Kabid Akademik tidak memiliki sidebar/grup Kesiswaan. Hak Akademik dipusatkan di grup Akademik.
       if(kg) kg.roles=POINT_ROLE_LIST.filter(r=>r!=='akademik');
     }catch(err){console.warn('Kabid role scope:',err)}
   }
-
   enforceModuleRoles();
-
   if(typeof setActiveModule==='function'){
     const originalSetActiveModule=setActiveModule;
     setActiveModule=function(id){
@@ -142,7 +141,6 @@
       return originalSetActiveModule(id);
     };
   }
-
   if(typeof enterApp==='function'){
     const originalEnterApp=enterApp;
     enterApp=function(){
@@ -165,7 +163,6 @@
       return out;
     };
   }
-
   if(typeof renderSidebar==='function'){
     const originalRenderSidebar=renderSidebar;
     renderSidebar=function(){
@@ -175,17 +172,12 @@
       return out;
     };
   }
-
   if(typeof showToast==='function'){
     const originalShowToast=showToast;
     showToast=function(msg,isError){
       const text=String(msg||'').trim();
       if(isNonKesiswaanKabid() && isError){
-        if(
-          ATTENDANCE_TEXT.test(text) ||
-          /^Terjadi kendala\. Silakan hubungi admin\.?$/i.test(text) ||
-          /^Menu ini tidak termasuk tupoksi akun Anda\.?$/i.test(text)
-        ){
+        if(ATTENDANCE_TEXT.test(text) || /^Terjadi kendala\. Silakan hubungi admin\.?$/i.test(text) || /^Menu ini tidak termasuk tupoksi akun Anda\.?$/i.test(text)){
           console.warn('Popup non-tupoksi disenyapkan untuk '+role()+':',text);
           return;
         }
@@ -193,7 +185,6 @@
       return originalShowToast(msg,isError);
     };
   }
-
   function removeAttendanceColumn(table){
     const headers=[...table.querySelectorAll('thead th')];
     const indexes=[];
@@ -206,18 +197,12 @@
       });
     });
   }
-
   function cleanDashboard(){
     if(!isNonKesiswaanKabid()) return;
     const root=document.getElementById('rd-root');
     if(!root) return;
-
-    root.querySelectorAll('.rd-kpi').forEach(el=>{
-      if(ATTENDANCE_TEXT.test(String(el.textContent||''))) el.remove();
-    });
-    root.querySelectorAll('.rd10-status').forEach(el=>{
-      if(ATTENDANCE_TEXT.test(String(el.textContent||''))) el.remove();
-    });
+    root.querySelectorAll('.rd-kpi').forEach(el=>{if(ATTENDANCE_TEXT.test(String(el.textContent||''))) el.remove()});
+    root.querySelectorAll('.rd10-status').forEach(el=>{if(ATTENDANCE_TEXT.test(String(el.textContent||''))) el.remove()});
     root.querySelectorAll('.rd-card').forEach(card=>{
       const title=String(card.querySelector('.rd-card-title')?.textContent||'');
       if(ATTENDANCE_TEXT.test(title)){card.remove();return;}
@@ -229,7 +214,6 @@
       });
     });
   }
-
   const observer=new MutationObserver(function(){cleanDashboard();injectAdminQuickAccess()});
   document.addEventListener('DOMContentLoaded',function(){
     enforceModuleRoles();
@@ -244,11 +228,9 @@
       }catch(_){ }
     },250);
   });
-
   window.__cqKabidRoleScopeFix=true;
 })();
 
-/* Load the dedicated clean Admin sidebar after all legacy sidebar patches. */
 (function(){
   if(document.querySelector('script[data-cq-admin-clean]')) return;
   const s=document.createElement('script');
@@ -256,8 +238,6 @@
   s.dataset.cqAdminClean='1';
   document.head.appendChild(s);
 })();
-
-/* Kabid Akademik — Master TP + scope Akademik bersih. */
 (function(){
   if(document.querySelector('script[data-cq-ak-master-tp]')) return;
   const s=document.createElement('script');
@@ -265,8 +245,6 @@
   s.dataset.cqAkMasterTp='1';
   document.head.appendChild(s);
 })();
-
-/* Load teacher/walas sidebar cleanup after the legacy menu patches. */
 (function(){
   if(document.querySelector('script[data-cq-teacher-walas-clean]')) return;
   const s=document.createElement('script');
@@ -274,8 +252,6 @@
   s.dataset.cqTeacherWalasClean='1';
   document.head.appendChild(s);
 })();
-
-/* Load internal feedback/report routing after sidebar cleanup. */
 (function(){
   if(document.querySelector('script[data-cq-internal-report-center]')) return;
   const s=document.createElement('script');
@@ -283,8 +259,6 @@
   s.dataset.cqInternalReportCenter='1';
   document.head.appendChild(s);
 })();
-
-/* UKS duty reports are routed to Kesiswaan. */
 (function(){
   if(document.querySelector('script[data-cq-uks-kesiswaan]')) return;
   const s=document.createElement('script');
