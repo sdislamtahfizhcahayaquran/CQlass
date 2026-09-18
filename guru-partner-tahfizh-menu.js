@@ -8,7 +8,7 @@
   }
   function loadPartnerModules(){
     loadFresh('guru-partner-class-picker.js?v=20260918-material1');
-    loadFresh('guru-partner-pts-kuadran.js?v=20260918-kuadran1');
+    loadFresh('guru-partner-pts-kuadran.js?v=20260918-materialonly2');
     loadFresh('guru-partner-points.js?v=20260917-scope2');
   }
   function patch(){
