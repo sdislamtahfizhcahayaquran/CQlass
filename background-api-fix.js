@@ -41,5 +41,5 @@
   /* Kabid Akademik: live readiness seluruh komponen Rapor PTS. */
   add('./academic-pts-readiness-live.js?v=20260918-pts-ready1','__cqAcademicPtsReadinessLoaderInstalled',false);
   /* Kabid Tahfizh/Qur'an: bersihkan scope sidebar + tampilkan live progres input PTS. */
-  add('./tahfizh-kabid-shell-fix.js?v=20260918-shell2','__cqTahfizhKabidShellFixLoaderInstalled',false);
+  add('./tahfizh-kabid-shell-fix.js?v=20260918-shell3','__cqTahfizhKabidShellFixLoaderInstalled',false);
 })();
