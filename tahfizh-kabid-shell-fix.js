@@ -1,8 +1,8 @@
 /* CQlass — Kabid Tahfizh/Qur'an clean shell + live PTS input report */
 (function(){
   'use strict';
-  if(window.__CQ_TAHFIZH_SHELL_FIX_V1__) return;
-  window.__CQ_TAHFIZH_SHELL_FIX_V1__=1;
+  if(window.__CQ_TAHFIZH_SHELL_FIX_V2__) return;
+  window.__CQ_TAHFIZH_SHELL_FIX_V2__=1;
 
   const API=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/tahfizh-input-status';
   const REFRESH_MS=30000;
@@ -67,18 +67,43 @@
     if(!live){box.innerHTML='<div class="cqtl-title">Live Report Input PTS Tahfizh</div><div class="cqtl-sub">Memuat progres guru halaqah...</div>';return}
     const s=live.summary||{};box.innerHTML=`<div class="cqtl-head"><div><div class="cqtl-title">Live Report Input PTS Tahfizh</div><div class="cqtl-sub">Kabid Qur’an · otomatis diperbarui setiap 30 detik · sinkron ${fmt(live.generated_at)}</div></div><button class="cqtl-btn" onclick="cqTahfizhLiveRefresh()">↻ Perbarui</button></div><div class="cqtl-sums"><button class="cqtl-sum ${filter==='all'?'on':''}" onclick="cqTahfizhLiveFilter('all')"><b>${esc(s.teachers||0)}</b><span>Guru halaqah</span></button><button class="cqtl-sum ${filter==='selesai'?'on':''}" onclick="cqTahfizhLiveFilter('selesai')"><b>${esc(s.done||0)}</b><span>Selesai</span></button><button class="cqtl-sum ${filter==='sedang_input'?'on':''}" onclick="cqTahfizhLiveFilter('sedang_input')"><b>${esc(s.in_progress||0)}</b><span>Sedang input</span></button><button class="cqtl-sum ${filter==='belum_mulai'?'on':''}" onclick="cqTahfizhLiveFilter('belum_mulai')"><b>${esc(s.not_started||0)}</b><span>Belum mulai</span></button></div><div class="cqtl-wrap"><table class="cqtl-table"><thead><tr><th>Guru Halaqah</th><th>Kelas</th><th>Progres Input</th><th>Status</th><th>Update Terakhir</th><th>Siswa Belum Lengkap</th></tr></thead><tbody>${rows()}</tbody></table></div>`;
   }
-  async function load(force=false){if(!isTahfizh()||loading)return;if(!force&&Date.now()-lastFetch<5000){renderLive();return}loading=true;renderLive();try{const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify({semester_no:1})});const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.error||'Gagal memuat live report Tahfizh');live=d;lastFetch=Date.now();renderLive()}catch(e){renderLive(e.message)}finally{loading=false}}
-  window.cqTahfizhLiveRefresh=()=>load(true);window.cqTahfizhLiveFilter=f=>{filter=f;renderLive()};
+  async function load(force=false){
+    if(!isTahfizh()||loading)return;
+    if(!force&&Date.now()-lastFetch<5000)return;
+    loading=true;
+    if(!document.getElementById('cq-tahfizh-live'))renderLive();
+    try{
+      const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
+      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify({semester_no:1})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||d.success===false)throw Error(d.error||'Gagal memuat live report Tahfizh');
+      live=d;lastFetch=Date.now();renderLive();
+    }catch(e){renderLive(e.message)}finally{loading=false}
+  }
+  window.cqTahfizhLiveRefresh=()=>load(true);
+  window.cqTahfizhLiveFilter=f=>{filter=f;renderLive()};
 
-  function apply(){if(!isTahfizh())return;stripModel();cleanSidebar();cleanDashboardCrossDomain();if(dashboardActive()){renderLive();load(false)}}
+  function apply(){
+    if(!isTahfizh())return;
+    stripModel();cleanSidebar();cleanDashboardCrossDomain();
+    if(dashboardActive()){
+      if(!document.getElementById('cq-tahfizh-live'))renderLive();
+      load(false);
+    }
+  }
   function patchFunctions(){
     if(typeof renderSidebar==='function'&&!renderSidebar.__cqTahfizhClean){const old=renderSidebar;const wrapped=function(){stripModel();const out=old.apply(this,arguments);setTimeout(cleanSidebar,0);return out};wrapped.__cqTahfizhClean=true;renderSidebar=wrapped}
     if(typeof enterApp==='function'&&!enterApp.__cqTahfizhClean){const old=enterApp;const wrapped=function(){stripModel();const out=old.apply(this,arguments);setTimeout(apply,80);return out};wrapped.__cqTahfizhClean=true;enterApp=wrapped}
   }
   patchFunctions();
-  const ob=new MutationObserver(()=>{if(isTahfizh())setTimeout(apply,0)});ob.observe(document.documentElement,{childList:true,subtree:true});
+  const ob=new MutationObserver(()=>{
+    if(!isTahfizh())return;
+    cleanSidebar();cleanDashboardCrossDomain();
+    if(dashboardActive()&&!document.getElementById('cq-tahfizh-live')){renderLive();load(false)}
+  });
+  ob.observe(document.documentElement,{childList:true,subtree:true});
   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{patchFunctions();apply()},120));
   setTimeout(()=>{patchFunctions();apply()},120);
-  setInterval(()=>{if(isTahfizh()){cleanSidebar();if(dashboardActive()){renderLive();load(false)}}},3000);
+  setInterval(()=>{if(isTahfizh()){cleanSidebar();cleanDashboardCrossDomain();if(dashboardActive()&&!document.getElementById('cq-tahfizh-live')){renderLive();load(false)}}},3000);
   setInterval(()=>{if(isTahfizh()&&dashboardActive())load(true)},REFRESH_MS);
 })();
