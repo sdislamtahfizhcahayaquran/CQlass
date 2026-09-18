@@ -38,7 +38,6 @@
   add('./reminder-center.js?v=20260915-bell-all-role2','__cqReminderCenterLoaderInstalled',true);
   add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);
   add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
-  /* Kabid Tahfizh: loader langsung dari shell agar tidak bergantung pada patch Akademik. */
-  add('./tahfizh-kabid-dashboard.js?v=20260916-kabid-final3','__cqTahfizhKabidDashboardLoaderInstalled',false);
-  add('./tahfizh-kabid-input-live.js?v=20260918-live1','__cqTahfizhKabidInputLiveLoaderInstalled',false);
+  /* Kabid Tahfizh/Qur'an: bersihkan scope sidebar + tampilkan live progres input PTS. */
+  add('./tahfizh-kabid-shell-fix.js?v=20260918-shell2','__cqTahfizhKabidShellFixLoaderInstalled',false);
 })();
