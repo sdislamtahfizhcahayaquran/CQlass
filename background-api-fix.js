@@ -40,4 +40,5 @@
   add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
   /* Kabid Tahfizh: loader langsung dari shell agar tidak bergantung pada patch Akademik. */
   add('./tahfizh-kabid-dashboard.js?v=20260916-kabid-final3','__cqTahfizhKabidDashboardLoaderInstalled',false);
+  add('./tahfizh-kabid-input-live.js?v=20260918-live1','__cqTahfizhKabidInputLiveLoaderInstalled',false);
 })();
