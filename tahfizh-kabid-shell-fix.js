@@ -1,8 +1,8 @@
 /* CQlass — Kabid Tahfizh/Qur'an clean shell + live PTS input report */
 (function(){
   'use strict';
-  if(window.__CQ_TAHFIZH_SHELL_FIX_V2__) return;
-  window.__CQ_TAHFIZH_SHELL_FIX_V2__=1;
+  if(window.__CQ_TAHFIZH_SHELL_FIX_V3__) return;
+  window.__CQ_TAHFIZH_SHELL_FIX_V3__=1;
 
   const API=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/tahfizh-input-status';
   const REFRESH_MS=30000;
@@ -20,7 +20,7 @@
       if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return;
       for(const g of MODULE_GROUPS){
         const key=String(g?.id||'').toLowerCase(),label=String(g?.label||'').trim().toLowerCase();
-        if(key==='kesiswaan'||key==='kegiatan'||key==='kegiatan-v2'||label==='kesiswaan'||label==='kegiatan'){
+        if(key==='akademik'||key==='kesiswaan'||key==='kegiatan'||key==='kegiatan-v2'||label==='akademik'||label==='kesiswaan'||label==='kegiatan'){
           g.roles=removeRole(g.roles);
           for(const it of (g.items||[]))it.roles=removeRole(it.roles);
         }
@@ -32,7 +32,7 @@
     const sb=document.getElementById('sidebar');if(!sb)return;
     [...sb.querySelectorAll('.nav-group-head')].forEach(h=>{
       const label=String(h.querySelector('span')?.textContent||h.textContent||'').trim().toLowerCase();
-      if(label==='kesiswaan'||label==='kegiatan'){
+      if(label==='akademik'||label==='kesiswaan'||label==='kegiatan'){
         const n=h.nextElementSibling;
         if(n?.classList?.contains('nav-group-items'))n.remove();
         h.remove();
