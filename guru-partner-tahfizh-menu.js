@@ -7,7 +7,7 @@
     const s=document.createElement('script');s.src=src;s.defer=true;document.head.appendChild(s);
   }
   function loadPartnerModules(){
-    loadFresh('guru-partner-class-picker.js?v=20260917-ptslock3');
+    loadFresh('guru-partner-class-picker.js?v=20260918-material1');
     loadFresh('guru-partner-points.js?v=20260917-scope2');
   }
   function patch(){
