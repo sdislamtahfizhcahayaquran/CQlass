@@ -38,6 +38,8 @@
   add('./reminder-center.js?v=20260915-bell-all-role2','__cqReminderCenterLoaderInstalled',true);
   add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);
   add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
+  /* Kabid Akademik: live readiness seluruh komponen Rapor PTS. */
+  add('./academic-pts-readiness-live.js?v=20260918-pts-ready1','__cqAcademicPtsReadinessLoaderInstalled',false);
   /* Kabid Tahfizh/Qur'an: bersihkan scope sidebar + tampilkan live progres input PTS. */
   add('./tahfizh-kabid-shell-fix.js?v=20260918-shell2','__cqTahfizhKabidShellFixLoaderInstalled',false);
 })();
