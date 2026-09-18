@@ -14,7 +14,84 @@ async function period(){const {data:y}=await sb.from("academic_years").select("i
 async function fetchInBatches(table:string,select:string,column:string,ids:string[],batchSize=70){const out:any[]=[];const uniq=[...new Set(ids.filter(Boolean))];for(let i=0;i<uniq.length;i+=batchSize){const {data,error}=await sb.from(table).select(select).in(column,uniq.slice(i,i+batchSize));if(error)throw error;out.push(...(data||[]));}return out}
 async function roster(p:any){const {data:e,error}=await sb.from("student_enrollments").select("student_id,class_id").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("is_active",true);if(error)throw error;const sids=[...new Set((e||[]).map((x:any)=>x.student_id))] as string[];const cids=[...new Set((e||[]).map((x:any)=>x.class_id))] as string[];const [students,classes]=await Promise.all([fetchInBatches("students","id,full_name,nis,nisn,status","id",sids,70),fetchInBatches("classes","id,name,code","id",cids,70)]);const sm=new Map(students.map((x:any)=>[x.id,x]));const cm=new Map(classes.map((x:any)=>[x.id,x]));return(e||[]).map((x:any)=>{const s=sm.get(x.student_id)||{},c=cm.get(x.class_id)||{};return{student_id:x.student_id,name:s.full_name||"-",nis:s.nis||s.nisn||"",class_id:x.class_id,class_name:c.name||c.code||"-"}}).sort((a:any,b:any)=>a.class_name.localeCompare(b.class_name,"id",{numeric:true})||a.name.localeCompare(b.name,"id"))}
 async function catalog(p:any){const [eq,aq,mq]=await Promise.all([sb.from("extracurriculars").select("id,name,code,quota,day_text,time_text,is_active").eq("is_active",true).order("name"),sb.from("extracurricular_coach_assignments").select("id,extracurricular_id,class_id,coach_name,assignment_label,is_active,sort_order").eq("is_active",true).order("sort_order"),sb.from("extracurricular_members").select("id,student_id,extracurricular_id,status").eq("academic_year_id",p.academic_year_id)]);for(const q of[eq,aq,mq])if(q.error)throw q.error;const count=new Map<string,Set<string>>();for(const m of mq.data||[]){if(low(m.status)!=="aktif"&&low(m.status)!=="active")continue;if(!count.has(m.extracurricular_id))count.set(m.extracurricular_id,new Set());count.get(m.extracurricular_id)!.add(m.student_id)}const extracurriculars=(eq.data||[]).map((e:any)=>{const active=count.get(e.id)?.size||0,quota=Number(e.quota||0);return{...e,active_students:active,over_quota:quota>0&&active>quota,available_slots:quota>0?quota-active:null}});return{extracurriculars,assignments:aq.data||[]}}
-async function model(p:any){const students=await roster(p);const sids=students.map((x:any)=>x.student_id) as string[];const assignmentMembersPromise=sids.length?fetchInBatches("extracurricular_assignment_members","id,assignment_id,student_id,is_active","student_id",sids,70):Promise.resolve([]);const [im,em,np,amRows,cat]=await Promise.all([sb.from("extracurricular_members").select("id,student_id,extracurricular_id,status,participant_type,notes,updated_at").eq("academic_year_id",p.academic_year_id),sb.from("extracurricular_external_students").select("id,student_id,activity_name,institution_name,notes,is_active,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no),sb.from("extracurricular_nonparticipants").select("id,student_id,notes,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no),assignmentMembersPromise,catalog(p)]);for(const q of[im,em,np])if(q.error)throw q.error;const ename=new Map(cat.extracurriculars.map((x:any)=>[x.id,x.name]));const amap=new Map(cat.assignments.map((x:any)=>[x.id,x]));const linksByStudent=new Map<string,any[]>();for(const x of amRows||[]){if(!x.is_active)continue;if(!linksByStudent.has(x.student_id))linksByStudent.set(x.student_id,[]);linksByStudent.get(x.student_id)!.push(x)}const byS=new Map<string,any>();for(const s of students)byS.set(s.student_id,{...s,internal:[],external:[],none:null});for(const m of im.data||[]){if(!byS.has(m.student_id)||!["aktif","active"].includes(low(m.status)))continue;const links=(linksByStudent.get(m.student_id)||[]).filter((x:any)=>amap.get(x.assignment_id)?.extracurricular_id===m.extracurricular_id);const a=links.length?amap.get(links[0].assignment_id):null;byS.get(m.student_id).internal.push({id:m.id,extracurricular_id:m.extracurricular_id,extracurricular_name:ename.get(m.extracurricular_id)||"Ekskul",assignment_id:a?.id||"",group_label:a?.assignment_label||"",coach_name:a?.coach_name||"",notes:m.notes||""})}for(const e of em.data||[]){if(byS.has(e.student_id)&&e.is_active)byS.get(e.student_id).external.push({id:e.id,activity_name:e.activity_name||"Ekskul Eksternal",institution_name:e.institution_name||"",notes:e.notes||""})}for(const n of np.data||[]){if(byS.has(n.student_id))byS.get(n.student_id).none={id:n.id,notes:n.notes||""}}const rows=[...byS.values()].map((s:any)=>{const n=s.internal.length+s.external.length;const state=n?"active":s.none?"none":"unknown";return{...s,state,activity_count:n}});const summary={total:rows.length,internal:rows.filter((x:any)=>x.internal.length).length,external:rows.filter((x:any)=>x.external.length).length,none:rows.filter((x:any)=>x.state==="none").length,unknown:rows.filter((x:any)=>x.state==="unknown").length,multi:rows.filter((x:any)=>x.activity_count>1).length,over_quota:cat.extracurriculars.filter((x:any)=>x.over_quota).length};return{rows,summary,...cat}}
+async function externalAssessmentRows(p:any,sids:string[]){
+  const out:any[]=[];
+  const uniq=[...new Set(sids.filter(Boolean))];
+  for(let i=0;i<uniq.length;i+=70){
+    const {data,error}=await sb.from("extracurricular_external_assessments")
+      .select("external_student_id,student_id,activity_grade,skill_grade,competition_grade,competition_note,assessment_period,updated_at")
+      .eq("academic_year_id",p.academic_year_id)
+      .eq("semester_no",p.semester_no)
+      .eq("assessment_period","PTS")
+      .in("student_id",uniq.slice(i,i+70));
+    if(error)throw error;
+    out.push(...(data||[]));
+  }
+  return out;
+}
+async function model(p:any){
+  const students=await roster(p);
+  const sids=students.map((x:any)=>x.student_id) as string[];
+  const assignmentMembersPromise=sids.length?fetchInBatches("extracurricular_assignment_members","id,assignment_id,student_id,is_active","student_id",sids,70):Promise.resolve([]);
+  const [im,em,np,amRows,cat,externalAssessments]=await Promise.all([
+    sb.from("extracurricular_members").select("id,student_id,extracurricular_id,status,participant_type,notes,updated_at").eq("academic_year_id",p.academic_year_id),
+    sb.from("extracurricular_external_students").select("id,student_id,activity_name,institution_name,notes,is_active,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no),
+    sb.from("extracurricular_nonparticipants").select("id,student_id,notes,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no),
+    assignmentMembersPromise,
+    catalog(p),
+    sids.length?externalAssessmentRows(p,sids):Promise.resolve([])
+  ]);
+  for(const q of[im,em,np])if(q.error)throw q.error;
+  const ename=new Map(cat.extracurriculars.map((x:any)=>[x.id,x.name]));
+  const amap=new Map(cat.assignments.map((x:any)=>[x.id,x]));
+  const externalAssessmentMap=new Map<string,any>();
+  for(const a of externalAssessments||[]){
+    const old=externalAssessmentMap.get(a.external_student_id);
+    if(!old||String(a.updated_at||"")>String(old.updated_at||""))externalAssessmentMap.set(a.external_student_id,a);
+  }
+  const linksByStudent=new Map<string,any[]>();
+  for(const x of amRows||[]){
+    if(!x.is_active)continue;
+    if(!linksByStudent.has(x.student_id))linksByStudent.set(x.student_id,[]);
+    linksByStudent.get(x.student_id)!.push(x);
+  }
+  const byS=new Map<string,any>();
+  for(const s of students)byS.set(s.student_id,{...s,internal:[],external:[],none:null});
+  for(const m of im.data||[]){
+    if(!byS.has(m.student_id)||!["aktif","active"].includes(low(m.status)))continue;
+    const links=(linksByStudent.get(m.student_id)||[]).filter((x:any)=>amap.get(x.assignment_id)?.extracurricular_id===m.extracurricular_id);
+    const a=links.length?amap.get(links[0].assignment_id):null;
+    byS.get(m.student_id).internal.push({
+      id:m.id,extracurricular_id:m.extracurricular_id,extracurricular_name:ename.get(m.extracurricular_id)||"Ekskul",
+      assignment_id:a?.id||"",group_label:a?.assignment_label||"",coach_name:a?.coach_name||"",notes:m.notes||""
+    });
+  }
+  for(const e of em.data||[]){
+    if(!byS.has(e.student_id)||!e.is_active)continue;
+    const a=externalAssessmentMap.get(e.id)||{};
+    byS.get(e.student_id).external.push({
+      id:e.id,activity_name:e.activity_name||"Ekskul Eksternal",institution_name:e.institution_name||"",notes:e.notes||"",
+      activity_grade:a.activity_grade||"",skill_grade:a.skill_grade||"",competition_grade:a.competition_grade||"",
+      competition_note:a.competition_note||"",assessment_period:a.assessment_period||"",assessment_updated_at:a.updated_at||null
+    });
+  }
+  for(const n of np.data||[]){if(byS.has(n.student_id))byS.get(n.student_id).none={id:n.id,notes:n.notes||""}}
+  const rows=[...byS.values()].map((s:any)=>{
+    const n=s.internal.length+s.external.length;
+    const state=n?"active":s.none?"none":"unknown";
+    return{...s,state,activity_count:n}
+  });
+  const summary={
+    total:rows.length,
+    internal:rows.filter((x:any)=>x.internal.length).length,
+    external:rows.filter((x:any)=>x.external.length).length,
+    none:rows.filter((x:any)=>x.state==="none").length,
+    unknown:rows.filter((x:any)=>x.state==="unknown").length,
+    multi:rows.filter((x:any)=>x.activity_count>1).length,
+    over_quota:cat.extracurriculars.filter((x:any)=>x.over_quota).length
+  };
+  return{rows,summary,...cat}
+}
 async function enrolled(p:any,sid:string){const {data}=await sb.from("student_enrollments").select("id").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("student_id",sid).eq("is_active",true).limit(1);return Boolean(data?.length)}
 async function clearNone(p:any,sid:string){await Promise.all([sb.from("extracurricular_nonparticipants").delete().eq("student_id",sid).eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no),sb.from("extracurricular_status_overrides").delete().eq("student_id",sid).eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no)])}
 async function deactivateGroupsForExkul(sid:string,exid:string){const {data:as}=await sb.from("extracurricular_coach_assignments").select("id").eq("extracurricular_id",exid);const ids=(as||[]).map((x:any)=>x.id);if(ids.length)await sb.from("extracurricular_assignment_members").update({is_active:false,updated_at:new Date().toISOString()}).eq("student_id",sid).in("assignment_id",ids)}
