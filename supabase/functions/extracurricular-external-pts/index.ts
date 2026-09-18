@@ -36,7 +36,7 @@ async function access(sb:any,req:Request,body:any){
     .select("id,is_active,expires_at").eq("code_hash",hash).maybeSingle();
   if(error||!data||!data.is_active)return false;
   if(data.expires_at&&new Date(data.expires_at).getTime()<=Date.now())return false;
-  sb.from("extracurricular_external_portal_access").update({last_used_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",data.id).then(()=>{});
+  await sb.from("extracurricular_external_portal_access").update({last_used_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",data.id);
   return true;
 }
 async function currentPeriod(sb:any){
