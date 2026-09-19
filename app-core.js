@@ -3631,7 +3631,7 @@ const RP_SUBJECT_TEMPLATE=[
   {no:3,label:'Bahasa Indonesia',aliases:['bahasa indonesia']},
   {no:4,label:'Mathematics',aliases:['matematika','mathematics']},
   {no:5,label:'Natural Sciences',aliases:['natural sciences','ipa','sains']},
-  {no:6,label:'Social Sciences',aliases:['social sciences','ips','sospan']},
+  {no:6,label:'Social Sciences',aliases:['sosial','social sciences','ips','sospan']},
   {no:7,label:'Arts, Culture, and Crafts Education',aliases:['seni budaya','arts','sbdp','prakarya']},
   {no:8,label:'Physical Education, Sports, and Health',aliases:['pjok','physical education','penjas']},
   {group:'Local Content Subjects'},
