@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 
 const CORS={
   "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-external-code",
+  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods":"POST, OPTIONS",
   "Content-Type":"application/json; charset=utf-8",
   "Cache-Control":"no-store"
@@ -23,21 +23,6 @@ function db(){
   const url=Deno.env.get("SUPABASE_URL");
   if(!url)throw new Error("supabase_url_missing");
   return createClient(url,serviceKey(),{auth:{persistSession:false,autoRefreshToken:false}});
-}
-async function sha256(input:string){
-  const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-async function access(sb:any,req:Request,body:any){
-  const code=txt(req.headers.get("x-external-code")||body?.access_code);
-  if(!code)return false;
-  const hash=await sha256(code);
-  const {data,error}=await sb.from("extracurricular_external_portal_access")
-    .select("id,is_active,expires_at").eq("code_hash",hash).maybeSingle();
-  if(error||!data||!data.is_active)return false;
-  if(data.expires_at&&new Date(data.expires_at).getTime()<=Date.now())return false;
-  await sb.from("extracurricular_external_portal_access").update({last_used_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",data.id);
-  return true;
 }
 async function currentPeriod(sb:any){
   const {data:unit,error:ue}=await sb.from("school_units").select("id").eq("code",SCHOOL_UNIT_CODE).single();
@@ -60,7 +45,7 @@ async function students(sb:any,p:any,classId:string){
   if(ee)throw ee;
   const ids=[...new Set((e||[]).map((x:any)=>x.student_id).filter(Boolean))] as string[];
   if(!ids.length)return [];
-  const {data,error}=await sb.from("students").select("id,full_name,nis,nisn,status").in("id",ids).order("full_name");
+  const {data,error}=await sb.from("students").select("id,full_name,status").in("id",ids).order("full_name");
   if(error)throw error;
   return (data||[]).filter((x:any)=>!["nonaktif","inactive","keluar","lulus"].includes(txt(x.status).toLowerCase()));
 }
@@ -77,7 +62,6 @@ async function externalRow(sb:any,p:any,studentId:string,activityName:string){
     .eq("is_active",true).ilike("activity_name",activityName);
   if(me)throw me;
   if(matches?.length)return matches[0];
-
   const now=new Date().toISOString();
   const {data,error}=await sb.from("extracurricular_external_students").insert({
     student_id:studentId,
@@ -129,16 +113,7 @@ async function save(sb:any,p:any,body:any){
     sb.from("extracurricular_status_overrides").delete().eq("student_id",studentId).eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("status","NONE")
   ]);
 
-  return json({
-    success:true,
-    message:"Nilai PTS ekskul eksternal berhasil disimpan.",
-    data:{
-      student_id:studentId,activity_name:activityName,
-      activity_grade:activityGrade,skill_grade:skillGrade,competition_grade:competitionGrade,
-      competition_note:competitionNote||null,assessment_period:ASSESSMENT_PERIOD,
-      academic_year:p.academic_year,semester_no:p.semester_no
-    }
-  });
+  return json({success:true,message:"Nilai PTS ekskul eksternal berhasil disimpan.",data:{student_id:studentId,activity_name:activityName,activity_grade:activityGrade,skill_grade:skillGrade,competition_grade:competitionGrade,competition_note:competitionNote||null,assessment_period:ASSESSMENT_PERIOD,academic_year:p.academic_year,semester_no:p.semester_no}});
 }
 
 Deno.serve(async(req:Request)=>{
@@ -147,7 +122,6 @@ Deno.serve(async(req:Request)=>{
   try{
     const sb=db();
     const body=await req.json().catch(()=>({}));
-    if(!await access(sb,req,body))return json({success:false,error:"access_denied"},401);
     const p=await currentPeriod(sb);
     const action=txt(body.action).toLowerCase();
     if(action==="bootstrap")return json({success:true,academic_year:p.academic_year,semester_no:p.semester_no,assessment_period:ASSESSMENT_PERIOD,classes:await classes(sb,p)});
