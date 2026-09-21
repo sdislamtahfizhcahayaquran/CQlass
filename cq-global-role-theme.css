@@ -171,3 +171,71 @@ html,body,#app-screen{
   .content .sac table,.content .ksr2 table{min-width:680px}
   .content .tsv2-table{min-width:700px}
 }
+
+
+/* ===== TEACHER / WALAS SIDEBAR POLISH v1 =====
+   Same CQlass rhythm, clearer hierarchy, compact spacing, no visual noise.
+*/
+body.cq-role-guru #sidebar,
+body.cq-role-walas #sidebar{
+  width:220px;
+  padding:14px 11px 18px!important;
+  scrollbar-width:thin;
+  scrollbar-color:#c9dfd9 transparent;
+}
+body.cq-role-guru #sidebar .nav-group-title,
+body.cq-role-walas #sidebar .nav-group-title{
+  margin:15px 10px 6px!important;
+  padding:0!important;
+  font-size:9.5px!important;
+  line-height:1.25!important;
+  font-weight:800!important;
+  letter-spacing:.11em!important;
+  text-transform:uppercase;
+  color:#6f8b86!important;
+}
+body.cq-role-guru #sidebar .nav-group-title:first-child,
+body.cq-role-walas #sidebar .nav-group-title:first-child{margin-top:5px!important}
+body.cq-role-guru #sidebar .nav-item,
+body.cq-role-walas #sidebar .nav-item{
+  min-height:38px;
+  margin:2px 0!important;
+  padding:9px 11px!important;
+  gap:9px!important;
+  border-radius:10px!important;
+  font-size:12.5px!important;
+  line-height:1.25!important;
+  font-weight:600!important;
+  color:#29413e!important;
+  box-sizing:border-box;
+}
+body.cq-role-guru #sidebar .nav-item .nav-icon,
+body.cq-role-walas #sidebar .nav-item .nav-icon{
+  width:16px!important;height:16px!important;opacity:.76;
+}
+body.cq-role-guru #sidebar .nav-item:hover,
+body.cq-role-walas #sidebar .nav-item:hover{
+  background:#eaf7f3!important;color:#075f58!important;
+}
+body.cq-role-guru #sidebar .nav-item.active,
+body.cq-role-walas #sidebar .nav-item.active{
+  background:#0a6e6e!important;
+  color:#fff!important;
+  font-weight:700!important;
+  box-shadow:0 3px 9px rgba(10,110,110,.16)!important;
+}
+body.cq-role-guru #sidebar .nav-item.active .nav-icon,
+body.cq-role-walas #sidebar .nav-item.active .nav-icon{opacity:1}
+body.cq-role-guru #sidebar .nav-badge,
+body.cq-role-walas #sidebar .nav-badge{
+  margin-left:auto;
+  font-size:9px!important;
+  line-height:1.2;
+  padding:2px 6px!important;
+}
+@media(max-width:760px){
+  body.cq-role-guru #sidebar,
+  body.cq-role-walas #sidebar{padding:10px 8px 14px!important}
+  body.cq-role-guru #sidebar .nav-item,
+  body.cq-role-walas #sidebar .nav-item{min-height:36px;padding:8px 10px!important}
+}
