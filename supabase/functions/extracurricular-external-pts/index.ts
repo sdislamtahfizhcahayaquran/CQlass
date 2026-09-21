@@ -12,6 +12,7 @@ const ASSESSMENT_PERIOD="PTS";
 const txt=(v:any)=>String(v??"").trim();
 const json=(body:any,status=200)=>new Response(JSON.stringify(body),{status,headers:CORS});
 const grade=(v:any)=>{const g=txt(v).toUpperCase();return ["A","B","C","D"].includes(g)?g:""};
+const activeInternalStatus=(v:any)=>["aktif","active"].includes(txt(v).toLowerCase());
 function serviceKey(){
   const packed=Deno.env.get("SUPABASE_SECRET_KEYS");
   if(packed){try{const p=JSON.parse(packed);if(p?.default)return String(p.default)}catch(_){}}
@@ -39,15 +40,35 @@ async function classes(sb:any,p:any){
   if(error)throw error;
   return data||[];
 }
+async function activeInternalStudentIds(sb:any,p:any,studentIds:string[]){
+  const ids=[...new Set((studentIds||[]).filter(Boolean))] as string[];
+  if(!ids.length)return new Set<string>();
+  const {data,error}=await sb.from("extracurricular_members")
+    .select("student_id,status")
+    .eq("academic_year_id",p.academic_year_id)
+    .in("student_id",ids);
+  if(error)throw error;
+  return new Set((data||[]).filter((x:any)=>activeInternalStatus(x.status)).map((x:any)=>x.student_id));
+}
+async function hasActiveInternal(sb:any,p:any,studentId:string){
+  const internal=await activeInternalStudentIds(sb,p,[studentId]);
+  return internal.has(studentId);
+}
 async function students(sb:any,p:any,classId:string){
   const {data:e,error:ee}=await sb.from("student_enrollments").select("student_id")
     .eq("class_id",classId).eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("is_active",true);
   if(ee)throw ee;
   const ids=[...new Set((e||[]).map((x:any)=>x.student_id).filter(Boolean))] as string[];
   if(!ids.length)return [];
-  const {data,error}=await sb.from("students").select("id,full_name,status").in("id",ids).order("full_name");
-  if(error)throw error;
-  return (data||[]).filter((x:any)=>!["nonaktif","inactive","keluar","lulus"].includes(txt(x.status).toLowerCase()));
+  const [internalIds,studentsResult]=await Promise.all([
+    activeInternalStudentIds(sb,p,ids),
+    sb.from("students").select("id,full_name,status").in("id",ids).order("full_name")
+  ]);
+  if(studentsResult.error)throw studentsResult.error;
+  return (studentsResult.data||[]).filter((x:any)=>
+    !internalIds.has(x.id) &&
+    !["nonaktif","inactive","keluar","lulus"].includes(txt(x.status).toLowerCase())
+  );
 }
 async function enrolled(sb:any,p:any,classId:string,studentId:string){
   const {data,error}=await sb.from("student_enrollments").select("id").eq("class_id",classId)
@@ -85,6 +106,7 @@ async function save(sb:any,p:any,body:any){
   if(!activityGrade||!skillGrade||!competitionGrade)return json({success:false,error:"grades_must_be_a_to_d"},400);
   if(competitionNote.length>500)return json({success:false,error:"competition_note_too_long"},400);
   if(!await enrolled(sb,p,classId,studentId))return json({success:false,error:"student_not_in_class"},400);
+  if(await hasActiveInternal(sb,p,studentId))return json({success:false,error:"student_is_internal_extracurricular"},409);
 
   const ext=await externalRow(sb,p,studentId,activityName);
   const now=new Date().toISOString();
