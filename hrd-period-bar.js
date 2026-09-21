@@ -6,7 +6,7 @@
 
   const BASE=typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co';
   const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
-  const LIVE_URL=BASE+'/functions/v1/hrd-live-report';
+  const LIVE_URL=BASE+'/functions/v1/hrd-live-report-v2';
   let highlightCache={key:'',data:null};
 
   const low=v=>String(v||'').trim().toLowerCase();
@@ -92,7 +92,7 @@
       .cq-highlight-panel{padding:16px 17px}.cq-panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.cq-panel-title h4{margin:0;color:#244c49;font-size:12px}.cq-panel-title small{color:#8a9a98;font-size:8.7px}.cq-flags{display:grid;gap:7px}.cq-flag{display:grid;grid-template-columns:26px minmax(0,1fr);gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #edf2f1}.cq-flag:last-child{border-bottom:0}.cq-flag i{font-style:normal;width:26px;height:26px;border-radius:9px;background:#edf7f5;color:#0a6e6e;display:grid;place-items:center;font-weight:900}.cq-flag b{display:block;color:#2a4e4b;font-size:10.5px}.cq-flag span{display:block;color:#748986;font-size:9.2px;line-height:1.42;margin-top:2px}
       .cq-section{padding:15px 17px;margin-top:14px}.cq-status-list{display:grid}.cq-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 2px;border-bottom:1px solid #edf2f1}.cq-row:last-child{border-bottom:0}.cq-row-main b{display:flex;align-items:center;gap:6px;color:#2a4d4a;font-size:10.8px}.cq-row-main small{display:block;color:#829390;font-size:8.9px;margin-top:3px}.cq-state{font-size:8.8px;font-weight:850;border-radius:999px;padding:5px 8px;white-space:nowrap;background:#edf4f3;color:#58716f}.cq-state.present{background:#e9f7ef;color:#247149}.cq-state.missing{background:#fceceb;color:#9d443d}.cq-state.partial{background:#fff5dc;color:#89681f}.cq-state.na{background:#f2f4f4;color:#84928f}
       .cq-info{width:17px;height:17px;border-radius:50%;border:1px solid #a8c9c5;background:#fff;color:#0a6e6e;display:inline-grid;place-items:center;padding:0;font:800 10px/1 Inter,sans-serif;cursor:help;flex:none}.cq-info:hover{background:#0a6e6e;color:#fff;border-color:#0a6e6e}
-      .cq-op-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.cq-op{padding:10px 11px;border-radius:12px;background:#f5f9f8}.cq-op strong{display:flex;align-items:center;gap:5px;color:#214946;font-size:14px}.cq-op span{display:block;color:#7e908e;font-size:8.6px;margin-top:3px}.cq-recent{display:grid;gap:6px}.cq-recent-item{padding:8px 0;border-bottom:1px solid #edf2f1}.cq-recent-item:last-child{border-bottom:0}.cq-recent-item b{display:block;color:#31514f;font-size:10px}.cq-recent-item small{display:block;margin-top:2px;color:#829390;font-size:8.7px;line-height:1.4}
+      .cq-op-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:9px}.cq-op{padding:10px 11px;border-radius:12px;background:#f5f9f8}.cq-op strong{display:flex;align-items:center;gap:5px;color:#214946;font-size:14px}.cq-op span{display:block;color:#7e908e;font-size:8.6px;margin-top:3px}.cq-recent{display:grid;gap:6px}.cq-recent-item{padding:8px 0;border-bottom:1px solid #edf2f1}.cq-recent-item:last-child{border-bottom:0}.cq-recent-item b{display:block;color:#31514f;font-size:10px}.cq-recent-item small{display:block;margin-top:2px;color:#829390;font-size:8.7px;line-height:1.4}
       #cq-floating-tip{position:fixed;z-index:11000;display:none;max-width:290px;padding:9px 10px;border-radius:10px;background:#173f3d;color:#fff;box-shadow:0 10px 28px rgba(4,40,40,.22);font-size:9.3px;font-weight:600;line-height:1.45;pointer-events:none}
       @media(max-width:760px){.cq-overview{grid-template-columns:1fr}.cq-op-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cq-hl-body{padding:14px}.cq-hl-head{padding:15px 16px}}
       @media(max-width:460px){.cq-hl-overlay{padding:6px}.cq-hl-card{max-height:96vh;border-radius:18px}.cq-score-panel{grid-template-columns:90px 1fr}.cq-ring{width:86px;height:86px}.cq-op-grid{grid-template-columns:1fr 1fr}}
@@ -165,10 +165,10 @@
   function operationalGrid(t){
     const profile=roleProfile(t),bad=context(t,'badal'),bc=badalCounts(bad),uks=context(t,'uks_duty'),work=regular(t,'work_activity'),sa=context(t,'student_affairs_reporting'),tah=regular(t,'tahfizh');
     const arr=[
-      ['Badal',bc.masuk,`${bc.masuk} kali menggantikan, ${bc.diganti} kali digantikan. ${itemPreview(bad)}`],
-      ['Jaga UKS',uks?.item_count||0,`${uks?.item_count||0} laporan UKS. ${itemPreview(uks)}`],
-      ['Aktivitas',work?.item_count||0,categoryTip(work)]
+      ['Badal',bc.masuk,`${bc.masuk} kali menggantikan, ${bc.diganti} kali digantikan. ${itemPreview(bad)}`]
     ];
+    if(uks)arr.push(['Jaga UKS',uks.item_count||0,`${uks.item_count||0} laporan UKS. ${uks.note||itemPreview(uks)}`]);
+    arr.push(['Aktivitas',work?.item_count||0,categoryTip(work)]);
     if(profile.isHomeroom&&sa)arr.push(['Wali Kelas',statusLabel(sa.status),categoryTip(sa)]);
     else if(profile.isTahfizh&&tah)arr.push(['Tahfizh',statusLabel(tah.status),categoryTip(tah)]);
     else arr.push(['Kelengkapan',(t.completeness_index??0)+'%',`Kelengkapan dihitung hanya dari kewajiban yang berlaku untuk role ini.`]);
@@ -196,7 +196,7 @@
           <section class="cq-highlight-panel"><div class="cq-panel-title"><h4>Stat Highlight</h4><small>Ringkasan utama</small></div><div class="cq-flags">${flags(t).map(x=>`<div class="cq-flag"><i>✦</i><div><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div></div>`).join('')}</div></section>
         </div>
         <section class="cq-section"><div class="cq-panel-title"><h4>Status Kewajiban</h4><small>Hover ikon i untuk rincian</small></div><div class="cq-status-list">${categoryRows(t)}</div></section>
-        <section class="cq-section"><div class="cq-panel-title"><h4>Operasional Periode Ini</h4><small>Data live, bukan skor Performance</small></div><div class="cq-op-grid">${operationalGrid(t)}</div></section>
+        <section class="cq-section"><div class="cq-panel-title"><h4>Operasional Periode Ini</h4><small>Hanya data yang memang berlaku untuk pegawai ini</small></div><div class="cq-op-grid">${operationalGrid(t)}</div></section>
         <section class="cq-section"><div class="cq-panel-title"><h4>Aktivitas Terbaru</h4><small>Maksimal 4 aktivitas</small></div><div class="cq-recent">${recentItems(t)}</div></section>`;
       bindTips(body);
     }catch(e){meta.textContent='';role.textContent='';body.innerHTML='<div class="cq-hl-empty"><b>Stat Highlight belum dapat dimuat.</b><br>'+esc(e.message||'Terjadi kendala')+'</div>'}
