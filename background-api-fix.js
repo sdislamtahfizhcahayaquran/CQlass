@@ -38,7 +38,8 @@
   add('./reminder-center.js?v=20260915-bell-all-role2','__cqReminderCenterLoaderInstalled',true);
   add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);
   add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
-  add('./kegiatan-live-report.js?v=20260921-live2','__cqKegiatanLiveReportLoaderV2Installed',false);
+  add('./kegiatan-live-report.js?v=20260921-live3','__cqKegiatanLiveReportLoaderV3Installed',false);
+  add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
   /* Live Readiness PTS Akademik dimuat langsung dari index.html agar tidak tertahan cache loader. */
   /* Kabid Tahfizh/Qur'an: bersihkan scope sidebar + tampilkan live progres input PTS. */
   add('./tahfizh-kabid-shell-fix.js?v=20260918-shell3','__cqTahfizhKabidShellFixLoaderInstalled',false);
