@@ -242,8 +242,8 @@
     const box=document.getElementById('hrd-admin-cards');if(!box)return;const rows=filteredAdminTeachers();
     if(!rows.length){box.innerHTML='<div class="hrd-empty">Tidak ada guru yang cocok dengan filter.</div>';return}
     box.innerHTML=rows.map(t=>{
-      let cats=(t.categories||[]).filter(c=>state.category==='all'||c.key===state.category);
-      const ctx=state.category==='all'?(t.context_categories||[]):[];
+      let cats=(t.categories||[]).filter(c=>c.applicable&&(state.category==='all'||c.key===state.category));
+      const ctx=state.category==='all'?(t.context_categories||[]).filter(c=>c.applicable!==false):[];
       return '<article class="hrd-admin-card" id="hrd-teacher-'+esc(t.teacher_id)+'"><div class="hrd-admin-card-head"><div class="hrd-teacher"><div class="hrd-avatar">'+esc((t.name||'?').charAt(0).toUpperCase())+'</div><div><b>'+esc(t.name)+'</b><small>'+esc([t.position,t.username,(t.classes||[]).slice(0,3).join(', ')].filter(Boolean).join(' · ')||'Guru')+'</small></div></div><div><div class="hrd-card-issue '+((t.missing_count||t.partial_count)?'bad':'ok')+'">Indeks '+esc(t.completeness_index==null?'—':t.completeness_index+'%')+'</div><div style="font-size:9px;color:#718686;margin-top:5px;text-align:right">'+esc(t.completed_count||0)+'/'+esc(t.required_count||0)+' selesai</div></div></div>'
         +'<div class="hrd-chip-grid">'+cats.map(c=>chipHtml(t,c,false)).join('')+'</div>'
         +(ctx.length?'<div class="hrd-context-title">Informasi kontekstual — tidak dihitung sebagai kelengkapan/Performance</div><div class="hrd-chip-grid context">'+ctx.map(c=>chipHtml(t,c,true)).join('')+'</div>':'')
