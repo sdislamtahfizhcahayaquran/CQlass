@@ -146,3 +146,28 @@ html,body,#app-screen{
   #app-screen .content :is(input,select,textarea){max-width:100%}
   #app-screen .content table{min-width:max-content}
 }
+
+
+/* CQlass UI consistency audit v5 — role-safe responsive cleanup */
+.content .av-title,.content .sac-head h1,.content .ksr2 h1,.content .tsv2-title{font-size:clamp(21px,2.2vw,26px)!important;line-height:1.15}
+.content .av-kpi strong,.content .akpts-kpi strong,.content .ksr2-kpi strong{font-size:clamp(21px,2.4vw,25px)!important}
+.content .av-table,.content .akpts-table,.content .cqtl-table,.content .sac table,.content .ksr2 table,.content .tsv2-table{max-width:100%}
+.content .av-wrap,.content .akpts-wrap,.content .cqtl-wrap,.content .sac-table,.content .ksr2-table,.content .tsv2-tablewrap{max-width:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:900px){
+  .content .av-table{min-width:660px}
+  .content .akpts-table{min-width:760px!important}
+  .content .cqtl-table{min-width:760px}
+  .content .sac table{min-width:720px}
+  .content .ksr2 table{min-width:720px}
+  .content .tsv2-table{min-width:760px}
+  .content .hrd-priority-table{min-width:720px}
+}
+@media(max-width:600px){
+  .content .av-hero{padding:16px!important;border-radius:16px}
+  .content .av-kpis,.content .ksr2-grid,.content .tsv2-kpis{gap:8px}
+  .content .av-table{min-width:620px}
+  .content .akpts-table{min-width:700px!important}
+  .content .cqtl-table{min-width:700px}
+  .content .sac table,.content .ksr2 table{min-width:680px}
+  .content .tsv2-table{min-width:700px}
+}
