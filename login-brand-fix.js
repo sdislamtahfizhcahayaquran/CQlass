@@ -1,6 +1,10 @@
 /* CQlass login branding hotfix — no auth/data changes */
 (function(){
   'use strict';
+  const semantic=document.createElement('script');
+  semantic.src='hrd-timesheet-semantics.js?v=20260921-free-slot2';
+  semantic.id='cq-hrd-timesheet-semantics';
+  document.head.appendChild(semantic);
   const brand=document.querySelector('#login-screen .brand-row');
   if(brand){
     brand.innerHTML=`
