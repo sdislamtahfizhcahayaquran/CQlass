@@ -90,3 +90,59 @@ html,body,#app-screen{
   #app-screen .cq-role-hero{min-height:126px;padding:19px 20px;border-radius:19px}
   #app-screen .cq-role-hero-title{font-size:23px!important}
 }
+
+
+/* ===== CQlass UI consistency layer v4 =====
+   Shared across roles: compact controls, predictable typography, aligned selectors,
+   and usable wide tables without page-bottom horizontal scrolling.
+*/
+#app-screen .content{min-width:0}
+#app-screen .content :is(button,.btn,input,select,textarea){font-size:13px!important}
+#app-screen .content :is(button,.btn){min-height:36px;line-height:1.2;padding:8px 13px;border-radius:10px;font-weight:700}
+#app-screen .content :is(input,select,textarea){
+  min-height:38px;line-height:1.35;padding:8px 11px;border-radius:10px;
+  border:1px solid #d7e3e0;background:#fff;color:#172b2a;
+}
+#app-screen .content select{padding-right:34px}
+#app-screen .content label{font-size:12px!important;font-weight:700;line-height:1.35}
+#app-screen .content :is(.page-title,h1){font-size:clamp(22px,2.4vw,30px)!important;line-height:1.18}
+#app-screen .content h2{font-size:20px!important;line-height:1.25}
+#app-screen .content h3{font-size:16px!important;line-height:1.3}
+#app-screen .content :is(p,td,th,li,.form-control,.form-select){font-size:13px}
+#app-screen .content :is(.card,.panel,.modal-box){max-width:100%;box-sizing:border-box}
+#app-screen .content table{font-size:12.5px;max-width:none}
+#app-screen .content th{font-size:11.5px!important;line-height:1.25}
+#app-screen .content td{line-height:1.35}
+#app-screen .content th,#app-screen .content td{padding-top:8px;padding-bottom:8px}
+
+/* Any operational table can scroll inside its own viewport; page itself stays aligned. */
+#app-screen .content .cq-table-scroll,
+#app-screen .content .table-responsive,
+#app-screen .content [class*="table-wrap"],
+#app-screen .content [class*="table-container"]{
+  max-width:100%;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-inline:contain;
+}
+
+/* Keep action controls compact and reachable when a module marks the action column. */
+#app-screen .content .cq-action-col{white-space:nowrap}
+#app-screen .content .cq-action-col :is(button,.btn){min-height:32px;padding:6px 9px;font-size:11.5px!important}
+
+/* Filters/selectors use the same compact visual rhythm. */
+#app-screen .content :is(.filter-bar,.filters,.toolbar,.form-row,[class*="filter-row"],[class*="selector"]){
+  gap:10px;
+}
+#app-screen .content :is(.filter-bar,.filters,.toolbar,[class*="filter-row"]) select{
+  min-width:140px;max-width:100%;
+}
+
+/* Prevent accidental local styles from producing jumbo operational buttons. */
+#app-screen .content button:not(.cq-role-hero *):not(.ak7-hero *),
+#app-screen .content .btn:not(.cq-role-hero *):not(.ak7-hero *){font-size:13px!important}
+
+/* Mobile/tablet: forms remain compact and controls do not overflow. */
+@media(max-width:900px){
+  #app-screen .content{padding-left:14px!important;padding-right:14px!important}
+  #app-screen .content :is(.filter-bar,.filters,.toolbar,.form-row,[class*="filter-row"]){flex-wrap:wrap}
+  #app-screen .content :is(input,select,textarea){max-width:100%}
+  #app-screen .content table{min-width:max-content}
+}
