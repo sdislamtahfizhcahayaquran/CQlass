@@ -4,7 +4,7 @@
   const ADMIN_URL=SUPABASE_URL+'/functions/v1/hrd-live-report';
   const nowJkt=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const today=nowJkt(),monthStart=today.slice(0,8)+'01';
-  const state={tab:'administration',period:'month',perf:null,admin:null,query:'',start:monthStart,end:today,category:'all'};
+  const state={tab:'administration',period:'month',perf:null,admin:null,query:'',start:monthStart,end:today,category:'all',adminView:'issues_desc'};
   const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v==null?'':v)):String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   const num=v=>v==null||v===''?'—':Number(v).toLocaleString('id-ID',{maximumFractionDigits:1});
   const per=v=>v==null?'—':num(v)+'%';
@@ -186,14 +186,17 @@
     if(th?.missing_halaqah&&th.status==='partial')a.push(th.missing_halaqah+' halaqah Tahfizh kosong');
     return a.join(', ')||'—';
   }
+  function adminViewOptions(){return [['issues_desc','Paling banyak belum'],['done_desc','Paling banyak sudah'],['unfinished','Belum selesai'],['finished','Sudah selesai'],['az','A–Z'],['za','Z–A']].map(x=>'<option value="'+x[0]+'" '+(state.adminView===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')}
+  function adminIssues(t){return Number(t.issue_units||t.missing_count||0)+Number(t.partial_count||0)}
+  function sortAdminTeachers(rows){return rows.slice().sort((a,b)=>{if(state.adminView==='az')return String(a.name||'').localeCompare(String(b.name||''),'id');if(state.adminView==='za')return String(b.name||'').localeCompare(String(a.name||''),'id');if(state.adminView==='done_desc')return Number(b.completed_count||0)-Number(a.completed_count||0)||String(a.name||'').localeCompare(String(b.name||''),'id');return adminIssues(b)-adminIssues(a)||String(a.name||'').localeCompare(String(b.name||''),'id')})}
   function filteredAdminTeachers(){
     const q=low(state.query);
-    return (state.admin?.teachers||[]).filter(t=>{
+    const rows=(state.admin?.teachers||[]).filter(t=>{
       const search=!q||[t.name,t.username,t.position,(t.classes||[]).join(' ')].some(v=>low(v).includes(q));
       if(!search)return false;
-      if(state.category==='all')return true;
-      return (t.categories||[]).some(c=>c.key===state.category&&c.applicable);
-    });
+      if(state.category!=='all'&&!(t.categories||[]).some(c=>c.key===state.category&&c.applicable))return false;
+      const issues=adminIssues(t);if(state.adminView==='finished')return issues===0;if(state.adminView==='unfinished')return issues>0;return true;
+    });return sortAdminTeachers(rows);
   }
   function priorityRows(){
     return (state.admin?.teachers||[]).filter(selectedIssue).sort((a,b)=>{
@@ -210,7 +213,7 @@
     root.innerHTML=navTabs()
       +'<section class="hrd-hero hrd-admin-hero"><div class="hrd-eyebrow">HRD // LIVE REPORT PEGAWAI</div><h1>Live Report Administrasi</h1><p>Membaca pekerjaan yang benar-benar tersimpan di CQlass pada periode pilihan HRD. Klik setiap pegawai untuk melihat yang sudah selesai dan yang masih belum lengkap.</p><div class="hrd-live"><i></i> '+esc(fmtDate(state.start))+' — '+esc(fmtDate(state.end))+'</div></section>'
       +'<section class="hrd-kpis">'+kpi('Pegawai Terpantau',num(s.teachers),'live dari CQlass')+kpi('Perlu Ditindaklanjuti',num(s.with_issues),'minimal 1 administrasi belum lengkap')+kpi('Tanpa Isu',num(s.clean),'pada kewajiban yang berlaku')+kpi('Promosi Lengkap',num(s.promotion_complete),'minimal 1 foto')+kpi('Promosi Belum',num(s.promotion_missing),'perlu ditindaklanjuti')+'</section>'
-      +'<section class="hrd-toolbar hrd-admin-toolbar"><div class="hrd-date-field"><label>Dari</label><input type="date" id="hrd-date-start" value="'+esc(state.start)+'"></div><div class="hrd-date-field"><label>Sampai</label><input type="date" id="hrd-date-end" value="'+esc(state.end)+'"></div><button class="hrd-apply" onclick="hrdApplyDate()">Terapkan Periode</button><div class="hrd-date-field hrd-cat-field"><label>Kategori</label><select id="hrd-category" onchange="hrdSetCategory(this.value)">'+adminCategoryOptions()+'</select></div><div class="hrd-search"><input id="hrd-search" autocomplete="off" placeholder="Cari pegawai..." value="'+esc(state.query)+'"></div></section>'
+      +'<section class="hrd-toolbar hrd-admin-toolbar"><div class="hrd-date-field"><label>Dari</label><input type="date" id="hrd-date-start" value="'+esc(state.start)+'"></div><div class="hrd-date-field"><label>Sampai</label><input type="date" id="hrd-date-end" value="'+esc(state.end)+'"></div><button class="hrd-apply" onclick="hrdApplyDate()">Terapkan Periode</button><div class="hrd-date-field hrd-cat-field"><label>Kategori</label><select id="hrd-category" onchange="hrdSetCategory(this.value)">'+adminCategoryOptions()+'</select></div><div class="hrd-date-field"><label>Tampilan</label><select id="hrd-admin-view" onchange="hrdSetAdminView(this.value)">'+adminViewOptions()+'</select></div><div class="hrd-search"><input id="hrd-search" autocomplete="off" placeholder="Cari pegawai..." value="'+esc(state.query)+'"></div></section>'
       +'<div class="hrd-granularity-note"><b>Granularity sumber:</b> RPP = periode LP · Timesheet/PBL = harian · Tahfizh = bulanan · Capaian & Bilingual = semester. Semester operasional '+esc(fmtDate(sp.semester_start))+'–'+esc(fmtDate(sp.semester_end))+(sp.semester_dates_derived?' (diturunkan dari LP karena master semester belum berisi tanggal).':'')+'</div>'
       +'<section class="hrd-board hrd-priority-board"><div class="hrd-board-head"><div><h2>Prioritas: Belum Mengerjakan</h2><p>Diurutkan dari isu terbanyak. Tahfizh yang sebagian lengkap tetap masuk karena ada halaqah yang kosong.</p></div><div class="hrd-legend">'+esc(state.category==='all'?'Semua kategori administratif':'Filter: '+documentCategoryLabel(state.category))+'</div></div><div id="hrd-priority-holder"></div></section>'
       +'<section class="hrd-board"><div class="hrd-board-head"><div><h2>Drill-down Per Guru</h2><p>Klik chip kategori untuk melihat item laporan, periode, tanggal dibuat, dan file RPP.</p></div><div class="hrd-legend">✅ Ada · ❌ Belum · ⚠️ Sebagian</div></div><div id="hrd-admin-cards" class="hrd-admin-cards"></div></section>'
@@ -292,6 +295,7 @@
     state.start=a;state.end=b;state.admin=null;loadAdministration();
   }
   function setCategory(v){state.category=v||'all';renderPriority();renderAdminCards()}
+  function setAdminView(v){state.adminView=v||'issues_desc';renderPriority();renderAdminCards()}
   function focusTeacher(id){
     const el=document.getElementById('hrd-teacher-'+id);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('pulse');setTimeout(()=>el.classList.remove('pulse'),1300)}
   }
@@ -302,6 +306,7 @@
   window.hrdSetPeriod=setPeriod;
   window.hrdApplyDate=applyDate;
   window.hrdSetCategory=setCategory;
+  window.hrdSetAdminView=setAdminView;
   window.hrdOpenAdminDetail=openAdminDetail;
   window.hrdOpenRppFile=openRppFile;
   window.hrdFocusTeacher=focusTeacher;
