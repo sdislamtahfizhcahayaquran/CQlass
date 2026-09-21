@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 const url=Deno.env.get("SUPABASE_URL")!;
 const key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||Deno.env.get("SUPABASE_SECRET_KEY")!;
 const sb=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
-const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type, apikey, authorization, x-session-token","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"};
+const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type, apikey, authorization, x-session-token","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store, no-cache, must-revalidate"};
 const reply=(b:any,s=200)=>new Response(JSON.stringify(b),{status:s,headers:H});
 const txt=(v:any)=>String(v??"").trim();
 const low=(v:any)=>txt(v).toLowerCase();
@@ -35,9 +35,10 @@ async function fetchInBatches(table:string,select:string,column:string,ids:strin
   for(let i=0;i<uniq.length;i+=batch){const {data,error}=await sb.from(table).select(select).in(column,uniq.slice(i,i+batch));if(error)throw error;out.push(...(data||[]));}
   return out;
 }
+
 async function build(){
   const p=await period();
-  const [{data:enr,error:enErr},{data:classes,error:cErr},{data:ex,error:xErr},{data:members,error:mErr},{data:intAssess,error:iaErr},{data:external,error:eErr},{data:extAssess,error:eaErr},{data:marks,error:mkErr}]=await Promise.all([
+  const [enQ,cQ,xQ,mQ,iaQ,eQ,eaQ,mkQ,caQ,amQ]=await Promise.all([
     sb.from("student_enrollments").select("student_id,class_id").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("is_active",true),
     sb.from("classes").select("id,name,code,grade_level").eq("academic_year_id",p.academic_year_id).eq("is_active",true),
     sb.from("extracurriculars").select("id,name,code,is_active").eq("is_active",true).order("name"),
@@ -45,30 +46,41 @@ async function build(){
     sb.from("extracurricular_assessments").select("id,student_id,extracurricular_id,semester_no,activity_grade,skill_grade,competition_grade,final_score,final_rating,final_remarks,description,assessment_period,updated_at").eq("academic_year_id",p.academic_year_id).eq("assessment_period","PTS"),
     sb.from("extracurricular_external_students").select("id,student_id,activity_name,institution_name,is_active,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("is_active",true),
     sb.from("extracurricular_external_assessments").select("id,external_student_id,student_id,activity_grade,skill_grade,competition_grade,competition_note,assessment_period,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("assessment_period","PTS"),
-    sb.from("school_activity_matrix_marks").select("class_id,student_id,activity_code,participated").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no)
+    sb.from("school_activity_matrix_marks").select("class_id,student_id,activity_code,participated").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no),
+    sb.from("extracurricular_coach_assignments").select("id,extracurricular_id,class_id,coach_name,assignment_label,is_active,sort_order").eq("is_active",true).order("sort_order"),
+    sb.from("extracurricular_assignment_members").select("assignment_id,student_id,is_active").eq("is_active",true)
   ]);
-  for(const q of[{error:enErr},{error:cErr},{error:xErr},{error:mErr},{error:iaErr},{error:eErr},{error:eaErr},{error:mkErr}])if(q.error)throw q.error;
-  const sids=[...new Set((enr||[]).map((x:any)=>x.student_id).filter(Boolean))] as string[];
+  for(const q of[enQ,cQ,xQ,mQ,iaQ,eQ,eaQ,mkQ,caQ,amQ])if(q.error)throw q.error;
+  const enr=enQ.data||[],classes=cQ.data||[],ex=xQ.data||[],members=mQ.data||[],intAssess=iaQ.data||[],external=eQ.data||[],extAssess=eaQ.data||[],marks=mkQ.data||[],coachAssignments=caQ.data||[],assignmentMembers=amQ.data||[];
+  const sids=[...new Set(enr.map((x:any)=>x.student_id).filter(Boolean))] as string[];
   const students=await fetchInBatches("students","id,full_name,nis,nisn,status","id",sids,70);
   const sm=new Map(students.map((s:any)=>[s.id,s]));
-  const cm=new Map((classes||[]).map((c:any)=>[c.id,c]));
-  const em=new Map((enr||[]).map((e:any)=>[e.student_id,e.class_id]));
-  const xm=new Map((ex||[]).map((x:any)=>[x.id,x]));
+  const cm=new Map(classes.map((c:any)=>[c.id,c]));
+  const em=new Map(enr.map((e:any)=>[e.student_id,e.class_id]));
+  const xm=new Map(ex.map((x:any)=>[x.id,x]));
 
-  const activeMembers=(members||[]).filter((m:any)=>["aktif","active"].includes(low(m.status))&&em.has(m.student_id));
+  const coachAssignmentMap=new Map(coachAssignments.map((a:any)=>[a.id,a]));
+  const coachByStudentActivity=new Map<string,any>();
+  for(const link of assignmentMembers){
+    const a=coachAssignmentMap.get(link.assignment_id);if(!a)continue;
+    const studentClass=em.get(link.student_id);if(a.class_id&&studentClass&&a.class_id!==studentClass)continue;
+    const k=`${link.student_id}|${a.extracurricular_id}`;
+    if(!coachByStudentActivity.has(k))coachByStudentActivity.set(k,a);
+  }
+
+  const activeMembers=members.filter((m:any)=>["aktif","active"].includes(low(m.status))&&em.has(m.student_id));
   const internalStudentIds=new Set(activeMembers.map((m:any)=>m.student_id));
   const iaMap=new Map<string,any>();
-  for(const a of intAssess||[]){
+  for(const a of intAssess){
     if(a.semester_no!==null&&Number(a.semester_no)!==p.semester_no)continue;
     const k=`${a.student_id}|${a.extracurricular_id}`,old=iaMap.get(k);
     if(!old||String(a.updated_at||"")>String(old.updated_at||""))iaMap.set(k,a);
   }
   const eaMap=new Map<string,any>();
-  for(const a of extAssess||[]){const old=eaMap.get(a.external_student_id);if(!old||String(a.updated_at||"")>String(old.updated_at||""))eaMap.set(a.external_student_id,a);}
+  for(const a of extAssess){const old=eaMap.get(a.external_student_id);if(!old||String(a.updated_at||"")>String(old.updated_at||""))eaMap.set(a.external_student_id,a);}
 
-  const classUsed=new Map<string,Set<string>>();
-  const studentMarks=new Map<string,Set<string>>();
-  for(const m of marks||[]){
+  const classUsed=new Map<string,Set<string>>(),studentMarks=new Map<string,Set<string>>();
+  for(const m of marks){
     if(!m.participated)continue;
     if(!classUsed.has(m.class_id))classUsed.set(m.class_id,new Set());classUsed.get(m.class_id)!.add(txt(m.activity_code));
     const k=`${m.class_id}|${m.student_id}`;if(!studentMarks.has(k))studentMarks.set(k,new Set());studentMarks.get(k)!.add(txt(m.activity_code));
@@ -82,23 +94,24 @@ async function build(){
 
   const rows:any[]=[];
   for(const m of activeMembers){
-    const st=sm.get(m.student_id)||{},classId=em.get(m.student_id),cl=cm.get(classId)||{},activity=xm.get(m.extracurricular_id)||{},a=iaMap.get(`${m.student_id}|${m.extracurricular_id}`)||{},sa=schoolActivity(classId,m.student_id);
+    const st=sm.get(m.student_id)||{},classId=em.get(m.student_id),cl=cm.get(classId)||{},activity=xm.get(m.extracurricular_id)||{},a=iaMap.get(`${m.student_id}|${m.extracurricular_id}`)||{},sa=schoolActivity(classId,m.student_id),coach=coachByStudentActivity.get(`${m.student_id}|${m.extracurricular_id}`)||{};
     const g1=validGrade(a.activity_grade),g2=validGrade(a.skill_grade),g3=validGrade(a.competition_grade);
-    rows.push({source:"internal",student_id:m.student_id,student_name:st.full_name||"-",nis:st.nis||"",nisn:st.nisn||"",class_id:classId,class_name:cl.name||cl.code||"-",grade_level:Number(cl.grade_level)||null,activity_id:m.extracurricular_id,activity_name:activity.name||activity.code||"Ekskul",activity_grade:g1||"-",skill_grade:g2||"-",competition_grade:g3||"-",school_activity_grade:sa.grade,school_activity_percentage:sa.percentage,final_score:a.final_score??null,final_rating:txt(a.final_rating),remarks:txt(a.final_remarks||a.description),competition_note:"",assessment_id:a.id||null,assessment_status:g1&&g2&&g3?"complete":"pending",updated_at:a.updated_at||null});
+    rows.push({source:"internal",student_id:m.student_id,student_name:st.full_name||"-",nis:st.nis||"",nisn:st.nisn||"",class_id:classId,class_name:cl.name||cl.code||"-",grade_level:Number(cl.grade_level)||null,activity_id:m.extracurricular_id,activity_name:activity.name||activity.code||"Ekskul",coach_name:txt(coach.coach_name)||"Pelatih belum ditentukan",group_label:txt(coach.assignment_label),coach_assignment_id:coach.id||null,activity_grade:g1||"-",skill_grade:g2||"-",competition_grade:g3||"-",school_activity_grade:sa.grade,school_activity_percentage:sa.percentage,final_score:a.final_score??null,final_rating:txt(a.final_rating),remarks:txt(a.final_remarks||a.description),competition_note:"",assessment_id:a.id||null,assessment_status:g1&&g2&&g3?"complete":"pending",updated_at:a.updated_at||null});
   }
-  for(const e of external||[]){
+  for(const e of external){
     if(!em.has(e.student_id)||internalStudentIds.has(e.student_id))continue;
     const st=sm.get(e.student_id)||{},classId=em.get(e.student_id),cl=cm.get(classId)||{},a=eaMap.get(e.id)||{},sa=schoolActivity(classId,e.student_id);
     const g1=validGrade(a.activity_grade),g2=validGrade(a.skill_grade),g3=validGrade(a.competition_grade);
-    rows.push({source:"external",student_id:e.student_id,student_name:st.full_name||"-",nis:st.nis||"",nisn:st.nisn||"",class_id:classId,class_name:cl.name||cl.code||"-",grade_level:Number(cl.grade_level)||null,activity_id:e.id,activity_name:e.activity_name||"Ekskul Eksternal",institution_name:e.institution_name||"",activity_grade:g1||"-",skill_grade:g2||"-",competition_grade:g3||"-",school_activity_grade:sa.grade,school_activity_percentage:sa.percentage,final_score:null,final_rating:"",remarks:"",competition_note:txt(a.competition_note),assessment_id:a.id||null,assessment_status:g1&&g2&&g3?"complete":"pending",updated_at:a.updated_at||null});
+    rows.push({source:"external",student_id:e.student_id,student_name:st.full_name||"-",nis:st.nis||"",nisn:st.nisn||"",class_id:classId,class_name:cl.name||cl.code||"-",grade_level:Number(cl.grade_level)||null,activity_id:e.id,activity_name:e.activity_name||"Ekskul Eksternal",institution_name:e.institution_name||"",coach_name:"Pelatih eksternal",group_label:"",coach_assignment_id:null,activity_grade:g1||"-",skill_grade:g2||"-",competition_grade:g3||"-",school_activity_grade:sa.grade,school_activity_percentage:sa.percentage,final_score:null,final_rating:"",remarks:"",competition_note:txt(a.competition_note),assessment_id:a.id||null,assessment_status:g1&&g2&&g3?"complete":"pending",updated_at:a.updated_at||null});
   }
-  rows.sort((a,b)=>a.class_name.localeCompare(b.class_name,"id",{numeric:true})||a.activity_name.localeCompare(b.activity_name,"id")||a.student_name.localeCompare(b.student_name,"id"));
+  rows.sort((a,b)=>a.class_name.localeCompare(b.class_name,"id",{numeric:true})||a.coach_name.localeCompare(b.coach_name,"id")||a.activity_name.localeCompare(b.activity_name,"id")||a.student_name.localeCompare(b.student_name,"id"));
   const classesOut=[...new Map(rows.map(r=>[r.class_id,{id:r.class_id,name:r.class_name,grade_level:r.grade_level}])).values()].sort((a:any,b:any)=>a.name.localeCompare(b.name,"id",{numeric:true}));
   const activities={
     internal:[...new Map(rows.filter(r=>r.source==="internal").map(r=>[r.activity_id,{id:r.activity_id,name:r.activity_name}])).values()].sort((a:any,b:any)=>a.name.localeCompare(b.name,"id")),
     external:[...new Map(rows.filter(r=>r.source==="external").map(r=>[r.activity_name.toLowerCase(),{id:r.activity_name,name:r.activity_name}])).values()].sort((a:any,b:any)=>a.name.localeCompare(b.name,"id"))
   };
-  return{academic_year:p.academic_year,semester_no:p.semester_no,assessment_period:"PTS",rows,classes:classesOut,activities,summary:{records:rows.length,internal:rows.filter(r=>r.source==="internal").length,external:rows.filter(r=>r.source==="external").length,complete:rows.filter(r=>r.assessment_status==="complete").length,pending:rows.filter(r=>r.assessment_status==="pending").length}};
+  const coaches=[...new Set(rows.map(r=>r.coach_name).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"id"));
+  return{academic_year:p.academic_year,semester_no:p.semester_no,assessment_period:"PTS",generated_at:new Date().toISOString(),rows,classes:classesOut,activities,coaches,summary:{records:rows.length,internal:rows.filter(r=>r.source==="internal").length,external:rows.filter(r=>r.source==="external").length,complete:rows.filter(r=>r.assessment_status==="complete").length,pending:rows.filter(r=>r.assessment_status==="pending").length}};
 }
 
 Deno.serve(async(req:Request)=>{
