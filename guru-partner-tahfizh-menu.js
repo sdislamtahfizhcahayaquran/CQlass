@@ -47,7 +47,7 @@
     const sb=document.getElementById('sidebar');if(!sb)return;
     [...sb.querySelectorAll('.nav-group-head')].forEach(head=>{
       const label=String(head.querySelector('span')?.textContent||head.textContent||'').trim().toLowerCase();
-      if(label!=='tahfizh'){
+      if(label!=='tahfizh'&&label!=='laporan'){
         const next=head.nextElementSibling;
         if(next?.classList?.contains('nav-group-items'))next.remove();
         head.remove();
@@ -80,5 +80,5 @@
   }
   const observer=new MutationObserver(function(){if(String(window.currentUser?.role||'').toLowerCase()===PARTNER_ROLE){stripPartnerFromOtherGroups();ensurePartnerReports();cleanPartnerSidebar()}});
   observer.observe(document.documentElement,{childList:true,subtree:true});
-  setInterval(function(){if(String(window.currentUser?.role||'').toLowerCase()===PARTNER_ROLE){stripPartnerFromOtherGroups();cleanPartnerSidebar()}},2000);
+  setInterval(function(){if(String(window.currentUser?.role||'').toLowerCase()===PARTNER_ROLE){stripPartnerFromOtherGroups();ensurePartnerReports();cleanPartnerSidebar()}},2000);
 })();
