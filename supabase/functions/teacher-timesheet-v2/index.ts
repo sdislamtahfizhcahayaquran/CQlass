@@ -41,6 +41,6 @@ async function validateFreeSlot(req:Request,body:any){
   for(const x of badalR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"Jadwal badal",start:x.start_time,end:x.end_time});
   if(!conflicts.length)return null;
   const c=conflicts[0],range=[T(c.start).slice(0,5),T(c.end).slice(0,5)].filter(Boolean).join("–");
-  return `Jam ini bukan jam kosong karena bertabrakan dengan ${c.label}${range?` (${range})`:""}. Pilih waktu di luar mengajar dan rutinitas sekolah.`;
+  return `Jam ini bukan Timesheet karena bertabrakan dengan ${c.label}${range?` (${range})`:""}. Pilih waktu di luar mengajar dan rutinitas sekolah.`;
 }
-Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));if(T(body.action)==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal jam kosong belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}return proxy(req,body)});
+Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));if(T(body.action)==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal Timesheet belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}return proxy(req,body)});
