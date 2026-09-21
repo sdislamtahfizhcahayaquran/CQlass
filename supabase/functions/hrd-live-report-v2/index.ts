@@ -94,21 +94,13 @@ function normalizeTeacher(t:any){
     timesheet.note=DISPLAY_NOTES.timesheet;
   }
   t.categories=cats.filter((c:any)=>c?.key!=="work_activity");
-
   const ac=(t.categories||[]).find((c:any)=>c?.key==="academic"),s=t.academic_tp_summary||{};
   if(ac){
     const total=Number(s.assignments||0),done=Number(s.assignments_complete||0),entered=Number(s.entered_tp||0);
-    ac.applicable=total>0;
-    ac.minimum_tp_per_assignment=MIN_REPORT_TP;
-    ac.completed_assignments=done;
-    ac.expected_assignments=total;
-    ac.item_count=entered;
-    ac.status=!total?"na":done>=total?"present":(done>0||entered>0)?"partial":"missing";
-    ac.note=DISPLAY_NOTES.academic;
-    ac.items=(t.academic_tp_detail||[]).map((x:any)=>({id:`${x.class_id}|${x.subject_id}`,title:`${x.subject_name} — ${x.class_name}`,description:`${x.entered_tp}/${MIN_REPORT_TP} TP minimum rapor terisi · ${x.students_scored} siswa bernilai`,period_start:null,period_end:null,created_at:x.last_updated_at||null,status:x.report_complete?"present":x.entered_tp?"partial":"missing"}));
-    ac.last_created_at=lastOf(ac.items);
+    ac.applicable=total>0;ac.minimum_tp_per_assignment=MIN_REPORT_TP;ac.completed_assignments=done;ac.expected_assignments=total;ac.item_count=entered;
+    ac.status=!total?"na":done>=total?"present":(done>0||entered>0)?"partial":"missing";ac.note=DISPLAY_NOTES.academic;
+    ac.items=(t.academic_tp_detail||[]).map((x:any)=>({id:`${x.class_id}|${x.subject_id}`,title:`${x.subject_name} — ${x.class_name}`,description:`${x.entered_tp}/${MIN_REPORT_TP} TP minimum rapor terisi · ${x.students_scored} siswa bernilai`,period_start:null,period_end:null,created_at:x.last_updated_at||null,status:x.report_complete?"present":x.entered_tp?"partial":"missing"}));ac.last_created_at=lastOf(ac.items);
   }
-
   const req=(t.categories||[]).filter((c:any)=>c?.applicable),complete=req.filter((c:any)=>c.status==="present").length,partial=req.filter((c:any)=>c.status==="partial").length,missing=req.filter((c:any)=>c.status==="missing").length;
   t.required_count=req.length;t.completed_count=complete;t.partial_count=partial;t.missing_count=missing;t.missing_categories=req.filter((c:any)=>c.status==="missing").map((c:any)=>c.label);t.partial_categories=req.filter((c:any)=>c.status==="partial").map((c:any)=>c.label);t.issue_units=missing+partial;t.completeness_index=req.length?Math.round(((complete+partial*.5)/req.length)*100):null;
 }
@@ -122,9 +114,9 @@ Deno.serve(async(req)=>{
     const activeRows=(schedule||[]).filter((r:any)=>periodDays.has(Number(r.weekday))),byTeacher=new Map<string,any[]>();for(const row of activeRows){const id=T(row.teacher_id);if(!id)continue;if(!byTeacher.has(id))byTeacher.set(id,[]);byTeacher.get(id)!.push(row)}
     const teachers=data.teachers||[];
     for(const t of teachers){cleanCategoryNotes(t);const slots=byTeacher.get(T(t.teacher_id))||[],ctx=Array.isArray(t.context_categories)?t.context_categories:[],uks=ctx.find((c:any)=>c?.key==="uks_duty"),workload=ctx.find((c:any)=>c?.key==="workload");if(!slots.length){t.context_categories=ctx.filter((c:any)=>c?.key!=="uks_duty");if(workload){workload.items=(workload.items||[]).filter((i:any)=>!/^Jaga UKS$/i.test(T(i?.title)));workload.note=DISPLAY_NOTES.workload;if(uks)workload.item_count=Math.max(0,Number(workload.item_count||0)-Number(uks.item_count||0))}}else if(uks){uks.applicable=true;uks.scheduled_slots=slots.length;uks.schedule=slots.map((r:any)=>({weekday:Number(r.weekday),day:dayName(Number(r.weekday)),shift_no:Number(r.shift_no),start_time:hhmm(r.start_time),end_time:hhmm(r.end_time)}));uks.note=`Jadwal UKS: ${uks.schedule.map((r:any)=>`${r.day}, shift ${r.shift_no} (${r.start_time}–${r.end_time})`).join("; ")}.`}t.last_activity_at=[...(t.categories||[]).map((c:any)=>c?.last_created_at).filter(Boolean),...(t.context_categories||[]).map((c:any)=>c?.last_created_at).filter(Boolean)].sort().pop()||null}
-    await Promise.all([enrichPhotos(teachers),enrichAcademicTP(teachers)]);
-    for(const t of teachers)normalizeTeacher(t);
-    data.detail_version=4;data.summary={...(data.summary||{}),uks_scheduled_teachers:byTeacher.size,uks_active_slots:activeRows.length,academic_minimum_tp_per_assignment:MIN_REPORT_TP};
+    await Promise.all([enrichPhotos(teachers),enrichAcademicTP(teachers)]);for(const t of teachers)normalizeTeacher(t);
+    const normalizedSummary={...(data.summary||{}),teachers:teachers.length,with_issues:teachers.filter((t:any)=>Number(t.missing_count||0)>0||Number(t.partial_count||0)>0).length,clean:teachers.filter((t:any)=>Number(t.missing_count||0)===0&&Number(t.partial_count||0)===0).length,missing_category_units:teachers.reduce((z:number,t:any)=>z+Number(t.missing_count||0),0),partial_category_units:teachers.reduce((z:number,t:any)=>z+Number(t.partial_count||0),0),uks_scheduled_teachers:byTeacher.size,uks_active_slots:activeRows.length,academic_minimum_tp_per_assignment:MIN_REPORT_TP};
+    data.detail_version=5;data.summary=normalizedSummary;data.priority=teachers.filter((t:any)=>Number(t.missing_count||0)>0||Number(t.partial_count||0)>0).sort((a:any,b:any)=>Number(b.issue_units||0)-Number(a.issue_units||0)||T(a.name).localeCompare(T(b.name),"id"));
     return J(data,upstream.status);
   }catch(e){console.error(e);return J({success:false,error:"server_error",message:T((e as any)?.message)||"internal_error"},500)}
 });
