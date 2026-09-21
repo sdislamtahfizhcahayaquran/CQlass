@@ -1,4 +1,4 @@
-/* CQlass — guaranteed Kabid Kegiatan report grades card */
+/* CQlass — Kabid Kegiatan: sixth KPI + recallable Nilai Rapor Ekskul */
 (function(){
   'use strict';
   const API=(window.SUPABASE_URL||'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/activity-extracurricular-report-grades';
@@ -6,34 +6,78 @@
   const ST={rows:[],source:'all',loaded:false,loading:false,year:'',semester:1};
   const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const token=()=>typeof window.getAuthToken==='function'?window.getAuthToken():'';
-  function css(){if(document.getElementById('kxrg-guarantee-style'))return;const s=document.createElement('style');s.id='kxrg-guarantee-style';s.textContent=`
-    #kx-report-grade-card{background:#fff;border:1px solid var(--border,#dce7e7);border-radius:16px;padding:16px;margin:0 0 14px;box-shadow:0 4px 16px rgba(6,86,83,.04)}
-    .kxrg-h{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.kxrg-h h3{margin:0;font-size:16px;color:#173f3e}.kxrg-h p{margin:4px 0 0;font-size:10px;color:var(--muted,#708080)}
-    .kxrg-tabs,.kxrg-stats{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.kxrg-tabs button{border:1px solid var(--border,#dce7e7);background:#fff;border-radius:10px;padding:8px 12px;font-size:9px;font-weight:800;cursor:pointer}.kxrg-tabs button.active{background:#e8f6f4;border-color:#7fbeb8;color:#0b6864}.kxrg-chip{font-size:8.5px;font-weight:800;padding:6px 9px;border-radius:999px;background:#eef7f6;color:#235f5b}.kxrg-chip.warn{background:#fff1d9;color:#8b5d08}
-    .kxrg-filter{display:grid;grid-template-columns:minmax(180px,1fr) 160px 190px 160px auto;gap:8px;margin-top:10px}.kxrg-filter input,.kxrg-filter select{width:100%;box-sizing:border-box}.kxrg-wrap{overflow:auto;max-height:48vh;border:1px solid var(--border,#dce7e7);border-radius:12px;margin-top:10px}.kxrg-t{width:100%;border-collapse:collapse;min-width:1050px}.kxrg-t th,.kxrg-t td{padding:9px 10px;border-bottom:1px solid #edf1f2;font-size:9px;text-align:left}.kxrg-t th{position:sticky;top:0;background:#f7fafb;z-index:1;font-size:8px;color:var(--muted,#708080)}
-    .kxrg-g{display:inline-flex;min-width:27px;height:27px;align-items:center;justify-content:center;border-radius:8px;background:#edf7f5;color:#0b6864;font-weight:900;font-size:11px}.kxrg-g.empty{background:#f3f4f4;color:#999}.kxrg-src{font-size:7.5px;font-weight:850;padding:4px 7px;border-radius:999px;background:#eaf7f5;color:#17635e}.kxrg-src.ext{background:#eef3ff;color:#405b9b}.kxrg-status{font-size:7.5px;font-weight:850;padding:4px 7px;border-radius:999px;background:#eaf7f5;color:#17635e}.kxrg-status.pending{background:#fff1d9;color:#926200}.kxrg-mini{font-size:7.8px;color:var(--muted,#708080);margin-top:2px}
-    @media(max-width:1000px){.kxrg-filter{grid-template-columns:1fr 1fr}.kxrg-filter .wide{grid-column:1/-1}}@media(max-width:620px){.kxrg-h{flex-direction:column}.kxrg-filter{grid-template-columns:1fr}.kxrg-filter .wide{grid-column:auto}}
-  `;document.head.appendChild(s)}
+
+  function css(){
+    if(document.getElementById('kxrg-six-style'))return;
+    const s=document.createElement('style');s.id='kxrg-six-style';s.textContent=`
+      #kx-root .kx-kpi{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+      #kx-report-kpi strong{letter-spacing:.4px}
+      #kx-report-kpi.active{border-color:var(--primary)!important;box-shadow:0 0 0 2px rgba(10,110,110,.08)!important;background:#f4fbfa!important}
+      #kx-report-grade-card{background:#fff;border:1px solid var(--border,#dce7e7);border-radius:16px;padding:16px;margin:0 0 14px;box-shadow:0 4px 16px rgba(6,86,83,.04)}
+      .kxrg-h{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.kxrg-h h3{margin:0;font-size:16px;color:#173f3e}.kxrg-h p{margin:4px 0 0;font-size:10px;color:var(--muted,#708080)}
+      .kxrg-tabs,.kxrg-stats{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.kxrg-tabs button{border:1px solid var(--border,#dce7e7);background:#fff;border-radius:10px;padding:8px 12px;font-size:9px;font-weight:800;cursor:pointer}.kxrg-tabs button.active{background:#e8f6f4;border-color:#7fbeb8;color:#0b6864}.kxrg-chip{font-size:8.5px;font-weight:800;padding:6px 9px;border-radius:999px;background:#eef7f6;color:#235f5b}.kxrg-chip.warn{background:#fff1d9;color:#8b5d08}
+      .kxrg-filter{display:grid;grid-template-columns:minmax(180px,1fr) 160px 190px 160px auto;gap:8px;margin-top:10px}.kxrg-filter input,.kxrg-filter select{width:100%;box-sizing:border-box}.kxrg-wrap{overflow:auto;max-height:48vh;border:1px solid var(--border,#dce7e7);border-radius:12px;margin-top:10px}.kxrg-t{width:100%;border-collapse:collapse;min-width:1050px}.kxrg-t th,.kxrg-t td{padding:9px 10px;border-bottom:1px solid #edf1f2;font-size:9px;text-align:left}.kxrg-t th{position:sticky;top:0;background:#f7fafb;z-index:1;font-size:8px;color:var(--muted,#708080)}
+      .kxrg-g{display:inline-flex;min-width:27px;height:27px;align-items:center;justify-content:center;border-radius:8px;background:#edf7f5;color:#0b6864;font-weight:900;font-size:11px}.kxrg-g.empty{background:#f3f4f4;color:#999}.kxrg-src{font-size:7.5px;font-weight:850;padding:4px 7px;border-radius:999px;background:#eaf7f5;color:#17635e}.kxrg-src.ext{background:#eef3ff;color:#405b9b}.kxrg-status{font-size:7.5px;font-weight:850;padding:4px 7px;border-radius:999px;background:#eaf7f5;color:#17635e}.kxrg-status.pending{background:#fff1d9;color:#926200}.kxrg-mini{font-size:7.8px;color:var(--muted,#708080);margin-top:2px}
+      @media(max-width:900px){#kx-root .kx-kpi{grid-template-columns:repeat(3,1fr)!important}.kxrg-filter{grid-template-columns:1fr 1fr}.kxrg-filter .wide{grid-column:1/-1}}
+      @media(max-width:620px){#kx-root .kx-kpi{grid-template-columns:repeat(2,1fr)!important}.kxrg-h{flex-direction:column}.kxrg-filter{grid-template-columns:1fr}.kxrg-filter .wide{grid-column:auto}}
+    `;document.head.appendChild(s);
+  }
+
+  function ensureKpi(){
+    const kpi=document.querySelector('#kx-root .kx-kpi');if(!kpi)return null;
+    let b=document.getElementById('kx-report-kpi');
+    if(!b){b=document.createElement('button');b.id='kx-report-kpi';b.type='button';b.innerHTML='<strong>PTS</strong><span>Nilai Rapor</span>';b.addEventListener('click',()=>window.kxrgShow());kpi.appendChild(b)}
+    else if(b.parentElement!==kpi)kpi.appendChild(b);
+    return b;
+  }
+
   function card(){
-    const kpi=document.querySelector('#kx-root .kx-kpi'); if(!kpi)return null;
+    const kpi=document.querySelector('#kx-root .kx-kpi');if(!kpi)return null;
     let c=document.getElementById('kx-report-grade-card');
-    if(!c){c=document.createElement('section');c.id='kx-report-grade-card';kpi.insertAdjacentElement('afterend',c);c.innerHTML='<div class="kxrg-h"><div><h3>Nilai Rapor Ekskul</h3><p>Memuat seluruh nilai ekskul Internal dan Eksternal...</p></div></div>';}
+    if(!c){c=document.createElement('section');c.id='kx-report-grade-card';c.dataset.ready='0';kpi.insertAdjacentElement('afterend',c);c.innerHTML='<div class="kxrg-h"><div><h3>Nilai Rapor Ekskul</h3><p>Memuat seluruh nilai ekskul Internal dan Eksternal...</p></div></div>'}
     else if(c.previousElementSibling!==kpi)kpi.insertAdjacentElement('afterend',c);
     return c;
   }
-  async function fetchRows(force){if(ST.loading||ST.loaded&&!force)return;ST.loading=true;const c=card();if(!c){ST.loading=false;return;}try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':token()},body:JSON.stringify({action:'list'})});const d=await r.json();if(!r.ok||d.success===false)throw new Error(d.error||'Gagal memuat nilai rapor ekskul');ST.rows=d.rows||[];ST.year=d.academic_year||'';ST.semester=d.semester_no||1;ST.loaded=true;render();}catch(e){c.innerHTML=`<div class="kxrg-h"><div><h3>Nilai Rapor Ekskul</h3><p style="color:#a34c3d">${esc(e.message||'Data belum dapat dimuat.')}</p></div><button class="kv2-btn ghost" onclick="kxrg2Refresh()">Coba lagi</button></div>`;}finally{ST.loading=false}}
+
+  async function fetchRows(force){
+    if(ST.loading||ST.loaded&&!force)return;
+    ST.loading=true;const c=card();if(!c){ST.loading=false;return}
+    c.dataset.ready='0';
+    try{
+      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':token()},body:JSON.stringify({action:'list'})});
+      const d=await r.json();if(!r.ok||d.success===false)throw new Error(d.error||'Gagal memuat nilai rapor ekskul');
+      ST.rows=d.rows||[];ST.year=d.academic_year||'';ST.semester=d.semester_no||1;ST.loaded=true;render();
+    }catch(e){c.dataset.ready='1';c.innerHTML=`<div class="kxrg-h"><div><h3>Nilai Rapor Ekskul</h3><p style="color:#a34c3d">${esc(e.message||'Data belum dapat dimuat.')}</p></div><button class="kv2-btn ghost" onclick="kxrgRefresh()">Coba lagi</button></div>`}
+    finally{ST.loading=false}
+  }
+
   function base(){return ST.rows.filter(r=>ST.source==='all'||r.source===ST.source)}
   function values(key,rows){return [...new Set(rows.map(r=>r[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'id',{numeric:true}))}
-  function filtered(){const q=(document.getElementById('kxrg2-q')?.value||'').toLowerCase().trim(),cl=document.getElementById('kxrg2-class')?.value||'',ac=document.getElementById('kxrg2-act')?.value||'',st=document.getElementById('kxrg2-status')?.value||'';return base().filter(r=>(!cl||r.class_name===cl)&&(!ac||r.activity_name===ac)&&(!st||r.assessment_status===st)&&(!q||(`${r.student_name} ${r.nis||''} ${r.class_name} ${r.activity_name}`).toLowerCase().includes(q)))}
+  function filtered(){const q=(document.getElementById('kxrg-q')?.value||'').toLowerCase().trim(),cl=document.getElementById('kxrg-class')?.value||'',ac=document.getElementById('kxrg-act')?.value||'',st=document.getElementById('kxrg-status')?.value||'';return base().filter(r=>(!cl||r.class_name===cl)&&(!ac||r.activity_name===ac)&&(!st||r.assessment_status===st)&&(!q||(`${r.student_name} ${r.nis||''} ${r.class_name} ${r.activity_name}`).toLowerCase().includes(q)))}
   const g=v=>`<span class="kxrg-g ${!v||v==='-'?'empty':''}">${esc(v||'-')}</span>`;
-  function table(){const tb=document.getElementById('kxrg2-body');if(!tb)return;const rows=filtered();tb.innerHTML=rows.length?rows.map(r=>`<tr><td><span class="kxrg-src ${r.source==='external'?'ext':''}">${r.source==='external'?'Eksternal':'Internal'}</span></td><td><b>${esc(r.student_name)}</b><div class="kxrg-mini">${esc(r.nis||'')}</div></td><td>${esc(r.class_name)}</td><td><b>${esc(r.activity_name)}</b>${r.institution_name?`<div class="kxrg-mini">${esc(r.institution_name)}</div>`:''}</td><td>${g(r.activity_grade)}</td><td>${g(r.skill_grade)}</td><td>${g(r.competition_grade)}</td><td>${g(r.school_activity_grade)}</td><td><span class="kxrg-status ${r.assessment_status==='complete'?'':'pending'}">${r.assessment_status==='complete'?'Sudah dinilai':'Belum lengkap'}</span></td></tr>`).join(''):'<tr><td colspan="9" style="padding:25px;text-align:center;color:#7d8a8a">Tidak ada data pada filter ini.</td></tr>';const n=document.getElementById('kxrg2-count');if(n)n.textContent=rows.length+' data'}
-  function render(){const c=card();if(!c||!ST.loaded)return;const rows=base(),complete=rows.filter(r=>r.assessment_status==='complete').length,pending=rows.length-complete,classes=values('class_name',rows),acts=values('activity_name',rows);c.innerHTML=`<div class="kxrg-h"><div><h3>Nilai Rapor Ekskul</h3><p>Lihat semua nilai PTS ekskul. Filter Internal/Eksternal, kelas, jenis ekskul, dan status nilai.</p></div><button class="kv2-btn ghost" onclick="kxrg2Refresh()">Refresh</button></div><div class="kxrg-tabs"><button class="${ST.source==='all'?'active':''}" onclick="kxrg2Source('all')">Semua</button><button class="${ST.source==='internal'?'active':''}" onclick="kxrg2Source('internal')">Internal</button><button class="${ST.source==='external'?'active':''}" onclick="kxrg2Source('external')">Eksternal</button></div><div class="kxrg-stats"><span class="kxrg-chip">${rows.length} data</span><span class="kxrg-chip">${complete} sudah dinilai</span><span class="kxrg-chip warn">${pending} belum lengkap</span></div><div class="kxrg-filter"><input id="kxrg2-q" class="kv2-input wide" placeholder="Cari siswa / ekskul..." oninput="kxrg2Table()"><select id="kxrg2-class" class="kv2-select" onchange="kxrg2Filters()"><option value="">Semua kelas</option>${classes.map(x=>`<option>${esc(x)}</option>`).join('')}</select><select id="kxrg2-act" class="kv2-select" onchange="kxrg2Table()"><option value="">Semua jenis ekskul</option>${acts.map(x=>`<option>${esc(x)}</option>`).join('')}</select><select id="kxrg2-status" class="kv2-select" onchange="kxrg2Table()"><option value="">Semua status</option><option value="complete">Sudah dinilai</option><option value="pending">Belum lengkap</option></select><button class="kv2-btn ghost" onclick="kxrg2Reset()">Reset</button></div><div class="kxrg-wrap"><table class="kxrg-t"><thead><tr><th>Sumber</th><th>Siswa</th><th>Kelas</th><th>Jenis Ekskul</th><th>Kehadiran</th><th>Kemampuan</th><th>Prestasi</th><th>Keaktifan Sekolah</th><th>Status</th></tr></thead><tbody id="kxrg2-body"></tbody></table></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:8px;color:#748282"><span>PTS · ${esc(ST.year)} · Semester ${esc(ST.semester)}</span><span id="kxrg2-count"></span></div>`;table()}
-  window.kxrg2Source=v=>{ST.source=['all','internal','external'].includes(v)?v:'all';render()};
-  window.kxrg2Table=table;
-  window.kxrg2Filters=()=>{const cl=document.getElementById('kxrg2-class')?.value||'',sel=document.getElementById('kxrg2-act');if(sel){const old=sel.value,acts=values('activity_name',base().filter(r=>!cl||r.class_name===cl));sel.innerHTML='<option value="">Semua jenis ekskul</option>'+acts.map(x=>`<option>${esc(x)}</option>`).join('');if([...sel.options].some(o=>o.value===old))sel.value=old;}table()};
-  window.kxrg2Reset=()=>{['kxrg2-q','kxrg2-class','kxrg2-act','kxrg2-status'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});table()};
-  window.kxrg2Refresh=()=>{ST.loaded=false;fetchRows(true)};
-  function tick(){css();if(card()&&!ST.loaded&&!ST.loading)fetchRows(false)}
-  const mo=new MutationObserver(tick);function boot(){css();mo.observe(document.body,{childList:true,subtree:true});tick();setInterval(tick,1200)}
+  function table(){const tb=document.getElementById('kxrg-body');if(!tb)return;const rows=filtered();tb.innerHTML=rows.length?rows.map(r=>`<tr><td><span class="kxrg-src ${r.source==='external'?'ext':''}">${r.source==='external'?'Eksternal':'Internal'}</span></td><td><b>${esc(r.student_name)}</b><div class="kxrg-mini">${esc(r.nis||'')}</div></td><td>${esc(r.class_name)}</td><td><b>${esc(r.activity_name)}</b>${r.institution_name?`<div class="kxrg-mini">${esc(r.institution_name)}</div>`:''}</td><td>${g(r.activity_grade)}</td><td>${g(r.skill_grade)}</td><td>${g(r.competition_grade)}</td><td>${g(r.school_activity_grade)}</td><td><span class="kxrg-status ${r.assessment_status==='complete'?'':'pending'}">${r.assessment_status==='complete'?'Sudah dinilai':'Belum lengkap'}</span></td></tr>`).join(''):'<tr><td colspan="9" style="padding:25px;text-align:center;color:#7d8a8a">Tidak ada data pada filter ini.</td></tr>';const n=document.getElementById('kxrg-count');if(n)n.textContent=rows.length+' data'}
+
+  function render(){
+    const c=card();if(!c||!ST.loaded)return;
+    const rows=base(),complete=rows.filter(r=>r.assessment_status==='complete').length,pending=rows.length-complete,classes=values('class_name',rows),acts=values('activity_name',rows);
+    c.dataset.ready='1';
+    c.innerHTML=`<div class="kxrg-h"><div><h3>Nilai Rapor Ekskul</h3><p>Lihat semua nilai PTS ekskul. Filter Internal/Eksternal, kelas, jenis ekskul, dan status nilai.</p></div><button class="kv2-btn ghost" onclick="kxrgRefresh()">Refresh</button></div><div class="kxrg-tabs"><button class="${ST.source==='all'?'active':''}" onclick="kxrgSource('all')">Semua</button><button class="${ST.source==='internal'?'active':''}" onclick="kxrgSource('internal')">Internal</button><button class="${ST.source==='external'?'active':''}" onclick="kxrgSource('external')">Eksternal</button></div><div class="kxrg-stats"><span class="kxrg-chip">${rows.length} data</span><span class="kxrg-chip">${complete} sudah dinilai</span><span class="kxrg-chip warn">${pending} belum lengkap</span></div><div class="kxrg-filter"><input id="kxrg-q" class="kv2-input wide" placeholder="Cari siswa / ekskul..." oninput="kxrgTable()"><select id="kxrg-class" class="kv2-select" onchange="kxrgFilters()"><option value="">Semua kelas</option>${classes.map(x=>`<option>${esc(x)}</option>`).join('')}</select><select id="kxrg-act" class="kv2-select" onchange="kxrgTable()"><option value="">Semua jenis ekskul</option>${acts.map(x=>`<option>${esc(x)}</option>`).join('')}</select><select id="kxrg-status" class="kv2-select" onchange="kxrgTable()"><option value="">Semua status</option><option value="complete">Sudah dinilai</option><option value="pending">Belum lengkap</option></select><button class="kv2-btn ghost" onclick="kxrgReset()">Reset</button></div><div class="kxrg-wrap"><table class="kxrg-t"><thead><tr><th>Sumber</th><th>Siswa</th><th>Kelas</th><th>Jenis Ekskul</th><th>Kehadiran</th><th>Kemampuan</th><th>Prestasi</th><th>Keaktifan Sekolah</th><th>Status</th></tr></thead><tbody id="kxrg-body"></tbody></table></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:8px;color:#748282"><span>PTS · ${esc(ST.year)} · Semester ${esc(ST.semester)}</span><span id="kxrg-count"></span></div>`;
+    table();
+  }
+
+  window.kxrgSource=v=>{ST.source=['all','internal','external'].includes(v)?v:'all';render()};
+  window.kxrgTable=table;
+  window.kxrgFilters=()=>{const cl=document.getElementById('kxrg-class')?.value||'',sel=document.getElementById('kxrg-act');if(sel){const old=sel.value,acts=values('activity_name',base().filter(r=>!cl||r.class_name===cl));sel.innerHTML='<option value="">Semua jenis ekskul</option>'+acts.map(x=>`<option>${esc(x)}</option>`).join('');if([...sel.options].some(o=>o.value===old))sel.value=old}table()};
+  window.kxrgReset=()=>{['kxrg-q','kxrg-class','kxrg-act','kxrg-status'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});table()};
+  window.kxrgRefresh=()=>{ST.loaded=false;fetchRows(true)};
+  window.kxrgShow=()=>{ST.source='all';const b=ensureKpi();if(b)b.classList.add('active');const c=card();if(ST.loaded){if(c&&c.dataset.ready!=='1')render()}else if(!ST.loading)fetchRows(false);setTimeout(()=>document.getElementById('kx-report-grade-card')?.scrollIntoView({behavior:'smooth',block:'start'}),80)};
+
+  function tick(){
+    css();const b=ensureKpi(),c=card();if(!b||!c)return;
+    if(ST.loaded&&c.dataset.ready!=='1')render();
+    else if(!ST.loaded&&!ST.loading)fetchRows(false);
+  }
+  const mo=new MutationObserver(tick);
+  function boot(){css();mo.observe(document.body,{childList:true,subtree:true});tick();setInterval(tick,1200)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
