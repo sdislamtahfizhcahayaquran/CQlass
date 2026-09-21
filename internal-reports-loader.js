@@ -7,6 +7,7 @@
     'internal-report-center.js?v=20260911-sapras-dashboard1',
     'kesiswaan-points-recap.js?v=20260915-3',
     'kesiswaan-super-report.js?v=20260921-live2',
+    'kesiswaan-case-followup-ui.js?v=20260921-followup1',
     'kesiswaan-excel-xlsx.js?v=20260921-xlsx1',
     'student-affairs-center.js?v=20260921-center2',
     'kesiswaan-final-cleanup.js?v=20260921-final2',
