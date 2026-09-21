@@ -20,6 +20,13 @@
     s.dataset.cqRawEkskul='1';
     document.head.appendChild(s);
   }
+  // Kabid Akademik: status Absensi Live Readiness follows the latest saved Rekap Editable.
+  if(!document.querySelector('script[data-cq-akpts-attendance-fix]')){
+    var af=document.createElement('script');
+    af.src='academic-pts-attendance-fix.js?v=20260921-absedit1';
+    af.dataset.cqAkptsAttendanceFix='1';
+    document.head.appendChild(af);
+  }
 
   function isAdmin(){try{return String(currentUser?.role||'').toLowerCase()==='admin'}catch(_){return false}}
   window.openCleanAdminRawEkskul=function(){
