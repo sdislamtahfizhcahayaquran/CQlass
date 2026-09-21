@@ -53,6 +53,7 @@
       const rawRoles=[...(Array.isArray(user?.roles)?user.roles:[]),user?.role,user?.primary_role,user?.role_code].map(low);
       if(low(x.username)==='hrd'||rawRoles.includes('hrd')){
         x.role='hrd';x.roles=[...new Set([...(Array.isArray(x.roles)?x.roles:[]),'hrd'])];
+        if(typeof DASHBOARD_MODULE!=='undefined')DASHBOARD_MODULE.label='Live Report HRD';
       }
       return x;
     };
