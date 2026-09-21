@@ -7,6 +7,7 @@
     'internal-report-center.js?v=20260911-sapras-dashboard1',
     'kesiswaan-points-recap.js?v=20260915-3',
     'kesiswaan-super-report.js?v=20260921-live2',
+    'kesiswaan-final-cleanup.js?v=20260921-final1',
     'extracurricular-raw-ui.js?v=20260916-raw2',
     'kegiatan-exkul-capacity.js?v=20260918-extpts2',
     'kegiatan-exkul-report-grades.js?v=20260921-reportgrades2',
