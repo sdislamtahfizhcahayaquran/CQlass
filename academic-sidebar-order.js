@@ -1,7 +1,10 @@
 // CQlass — Sidebar order & Timesheet placement guard
 // Timesheet berada di grup Laporan. Cetak Rapor selalu paling akhir di Akademik.
 (function(){
-  const TIMESHEET_ROLES=['guru','walas','akademik','pimpinan','admin'];
+  // Timesheet adalah menu input untuk tenaga pengajar saja.
+  // Catatan penting: role "tahfizh" di CQlass adalah Kabid Tahfizh, BUKAN Guru Tahfizh,
+  // sehingga sengaja tidak dimasukkan. Guru Tahfizh memakai akun guru/partner sesuai assignment.
+  const TIMESHEET_ROLES=['guru','walas','partner','guru_partner'];
 
   function relocateTimesheet(){
     try{
