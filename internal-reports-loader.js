@@ -7,6 +7,7 @@
     'kesiswaan-points-recap.js?v=20260915-3',
     'extracurricular-raw-ui.js?v=20260916-raw2',
     'kegiatan-exkul-capacity.js?v=20260918-extpts2',
+    'kegiatan-exkul-report-grades.js?v=20260921-reportgrades1',
     'kegiatan-exkul-external-admin.js?v=20260921-extadmin1',
     'kegiatan-exkul-layout-fix.js?v=20260916-layout1',
     'school-activity-report.js?v=20260916-activity3',
