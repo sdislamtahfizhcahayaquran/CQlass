@@ -3,7 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 const CORS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization,apikey,content-type,x-session-token","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json; charset=utf-8"};
 const J=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...CORS,"Cache-Control":"no-store"}});
 const T=(v:unknown)=>String(v??"").trim();
-const L=(v:unknown)=>T(v).toLowerCase();
 const URL=Deno.env.get("SUPABASE_URL")!;
 function secret(){const p=Deno.env.get("SUPABASE_SECRET_KEYS");if(p){try{const x=JSON.parse(p);if(x?.default)return String(x.default)}catch{}}return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||Deno.env.get("SUPABASE_SECRET_KEY")||""}
 const sb=createClient(URL,secret(),{auth:{persistSession:false,autoRefreshToken:false}});
@@ -90,7 +89,6 @@ async function enrichAcademicTP(teachers:any[]){
     const cm=new Map<string,any>(classes.map((x:any)=>[T(x.id),x])),sm=new Map<string,any>(subjects.map((x:any)=>[T(x.id),x]));
     const objByScope=new Map<string,any[]>();
     for(const o of objectives){
-      if(o.objective_type&&L(o.objective_type)!=="tp")continue;
       const key=`${T(o.subject_id)}|${Number(o.grade_level)||0}`;
       if(!objByScope.has(key))objByScope.set(key,[]);objByScope.get(key)!.push(o);
     }
@@ -114,7 +112,7 @@ async function enrichAcademicTP(teachers:any[]){
           const students=uniq(rows.map((x:any)=>T(x.student_id))).length;
           const vals=rows.map((x:any)=>Number(x.score)).filter((x:number)=>Number.isFinite(x));
           const avg=vals.length?Math.round((vals.reduce((z:number,v:number)=>z+v,0)/vals.length)*10)/10:null;
-          const raw=T(o.code),display=/^tp\s*\d+/i.test(raw)?raw.toUpperCase().replace(/\s+/g,""):`TP${idx+1}`;
+          const raw=T(o.code),display=`TP${idx+1}`;
           return {id:o.id,code:display,source_code:raw||null,description:T(o.description)||T(o.topic)||"Tujuan pembelajaran",topic:T(o.topic)||null,kktp:o.kktp??null,scored_students:students,score_rows:rows.length,average_score:avg,last_updated_at:lastOf(rows),status:students>0?"entered":"missing"};
         });
         const legacyRows=scopeScores.filter((x:any)=>!scopeObjectives.some((o:any)=>T(o.id)===T(x.learning_objective_id)));
@@ -172,7 +170,7 @@ Deno.serve(async(req)=>{
     }
 
     await Promise.all([enrichPhotos(teachers),enrichAcademicTP(teachers)]);
-    data.detail_version=2;
+    data.detail_version=3;
     data.summary={...(data.summary||{}),uks_scheduled_teachers:byTeacher.size,uks_active_slots:activeRows.length};
     return J(data,upstream.status);
   }catch(e){console.error(e);return J({success:false,error:"server_error",message:T((e as any)?.message)||"internal_error"},500)}
