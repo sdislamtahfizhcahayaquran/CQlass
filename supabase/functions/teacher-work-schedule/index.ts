@@ -36,7 +36,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const templates=rows.filter((r:any)=>!(r.activity_code==="student_welcome_class"&&ownGateDays.has(Number(r.day_of_week))));
   const items:any[]=[];
   for(const date of dates){
-    const dow=new Date(`${date}T12:00:00Z`).getUTCDay();if(dow<1||dow>5)continue;
+    const dow=new Date(`${date}T12:00:00Z`).getUTCDay();if(dow<1||dow>6)continue;
     for(const r of templates){if(Number(r.day_of_week)!==dow)continue;items.push({id:`${r.id}:${date}`,template_id:r.id,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:r.activity_code,activity:r.activity_name,note:r.duty_location?[r.duty_location,r.team_label].filter(Boolean).join(" · "):"",source:"jadwal-kerja",automatic:true})}
     for(const u of uksRows){if(Number(u.weekday)!==dow)continue;const reported=reportKeys.has(`${date}:${Number(u.shift_no)}`);const status=reported?"Laporan foto terkirim":date>today?"Terjadwal":"Belum ada laporan foto";items.push({id:`uks:${u.id}:${date}`,template_id:null,work_date:date,start_time:u.start_time,end_time:u.end_time,activity_code:"uks_duty",activity:"Jaga UKS",note:`Shift ${Number(u.shift_no)} · ${status}`,source:"jadwal-kerja",automatic:true,uks_shift_no:Number(u.shift_no),uks_reported:reported})}
   }
