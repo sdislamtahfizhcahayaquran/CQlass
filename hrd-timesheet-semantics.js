@@ -21,7 +21,7 @@ function patchText(){
   document.querySelectorAll('body *').forEach(el=>{
     if(el.children.length)return;
     const s=(el.textContent||'').trim();
-    if(s==='Timesheet / JP')el.textContent='Timesheet Jam Kosong';
+    if(s==='Timesheet / JP')el.textContent='Timesheet';
     else if(/^\d+(?:[.,]\d+)?\s*JP\s*·\s*\d+\s*aktivitas$/i.test(s))el.textContent=s.replace(/^\d+(?:[.,]\d+)?\s*JP\s*·\s*/i,'')+' aktivitas jam kosong';
     else if(s.includes('kelas-mapel memenuhi minimum rapor'))el.textContent=s.replace('kelas-mapel memenuhi minimum rapor','kelas-mapel memenuhi target 2 TP pekan ini');
     else if(/\d+\s*TP terisi\s*·/i.test(s))el.textContent=s.replace(/(\d+)\s*TP terisi/i,'$1/2 TP target pekan ini');
@@ -30,8 +30,8 @@ function patchText(){
 }
 function patchTimesheetPage(){
   const root=document.querySelector('.tsv2');if(!root)return;
-  const title=root.querySelector('.tsv2-title');if(title)title.textContent='Timesheet Jam Kosong';
-  const sub=root.querySelector('.tsv2-sub');if(sub)sub.textContent='Timesheet hanya untuk kegiatan produktif pada slot yang benar-benar kosong—di luar mengajar dan di luar rutinitas sekolah.';
+  const title=root.querySelector('.tsv2-title');if(title)title.textContent='Timesheet';
+  const sub=root.querySelector('.tsv2-sub');if(sub)sub.textContent='Senin–Jumat: isi aktivitas produktif pada jam kosong. Sabtu: seluruh jam kerja 07.30–12.00 ditampilkan sebagai satu timeline; mengajar/ekskul dan agenda HRD mengambil prioritas atas slot kerja umum.';
   const kpis=root.querySelector('.tsv2-kpis');if(kpis)kpis.style.display='none';
   root.querySelectorAll('.tsv2-card').forEach(card=>{
     const b=card.querySelector(':scope > b');const head=(b?.textContent||'').trim();
@@ -39,10 +39,10 @@ function patchTimesheetPage(){
       const h=card.querySelector('.tsv2-help');if(h)h.textContent='Isi hanya pada jam yang benar-benar bebas. Sistem menolak waktu yang bertabrakan dengan mengajar, badal, MT/Morning Talk, literasi, snack/istirahat, ishoma, briefing, penyambutan, Eduhub/administrasi rutin, UKS terjadwal, atau Timesheet yang sudah ada.';
     }
     if(/^Timesheet\s/i.test(head)){
-      b.textContent=head.replace(/^Timesheet/,'Isian Timesheet Jam Kosong');
-      const h=card.querySelector('.tsv2-help');if(h)h.textContent='Yang dihitung sebagai Timesheet hanya aktivitas produktif yang diisi guru pada jam kosong.';
+      b.textContent=head.replace(/^Timesheet/,'Timeline Timesheet');
+      const h=card.querySelector('.tsv2-help');if(h)h.textContent='Senin–Jumat mengikuti jam kosong. Sabtu mengikuti jam kerja 07.30–12.00 dengan prioritas penugasan sekolah dan agenda HRD.';
       const table=card.querySelector('.tsv2-table');if(table){
-        table.querySelectorAll('tbody tr').forEach(tr=>{const badge=(tr.querySelector('.tsv2-badge')?.textContent||'').trim();if(badge&&badge!=='Diisi guru')tr.style.display='none'});
+        table.querySelectorAll('tbody tr').forEach(tr=>{const first=(tr.querySelector('td')?.textContent||'').trim();const isSat=/Sab/i.test(first);const badge=(tr.querySelector('.tsv2-badge')?.textContent||'').trim();if(!isSat&&badge&&badge!=='Diisi guru')tr.style.display='none'});
         table.querySelectorAll('th:nth-child(6),td:nth-child(6)').forEach(x=>x.style.display='none');
       }
     }
