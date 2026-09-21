@@ -5,12 +5,13 @@ if(window.__cqPromotionReportV7)return;window.__cqPromotionReportV7=true;
 const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
 const KEY=(typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'');
 const API=BASE+'/functions/v1/promotion-report';
-const BASE_ROLES=['admin','hrd','guru','walas','wali_kelas','pimpinan','kepsek','kepala_sekolah','akademik','academic','kesiswaan','tahfizh','kegiatan','sapras','guru_partner','partner','kabid_akademik','kabid_kesiswaan','kabid_tahfizh','kabid_kegiatan'];
+const BASE_ROLES=['admin','hrd','guru','walas','wali_kelas','pimpinan','kepsek','kepala_sekolah','akademik','academic','kesiswaan','tahfizh','kegiatan','guru_partner','partner','kabid_akademik','kabid_kesiswaan','kabid_tahfizh','kabid_kegiatan'];
 const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
 const token=()=>{try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch{return''}};
 const role=()=>{try{return String((typeof currentUser!=='undefined'&&currentUser?.role)||JSON.parse(localStorage.getItem('cqlass_user')||'{}').role||'').trim().toLowerCase()}catch{return''}};
-const roles=()=>{const r=role();return[...new Set([...BASE_ROLES,...(r?[r]:[])])]};
+const roles=()=>[...BASE_ROLES];
 const monitorOnly=()=>['hrd','admin'].includes(role());
+const blocked=()=>role()==='sapras';
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const monthStart=()=>today().slice(0,8)+'01';
 const fmt=v=>{if(!v)return'-';const p=String(v).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:String(v)};
@@ -44,6 +45,7 @@ async function load(){
 }
 function render(){
   css();const c=document.getElementById('content');if(!c)return;
+  if(blocked()){c.innerHTML='<div class="pr-shell"><section class="pr-card"><h2>Akses tidak tersedia</h2><p>Role Sapras tidak menggunakan fitur Promosi.</p></section></div>';return;}
   if(monitorOnly()){
     c.innerHTML=`<div class="pr-shell"><section class="pr-hero"><small>MONITORING PROMOSI</small><h1>Laporan Promosi</h1><p>Menu Promosi tersedia di semua role. HRD/Admin menggunakan halaman ini sebagai akses monitoring, bukan penginputan.</p></section><section class="pr-card pr-monitor"><strong>Mode monitoring</strong><p>Input foto promosi dilakukan oleh pegawai pelaksana. HRD/Admin tetap memantau kelengkapan promosi melalui Live Report sehingga tidak ada input ganda dari role monitoring.</p></section></div>`;
     return;
@@ -57,6 +59,7 @@ async function remove(id){if(!id||!confirm('Hapus foto promosi ini?'))return;try
 function install(){if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;const rs=roles();let g=MODULE_GROUPS.find(x=>x&&x.id==='laporan');if(!g){g={id:'laporan',label:'Laporan',roles:[],items:[]};MODULE_GROUPS.push(g)}if(!Array.isArray(g.items))g.items=[];g.roles=[...new Set([...(g.roles||[]),...rs])];const obj={id:'laporan-promosi',label:'Laporan Promosi',roles:[...rs],built:true,render};const old=g.items.find(x=>x&&x.id===obj.id);if(old)Object.assign(old,obj);else g.items.push(obj);return true}
 function ensureSidebarEntry(){
   const r=role(),sb=document.getElementById('sidebar');if(!r||!sb)return;
+  if(r==='sapras'){sb.querySelectorAll('[data-cq-promotion-fallback],.nav-item,.menu-item,button,a').forEach(x=>{if(String(x.textContent||'').trim()==='Laporan Promosi'||x.dataset?.cqPromotionFallback)x.remove()});return;}
   const found=[...sb.querySelectorAll('.nav-item,.menu-item,button,a')].find(x=>String(x.textContent||'').trim()==='Laporan Promosi');if(found)return;
   const item=document.createElement('div');item.className='nav-item';item.dataset.cqPromotionFallback='1';item.innerHTML='<span>Laporan Promosi</span>';
   item.onclick=()=>{try{if(typeof activeModule!=='undefined')activeModule='laporan-promosi'}catch{}document.querySelectorAll('#sidebar .nav-item').forEach(x=>x.classList.remove('active'));item.classList.add('active');render()};
