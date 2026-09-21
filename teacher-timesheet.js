@@ -8,6 +8,6 @@
     document.head.appendChild(s);
   }
   add('teacher-timesheet-v2.js?v=20260922-saturday-workday1','cq-ts-v2');
-  add('admin-timesheet-master.js?v=20260909-evidence1','cq-ts-admin-master');
-  add('timesheet-saturday-manual.js?v=20260909-evidence1','cq-ts-saturday-manual');
+  add('admin-timesheet-master.js?v=20260922-hrd-saturday1','cq-ts-admin-master');
+  add('timesheet-saturday-manual.js?v=20260922-priority1','cq-ts-saturday-manual');
 })();
