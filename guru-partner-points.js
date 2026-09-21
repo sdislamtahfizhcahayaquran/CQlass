@@ -28,9 +28,9 @@ function ensureCss(){if(document.getElementById('gpp-style'))return;const s=docu
 
 function install(){
   if(typeof MODULE_GROUPS==='undefined')return false;
-  const g=MODULE_GROUPS.find(x=>x.id==='partner-tasks');if(!g)return false;
+  let g=MODULE_GROUPS.find(x=>x.id==='laporan');if(!g){g={id:'laporan',label:'Laporan',roles:['partner'],items:[]};MODULE_GROUPS.push(g)}
   const add=(id,label,kind)=>{const old=(g.items||[]).find(x=>x.id===id);if(old){old.label=label;old.render=c=>render(c,kind);old.roles=['partner'];old.built=true}else g.items.push({id,label,roles:['partner'],built:true,render:c=>render(c,kind)})};
-  add('partner-discipline','Kedisiplinan','violation');add('partner-reward','Reward','reward');return true;
+  add('partner-discipline','Kedisiplinan','violation');add('partner-reward','Reward','reward');const d=g.items.find(x=>x.id==='partner-discipline'),r=g.items.find(x=>x.id==='partner-reward');if(d)d.hidden=true;if(r)r.hidden=true;return true;
 }
 async function getBoot(force=false){if(boot&&!force)return boot;boot=await req('bootstrap');return boot}
 
