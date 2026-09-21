@@ -26,7 +26,7 @@
     <section class="card">
       <div class="head">
         <h1>Nilai Ekskul Eksternal — PTS</h1>
-        <p>Pilih kelas dan siswa, lalu isi nilai Kehadiran, Kemampuan, dan Prestasi. Keaktifan di sekolah tetap dihitung dari data kegiatan internal sekolah.</p>
+        <p>Daftar siswa hanya menampilkan siswa yang tidak mengikuti ekskul internal sekolah. Pilih siswa, lalu isi nilai Kehadiran, Kemampuan, dan Prestasi.</p>
         <div class="meta"><span class="pill" id="year-pill">Memuat tahun ajaran...</span><span class="pill" id="semester-pill">PTS</span></div>
       </div>
       <div class="body">
@@ -34,7 +34,7 @@
         <form id="grade-form">
           <div class="grid">
             <div class="field"><label for="class-id">Kelas <span class="req">*</span></label><select class="select" id="class-id" required disabled><option value="">Memuat kelas...</option></select></div>
-            <div class="field"><label for="student-id">Nama Siswa <span class="req">*</span></label><select class="select" id="student-id" required disabled><option value="">Pilih kelas terlebih dahulu</option></select></div>
+            <div class="field"><label for="student-id">Nama Siswa <span class="req">*</span></label><select class="select" id="student-id" required disabled><option value="">Pilih kelas terlebih dahulu</option></select><div class="help">Siswa ekskul internal otomatis tidak ditampilkan.</div></div>
             <div class="field full"><label for="activity-name">Nama Ekstrakurikuler <span class="req">*</span></label><input class="input" id="activity-name" maxlength="120" required placeholder="Contoh: Taekwondo, Renang, Futsal"></div>
 
             <div class="field"><div class="grade-title">Kehadiran <span class="req">*</span></div><div class="grades" data-grade="activity_grade"></div></div>
@@ -66,7 +66,7 @@
   async function api(action,payload={}){
     const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':PUBLISHABLE_KEY},body:JSON.stringify({action,...payload})});
     let d={};try{d=await r.json()}catch(_){}
-    if(!r.ok||d.success===false){const map={class_required:'Pilih kelas terlebih dahulu.',class_and_student_required:'Pilih kelas dan nama siswa.',student_not_in_class:'Siswa tidak terdaftar pada kelas tersebut.',activity_name_invalid:'Nama ekstrakurikuler wajib diisi.',grades_must_be_a_to_d:'Lengkapi nilai Kehadiran, Kemampuan, dan Prestasi dengan A–D.',competition_note_too_long:'Keterangan lomba terlalu panjang.'};throw new Error(map[d.error]||d.error||'Data belum berhasil diproses.')}
+    if(!r.ok||d.success===false){const map={class_required:'Pilih kelas terlebih dahulu.',class_and_student_required:'Pilih kelas dan nama siswa.',student_not_in_class:'Siswa tidak terdaftar pada kelas tersebut.',student_is_internal_extracurricular:'Siswa ini mengikuti ekskul internal sekolah sehingga tidak dapat dinilai melalui web ekskul eksternal.',activity_name_invalid:'Nama ekstrakurikuler wajib diisi.',grades_must_be_a_to_d:'Lengkapi nilai Kehadiran, Kemampuan, dan Prestasi dengan A–D.',competition_note_too_long:'Keterangan lomba terlalu panjang.'};throw new Error(map[d.error]||d.error||'Data belum berhasil diproses.')}
     return d;
   }
   async function init(){
@@ -77,13 +77,18 @@
       $('class-id').disabled=false;
       $('year-pill').textContent='Tahun Ajaran '+d.academic_year;
       $('semester-pill').textContent='Semester '+d.semester_no+' · PTS';
-      showStatus('Form siap diisi.','ok');
+      showStatus('Form siap diisi. Hanya siswa yang tidak ikut ekskul internal yang akan muncul.','ok');
     }catch(e){$('class-id').innerHTML='<option value="">Gagal memuat kelas</option>';showStatus(e.message||'Gagal memuat data kelas.','bad')}
   }
   async function loadStudents(){
     const classId=$('class-id').value;$('student-id').disabled=true;$('student-id').innerHTML='<option value="">Memuat siswa...</option>';showStatus('','');
     if(!classId){$('student-id').innerHTML='<option value="">Pilih kelas terlebih dahulu</option>';return}
-    try{const d=await api('students',{class_id:classId});$('student-id').innerHTML='<option value="">Pilih siswa...</option>'+d.students.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.full_name)+'</option>').join('');$('student-id').disabled=false}catch(e){$('student-id').innerHTML='<option value="">Gagal memuat siswa</option>';showStatus(e.message,'bad')}
+    try{
+      const d=await api('students',{class_id:classId});
+      if(!d.students.length){$('student-id').innerHTML='<option value="">Tidak ada siswa eksternal / non-internal di kelas ini</option>';showStatus('Tidak ada siswa yang memenuhi untuk penilaian ekskul eksternal di kelas ini.','info');return}
+      $('student-id').innerHTML='<option value="">Pilih siswa...</option>'+d.students.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.full_name)+'</option>').join('');
+      $('student-id').disabled=false;
+    }catch(e){$('student-id').innerHTML='<option value="">Gagal memuat siswa</option>';showStatus(e.message,'bad')}
   }
   function gradeValue(name){return document.querySelector('input[name="'+name+'"]:checked')?.value||''}
   function clearForm(){const cls=$('class-id').value;$('grade-form').reset();$('class-id').value=cls;if(cls)loadStudents();else{$('student-id').disabled=true;$('student-id').innerHTML='<option value="">Pilih kelas terlebih dahulu</option>'}showStatus('','')}
