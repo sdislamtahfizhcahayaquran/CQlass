@@ -4,6 +4,7 @@
 const BASE=typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co';
 const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
 const LIVE_URL=BASE+'/functions/v1/hrd-live-report-v2',DETAIL_URL=BASE+'/functions/v1/hrd-category-detail';
+if(!window.__cqHrdV2FetchBridge){window.__cqHrdV2FetchBridge=true;const baseFetch=window.fetch.bind(window);window.fetch=function(input,init){try{const raw=typeof input==='string'?input:input?.url||'';if(raw&&raw.includes('/functions/v1/hrd-live-report')&&!raw.includes('/functions/v1/hrd-live-report-v2')){const u=raw.replace('/functions/v1/hrd-live-report','/functions/v1/hrd-live-report-v2');input=typeof input==='string'?u:new Request(u,input)}}catch(_){}return baseFetch(input,init)}}
 let cache={key:'',data:null},active=null;
 const low=v=>String(v||'').trim().toLowerCase(),esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const fmt=v=>{if(!v)return'—';try{return new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(String(v).slice(0,10)+'T00:00:00+07:00'))}catch(_){return String(v)}};
