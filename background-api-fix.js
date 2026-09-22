@@ -64,8 +64,7 @@
     }catch(_){ }
   }
   function refreshSilently(input,init,key){
-    const next={...(init||{})};
-    delete next.signal;
+    const next={...(init||{})};delete next.signal;
     nativeFetch(input,next).then(r=>remember(key,r)).catch(()=>{});
   }
 
@@ -74,16 +73,11 @@
     if(!info)return nativeFetch(input,init);
 
     const hit=cache.get(info.key),age=hit?Date.now()-hit.at:Infinity;
-    if(hit&&age<FRESH_MS){
-      refreshSilently(input,init,info.key);
-      return cachedResponse(hit);
-    }
-
+    if(hit&&age<FRESH_MS){refreshSilently(input,init,info.key);return cachedResponse(hit)}
     try{
-      let response=await nativeFetch(input,init);
+      const response=await nativeFetch(input,init);
       if(!response.ok&&hit&&age<STALE_MS)return cachedResponse(hit);
-      await remember(info.key,response);
-      return response;
+      await remember(info.key,response);return response;
     }catch(err){
       if(hit&&age<STALE_MS)return cachedResponse(hit);
       if(err?.name==='AbortError')throw err;
@@ -93,12 +87,19 @@
   };
 })();
 
-/* Load shell enhancements and role-specific dashboards. */
+/* Load shell enhancements and only the scripts needed by the active role. */
 (function(){
   'use strict';
   if(window.__cqShellEnhancementLoaderInstalled) return;
   window.__cqShellEnhancementLoaderInstalled=true;
-  function add(src,key,async=true){if(window[key])return;window[key]=true;const s=document.createElement('script');s.src=src;s.async=async;s.onerror=()=>console.warn('CQlass script gagal dimuat:',src);document.head.appendChild(s)}
+
+  function add(src,key,async=true){
+    if(window[key])return;
+    window[key]=true;
+    const s=document.createElement('script');s.src=src;s.async=async;
+    s.onerror=()=>console.warn('CQlass script gagal dimuat:',src);
+    document.head.appendChild(s);
+  }
   function role(){
     try{
       const u=(typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{};
@@ -106,24 +107,33 @@
     }catch(_){return ''}
   }
 
-  const r=role();
-  const hrd=r==='hrd';
+  function loadForRole(){
+    const r=role();
+    if(r==='kegiatan'){
+      add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);
+      add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
+      add('./kegiatan-live-report.js?v=20260921-live3','__cqKegiatanLiveReportLoaderV3Installed',false);
+      add('./kegiatan-live-report-coaches-only.js?v=20260921-coaches1','__cqKegiatanLiveReportCoachesOnlyLoaderInstalled',false);
+      add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
+    }
+    if(r==='tahfizh'||r==='kabid_tahfizh'){
+      add('./tahfizh-kabid-shell-fix.js?v=20260922-shell4','__cqTahfizhKabidShellFixLoaderInstalled',false);
+      add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260922-single2','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
+    }
+  }
 
   add('./profile-dropdown.js?v=20260914-profile1','__cqProfileDropdownLoader',false);
   add('./push-notifications.js?v=20260914-push3','__cqPushLoaderInstalled',true);
   add('./reminder-center.js?v=20260915-bell-all-role2','__cqReminderCenterLoaderInstalled',true);
 
-  // Modul Kegiatan/Tahfizh tidak dimuat pada HRD. Ini mengurangi request JS awal
-  // tanpa mengubah fungsi Live Report HRD.
-  if(!hrd){
-    add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);
-    add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
-    add('./kegiatan-live-report.js?v=20260921-live3','__cqKegiatanLiveReportLoaderV3Installed',false);
-    add('./kegiatan-live-report-coaches-only.js?v=20260921-coaches1','__cqKegiatanLiveReportCoachesOnlyLoaderInstalled',false);
-    add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
-    /* Live Readiness PTS Akademik dimuat langsung dari index.html agar tidak tertahan cache loader. */
-    /* Kabid Tahfizh/Qur'an: bersihkan scope sidebar + tampilkan live progres input PTS. */
-    add('./tahfizh-kabid-shell-fix.js?v=20260922-shell4','__cqTahfizhKabidShellFixLoaderInstalled',false);
-    add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260922-single1','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
+  loadForRole();
+
+  // Pada login baru currentUser belum ada saat file ini dieksekusi. Muat modul
+  // role tepat setelah enterApp supaya tidak membebani halaman login.
+  if(typeof enterApp==='function'&&!enterApp.__cqRoleLazyLoader){
+    const oldEnter=enterApp;
+    const wrapped=function(){const out=oldEnter.apply(this,arguments);setTimeout(loadForRole,0);return out};
+    wrapped.__cqRoleLazyLoader=true;
+    enterApp=wrapped;
   }
 })();
