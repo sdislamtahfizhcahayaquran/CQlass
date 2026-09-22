@@ -22,7 +22,7 @@ const I={
   halaqah:'<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 2-6 5-6s5 2 5 6M14 15c3 0 5 1.6 5 5"/></svg>',
   lock:'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2.5"/></svg>'
 };
-function button(id,l,i,oc){return `<button class="cq-admin-nav${window.__cqAdminActive===id?' active':''}" onclick="${oc}">${i}<span>${l}</span></button>`}
+function button(id,l,i,oc){const domId=id==='roles'?' id="cq-role-manager-menu"':'';return `<button${domId} class="cq-admin-nav${window.__cqAdminActive===id?' active':''}" onclick="${oc}">${i}<span>${l}</span></button>`}
 function draw(active){
   if(!isAdmin())return false;style();
   if(active)window.__cqAdminActive=active;
