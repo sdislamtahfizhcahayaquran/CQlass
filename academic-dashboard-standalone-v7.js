@@ -180,7 +180,7 @@
 
     const monitor=document.getElementById('ak7-monitor');
     if(monitor){
-      monitor.innerHTML=assignments.slice(0,8).map(x=>{
+      monitor.innerHTML=assignments.map(x=>{
         const c=num(x.completion);const cls=c<70?'bad':c<100?'warn':'';const status=c>=100?'Lengkap':c<=0?'Belum Input':'Dalam Proses';
         return `<tr><td><b>${esc(x.teacher_name||'—')}</b></td><td>${esc(x.subject_name||'—')}</td><td>${esc(x.class_name||'—')}</td><td>${pct(c)}<span class="ak7-bar"><i style="width:${clamp(c)}%"></i></span></td><td>${num(x.filled)}/${num(x.expected)}</td><td>${Number.isFinite(Number(x.average))?Math.round(Number(x.average)*10)/10:'—'}</td><td><span class="ak7-badge ${cls}">${status}</span></td></tr>`;
       }).join('')||'<tr><td colspan="7"><div class="ak7-empty">Belum ada data penugasan akademik.</div></td></tr>';
