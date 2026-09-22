@@ -61,9 +61,9 @@ function ensureSidebarEntry(){
   const r=role(),sb=document.getElementById('sidebar');if(!r||!sb)return;
   if(r==='sapras'){sb.querySelectorAll('[data-cq-promotion-fallback],.nav-item,.menu-item,button,a').forEach(x=>{if(String(x.textContent||'').trim()==='Promosi Socmed'||x.dataset?.cqPromotionFallback)x.remove()});return;}
   const found=[...sb.querySelectorAll('.nav-item,.menu-item,button,a')].find(x=>String(x.textContent||'').trim()==='Promosi Socmed');if(found)return;
-  const item=document.createElement('div');item.className='nav-item';item.dataset.cqPromotionFallback='1';item.innerHTML='<span>Promosi Socmed</span>';
-  item.onclick=()=>{try{if(typeof activeModule!=='undefined')activeModule='laporan-promosi'}catch{}document.querySelectorAll('#sidebar .nav-item').forEach(x=>x.classList.remove('active'));item.classList.add('active');render()};
-  sb.appendChild(item);
+  // Never create a loose root item. Promosi Socmed belongs under the Laporan group.
+  // If the normal sidebar renderer has not exposed it yet, leave the sidebar untouched
+  // and let the next render/install pass place the module in Laporan.
 }
 function hookSidebar(){
   if(typeof renderSidebar!=='function'||renderSidebar.__cqPromotionV7)return;
