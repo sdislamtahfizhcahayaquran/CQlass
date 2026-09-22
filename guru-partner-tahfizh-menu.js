@@ -1,18 +1,19 @@
 /* CQlass — Guru Partner/Tahfizh menu: Tahfizh + Kesiswaan + Laporan */
 (function(){
   'use strict';
-  if(window.__cqPartnerTahfizhMenu20260922V3)return;
-  window.__cqPartnerTahfizhMenu20260922V3=true;
+  if(window.__cqPartnerTahfizhMenu20260922V4)return;
+  window.__cqPartnerTahfizhMenu20260922V4=true;
 
   const ROLE='partner';
   const KESISWAAN_GROUP='partner-kesiswaan-group';
-  const ROUTE_IDS=['partner-discipline','partner-reward'];
-  const ROUTES=new Set(ROUTE_IDS);
+  const RAW_DISCIPLINE='partner-discipline';
+  const RAW_REWARD='partner-reward';
+  const RAW_ROUTES=new Set([RAW_DISCIPLINE,RAW_REWARD]);
   const REPORT_KEEP=new Set(['absensi','timesheet','laporan-promosi']);
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
   const isPartner=()=>norm(window.currentUser?.role)==='partner';
-  const withoutRole=(arr)=>Array.isArray(arr)?arr.filter(r=>norm(r)!==ROLE):[];
+  const withoutRole=arr=>Array.isArray(arr)?arr.filter(r=>norm(r)!==ROLE):[];
 
   function loadFresh(src){
     const base=src.split('?')[0];
@@ -22,7 +23,7 @@
   function loadPartnerModules(){
     loadFresh('guru-partner-class-picker.js?v=20260918-material1');
     loadFresh('guru-partner-pts-kuadran.js?v=20260918-materialonly2');
-    loadFresh('guru-partner-points.js?v=20260922-kesiswaan2');
+    loadFresh('guru-partner-points.js?v=20260922-kesiswaan3');
   }
   function findItem(id){
     if(typeof MODULE_GROUPS==='undefined')return null;
@@ -32,6 +33,21 @@
   function removeGroup(id){
     if(typeof MODULE_GROUPS==='undefined')return;
     const i=MODULE_GROUPS.findIndex(g=>g&&g.id===id);if(i>=0)MODULE_GROUPS.splice(i,1);
+  }
+
+  function renderProxy(content,rawId,label){
+    content.innerHTML=`<div class="card"><span class="spinner"></span> Memuat ${label}...</div>`;
+    loadPartnerModules();
+    let n=0;
+    const go=()=>{
+      const raw=findItem(rawId);
+      if(raw&&typeof raw.render==='function'){
+        try{return raw.render(content)}catch(e){console.warn('Partner Kesiswaan render:',e)}
+      }
+      if(++n<45)return setTimeout(go,100);
+      content.innerHTML=`<div class="empty-state">Modul ${label} belum dapat dimuat. Silakan buka ulang menu ini.</div>`;
+    };
+    go();
   }
 
   function stripPartnerFromOtherGroups(){
@@ -56,25 +72,25 @@
     monthly.roles=[ROLE];
   }
 
+  function hideRawRoutes(){
+    if(typeof MODULE_GROUPS==='undefined')return;
+    for(const g of MODULE_GROUPS){
+      for(const it of (g?.items||[])){
+        if(!RAW_ROUTES.has(it?.id))continue;
+        it.roles=withoutRole(it.roles);
+        it.hidden=true;
+      }
+    }
+  }
+
   function ensureKesiswaanGroup(){
     if(typeof MODULE_GROUPS==='undefined')return;
-
-    // Reward/Kedisiplinan dipindahkan secara fisik ke grup Kesiswaan.
-    // Datanya tetap memakai backend/tabel yang sama dengan Walas/Kesiswaan.
-    const routeMap=new Map();
-    for(const id of ROUTE_IDS){const x=findItem(id);if(x)routeMap.set(id,x)}
-    for(const g of MODULE_GROUPS){
-      if(!g||!Array.isArray(g.items)||g.id===KESISWAAN_GROUP)continue;
-      g.items=g.items.filter(it=>it&&!ROUTES.has(it.id)&&it.id!=='partner-kesiswaan');
-    }
+    hideRawRoutes();
     removeGroup(KESISWAAN_GROUP);
-
-    const items=[];
-    const discipline=routeMap.get('partner-discipline');
-    if(discipline){discipline.label='Kedisiplinan';discipline.roles=[ROLE];discipline.hidden=false;items.push(discipline)}
-    const reward=routeMap.get('partner-reward');
-    if(reward){reward.label='Reward';reward.roles=[ROLE];reward.hidden=false;items.push(reward)}
-
+    const items=[
+      {id:'partner-kesiswaan-discipline',label:'Kedisiplinan',roles:[ROLE],built:true,render:c=>renderProxy(c,RAW_DISCIPLINE,'Kedisiplinan')},
+      {id:'partner-kesiswaan-reward',label:'Reward',roles:[ROLE],built:true,render:c=>renderProxy(c,RAW_REWARD,'Reward')}
+    ];
     const group={id:KESISWAAN_GROUP,label:'Kesiswaan',roles:[ROLE],items};
     const tahIdx=MODULE_GROUPS.findIndex(g=>g&&g.id==='partner-tasks');
     MODULE_GROUPS.splice(tahIdx>=0?tahIdx+1:0,0,group);
@@ -87,10 +103,11 @@
     report.label='Laporan';report.roles=[...new Set([...(report.roles||[]).filter(r=>norm(r)!==ROLE),ROLE])];
     if(!Array.isArray(report.items))report.items=[];
 
-    // Generic Kesiswaan milik role lain tidak boleh ikut terlihat pada Partner.
     for(const it of report.items){
       const id=norm(it?.id),label=norm(it?.label);
-      if(id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'||label==='kesiswaan'||label==='reward'||label==='kedisiplinan')it.roles=withoutRole(it.roles);
+      if(id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'||label==='kesiswaan'||label==='reward'||label==='kedisiplinan'||RAW_ROUTES.has(id)){
+        it.roles=withoutRole(it.roles);it.hidden=true;
+      }
     }
 
     const abs=findItem('absensi');if(abs){abs.roles=[...new Set([...withoutRole(abs.roles),ROLE])];if(!report.items.some(x=>x===abs||x?.id==='absensi'))report.items.unshift(abs)}
@@ -113,11 +130,13 @@
         if(body?.classList?.contains('nav-group-items'))body.remove();head.remove();return;
       }
       if(!body?.classList?.contains('nav-group-items'))return;
-      [...body.querySelectorAll('button,a,.nav-item,.menu-item,[data-module]')].forEach(el=>{
-        const id=norm(el.dataset?.module||el.getAttribute?.('data-module'));
-        const text=norm(el.textContent);
-        if(label==='laporan'&&(text==='kesiswaan'||text==='kedisiplinan'||text==='reward'||id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'||ROUTES.has(id)))el.remove();
-      });
+      if(label==='laporan'){
+        [...body.querySelectorAll('button,a,.nav-item,.menu-item,[data-module]')].forEach(el=>{
+          const id=norm(el.dataset?.module||el.getAttribute?.('data-module'));
+          const text=norm(el.textContent);
+          if(text==='kesiswaan'||text==='kedisiplinan'||text==='reward'||id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'||RAW_ROUTES.has(id))el.remove();
+        });
+      }
     });
   }
 
@@ -128,16 +147,17 @@
     ensureTahfizhGroup();
     ensureKesiswaanGroup();
     ensureReports();
+    hideRawRoutes();
     return true;
   }
   function install(){
     if(!build())return false;
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqPartnerTahfizhMenuV3){
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqPartnerTahfizhMenuV4){
       const old=renderSidebar;
-      const wrapped=function(){if(isPartner())build();const out=old.apply(this,arguments);setTimeout(cleanSidebar,0);return out};
-      wrapped.__cqPartnerTahfizhMenuV3=true;renderSidebar=wrapped;
+      const wrapped=function(){if(isPartner())build();const out=old.apply(this,arguments);requestAnimationFrame(cleanSidebar);return out};
+      wrapped.__cqPartnerTahfizhMenuV4=true;renderSidebar=wrapped;
     }
-    if(isPartner()&&typeof renderSidebar==='function')setTimeout(()=>{renderSidebar();setTimeout(cleanSidebar,0)},60);
+    if(isPartner()&&typeof renderSidebar==='function')setTimeout(()=>{renderSidebar();requestAnimationFrame(cleanSidebar)},60);
     return true;
   }
 
@@ -145,6 +165,10 @@
   if(!install()){
     const t=setInterval(()=>{if(install())clearInterval(t)},120);setTimeout(()=>{clearInterval(t);install()},5000);
   }
-  const mo=new MutationObserver(()=>{if(isPartner()){build();cleanSidebar()}});mo.observe(document.documentElement,{childList:true,subtree:true});
-  setInterval(()=>{if(isPartner()){build();cleanSidebar()}},2000);
+  const attach=()=>{
+    const sb=document.getElementById('sidebar');if(!sb||sb.__cqPartnerSidebarObserverV4)return;
+    sb.__cqPartnerSidebarObserverV4=true;new MutationObserver(cleanSidebar).observe(sb,{childList:true,subtree:true});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attach,{once:true});else attach();
+  setInterval(()=>{if(isPartner()){build();if(typeof renderSidebar==='function')renderSidebar();cleanSidebar()}},1800);
 })();
