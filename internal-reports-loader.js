@@ -10,7 +10,7 @@
     'kesiswaan-case-followup-ui.js?v=20260921-followup1',
     'kesiswaan-excel-xlsx.js?v=20260921-xlsx1',
     'student-affairs-center.js?v=20260921-center2',
-    'kesiswaan-final-cleanup.js?v=20260921-final2',
+    'kesiswaan-final-cleanup.js?v=20260922-single3',
     'promotion-report.js?v=20260921-live6',
     'extracurricular-raw-ui.js?v=20260916-raw2',
     'kegiatan-exkul-capacity.js?v=20260918-extpts2',
