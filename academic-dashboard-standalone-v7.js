@@ -140,7 +140,7 @@
   }
 
   async function load(force){
-    if(!force&&state.lastData&&Date.now()-state.lastAt<5000) return state.lastData;
+    if(!force&&state.lastData&&Date.now()-state.lastAt<12000) return state.lastData;
     const results=await Promise.allSettled([
       post(EP.report,{academic_year:AY,semester_no:SEM}),
       post(EP.analytics,{academic_year:AY,semester_no:SEM}),
@@ -282,11 +282,14 @@
     watchContent();setTimeout(()=>schedule(false),100);
   }
   window.addEventListener('load',function(){setTimeout(()=>schedule(false),150);setTimeout(()=>schedule(false),1000);},{once:true});
+  /* Keep live data fresh without repainting the dashboard every few seconds.
+     The old forced 5s refresh replaced table/list DOM even when data was unchanged,
+     which could look like a visible blink on slower devices. */
   setInterval(function(){
     if(!isAcademic()||!dashboardActive()||!appVisible()) return;
     if(!document.getElementById('cq-ak7')) schedule(true);
-    else if(!state.loading) schedule(true);
-  },5000);
+    else if(!state.loading) schedule(false);
+  },15000);
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='visible'&&isAcademic()&&dashboardActive()&&appVisible()) schedule(true);
   });
