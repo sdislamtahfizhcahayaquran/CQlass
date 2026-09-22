@@ -5,11 +5,14 @@
   window.__cqTahfizhKesiswaanSidebarClean20260922V3=true;
 
   const GROUP_ID='tahfizh-kesiswaan-group';
+  // Zero-width marker membedakan grup Tahfizh dari grup generik yang memang
+  // dibersihkan oleh tahfizh-kabid-shell-fix; secara visual tetap "Kesiswaan".
+  const GROUP_LABEL='Kesiswaan\u200B';
   const CENTER_ID='kesiswaan-center';
   const ROLES=['tahfizh','kabid_tahfizh'];
   const POINT_IDS=new Set(['reward','kedisiplinan']);
   const POINT_LABELS=new Set(['reward','reward siswa','kedisiplinan']);
-  const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
 
   function role(){
     try{return norm(currentUser?.role||currentUser?.primary_role||currentUser?.role_code).replace(/[ -]+/g,'_')}
@@ -41,7 +44,7 @@
     if(!center)center={id:CENTER_ID,label:'Kesiswaan',built:true,render:fallbackCenter};
     center.label='Kesiswaan';center.roles=[...ROLES];center.built=true;
     if(typeof center.render!=='function')center.render=fallbackCenter;
-    const group={id:GROUP_ID,label:'Kesiswaan',roles:[...ROLES],items:[center]};
+    const group={id:GROUP_ID,label:GROUP_LABEL,roles:[...ROLES],items:[center]};
     const tahIndex=MODULE_GROUPS.findIndex(g=>g&&(['tahfizh','partner-tasks'].includes(String(g.id||'').toLowerCase())||norm(g.label)==='tahfizh'));
     MODULE_GROUPS.splice(tahIndex>=0?tahIndex+1:0,0,group);
     return true;
