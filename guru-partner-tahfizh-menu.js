@@ -7,7 +7,8 @@
   const ROLE='partner';
   const KESISWAAN_GROUP='partner-kesiswaan-group';
   const CENTER='partner-kesiswaan';
-  const ROUTES=new Set(['partner-reward','partner-discipline']);
+  const ROUTE_IDS=['partner-discipline','partner-reward'];
+  const ROUTES=new Set(ROUTE_IDS);
   const REPORT_KEEP=new Set(['absensi','timesheet','laporan-promosi']);
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
@@ -71,12 +72,20 @@
 
   function ensureKesiswaanGroup(){
     if(typeof MODULE_GROUPS==='undefined')return;
+
+    // Ambil route internal dahulu, lalu keluarkan secara fisik dari grup lain.
+    // Ini penting karena renderSidebar lama tidak selalu menghormati property `hidden`.
+    const routeMap=new Map();
+    for(const id of ROUTE_IDS){const x=findItem(id);if(x)routeMap.set(id,x)}
+    for(const g of MODULE_GROUPS){
+      if(!g||!Array.isArray(g.items)||g.id===KESISWAAN_GROUP)continue;
+      g.items=g.items.filter(it=>it&&it.id!==CENTER&&!ROUTES.has(it.id));
+    }
     removeGroup(KESISWAAN_GROUP);
+
     const center={id:CENTER,label:'Kesiswaan',roles:[ROLE],built:true,render:renderCenter};
     const items=[center];
-    for(const id of ['partner-discipline','partner-reward']){
-      const x=findItem(id);if(x){x.roles=[ROLE];x.hidden=true;items.push(x)}
-    }
+    for(const id of ROUTE_IDS){const x=routeMap.get(id);if(x){x.roles=[ROLE];x.hidden=true;items.push(x)}}
     const group={id:KESISWAAN_GROUP,label:'Kesiswaan',roles:[ROLE],items};
     const tahIdx=MODULE_GROUPS.findIndex(g=>g&&g.id==='partner-tasks');
     MODULE_GROUPS.splice(tahIdx>=0?tahIdx+1:0,0,group);
@@ -89,10 +98,10 @@
     report.label='Laporan';report.roles=[...new Set([...(report.roles||[]).filter(r=>norm(r)!==ROLE),ROLE])];
     if(!Array.isArray(report.items))report.items=[];
 
-    // Tidak ada lagi Kesiswaan/Reward/Kedisiplinan di grup Laporan untuk Guru Partner.
+    // Generic Kesiswaan milik role lain tidak boleh ikut terlihat pada Partner.
     for(const it of report.items){
       const id=norm(it?.id),label=norm(it?.label);
-      if(id===CENTER||ROUTES.has(id)||id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'||label==='kesiswaan'||label==='reward'||label==='kedisiplinan')it.roles=withoutRole(it.roles);
+      if(id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'||label==='kesiswaan'||label==='reward'||label==='kedisiplinan')it.roles=withoutRole(it.roles);
     }
 
     const abs=findItem('absensi');if(abs){abs.roles=[...new Set([...withoutRole(abs.roles),ROLE])];if(!report.items.some(x=>x===abs||x?.id==='absensi'))report.items.unshift(abs)}
@@ -118,7 +127,7 @@
       [...body.querySelectorAll('button,a,.nav-item,.menu-item,[data-module]')].forEach(el=>{
         const id=norm(el.dataset?.module||el.getAttribute?.('data-module'));
         const text=norm(el.textContent);
-        if(label==='laporan'&&(text==='kesiswaan'||text==='kedisiplinan'||text==='reward'||id===CENTER||ROUTES.has(id)||id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'))el.style.setProperty('display','none','important');
+        if(label==='laporan'&&(text==='kesiswaan'||text==='kedisiplinan'||text==='reward'||id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'))el.style.setProperty('display','none','important');
         if(label==='kesiswaan'&&(ROUTES.has(id)||text==='reward'||text==='kedisiplinan'))el.style.setProperty('display','none','important');
       });
     });
