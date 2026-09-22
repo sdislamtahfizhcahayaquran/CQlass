@@ -27,6 +27,72 @@
   window.__cqBackgroundApiFixInstalled=true;
 })();
 
+/* HRD Live Report fast path.
+   - cache memori singkat agar bolak-balik tab tidak fetch ulang
+   - stale-while-revalidate agar halaman terbuka instan
+   - satu retry otomatis untuk gangguan network sesaat
+   Cache hanya hidup selama tab aktif dan tidak menyimpan token/session. */
+(function(){
+  'use strict';
+  if(window.__cqHrdFastFetchInstalled || typeof window.fetch!=='function') return;
+  window.__cqHrdFastFetchInstalled=true;
+
+  const nativeFetch=window.fetch.bind(window);
+  const cache=new Map();
+  const FRESH_MS=120000;
+  const STALE_MS=600000;
+
+  function requestInfo(input,init){
+    const url=typeof input==='string'?input:(input&&input.url)||'';
+    if(!/\/functions\/v1\/hrd-live-report(?:\?|$)/.test(url))return null;
+    let payload={};
+    try{payload=typeof init?.body==='string'?JSON.parse(init.body):{}}catch(_){return null}
+    if(String(payload.action||'').toLowerCase()!=='administration')return null;
+    let who='hrd';
+    try{who=String((typeof currentUser!=='undefined'&&currentUser?.username)||'hrd').toLowerCase()}catch(_){ }
+    return {key:who+'|'+String(payload.start||'')+'|'+String(payload.end||''),url};
+  }
+  function cachedResponse(entry){
+    return new Response(entry.body,{status:200,headers:{'Content-Type':'application/json; charset=utf-8','X-CQ-Cache':'hrd-memory'}});
+  }
+  async function remember(key,response){
+    try{
+      if(!response?.ok)return;
+      const text=await response.clone().text();
+      const data=JSON.parse(text||'{}');
+      if(data&&data.success!==false)cache.set(key,{body:text,at:Date.now()});
+    }catch(_){ }
+  }
+  function refreshSilently(input,init,key){
+    const next={...(init||{})};
+    delete next.signal;
+    nativeFetch(input,next).then(r=>remember(key,r)).catch(()=>{});
+  }
+
+  window.fetch=async function(input,init){
+    const info=requestInfo(input,init);
+    if(!info)return nativeFetch(input,init);
+
+    const hit=cache.get(info.key),age=hit?Date.now()-hit.at:Infinity;
+    if(hit&&age<FRESH_MS){
+      refreshSilently(input,init,info.key);
+      return cachedResponse(hit);
+    }
+
+    try{
+      let response=await nativeFetch(input,init);
+      if(!response.ok&&hit&&age<STALE_MS)return cachedResponse(hit);
+      await remember(info.key,response);
+      return response;
+    }catch(err){
+      if(hit&&age<STALE_MS)return cachedResponse(hit);
+      if(err?.name==='AbortError')throw err;
+      await new Promise(r=>setTimeout(r,220));
+      return nativeFetch(input,init);
+    }
+  };
+})();
+
 /* Load shell enhancements and role-specific dashboards. */
 (function(){
   'use strict';
