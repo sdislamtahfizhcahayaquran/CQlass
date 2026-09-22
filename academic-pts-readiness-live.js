@@ -208,9 +208,16 @@
     const content=document.getElementById('content');
     if(content&&!content.__akPtsObserver){
       content.__akPtsObserver=1;
-      new MutationObserver(()=>{if(isAcademic()&&dashboardVisible())setTimeout(tick,40);}).observe(content,{childList:true,subtree:true});
+      new MutationObserver(()=>{
+        if(!isAcademic()||!dashboardVisible())return;
+        /* Only restore this widget if another module actually removed it.
+           Do not tick on every dashboard child mutation. */
+        if(!document.getElementById('akpts-live'))setTimeout(tick,250);
+      }).observe(content,{childList:true,subtree:false});
     }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(install,450));else setTimeout(install,450);
-  setInterval(tick,2000);
+  /* One cadence for Academic live UI. The former 2s watchdog plus MutationObserver
+     could repeatedly re-enter render paths and make the dashboard appear to blink. */
+  setInterval(tick,30000);
 })();
