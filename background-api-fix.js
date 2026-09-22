@@ -123,6 +123,7 @@
     add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
     /* Live Readiness PTS Akademik dimuat langsung dari index.html agar tidak tertahan cache loader. */
     /* Kabid Tahfizh/Qur'an: bersihkan scope sidebar + tampilkan live progres input PTS. */
-    add('./tahfizh-kabid-shell-fix.js?v=20260918-shell3','__cqTahfizhKabidShellFixLoaderInstalled',false);
+    add('./tahfizh-kabid-shell-fix.js?v=20260922-shell4','__cqTahfizhKabidShellFixLoaderInstalled',false);
+    add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260922-single1','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
   }
 })();
