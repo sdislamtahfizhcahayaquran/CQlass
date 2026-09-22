@@ -1,12 +1,11 @@
 /* CQlass — Guru Partner/Tahfizh menu: Tahfizh + Kesiswaan + Laporan */
 (function(){
   'use strict';
-  if(window.__cqPartnerTahfizhMenu20260922V2)return;
-  window.__cqPartnerTahfizhMenu20260922V2=true;
+  if(window.__cqPartnerTahfizhMenu20260922V3)return;
+  window.__cqPartnerTahfizhMenu20260922V3=true;
 
   const ROLE='partner';
   const KESISWAAN_GROUP='partner-kesiswaan-group';
-  const CENTER='partner-kesiswaan';
   const ROUTE_IDS=['partner-discipline','partner-reward'];
   const ROUTES=new Set(ROUTE_IDS);
   const REPORT_KEEP=new Set(['absensi','timesheet','laporan-promosi']);
@@ -34,19 +33,6 @@
     if(typeof MODULE_GROUPS==='undefined')return;
     const i=MODULE_GROUPS.findIndex(g=>g&&g.id===id);if(i>=0)MODULE_GROUPS.splice(i,1);
   }
-  function renderCenter(content){
-    content.innerHTML=`<div class="card"><div class="page-title">Kesiswaan</div><div class="page-sub">Pilih data yang akan dicatat. Reward dan Kedisiplinan tetap memakai data siswa yang sama dengan Walas dan Kesiswaan.</div><div class="gp-actions"><button class="gp-action" id="cq-partner-reward-card"><b>Reward</b><small>Catat reward siswa tanpa membuat data ganda.</small></button><button class="gp-action" id="cq-partner-discipline-card"><b>Kedisiplinan</b><small>Catat per siswa atau berdasarkan jenis pelanggaran.</small></button></div><div class="page-sub" style="margin-top:12px">Sistem menolak siswa + tanggal + jenis yang sama bila sudah dicatat oleh Walas, Guru Partner/Tahfizh, Kesiswaan, atau role lain.</div></div>`;
-    document.getElementById('cq-partner-reward-card')?.addEventListener('click',()=>openRoute('partner-reward'));
-    document.getElementById('cq-partner-discipline-card')?.addEventListener('click',()=>openRoute('partner-discipline'));
-  }
-  function openRoute(id){
-    loadPartnerModules();
-    let n=0;const go=()=>{
-      if(typeof setActiveModule==='function'&&findItem(id)){setActiveModule(id);return}
-      if(++n<25)setTimeout(go,80);
-      else if(typeof showToast==='function')showToast('Modul Kesiswaan belum termuat. Silakan coba sekali lagi.',true);
-    };go();
-  }
 
   function stripPartnerFromOtherGroups(){
     if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return;
@@ -73,19 +59,22 @@
   function ensureKesiswaanGroup(){
     if(typeof MODULE_GROUPS==='undefined')return;
 
-    // Ambil route internal dahulu, lalu keluarkan secara fisik dari grup lain.
-    // Ini penting karena renderSidebar lama tidak selalu menghormati property `hidden`.
+    // Reward/Kedisiplinan dipindahkan secara fisik ke grup Kesiswaan.
+    // Datanya tetap memakai backend/tabel yang sama dengan Walas/Kesiswaan.
     const routeMap=new Map();
     for(const id of ROUTE_IDS){const x=findItem(id);if(x)routeMap.set(id,x)}
     for(const g of MODULE_GROUPS){
       if(!g||!Array.isArray(g.items)||g.id===KESISWAAN_GROUP)continue;
-      g.items=g.items.filter(it=>it&&it.id!==CENTER&&!ROUTES.has(it.id));
+      g.items=g.items.filter(it=>it&&!ROUTES.has(it.id)&&it.id!=='partner-kesiswaan');
     }
     removeGroup(KESISWAAN_GROUP);
 
-    const center={id:CENTER,label:'Kesiswaan',roles:[ROLE],built:true,render:renderCenter};
-    const items=[center];
-    for(const id of ROUTE_IDS){const x=routeMap.get(id);if(x){x.roles=[ROLE];x.hidden=true;items.push(x)}}
+    const items=[];
+    const discipline=routeMap.get('partner-discipline');
+    if(discipline){discipline.label='Kedisiplinan';discipline.roles=[ROLE];discipline.hidden=false;items.push(discipline)}
+    const reward=routeMap.get('partner-reward');
+    if(reward){reward.label='Reward';reward.roles=[ROLE];reward.hidden=false;items.push(reward)}
+
     const group={id:KESISWAAN_GROUP,label:'Kesiswaan',roles:[ROLE],items};
     const tahIdx=MODULE_GROUPS.findIndex(g=>g&&g.id==='partner-tasks');
     MODULE_GROUPS.splice(tahIdx>=0?tahIdx+1:0,0,group);
@@ -127,8 +116,7 @@
       [...body.querySelectorAll('button,a,.nav-item,.menu-item,[data-module]')].forEach(el=>{
         const id=norm(el.dataset?.module||el.getAttribute?.('data-module'));
         const text=norm(el.textContent);
-        if(label==='laporan'&&(text==='kesiswaan'||text==='kedisiplinan'||text==='reward'||id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'))el.style.setProperty('display','none','important');
-        if(label==='kesiswaan'&&(ROUTES.has(id)||text==='reward'||text==='kedisiplinan'))el.style.setProperty('display','none','important');
+        if(label==='laporan'&&(text==='kesiswaan'||text==='kedisiplinan'||text==='reward'||id==='kesiswaan-center'||id==='reward'||id==='kedisiplinan'||ROUTES.has(id)))el.remove();
       });
     });
   }
@@ -144,10 +132,10 @@
   }
   function install(){
     if(!build())return false;
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqPartnerTahfizhMenuV2){
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqPartnerTahfizhMenuV3){
       const old=renderSidebar;
       const wrapped=function(){if(isPartner())build();const out=old.apply(this,arguments);setTimeout(cleanSidebar,0);return out};
-      wrapped.__cqPartnerTahfizhMenuV2=true;renderSidebar=wrapped;
+      wrapped.__cqPartnerTahfizhMenuV3=true;renderSidebar=wrapped;
     }
     if(isPartner()&&typeof renderSidebar==='function')setTimeout(()=>{renderSidebar();setTimeout(cleanSidebar,0)},60);
     return true;
