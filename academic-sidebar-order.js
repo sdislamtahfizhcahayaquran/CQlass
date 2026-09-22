@@ -7,6 +7,14 @@
   // Pengabdian hanya menerima tugas badal/aktivitas kerja; bukan pengelola akademik atau Tahfizh.
   const TIMESHEET_ROLES=['guru','walas','partner','guru_partner','pengabdian'];
 
+  function ensurePengabdianDashboard(){
+    try{
+      if(typeof DASHBOARD_MODULE!=='undefined'&&Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes('pengabdian')){
+        DASHBOARD_MODULE.roles.push('pengabdian');
+      }
+    }catch(err){console.warn('Dashboard Pengabdian gagal dipasang',err)}
+  }
+
   function relocateTimesheet(){
     try{
       if(typeof MODULE_GROUPS==='undefined') return false;
@@ -65,6 +73,7 @@
   }
 
   function fixSidebar(){
+    ensurePengabdianDashboard();
     relocateTimesheet();
     fixAcademicOrder();
   }
