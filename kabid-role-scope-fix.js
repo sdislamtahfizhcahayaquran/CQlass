@@ -1,7 +1,8 @@
 /* CQlass — Kabid role scope cleanup + Admin Data Master visibility
    Absensi/Morning Talk adalah domain Kesiswaan.
    Kabid Akademik, Tahfizh, dan Kegiatan tidak diarahkan atau diberi popup dari proses absensi.
-   Kedisiplinan dan Reward dapat dicatat oleh Guru, seluruh Kabid, dan Pimpinan.
+   Kedisiplinan dan Reward tidak tampil sebagai menu mandiri untuk Kabid non-Kesiswaan.
+   Tahfizh yang membutuhkan pencatatan siswa masuk lewat satu pintu Kesiswaan di Laporan.
    Data Master harus selalu terlihat jelas untuk Admin. */
 (function(){
   'use strict';
@@ -9,7 +10,7 @@
 
   const NON_KESISWAAN_KABID = new Set(['akademik','tahfizh','kegiatan']);
   const KABID_ALL = new Set(['akademik','tahfizh','kesiswaan','kegiatan']);
-  const POINT_ROLE_LIST = ['guru','walas','akademik','tahfizh','kesiswaan','kegiatan','pimpinan'];
+  const POINT_ROLE_LIST = ['guru','walas','kesiswaan','pimpinan'];
   const POINT_IDS = new Set(['kedisiplinan','reward']);
   const ATTENDANCE_IDS = new Set(['absensi','attendance','morning-talk','morning_talk']);
   const ATTENDANCE_TEXT = /\b(absen|absensi|attendance|morning\s*talk|kehadiran)\b/i;
@@ -118,7 +119,7 @@
         }
       }
       const kg=MODULE_GROUPS.find(g=>g&&g.id==='kesiswaan');
-      if(kg) kg.roles=POINT_ROLE_LIST.filter(r=>r!=='akademik');
+      if(kg) kg.roles=POINT_ROLE_LIST.slice();
     }catch(err){console.warn('Kabid role scope:',err)}
   }
   enforceModuleRoles();
@@ -138,6 +139,13 @@
         if(typeof activeModule!=='undefined') activeModule='dashboard';
         return originalSetActiveModule('dashboard');
       }
+      if(isNonKesiswaanKabid() && POINT_IDS.has(key)){
+        const center=(typeof MODULE_GROUPS!=='undefined'&&Array.isArray(MODULE_GROUPS))
+          ? MODULE_GROUPS.some(g=>(g?.items||[]).some(it=>it&&it.id==='kesiswaan-center'))
+          : false;
+        if(role()==='tahfizh'&&center)return originalSetActiveModule('kesiswaan-center');
+        return originalSetActiveModule('dashboard');
+      }
       return originalSetActiveModule(id);
     };
   }
@@ -154,7 +162,8 @@
       },80);
       if(isNonKesiswaanKabid()){
         try{
-          if(typeof activeModule!=='undefined' && ATTENDANCE_IDS.has(String(activeModule||'').toLowerCase())){
+          const key=String(activeModule||'').toLowerCase();
+          if(typeof activeModule!=='undefined' && (ATTENDANCE_IDS.has(key)||POINT_IDS.has(key))){
             activeModule='dashboard';
             if(typeof setActiveModule==='function') setActiveModule('dashboard');
           }
