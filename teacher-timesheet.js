@@ -1,4 +1,4 @@
-// CQlass Timesheet loader V5 — v2 API route, access guard, deterministic order, UI polish last
+// CQlass Timesheet loader V5 — access guard first, deterministic order, UI polish last
 (function(){
   function add(src,id){
     return new Promise(function(resolve){
@@ -43,7 +43,6 @@
   enablePengabdianTimesheet();
 
   (async function(){
-    await add('timesheet-api-v2-route.js?v=20260922-pengabdian1','cq-ts-api-v2-route');
     await add('timesheet-access-fix.js?v=20260922-access1','cq-ts-access-fix');
     await add('teacher-timesheet-v2.js?v=20260922-layout3','cq-ts-v2');
     await add('timesheet-recurring.js?v=20260922-layout4','cq-ts-recurring');
