@@ -7,10 +7,8 @@ window.fetch=function(input,init){
   try{
     let raw=typeof input==='string'?input:input?.url||'';
     let next=raw;
-    if(raw.includes('/functions/v1/hrd-live-report-v4')){}
-    else if(raw.includes('/functions/v1/hrd-live-report-v3')) next=raw.replace('/functions/v1/hrd-live-report-v3','/functions/v1/hrd-live-report-v4');
-    else if(raw.includes('/functions/v1/hrd-live-report-v2')) next=raw.replace('/functions/v1/hrd-live-report-v2','/functions/v1/hrd-live-report-v4');
-    else if(raw.includes('/functions/v1/hrd-live-report')) next=raw.replace('/functions/v1/hrd-live-report','/functions/v1/hrd-live-report-v4');
+    // HRD Live Report tetap memakai endpoint stabil utama.
+    // Jangan rewrite ke v4: rantai v4 -> v3 -> v2 menambah latency dan dapat memicu AbortError/Failed to fetch.
     if(raw.includes('/functions/v1/teacher-timesheet-v2')){}
     else if(raw.includes('/functions/v1/teacher-timesheet')) next=raw.replace('/functions/v1/teacher-timesheet','/functions/v1/teacher-timesheet-v2');
     if(next!==raw) input=typeof input==='string'?next:new Request(next,input);
