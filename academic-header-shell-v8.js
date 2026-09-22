@@ -3,10 +3,11 @@
    2) School logo favicon for every role/page.
    3) Kabid Akademik deterministic header V9 compatibility.
    4) Sapras dashboard hard guard so generic role dashboard cannot override Sapras.
+   5) Rapor document style isolation so dashboard CSS cannot alter printable report geometry.
 */
 (function(){
   'use strict';
-  var THEME='20260915-theme5';
+  var THEME='20260922-theme6-raporisolated1';
   var SAPRAS_FIX='20260915-sapras-hard1';
   var FAVICON='logo_sd.png?v=20260910-favicon1';
 
@@ -53,6 +54,16 @@
     }
     var next='cq-global-role-theme.css?v='+THEME;
     if(!l.href||l.href.indexOf(THEME)<0)l.href=next;
+
+    var r=document.querySelector('link[data-cq-rapor-style-guard]');
+    if(!r){
+      r=document.createElement('link');
+      r.rel='stylesheet';
+      r.dataset.cqRaporStyleGuard='1';
+      document.head.appendChild(r);
+    }
+    var raporNext='rapor-style-isolation.css?v='+THEME;
+    if(!r.href||r.href.indexOf(THEME)<0)r.href=raporNext;
   }
 
   function ensureGlobalRuntime(){
