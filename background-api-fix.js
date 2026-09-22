@@ -27,11 +27,10 @@
   window.__cqBackgroundApiFixInstalled=true;
 })();
 
-/* HRD Live Report fast path.
-   - cache memori singkat agar bolak-balik tab tidak fetch ulang
-   - stale-while-revalidate agar halaman terbuka instan
-   - satu retry otomatis untuk gangguan network sesaat
-   Cache hanya hidup selama tab aktif dan tidak menyimpan token/session. */
+/* HRD fast path.
+   Dashboard HRD tidak lagi menunggu rantai hrd-live-report -> fungsi lain.
+   Administrasi dibaca langsung dari hrd-administration, sementara Promosi Socmed
+   dibaca dari endpoint ringan dan digabung di browser. */
 (function(){
   'use strict';
   if(window.__cqHrdFastFetchInstalled || typeof window.fetch!=='function') return;
@@ -47,10 +46,11 @@
     if(!/\/functions\/v1\/hrd-live-report(?:\?|$)/.test(url))return null;
     let payload={};
     try{payload=typeof init?.body==='string'?JSON.parse(init.body):{}}catch(_){return null}
-    if(String(payload.action||'').toLowerCase()!=='administration')return null;
+    const action=String(payload.action||'').toLowerCase();
+    if(!['administration','rpp_file'].includes(action))return null;
     let who='hrd';
     try{who=String((typeof currentUser!=='undefined'&&currentUser?.username)||'hrd').toLowerCase()}catch(_){ }
-    return {key:who+'|'+String(payload.start||'')+'|'+String(payload.end||''),url};
+    return {key:who+'|'+action+'|'+String(payload.start||'')+'|'+String(payload.end||'')+'|'+String(payload.submission_id||''),url,payload,action};
   }
   function cachedResponse(entry){
     return new Response(entry.body,{status:200,headers:{'Content-Type':'application/json; charset=utf-8','X-CQ-Cache':'hrd-memory'}});
@@ -63,9 +63,61 @@
       if(data&&data.success!==false)cache.set(key,{body:text,at:Date.now()});
     }catch(_){ }
   }
-  function refreshSilently(input,init,key){
-    const next={...(init||{})};delete next.signal;
-    nativeFetch(input,next).then(r=>remember(key,r)).catch(()=>{});
+  function asResponse(data,status=200,source='hrd-fast'){
+    return new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','X-CQ-Source':source}});
+  }
+  function recalcTeacher(t){
+    const cats=(t.categories||[]).filter(c=>c&&c.applicable);
+    const done=cats.filter(c=>c.status==='present').length;
+    const partial=cats.filter(c=>c.status==='partial').length;
+    const missing=cats.filter(c=>c.status==='missing').length;
+    t.required_count=cats.length;
+    t.completed_count=done;
+    t.partial_count=partial;
+    t.missing_count=missing;
+    t.issue_units=missing+partial;
+    t.missing_categories=cats.filter(c=>c.status==='missing').map(c=>c.label);
+    t.partial_categories=cats.filter(c=>c.status==='partial').map(c=>c.label);
+    t.completeness_index=cats.length?Math.round(((done+partial*.5)/cats.length)*100):0;
+  }
+  function mergePromotion(admin,promo){
+    if(!admin||admin.success===false)return admin;
+    const by=promo?.by_teacher||{};
+    let complete=0,missing=0;
+    for(const t of (admin.teachers||[])){
+      const p=by[String(t.teacher_id)]||{item_count:0,last_created_at:null};
+      const count=Number(p.item_count||0);
+      if(count)complete++;else missing++;
+      const cat={key:'promotion',label:'Promosi Sekolah',applicable:true,status:count?'present':'missing',item_count:count,last_created_at:p.last_created_at||null,items:[],granularity:'period',lazy_items:true,note:'Minimal 1 foto Promosi Socmed pada periode yang dipilih HRD.'};
+      const idx=(t.categories||[]).findIndex(c=>c&&c.key==='promotion');
+      if(idx>=0)t.categories[idx]=cat;else (t.categories||(t.categories=[])).push(cat);
+      recalcTeacher(t);
+    }
+    admin.summary=admin.summary||{};
+    admin.summary.promotion_complete=complete;
+    admin.summary.promotion_missing=missing;
+    admin.summary.with_issues=(admin.teachers||[]).filter(t=>Number(t.missing_count||0)>0||Number(t.partial_count||0)>0).length;
+    admin.summary.clean=(admin.teachers||[]).length-admin.summary.with_issues;
+    admin.fast_path=true;
+    return admin;
+  }
+  async function directHrd(init,info){
+    const adminUrl=info.url.replace('/functions/v1/hrd-live-report','/functions/v1/hrd-administration');
+    const baseInit={...(init||{})};
+    if(info.action==='rpp_file')return nativeFetch(adminUrl,baseInit);
+
+    const promoUrl=info.url.replace('/functions/v1/hrd-live-report','/functions/v1/hrd-promotion-monitor');
+    const promoInit={...(init||{}),body:JSON.stringify({action:'summary',start:info.payload.start,end:info.payload.end})};
+    const [adminRes,promoRes]=await Promise.all([
+      nativeFetch(adminUrl,baseInit),
+      nativeFetch(promoUrl,promoInit).catch(()=>null)
+    ]);
+    const raw=await adminRes.text();let admin={};
+    try{admin=raw?JSON.parse(raw):{}}catch(_){return new Response(raw,{status:adminRes.status,headers:{'Content-Type':'text/plain'}})}
+    if(!adminRes.ok||admin.success===false)return asResponse(admin,adminRes.status,'hrd-administration');
+    let promo={};
+    if(promoRes?.ok){try{promo=await promoRes.json()}catch(_){promo={}}}
+    return asResponse(mergePromotion(admin,promo),200,'hrd-fast-direct');
   }
 
   window.fetch=async function(input,init){
@@ -73,16 +125,24 @@
     if(!info)return nativeFetch(input,init);
 
     const hit=cache.get(info.key),age=hit?Date.now()-hit.at:Infinity;
-    if(hit&&age<FRESH_MS){refreshSilently(input,init,info.key);return cachedResponse(hit)}
+    if(hit&&age<FRESH_MS)return cachedResponse(hit);
+
     try{
-      const response=await nativeFetch(input,init);
+      const response=await directHrd(init,info);
       if(!response.ok&&hit&&age<STALE_MS)return cachedResponse(hit);
-      await remember(info.key,response);return response;
+      await remember(info.key,response);
+      return response;
     }catch(err){
       if(hit&&age<STALE_MS)return cachedResponse(hit);
       if(err?.name==='AbortError')throw err;
-      await new Promise(r=>setTimeout(r,220));
-      return nativeFetch(input,init);
+      await new Promise(r=>setTimeout(r,180));
+      try{
+        const retry=await directHrd(init,info);
+        await remember(info.key,retry);
+        return retry;
+      }catch(_){
+        return nativeFetch(input,init);
+      }
     }
   };
 })();
@@ -131,8 +191,6 @@
 
   loadForRole();
 
-  // Pada login baru currentUser belum ada saat file ini dieksekusi. Muat modul
-  // role tepat setelah enterApp supaya tidak membebani halaman login.
   if(typeof enterApp==='function'&&!enterApp.__cqRoleLazyLoader){
     const oldEnter=enterApp;
     const wrapped=function(){const out=oldEnter.apply(this,arguments);setTimeout(loadForRole,0);return out};
