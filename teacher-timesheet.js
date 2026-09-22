@@ -15,6 +15,7 @@
 
   function enablePengabdianTimesheet(){
     try{
+      if(typeof DASHBOARD_MODULE!=='undefined'&&Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes('pengabdian'))DASHBOARD_MODULE.roles.push('pengabdian');
       if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return;
       var reports=MODULE_GROUPS.find(function(g){return g&&g.id==='laporan'});
       if(!reports){reports={id:'laporan',label:'Laporan',roles:[],items:[]};MODULE_GROUPS.push(reports)}
@@ -38,6 +39,8 @@
       }
     }catch(e){console.warn('Akses Timesheet Pengabdian:',e)}
   }
+
+  enablePengabdianTimesheet();
 
   (async function(){
     await add('timesheet-api-v2-route.js?v=20260922-pengabdian1','cq-ts-api-v2-route');
