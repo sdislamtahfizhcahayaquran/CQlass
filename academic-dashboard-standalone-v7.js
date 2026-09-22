@@ -289,7 +289,7 @@
     if(!isAcademic()||!dashboardActive()||!appVisible()) return;
     if(!document.getElementById('cq-ak7')) schedule(true);
     else if(!state.loading) schedule(false);
-  },15000);
+  },30000);
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='visible'&&isAcademic()&&dashboardActive()&&appVisible()) schedule(true);
   });
