@@ -3496,7 +3496,7 @@ async function rpElementPdfBlob(el){
   for(let i=0;i<pages.length;i++){
     const page=pages[i];
     await rpWaitForImages(page);
-    const canvas=await window.html2canvas(page,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,width:page.scrollWidth,height:page.scrollHeight,windowWidth:page.scrollWidth,windowHeight:page.scrollHeight});
+    const canvas=await window.html2canvas(page,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0,width:page.clientWidth,height:page.clientHeight,windowWidth:page.clientWidth,windowHeight:page.clientHeight});
     if(i>0)pdf.addPage('a4','portrait');
     pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
   }
