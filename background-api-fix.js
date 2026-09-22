@@ -47,7 +47,9 @@
     let payload={};
     try{payload=typeof init?.body==='string'?JSON.parse(init.body):{}}catch(_){return null}
     const action=String(payload.action||'').toLowerCase();
-    if(!['administration','rpp_file'].includes(action))return null;
+    // Administration harus lewat hrd-live-report utama karena endpoint itu punya timeout + fallback server-side.
+    // Direct browser fast-path ke hrd-administration dapat mewarisi AbortSignal UI dan berakhir "Failed to fetch".
+    if(action!=='rpp_file')return null;
     let who='hrd';
     try{who=String((typeof currentUser!=='undefined'&&currentUser?.username)||'hrd').toLowerCase()}catch(_){ }
     return {key:who+'|'+action+'|'+String(payload.start||'')+'|'+String(payload.end||'')+'|'+String(payload.submission_id||''),url,payload,action};
