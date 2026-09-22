@@ -140,7 +140,7 @@
   }
 
   async function load(force){
-    if(!force&&state.lastData&&Date.now()-state.lastAt<30000) return state.lastData;
+    if(!force&&state.lastData&&Date.now()-state.lastAt<5000) return state.lastData;
     const results=await Promise.allSettled([
       post(EP.report,{academic_year:AY,semester_no:SEM}),
       post(EP.analytics,{academic_year:AY,semester_no:SEM}),
@@ -282,7 +282,14 @@
     watchContent();setTimeout(()=>schedule(false),100);
   }
   window.addEventListener('load',function(){setTimeout(()=>schedule(false),150);setTimeout(()=>schedule(false),1000);},{once:true});
-  setInterval(function(){if(isAcademic()&&dashboardActive()&&appVisible()&&!document.getElementById('cq-ak7'))schedule(false);},1200);
+  setInterval(function(){
+    if(!isAcademic()||!dashboardActive()||!appVisible()) return;
+    if(!document.getElementById('cq-ak7')) schedule(true);
+    else if(!state.loading) schedule(true);
+  },5000);
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible'&&isAcademic()&&dashboardActive()&&appVisible()) schedule(true);
+  });
 
   window.renderAcademicDashboardV7=function(force){state.active=true;return render(force!==false);};
   window.__CQ_AK_STANDALONE_V7__=true;
