@@ -36,13 +36,13 @@ function patchTimesheetPage(){
   root.querySelectorAll('.tsv2-card').forEach(card=>{
     const b=card.querySelector(':scope > b');const head=(b?.textContent||'').trim();
     if(head==='Aktivitas Timesheet'){
-      const h=card.querySelector('.tsv2-help');if(h)h.textContent='Isi hanya pada jam yang benar-benar bebas. Sistem menolak waktu yang bertabrakan dengan mengajar, badal, MT/Morning Talk, literasi, snack/istirahat, ishoma, briefing, penyambutan, Eduhub/administrasi rutin, UKS terjadwal, atau Timesheet yang sudah ada.';
+      const h=card.querySelector('.tsv2-help');if(h)h.textContent='Isi hanya pada waktu yang benar-benar bebas. Sistem menolak waktu yang bertabrakan dengan mengajar, badal, MT/Morning Talk, literasi, snack/istirahat, ishoma, briefing, penyambutan, Eduhub/administrasi rutin, UKS terjadwal, atau Timesheet yang sudah ada.';
     }
     if(/^Timesheet\s/i.test(head)){
       b.textContent='Timesheet';
       const h=card.querySelector('.tsv2-help');if(h)h.textContent='Senin–Jumat mengikuti waktu kerja. Sabtu mengikuti jam kerja 07.30–12.00 dengan prioritas penugasan sekolah dan agenda HRD.';
       const table=card.querySelector('.tsv2-table');if(table){
-        table.querySelectorAll('tbody tr').forEach(tr=>{const first=(tr.querySelector('td')?.textContent||'').trim();const isSat=/Sab/i.test(first);const badge=(tr.querySelector('.tsv2-badge')?.textContent||'').trim();if(!isSat&&badge&&badge!=='Diisi guru')tr.style.display='none'});
+        table.querySelectorAll('tbody tr').forEach(tr=>{const first=(tr.querySelector('td')?.textContent||'').trim();const isSat=/Sab/i.test(first);const badge=(tr.querySelector('.tsv2-badge')?.textContent||'').trim();const recurring=tr.dataset.recurring==='1';if(!isSat&&!recurring&&badge&&badge!=='Diisi guru')tr.style.display='none'});
         table.querySelectorAll('th:nth-child(6),td:nth-child(6)').forEach(x=>x.style.display='none');
       }
     }
