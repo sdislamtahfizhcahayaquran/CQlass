@@ -1,8 +1,8 @@
 /* CQlass — single Kesiswaan navigation, final deterministic cleanup */
 (function(){
   'use strict';
-  if(window.__cqKesiswaanFinalCleanupV4)return;
-  window.__cqKesiswaanFinalCleanupV4=true;
+  if(window.__cqKesiswaanFinalCleanupV5)return;
+  window.__cqKesiswaanFinalCleanupV5=true;
 
   const REMOVE=new Set([
     'laporan-unduh',
@@ -11,12 +11,15 @@
   const POINT_IDS=new Set(['kedisiplinan','reward']);
   const POINT_LABELS=new Set(['kedisiplinan','reward','reward siswa']);
   const CENTER_ID='kesiswaan-center';
-  const CENTER_ROLES=['guru','walas','kesiswaan','tahfizh','pimpinan'];
+  const CENTER_ROLES=['guru','walas','kesiswaan','pimpinan'];
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
   function role(){
-    try{return norm(currentUser?.role||currentUser?.primary_role||currentUser?.role_code)}
-    catch(_){try{return norm(JSON.parse(localStorage.getItem('cqlass_user')||'{}').role)}catch(_2){return''}}
+    try{return norm(currentUser?.role||currentUser?.primary_role||currentUser?.role_code).replace(/[ -]+/g,'_')}
+    catch(_){try{return norm(JSON.parse(localStorage.getItem('cqlass_user')||'{}').role).replace(/[ -]+/g,'_')}catch(_2){return''}}
+  }
+  function usesDedicatedKesiswaan(r=role()){
+    return r==='partner'||r==='tahfizh'||r==='kabid_tahfizh'||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')));
   }
 
   function injectCss(){
@@ -53,6 +56,7 @@
 
   function consolidateModel(){
     try{
+      if(usesDedicatedKesiswaan())return false;
       if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
 
       for(const g of MODULE_GROUPS){
@@ -63,8 +67,6 @@
         });
       }
 
-      // Grup lama Kesiswaan tidak lagi menjadi dropdown. Semua role masuk lewat
-      // satu tombol Kesiswaan pada grup Laporan.
       const oldGroup=MODULE_GROUPS.find(g=>g&&norm(g.id)==='kesiswaan');
       if(oldGroup&&Array.isArray(oldGroup.roles))oldGroup.roles=oldGroup.roles.filter(r=>!CENTER_ROLES.includes(norm(r)));
 
@@ -81,8 +83,10 @@
   }
 
   function cleanSidebarDom(){
+    const r=role();
+    if(usesDedicatedKesiswaan(r))return;
     const sb=document.getElementById('sidebar');if(!sb)return;
-    const r=role();if(!CENTER_ROLES.includes(r))return;
+    if(!CENTER_ROLES.includes(r))return;
     [...sb.querySelectorAll('.nav-item,.menu-item,.sidebar-item,button,a,[data-module]')].forEach(el=>{
       const id=norm(el.dataset?.module||el.getAttribute?.('data-module'));
       const label=norm(el.textContent);
@@ -91,7 +95,7 @@
   }
 
   function patchSidebar(){
-    if(typeof renderSidebar!=='function'||renderSidebar.__cqKesiswaanSingleNavV4)return;
+    if(typeof renderSidebar!=='function'||renderSidebar.__cqKesiswaanSingleNavV5)return;
     const original=renderSidebar;
     const wrapped=function(){
       consolidateModel();
@@ -99,19 +103,19 @@
       requestAnimationFrame(cleanSidebarDom);
       return out;
     };
-    wrapped.__cqKesiswaanSingleNavV4=true;
+    wrapped.__cqKesiswaanSingleNavV5=true;
     renderSidebar=wrapped;
   }
 
   function patchRoute(){
-    if(typeof setActiveModule!=='function'||setActiveModule.__cqKesiswaanSingleNavV4)return;
+    if(typeof setActiveModule!=='function'||setActiveModule.__cqKesiswaanSingleNavV5)return;
     const original=setActiveModule;
     const wrapped=function(id){
       const key=norm(id),r=role();
-      if(CENTER_ROLES.includes(r)&&POINT_IDS.has(key))return original.call(this,CENTER_ID);
+      if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&POINT_IDS.has(key))return original.call(this,CENTER_ID);
       return original.apply(this,arguments);
     };
-    wrapped.__cqKesiswaanSingleNavV4=true;
+    wrapped.__cqKesiswaanSingleNavV5=true;
     setActiveModule=wrapped;
   }
 
@@ -120,7 +124,7 @@
     if(ok&&typeof renderSidebar==='function')renderSidebar();
     try{
       const r=role(),key=norm(typeof activeModule!=='undefined'?activeModule:'');
-      if(CENTER_ROLES.includes(r)&&POINT_IDS.has(key)&&typeof setActiveModule==='function')setActiveModule(CENTER_ID);
+      if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&POINT_IDS.has(key)&&typeof setActiveModule==='function')setActiveModule(CENTER_ID);
     }catch(_){ }
     cleanSidebarDom();
   }
@@ -131,10 +135,9 @@
   window.addEventListener('load',()=>setTimeout(apply,0),{once:true});
   setTimeout(apply,500);
 
-  // Observe hanya sidebar, bukan seluruh dokumen, supaya tidak membebani UI.
   const attachObserver=()=>{
-    const sb=document.getElementById('sidebar');if(!sb||sb.__cqKesiswaanFinalObserver)return;
-    sb.__cqKesiswaanFinalObserver=true;
+    const sb=document.getElementById('sidebar');if(!sb||sb.__cqKesiswaanFinalObserverV5)return;
+    sb.__cqKesiswaanFinalObserverV5=true;
     new MutationObserver(()=>cleanSidebarDom()).observe(sb,{childList:true,subtree:true});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attachObserver,{once:true});else attachObserver();
