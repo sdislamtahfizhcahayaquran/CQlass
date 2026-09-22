@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 function num(v){const s=String(v??'').trim().replace(/,/g,'.').replace(/[^0-9.\-]/g,'');if(!s)return null;const n=Number(s);return Number.isFinite(n)?n:null}
-function pct(a,b){a=num(a);b=num(b);return a===null||b===null||b<=0?'':`${Math.round(a/b*100)}%`}
+function pct(a,b){a=num(a);b=num(b);if(a===null||b===null||b<=0)return'';return`${Math.min(100,Math.round(a/b*100))}%`}
 function calc(tr){if(!tr)return;const a=tr.querySelector('[data-key="jumlah_baris"]'),b=tr.querySelector('[data-key="jumlah_baris_lp"]'),out=tr.querySelector('[data-cq-pct-lock]')||tr.querySelector('[data-formula="persentase"]');if(out)out.textContent=pct(a?.value,b?.value)}
 function lock(root=document){
   root.querySelectorAll?.('input[data-key="persentase"],textarea[data-key="persentase"]').forEach(input=>{
