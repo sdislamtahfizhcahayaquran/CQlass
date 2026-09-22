@@ -1,5 +1,21 @@
 (function(){
-  [
+  'use strict';
+
+  function readUser(){
+    try{
+      if(typeof currentUser!=='undefined'&&currentUser)return currentUser;
+      return JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{};
+    }catch(_){return {}}
+  }
+  function isHrd(){
+    const u=readUser();
+    const role=String(u.role||u.primary_role||u.role_code||'').trim().toLowerCase();
+    const username=String(u.username||'').trim().toLowerCase();
+    const roles=(Array.isArray(u.roles)?u.roles:[]).map(x=>String(typeof x==='string'?x:(x?.role_code||x?.role||'')).trim().toLowerCase());
+    return role==='hrd'||username==='hrd'||roles.includes('hrd');
+  }
+
+  const common=[
     'report-preview-v2-route.js?v=20260917-report3',
     'rapor-identity-fix.js?v=20260917-nisnisn1',
     'academic-report-class-picker.js?v=20260921-classpicker1',
@@ -22,7 +38,16 @@
     'school-activity-sidebar-fallback.js?v=20260916-activity3',
     'pramuka-mode-reset.js?v=20260916-pramuka1',
     'pramuka-special-access.js?v=20260916-pramuka3'
-  ].forEach(function(src){
+  ];
+
+  // HRD cukup memuat pusat laporan yang benar-benar dipakai. Promosi Socmed
+  // dipantau dari Live Report HRD, jadi tidak perlu halaman/sidebar tersendiri.
+  const hrdOnly=[
+    'internal-report-center.js?v=20260922-hrd-fast1'
+  ];
+  const sources=isHrd()?hrdOnly:common;
+
+  sources.forEach(function(src){
     var s=document.createElement('script');
     s.src=src;
     s.defer=true;
