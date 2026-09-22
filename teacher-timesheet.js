@@ -1,4 +1,4 @@
-// CQlass Timesheet loader V3 — deterministic order, UI polish last
+// CQlass Timesheet loader V4 — access guard first, deterministic order, UI polish last
 (function(){
   function add(src,id){
     return new Promise(function(resolve){
@@ -14,11 +14,12 @@
   }
 
   (async function(){
-    await add('teacher-timesheet-v2.js?v=20260922-layout2','cq-ts-v2');
-    await add('timesheet-recurring.js?v=20260922-layout3','cq-ts-recurring');
-    await add('admin-timesheet-master.js?v=20260922-layout2','cq-ts-admin-master');
-    await add('timesheet-saturday-manual.js?v=20260922-layout2','cq-ts-saturday-manual');
-    await add('timesheet-ui-polish.js?v=20260922-polish2','cq-ts-ui-polish');
-    await add('timesheet-ui-order-fix.js?v=20260922-order1','cq-ts-ui-order-fix');
+    await add('timesheet-access-fix.js?v=20260922-access1','cq-ts-access-fix');
+    await add('teacher-timesheet-v2.js?v=20260922-layout3','cq-ts-v2');
+    await add('timesheet-recurring.js?v=20260922-layout4','cq-ts-recurring');
+    await add('admin-timesheet-master.js?v=20260922-layout3','cq-ts-admin-master');
+    await add('timesheet-saturday-manual.js?v=20260922-layout3','cq-ts-saturday-manual');
+    await add('timesheet-ui-polish.js?v=20260922-polish3','cq-ts-ui-polish');
+    await add('timesheet-ui-order-fix.js?v=20260922-order2','cq-ts-ui-order-fix');
   })();
 })();
