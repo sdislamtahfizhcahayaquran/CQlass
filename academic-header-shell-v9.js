@@ -164,6 +164,8 @@
   });
   if(document.documentElement) observer.observe(document.documentElement,{childList:true,subtree:true});
 
-  setInterval(function(){repair(false);},1800);
+  /* Header repair is only a safety net. Keep it aligned with the academic
+     dashboard refresh so it cannot cause a visible sub-second/rapid repaint. */
+  setInterval(function(){repair(false);},30000);
   window.__CQ_AK_HEADER_V9__=true;
 })();
