@@ -19,9 +19,10 @@ function monthBounds(month:string){if(!/^\d{4}-\d{2}$/.test(month))return null;c
 async function bootstrapWithTahfizhBadal(req:Request,body:any){
   const x=await legacy(req,body);
   if(!x.r.ok||!x.data||x.data.success===false)return new Response(x.txt,{status:x.r.status,headers:{...CORS,"Cache-Control":"no-store"}});
-  const data=x.data,teacherId=T(data.teacher?.id),yearId=T(data.context?.academic_year_id),semesterNo=Number(data.context?.semester_no||body.semester_no||1),month=T(data.month||body.month);
+  const data=x.data,teacherId=T(data.teacher?.id),yearId=T(data.context?.academic_year_id),semesterNo=Number(data.context?.semester_no||body.semester_no||0),month=T(data.month||body.month);
   const range=monthBounds(month);
   if(!teacherId||!yearId||!range)return J(data,x.r.status);
+  if(![1,2].includes(semesterNo)){console.error("timesheet active semester missing",{yearId});return J({...data,period_warning:"active_semester_not_found"},x.r.status)}
   const q=await sb.from("tahfizh_substitution_assignments").select("id,work_date,class_id,substitute_teacher_id,start_time,end_time,reason,status,substitute_name,substitute_type").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("substitute_teacher_id",teacherId).eq("status","active").gte("work_date",range.start).lte("work_date",range.end).order("work_date").order("start_time");
   if(q.error){console.error("timesheet tahfizh badal",q.error);return J(data,x.r.status)}
   const rows=q.data||[],classIds=[...new Set(rows.map((r:any)=>T(r.class_id)).filter(Boolean))];
@@ -45,7 +46,7 @@ async function validateFreeSlot(req:Request,body:any){
   if(!teacherId||!/^\d{4}-\d{2}-\d{2}$/.test(date)||mins(start)===null||mins(end)===null)return null;
   const{data:teacher}=await sb.from("teachers").select("school_unit_id").eq("id",teacherId).maybeSingle();
   let yq=sb.from("academic_years").select("id").lte("start_date",date).gte("end_date",date).order("created_at",{ascending:false}).limit(1);if(teacher?.school_unit_id)yq=yq.eq("school_unit_id",teacher.school_unit_id);const{data:years}=await yq;const year=years?.[0];if(!year)return null;
-  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||1),day=dow(date);
+  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||0),day=dow(date);if(![1,2].includes(semesterNo))return null;
   const[{data:asg},{data:hom}]=await Promise.all([
     sb.from("teacher_subject_assignments").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true),
     sb.from("report_class_assignments").select("class_id,homeroom_teacher_id,partner_teacher_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).or(`homeroom_teacher_id.eq.${teacherId},partner_teacher_id.eq.${teacherId}`)
