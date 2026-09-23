@@ -225,3 +225,14 @@
   };
   document.head.appendChild(s);
 })();
+
+/* Keep Walas Morning Talk analytics + Rekap on the current attendance implementation.
+   index.html still references an older cache key, so load the latest shim from the
+   authoritative Walas bundle as a deterministic cache-bust. */
+(function(){
+  if(document.querySelector('script[data-cq-walas-attendance-recap-current]')) return;
+  const s=document.createElement('script');
+  s.src='attendance-recap-mode.js?v=20260923-walas-rekap1';
+  s.dataset.cqWalasAttendanceRecapCurrent='1';
+  document.head.appendChild(s);
+})();
