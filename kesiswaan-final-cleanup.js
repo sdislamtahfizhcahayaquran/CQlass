@@ -79,7 +79,10 @@
       if(oldCenterGroup>=0)MODULE_GROUPS.splice(oldCenterGroup,1);
 
       const center={id:CENTER_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],built:true,render:renderCenter};
-      const group={id:CENTER_GROUP_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],items:[center]};
+      const group={id:CENTER_GROUP_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],items:[
+        {id:'kedisiplinan',label:'Kedisiplinan',roles:[...CENTER_ROLES],built:true,render:c=>openPoint('kedisiplinan',c)},
+        {id:'reward',label:'Reward',roles:[...CENTER_ROLES],built:true,render:c=>openPoint('reward',c)}
+      ]};
       const infoIndex=MODULE_GROUPS.findIndex(g=>g&&norm(g.id)==='info');
       MODULE_GROUPS.splice(infoIndex>=0?infoIndex:MODULE_GROUPS.length,0,group);
       return true;
@@ -116,7 +119,7 @@
     const original=setActiveModule;
     const wrapped=function(id){
       const key=norm(id),r=role();
-      if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&POINT_IDS.has(key))return original.call(this,CENTER_ID);
+      if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&key===CENTER_ID)return original.call(this,'kedisiplinan');
       return original.apply(this,arguments);
     };
     wrapped.__cqKesiswaanSingleNavV5=true;
@@ -128,7 +131,7 @@
     if(ok&&typeof renderSidebar==='function')renderSidebar();
     try{
       const r=role(),key=norm(typeof activeModule!=='undefined'?activeModule:'');
-      if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&POINT_IDS.has(key)&&typeof setActiveModule==='function')setActiveModule(CENTER_ID);
+      if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&key===CENTER_ID&&typeof setActiveModule==='function')setActiveModule('kedisiplinan');
     }catch(_){ }
     cleanSidebarDom();
   }
