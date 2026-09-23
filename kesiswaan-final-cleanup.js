@@ -103,10 +103,14 @@
     if(usesDedicatedKesiswaan(r))return;
     const sb=document.getElementById('sidebar');if(!sb)return;
     if(!CENTER_ROLES.includes(r))return;
-    [...sb.querySelectorAll('.nav-item,.menu-item,.sidebar-item,button,a,[data-module]')].forEach(el=>{
-      const id=norm(el.dataset?.module||el.getAttribute?.('data-module'));
-      const label=norm(el.textContent);
-      if(POINT_IDS.has(id)||POINT_LABELS.has(label))el.remove();
+    [...sb.querySelectorAll('.nav-group-head')].forEach(head=>{
+      const label=norm(head.querySelector('span')?.textContent||head.textContent);
+      const body=head.nextElementSibling;
+      if(label!=='kesiswaan'||!body?.classList?.contains('nav-group-items'))return;
+      const wanted=['absensi','kedisiplinan','reward','masalah'];
+      const nodes=[...body.querySelectorAll('.nav-item')];
+      nodes.sort((a,b)=>wanted.indexOf(norm(a.dataset?.module||a.getAttribute?.('data-module')||a.textContent).replace('absensi (morning talk)','absensi').replace('reward siswa','reward').replace('masalah siswa','masalah'))-wanted.indexOf(norm(b.dataset?.module||b.getAttribute?.('data-module')||b.textContent).replace('absensi (morning talk)','absensi').replace('reward siswa','reward').replace('masalah siswa','masalah')));
+      nodes.forEach(n=>body.appendChild(n));
     });
   }
 
