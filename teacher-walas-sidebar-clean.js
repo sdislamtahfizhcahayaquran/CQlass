@@ -145,6 +145,21 @@
         });
       }
 
+      // Pasang ulang tiga menu Laporan final bila modulnya sudah tersedia.
+      if(reports&&Array.isArray(reports.items)){
+        const ensureReport=(id,label,renderFn)=>{
+          let it=reports.items.find(x=>x&&x.id===id);
+          if(!it&&typeof renderFn==='function'){it={id,label,roles:[...TEACHER_ROLES],built:true,render:renderFn};reports.items.push(it)}
+          if(it){it.label=label;it.roles=[...new Set([...(it.roles||[]),...TEACHER_ROLES])];it.built=true}
+        };
+        ensureReport('timesheet','Timesheet',window.renderTeacherTimesheet);
+        ensureReport('laporan-promosi','Promosi Socmed',window.renderPromotionReport);
+        const feedback=reports.items.find(x=>x&&x.id==='internal-feedback');
+        if(feedback){feedback.roles=[...new Set([...(feedback.roles||[]),...TEACHER_ROLES])];feedback.label='Saran & Masukan'}
+        const order=['timesheet','laporan-promosi','internal-feedback'];
+        reports.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
+      }
+
       // Final invariant: Walas/Guru tidak boleh punya grup Kesiswaan duplikat.
       let seenStudent=false;
       for(let i=MODULE_GROUPS.length-1;i>=0;i--){
