@@ -30,9 +30,9 @@ async function currentPeriod(sb:any){
   if(ue||!unit)throw new Error("school_unit_not_found");
   const {data:year,error:ye}=await sb.from("academic_years").select("id,name").eq("school_unit_id",unit.id).eq("is_active",true).order("created_at",{ascending:false}).limit(1).maybeSingle();
   if(ye||!year)throw new Error("academic_year_not_found");
-  const month=new Date().getUTCMonth()+1;
-  const semester_no=month>=7?1:2;
-  return {school_unit_id:unit.id,academic_year_id:year.id,academic_year:year.name,semester_no};
+  const {data:semester,error:se}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).limit(1).maybeSingle();
+  if(se||!semester||![1,2].includes(Number(semester.semester_no)))throw new Error("active_semester_not_found");
+  return {school_unit_id:unit.id,academic_year_id:year.id,academic_year:year.name,semester_no:Number(semester.semester_no)};
 }
 async function classes(sb:any,p:any){
   const {data,error}=await sb.from("classes").select("id,code,name,grade_level,rombel,gender_group")
