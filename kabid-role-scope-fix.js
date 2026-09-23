@@ -243,7 +243,7 @@
 (function(){
   if(document.querySelector('script[data-cq-admin-clean]')) return;
   const s=document.createElement('script');
-  s.src='admin-sidebar-clean.js?v=20260921-access1';
+  s.src='admin-sidebar-clean.js?v=20260923-period2';
   s.dataset.cqAdminClean='1';
   document.head.appendChild(s);
 })();
