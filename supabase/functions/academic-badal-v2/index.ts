@@ -42,9 +42,11 @@ function canUse(a:any){return a?.roles?.some((r:string)=>['admin','akademik','ka
 async function context(s:any){
   const {data:unit}=await s.from('school_units').select('id').eq('code',UNIT).maybeSingle();
   if(!unit)throw new Error('school_unit_not_found');
-  const {data:year}=await s.from('academic_years').select('id,name').eq('school_unit_id',unit.id).eq('name',AY).maybeSingle();
+  const {data:year}=await s.from('academic_years').select('id,name').eq('school_unit_id',unit.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1).maybeSingle();
   if(!year)throw new Error('academic_year_not_found');
-  return {unitId:unit.id,yearId:year.id};
+  const {data:sem}=await s.from('semesters').select('semester_no').eq('academic_year_id',year.id).eq('is_active',true).limit(1).maybeSingle();
+  const semesterNo=Number(sem?.semester_no||0);if(![1,2].includes(semesterNo))throw new Error('active_semester_not_found');
+  return {unitId:unit.id,yearId:year.id,yearName:year.name,semesterNo};
 }
 function todayJakarta(){const f=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'});const p=Object.fromEntries(f.formatToParts(new Date()).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`}
 function isoDow(date:string){const x=new Date(date+'T12:00:00Z').getUTCDay();return x===0?7:x}
