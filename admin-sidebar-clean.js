@@ -20,7 +20,8 @@ const I={
   students:'<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg>',
   uks:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>',
   halaqah:'<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 2-6 5-6s5 2 5 6M14 15c3 0 5 1.6 5 5"/></svg>',
-  lock:'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2.5"/></svg>'
+  lock:'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2.5"/></svg>',
+  period:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M7 3v4M17 3v4M3.5 9.5h17M8 13h3M13 13h3M8 16h3"/></svg>'
 };
 function button(id,l,i,oc){const domId=id==='roles'?' id="cq-role-manager-menu"':'';return `<button${domId} class="cq-admin-nav${window.__cqAdminActive===id?' active':''}" onclick="${oc}">${i}<span>${l}</span></button>`}
 function draw(active){
@@ -37,6 +38,7 @@ function draw(active){
     ${button('edit-jadwal','Edit Jadwal',I.schedule,'openCleanAdminSchedule()')}
     ${button('users','Guru & Pengguna',I.users,'openCleanAdminUsers()')}
     ${button('roles','Kelola Role',I.roles,'openCleanAdminRoles()')}
+    ${button('academic-period','Tahun Ajaran & Hari Efektif',I.period,'openCleanAdminAcademicPeriod()')}
     ${button('input-access','Periode & Kunci Input',I.lock,'openCleanAdminInputAccess()')}
     ${button('students','Siswa & Kelas',I.students,'openCleanAdminStudents()')}
     ${button('uks','Jadwal UKS',I.uks,'openCleanAdminUks()')}
@@ -59,6 +61,7 @@ window.openCleanAdminRoles=function(){
   if(c)c.innerHTML='<div class="card">Memuat Kelola Role...</div>';
   setTimeout(()=>{if(typeof window.renderRoleManager==='function')window.renderRoleManager(c);else if(c)c.innerHTML='<div class="card">Kelola Role belum dapat dimuat. Muat ulang halaman.</div>'},250)
 };
+window.openCleanAdminAcademicPeriod=function(){if(!isAdmin())return;set('academic-period');const c=document.getElementById('content');if(typeof window.renderAdminAcademicPeriod==='function')return window.renderAdminAcademicPeriod(c);if(c)c.innerHTML='<div class="card">Memuat Tahun Ajaran & Hari Efektif...</div>';setTimeout(()=>window.renderAdminAcademicPeriod?.(c),250)};
 window.openCleanAdminInputAccess=function(){if(!isAdmin())return;set('input-access');const c=document.getElementById('content');if(typeof window.renderInputAccessControlAdmin==='function')return window.renderInputAccessControlAdmin(c);if(c)c.innerHTML='<div class="card">Memuat Periode & Kunci Penginputan...</div>';setTimeout(()=>window.renderInputAccessControlAdmin?.(c),250)};
 window.openCleanAdminStudents=function(){if(!isAdmin())return;set('students');location.href='master-data.html'};
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
