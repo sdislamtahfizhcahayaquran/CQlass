@@ -10,25 +10,34 @@
   max-width:100%!important;
 }
 
-/* One border system for the whole printable report.
-   A full 1px line renders more consistently than mixed 1.25px/0.75px rules,
-   especially after the report is rasterized for HD PDF output. */
-#app-screen .content .rpv-template-head,
-#app-screen .content .rpv-table{
+/* Thin 1px grid only for the requested report sections:
+   subject assessment, attendance, extracurricular, and discipline/merit. */
+#app-screen .content .rpv-academic,
+#app-screen .content .rpv-attendance,
+#app-screen .content .rpv-score-table,
+#app-screen .content .rpv-exkul,
+#app-screen .content .rpv-merit,
+#app-screen .content .rpv-discipline{
   border-collapse:collapse!important;
   border-spacing:0!important;
 }
-#app-screen .content .rpv-template-head{
-  border:1px solid #111!important;
-}
-#app-screen .content .rpv-template-head td,
-#app-screen .content .rpv-table th,
-#app-screen .content .rpv-table td{
-  border:1px solid #111!important;
-}
-#app-screen .content .rpv-total-line{
-  border:1px solid #111!important;
-  border-top:0!important;
+#app-screen .content .rpv-academic th,
+#app-screen .content .rpv-academic td,
+#app-screen .content .rpv-attendance th,
+#app-screen .content .rpv-attendance td,
+#app-screen .content .rpv-score-table th,
+#app-screen .content .rpv-score-table td,
+#app-screen .content .rpv-exkul th,
+#app-screen .content .rpv-exkul td,
+#app-screen .content .rpv-merit th,
+#app-screen .content .rpv-merit td,
+#app-screen .content .rpv-discipline th,
+#app-screen .content .rpv-discipline td{
+  border-width:1px!important;
+  border-style:solid!important;
+  border-color:#222!important;
+  box-shadow:none!important;
+  outline:0!important;
 }
 
 #app-screen .content .rpv-template-head{
