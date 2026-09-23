@@ -74,7 +74,7 @@
     if(!document.getElementById('cq-tahfizh-live'))renderLive();
     try{
       const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
-      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify({semester_no:1})});
+      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify({})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok||d.success===false)throw Error(d.error||'Gagal memuat live report Tahfizh');
       live=d;lastFetch=Date.now();renderLive();
