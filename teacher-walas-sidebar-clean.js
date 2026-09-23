@@ -145,6 +145,18 @@
         });
       }
 
+      // Final invariant: Walas/Guru tidak boleh punya grup Kesiswaan duplikat.
+      let seenStudent=false;
+      for(let i=MODULE_GROUPS.length-1;i>=0;i--){
+        const g=MODULE_GROUPS[i];if(!g)continue;
+        const isStudent=(g.id==='kesiswaan'||g.id==='kesiswaan-input-center');
+        if(!isStudent)continue;
+        if(g.id==='kesiswaan-input-center'){MODULE_GROUPS.splice(i,1);continue}
+      }
+      // Pastikan hanya grup id=kesiswaan yang menjadi sumber tunggal.
+      const duplicates=MODULE_GROUPS.map((g,i)=>({g,i})).filter(x=>x.g&&String(x.g.label||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase()==='kesiswaan'&&x.g.id!=='kesiswaan');
+      for(let i=duplicates.length-1;i>=0;i--)MODULE_GROUPS.splice(duplicates[i].i,1);
+
       return true;
     }catch(err){
       console.warn('Sidebar guru/walas gagal dirapikan:',err);
