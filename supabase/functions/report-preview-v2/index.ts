@@ -17,8 +17,7 @@ function serviceKey(){
   return k;
 }
 function db(){
-  const url=Deno.env.get("SUPABASE_URL");
-  if(!url)throw Error("supabase_url_missing");
+  const url=Deno.env.get("SUPABASE_URL");if(!url)throw Error("supabase_url_missing");
   return createClient(url,serviceKey(),{auth:{persistSession:false,autoRefreshToken:false}});
 }
 function grade(pct:number|null){if(pct===null)return"-";if(pct>=85)return"A";if(pct>=70)return"B";if(pct>=50)return"C";return"D"}
@@ -29,6 +28,33 @@ async function resolveYearId(s:any,yearName:string){
   const {data,error}=await s.from("academic_years").select("id").eq("name",yearName).order("created_at",{ascending:false}).limit(1).maybeSingle();
   if(error)throw error;
   const id=txt(data?.id);yearCache.set(yearName,id);return id;
+}
+
+function publicReportType(v:any){const x=txt(v).toUpperCase();return x==="SEMESTER"||x==="PAS"?"PAS":"PTS"}
+function storedReportType(v:any){return publicReportType(v)==="PAS"?"SEMESTER":"PTS"}
+async function reportPeriodForRequest(s:any,b:any){
+  const action=txt(b?.action).toLowerCase();
+  if(!["preview","bulk"].includes(action))return null;
+  const yearName=txt(b?.academic_year),semesterNo=Number(b?.semester_no||0),type=publicReportType(b?.report_type);
+  if(!yearName||![1,2].includes(semesterNo))return null;
+  const yearId=await resolveYearId(s,yearName);if(!yearId)return null;
+  const {data,error}=await s.from("report_config")
+    .select("data_start_date,data_end_date,report_date_gregorian,report_date_hijri,updated_at,is_active")
+    .eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("report_type",storedReportType(type)).maybeSingle();
+  if(error)throw error;
+  const configured=!!(data?.data_start_date&&data?.data_end_date&&data?.report_date_gregorian&&data?.is_active!==false);
+  return {
+    configured,
+    academic_year:yearName,
+    academic_year_id:yearId,
+    semester_no:semesterNo,
+    report_type:type,
+    data_start_date:data?.data_start_date||null,
+    data_end_date:data?.data_end_date||null,
+    report_date_gregorian:data?.report_date_gregorian||null,
+    report_date_hijri:data?.report_date_hijri||null,
+    updated_at:data?.updated_at||null
+  };
 }
 
 async function schoolGrades(s:any,reports:any[]){
@@ -177,21 +203,28 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=="POST")return reply({success:false,error:"method_not_allowed"},405);
   try{
     const url=Deno.env.get("SUPABASE_URL");if(!url)throw Error("supabase_url_missing");
-    const raw=await req.text();
+    const raw=await req.text();let body:any={};try{body=raw?JSON.parse(raw):{}}catch(_){body={}}
+    const s=db();
+    const reportPeriod=await reportPeriodForRequest(s,body);
+    const forwarded=reportPeriod?.configured?{...body,start_date:reportPeriod.data_start_date,end_date:reportPeriod.data_end_date}:body;
     const apikey=req.headers.get("apikey")||Deno.env.get("SUPABASE_ANON_KEY")||"";
     const auth=req.headers.get("authorization")||(apikey?`Bearer ${apikey}`:"");
     const token=req.headers.get("x-session-token")||"";
     const upstream=await fetch(`${url}/functions/v1/report-preview`,{
       method:"POST",
       headers:{"Content-Type":"application/json",...(apikey?{apikey}:{}),...(auth?{Authorization:auth}:{}),...(token?{"x-session-token":token}:{})},
-      body:raw
+      body:JSON.stringify(forwarded)
     });
     const text=await upstream.text();let out:any;
     try{out=text?JSON.parse(text):{}}catch(_){return new Response(text,{status:upstream.status,headers:CORS})}
     if(!upstream.ok||out?.success===false)return reply(out,upstream.status);
-    const s=db();
     if(out?.report)await enrich(s,[out.report]);
     if(Array.isArray(out?.reports))await enrich(s,out.reports);
+    if(reportPeriod){
+      out.report_period=reportPeriod;
+      if(out?.report&&typeof out.report==="object")out.report.report_period=reportPeriod;
+      if(Array.isArray(out?.reports))for(const r of out.reports)if(r&&typeof r==="object")r.report_period=reportPeriod;
+    }
     return reply(out,upstream.status);
   }catch(e){
     console.error(e);
