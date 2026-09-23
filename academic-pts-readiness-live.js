@@ -46,7 +46,7 @@
     const res=await fetch(BASE,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},
-      body:JSON.stringify({semester_no:1,attendance_start:start,attendance_end:end,points_start:start,points_end:end})
+      body:JSON.stringify({attendance_start:start,attendance_end:end,points_start:start,points_end:end})
     });
     const j=await res.json().catch(()=>({}));
     if(!res.ok||j.success===false)throw Error(j.error||('Gagal memuat kesiapan Rapor PTS ('+res.status+')'));
