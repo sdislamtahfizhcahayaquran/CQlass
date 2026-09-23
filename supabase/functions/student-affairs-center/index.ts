@@ -24,7 +24,7 @@ async function reportData(b:any){
     sb.from("classes").select("id,name,code,grade_level,rombel,gender_group,is_active").eq("is_active",true),
     sb.from("students").select("id,full_name,nis,nisn,status").order("full_name")
   ]);
-  if(ce)throw ce;if(se)throw se;if(!year||!sem)throw Error("active_period_missing");
+  if(ce)throw ce;if(se)throw se;if(!year||!sem)throw Error("active_period_missing");if(T(sem.academic_year_id)!==T(year.id)||![1,2].includes(Number(sem.semester_no)))throw Error("active_period_inconsistent");
   const{data:enroll,error:ee}=await sb.from("student_enrollments").select("student_id,class_id,is_active").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true);if(ee)throw ee;
   const cm:any=Object.fromEntries((classes||[]).map((x:any)=>[x.id,x]));
   const sm:any=Object.fromEntries((students||[]).filter((x:any)=>activeStatus(x.status)).map((x:any)=>[x.id,x]));
