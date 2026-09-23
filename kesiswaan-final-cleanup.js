@@ -57,70 +57,69 @@
 
   function consolidateModel(){
     try{
-      if(usesDedicatedKesiswaan())return false;
+      const r=role();
+      if(usesDedicatedKesiswaan(r))return false;
       if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
 
-      for(const g of MODULE_GROUPS){
-        if(!g)continue;
-        if(Array.isArray(g.items))g.items=g.items.filter(it=>{
-          const id=norm(it?.id),label=norm(it?.label);
-          if(REMOVE.has(id))return false;
-          if(g.id!==CENTER_GROUP_ID&&(POINT_IDS.has(id)||POINT_LABELS.has(label)))return false;
-          return true;
-        });
-      }
-
+      // Walas/Guru memakai SATU grup Kesiswaan bawaan. Jangan membuat grup Kesiswaan kedua.
       const oldGroup=MODULE_GROUPS.find(g=>g&&norm(g.id)==='kesiswaan');
-      const originalKesiswaanItems=oldGroup&&Array.isArray(oldGroup.items)?oldGroup.items.slice():[];
-      if(oldGroup&&Array.isArray(oldGroup.roles))oldGroup.roles=oldGroup.roles.filter(r=>!CENTER_ROLES.includes(norm(r)));
-
-      for(const g of MODULE_GROUPS){
-        if(!g||!Array.isArray(g.items))continue;
-        g.items=g.items.filter(x=>x&&x.id!==CENTER_ID);
-      }
-      const oldCenterGroup=MODULE_GROUPS.findIndex(g=>g&&g.id===CENTER_GROUP_ID);
-      if(oldCenterGroup>=0)MODULE_GROUPS.splice(oldCenterGroup,1);
-
-      const center={id:CENTER_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],built:true,render:renderCenter};
-      const absensi=originalKesiswaanItems.find(x=>x&&x.id==='absensi');
-      const masalah=originalKesiswaanItems.find(x=>x&&x.id==='masalah');
+      if(!oldGroup)return false;
+      oldGroup.roles=[...new Set([...(oldGroup.roles||[]),...CENTER_ROLES])];
+      const base=Array.isArray(oldGroup.items)?oldGroup.items:[];
+      const absensi=base.find(x=>x&&x.id==='absensi');
+      const masalah=base.find(x=>x&&x.id==='masalah');
       const items=[];
-      if(absensi)items.push({...absensi,roles:[...CENTER_ROLES]});
+      if(absensi)items.push({...absensi,roles:[...new Set([...(absensi.roles||[]),...CENTER_ROLES])]});
       items.push(
         {id:'kedisiplinan',label:'Kedisiplinan',roles:[...CENTER_ROLES],built:true,render:c=>openPoint('kedisiplinan',c)},
         {id:'reward',label:'Reward',roles:[...CENTER_ROLES],built:true,render:c=>openPoint('reward',c)}
       );
-      if(masalah)items.push({...masalah,roles:[...CENTER_ROLES]});
-      const group={id:CENTER_GROUP_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],items};
+      if(masalah)items.push({...masalah,roles:[...new Set([...(masalah.roles||[]),...CENTER_ROLES])]});
+      oldGroup.items=items;
+
+      // Hapus patch/grup Kesiswaan lama yang sempat dibuat terpisah.
+      for(let i=MODULE_GROUPS.length-1;i>=0;i--){
+        const g=MODULE_GROUPS[i];
+        if(!g)continue;
+        if(g.id===CENTER_GROUP_ID){MODULE_GROUPS.splice(i,1);continue}
+        if(Array.isArray(g.items))g.items=g.items.filter(x=>x&&x.id!==CENTER_ID);
+      }
+
+      // Untuk Walas/Guru, Laporan hanya Timesheet, Promosi Socmed, Saran & Masukan.
       const report=MODULE_GROUPS.find(g=>g&&norm(g.id)==='laporan');
       if(report&&Array.isArray(report.items)){
         const keep=new Set(['timesheet','laporan-promosi','internal-feedback']);
         for(const it of report.items){
-          if(it&&Array.isArray(it.roles)&&!keep.has(String(it.id||'')))it.roles=it.roles.filter(x=>!CENTER_ROLES.includes(norm(x)));
+          if(!it||!Array.isArray(it.roles))continue;
+          if(!keep.has(String(it.id||'')))it.roles=it.roles.filter(x=>!CENTER_ROLES.includes(norm(x)));
         }
         const order=['timesheet','laporan-promosi','internal-feedback'];
         report.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
       }
-      const infoIndex=MODULE_GROUPS.findIndex(g=>g&&norm(g.id)==='info');
-      MODULE_GROUPS.splice(infoIndex>=0?infoIndex:MODULE_GROUPS.length,0,group);
       return true;
     }catch(e){console.warn('Kesiswaan final cleanup:',e);return false}
   }
 
   function cleanSidebarDom(){
     const r=role();
-    if(usesDedicatedKesiswaan(r))return;
+    if(usesDedicatedKesiswaan(r)||!CENTER_ROLES.includes(r))return;
     const sb=document.getElementById('sidebar');if(!sb)return;
-    if(!CENTER_ROLES.includes(r))return;
-    [...sb.querySelectorAll('.nav-group-head')].forEach(head=>{
+    const heads=[...sb.querySelectorAll('.nav-group-head')];
+    let seenK=false;
+    for(const head of heads){
       const label=norm(head.querySelector('span')?.textContent||head.textContent);
       const body=head.nextElementSibling;
-      if(label!=='kesiswaan'||!body?.classList?.contains('nav-group-items'))return;
-      const wanted=['absensi','kedisiplinan','reward','masalah'];
-      const nodes=[...body.querySelectorAll('.nav-item')];
-      nodes.sort((a,b)=>wanted.indexOf(norm(a.dataset?.module||a.getAttribute?.('data-module')||a.textContent).replace('absensi (morning talk)','absensi').replace('reward siswa','reward').replace('masalah siswa','masalah'))-wanted.indexOf(norm(b.dataset?.module||b.getAttribute?.('data-module')||b.textContent).replace('absensi (morning talk)','absensi').replace('reward siswa','reward').replace('masalah siswa','masalah')));
-      nodes.forEach(n=>body.appendChild(n));
-    });
+      if(label==='kesiswaan'){
+        if(seenK){if(body?.classList?.contains('nav-group-items'))body.remove();head.remove();continue}
+        seenK=true;
+      }
+      if(label==='laporan'&&body?.classList?.contains('nav-group-items')){
+        [...body.querySelectorAll('.nav-item')].forEach(el=>{
+          const txt=norm(el.textContent);
+          if(txt==='absensi (morning talk)'||txt==='absensi'||txt==='kesiswaan'||txt==='kedisiplinan'||txt==='reward'||txt==='reward siswa'||txt==='masalah siswa')el.remove();
+        });
+      }
+    }
   }
 
   function patchSidebar(){
