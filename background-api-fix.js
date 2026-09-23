@@ -47,8 +47,6 @@
     let payload={};
     try{payload=typeof init?.body==='string'?JSON.parse(init.body):{}}catch(_){return null}
     const action=String(payload.action||'').toLowerCase();
-    // Administration harus lewat hrd-live-report utama karena endpoint itu punya timeout + fallback server-side.
-    // Direct browser fast-path ke hrd-administration dapat mewarisi AbortSignal UI dan berakhir "Failed to fetch".
     if(action!=='rpp_file')return null;
     let who='hrd';
     try{who=String((typeof currentUser!=='undefined'&&currentUser?.username)||'hrd').toLowerCase()}catch(_){ }
@@ -182,7 +180,7 @@
       add('./guru-partner-tahfizh-menu.js?v=20260922-sidebarfix2','__cqPartnerTahfizhMenuFreshV2',false);
     }
     if(r==='tahfizh'||r==='kabid_tahfizh'){
-      add('./tahfizh-kabid-shell-fix.js?v=20260923-tahfizh-a4','__cqTahfizhKabidShellFixLoaderInstalled',false);
+      add('./tahfizh-kabid-shell-fix.js?v=20260923-clickfix1','__cqTahfizhKabidShellFixLoaderInstalled',false);
       add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260922-single3','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
     }
   }
