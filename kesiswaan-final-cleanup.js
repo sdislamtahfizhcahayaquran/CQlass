@@ -11,7 +11,8 @@
   const POINT_IDS=new Set(['kedisiplinan','reward']);
   const POINT_LABELS=new Set(['kedisiplinan','reward','reward siswa']);
   const CENTER_ID='kesiswaan-center';
-  const CENTER_ROLES=['guru','walas','kesiswaan','pimpinan'];
+  const CENTER_GROUP_ID='kesiswaan-input-center';
+  const CENTER_ROLES=['guru','walas'];
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
   function role(){
@@ -70,14 +71,17 @@
       const oldGroup=MODULE_GROUPS.find(g=>g&&norm(g.id)==='kesiswaan');
       if(oldGroup&&Array.isArray(oldGroup.roles))oldGroup.roles=oldGroup.roles.filter(r=>!CENTER_ROLES.includes(norm(r)));
 
-      let report=MODULE_GROUPS.find(g=>g&&norm(g.id)==='laporan');
-      if(!report){report={id:'laporan',label:'Laporan',roles:[],items:[]};MODULE_GROUPS.push(report)}
-      if(!Array.isArray(report.items))report.items=[];
-      report.roles=[...new Set([...(report.roles||[]),...CENTER_ROLES])];
+      for(const g of MODULE_GROUPS){
+        if(!g||!Array.isArray(g.items))continue;
+        g.items=g.items.filter(x=>x&&x.id!==CENTER_ID);
+      }
+      const oldCenterGroup=MODULE_GROUPS.findIndex(g=>g&&g.id===CENTER_GROUP_ID);
+      if(oldCenterGroup>=0)MODULE_GROUPS.splice(oldCenterGroup,1);
 
       const center={id:CENTER_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],built:true,render:renderCenter};
-      const old=report.items.find(x=>x&&x.id===CENTER_ID);
-      if(old)Object.assign(old,center);else report.items.unshift(center);
+      const group={id:CENTER_GROUP_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],items:[center]};
+      const infoIndex=MODULE_GROUPS.findIndex(g=>g&&norm(g.id)==='info');
+      MODULE_GROUPS.splice(infoIndex>=0?infoIndex:MODULE_GROUPS.length,0,group);
       return true;
     }catch(e){console.warn('Kesiswaan final cleanup:',e);return false}
   }
