@@ -7,13 +7,14 @@
     mt.dataset.cqMtV9='1';
     document.head.appendChild(mt);
   }
-  // Add Hari Efektif only inside Rekap Editable; this script does not alter tabs/panels.
-  if(!document.querySelector('script[data-cq-mt-effective-safe]')){
-    var he=document.createElement('script');
-    he.src='mt-effective-days-safe.js?v=20260917-safe1';
-    he.dataset.cqMtEffectiveSafe='1';
-    document.head.appendChild(he);
-  }
+  // NOTE: A "Hari Efektif" input used to be injected here inside Rekap Editable
+  // (mt-effective-days-safe.js), but it called a Supabase function
+  // (mt-active-days) that does not exist in this project, and even if saved it
+  // was never read anywhere. Hari Efektif is admin-only (Data Master Akademik >
+  // Hari Efektif per Kelas, table class_effective_days) and rapor always
+  // computes Hadir = Hari Efektif (admin) - Sakit - Izin - Alfa on the backend.
+  // Giving walas their own "Hari Efektif" field was misleading, so it has been
+  // removed. Do not re-add it.
   if(!document.querySelector('script[data-cq-raw-exkul]')){
     var s=document.createElement('script');
     s.src='extracurricular-raw-ui.js?v=20260916-raw2';
