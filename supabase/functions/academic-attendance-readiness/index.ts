@@ -18,10 +18,10 @@ Deno.serve(async(req:Request)=>{
   let b:any={};try{b=await req.json()}catch{return J({success:false,error:"invalid_json"},400)}
   try{
     const s=db(),a=await auth(s,req,b);if(!a)return J({success:false,error:"session_invalid"},401);if(a.forbidden)return J({success:false,error:"forbidden"},403);
-    const semesterNo=Number(b.semester_no||1);if(![1,2].includes(semesterNo))return J({success:false,error:"semester_invalid"},400);
+    let semesterNo=Number(b.semester_no||0);if(semesterNo&&![1,2].includes(semesterNo))return J({success:false,error:"semester_invalid"},400);
     const {data:unit,error:ue}=await s.from("school_units").select("id").eq("code","SD").maybeSingle();if(ue||!unit)throw Error("school_unit_not_found");
     let yq=s.from("academic_years").select("id,name,is_active").eq("school_unit_id",unit.id);if(T(b.academic_year))yq=yq.eq("name",T(b.academic_year));else yq=yq.eq("is_active",true);const {data:yr,error:ye}=await yq.order("created_at",{ascending:false}).limit(1).maybeSingle();if(ye||!yr)throw Error("academic_year_not_found");
-    const yearId=yr.id;
+    const yearId=yr.id;\n    if(!semesterNo){const {data:sem,error:se}=await s.from("semesters").select("semester_no").eq("academic_year_id",yearId).eq("is_active",true).limit(1).maybeSingle();if(se)throw se;semesterNo=Number(sem?.semester_no||0);if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");}
     const [cq,eq]=await Promise.all([
       s.from("classes").select("id,name,code,grade_level").eq("academic_year_id",yearId).eq("is_active",true),
       s.from("student_enrollments").select("student_id,class_id").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("is_active",true)
