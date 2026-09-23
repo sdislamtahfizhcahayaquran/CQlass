@@ -1,14 +1,14 @@
-/* CQlass — Kabid Tahfizh: stable monthly + UKJ menu (no render loop) */
+/* CQlass — Kabid Tahfizh only: stable monthly + UKJ menu (no render loop) */
 (function(){
   'use strict';
-  if(window.__CQ_TAHFIZH_SHELL_FIX_V6__) return;
-  window.__CQ_TAHFIZH_SHELL_FIX_V6__=1;
+  if(window.__CQ_TAHFIZH_SHELL_FIX_V7__) return;
+  window.__CQ_TAHFIZH_SHELL_FIX_V7__=1;
 
-  const ROLES=['tahfizh','kabid_tahfizh'];
+  const ROLE='kabid_tahfizh';
   const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   const TOOLS=[
-    {id:'tahfizh-monthly-report',label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260924-stable1'},
-    {id:'tahfizh-ukj-score',label:'UKJ',url:'tahfizh-ukj-score.html?v=20260924-stable1'}
+    {id:'tahfizh-monthly-report',label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260924-kabid1'},
+    {id:'tahfizh-ukj-score',label:'UKJ',url:'tahfizh-ukj-score.html?v=20260924-kabid1'}
   ];
 
   function role(){
@@ -18,10 +18,7 @@
       return norm(u.role||u.primary_role||u.role_code||saved.role||'');
     }catch(_){return''}
   }
-  function allowed(){
-    const r=role();
-    return ROLES.includes(r)||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')));
-  }
+  function allowed(){return role()===ROLE}
   function go(def){
     if(!allowed()||!def)return false;
     window.location.href=def.url;
@@ -33,41 +30,41 @@
     if(!allowed()||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
     let group=MODULE_GROUPS.find(g=>g&&(norm(g.id)==='tahfizh'||norm(g.id)==='tahfizh_tools'||norm(g.label)==='tahfizh'));
     if(!group){
-      group={id:'tahfizh-tools',label:'Tahfizh',roles:[...ROLES],items:[]};
+      group={id:'tahfizh-tools',label:'Tahfizh',roles:[ROLE],items:[]};
       MODULE_GROUPS.push(group);
     }
     group.label='Tahfizh';
-    group.roles=[...new Set([...(Array.isArray(group.roles)?group.roles:[]),...ROLES])];
+    group.roles=[...new Set([...(Array.isArray(group.roles)?group.roles:[]),ROLE])];
     if(!Array.isArray(group.items))group.items=[];
     for(const d of TOOLS){
       let item=group.items.find(x=>x&&x.id===d.id);
       const render=()=>go(d);
-      if(!item){group.items.push({id:d.id,label:d.label,roles:[...ROLES],built:true,render});}
-      else{item.label=d.label;item.roles=[...new Set([...(Array.isArray(item.roles)?item.roles:[]),...ROLES])];item.built=true;item.render=render;}
+      if(!item){group.items.push({id:d.id,label:d.label,roles:[ROLE],built:true,render});}
+      else{item.label=d.label;item.roles=[ROLE];item.built=true;item.render=render;}
     }
     return true;
   }
 
   function patchNavigation(){
-    if(typeof setActiveModule!=='function'||setActiveModule.__cqTahfizhStableV6)return;
+    if(typeof setActiveModule!=='function'||setActiveModule.__cqTahfizhKabidOnlyV7)return;
     const original=setActiveModule;
     const wrapped=function(id){
       const def=byId(id);
       if(def&&allowed())return go(def);
       return original.apply(this,arguments);
     };
-    wrapped.__cqTahfizhStableV6=true;
+    wrapped.__cqTahfizhKabidOnlyV7=true;
     setActiveModule=wrapped;
   }
 
   function patchSidebar(){
-    if(typeof renderSidebar!=='function'||renderSidebar.__cqTahfizhStableV6)return;
+    if(typeof renderSidebar!=='function'||renderSidebar.__cqTahfizhKabidOnlyV7)return;
     const original=renderSidebar;
     const wrapped=function(){
       if(allowed())ensureTools();
       return original.apply(this,arguments);
     };
-    wrapped.__cqTahfizhStableV6=true;
+    wrapped.__cqTahfizhKabidOnlyV7=true;
     renderSidebar=wrapped;
   }
 
@@ -77,7 +74,7 @@
     patchSidebar();
     const ok=ensureTools();
     if(ok&&typeof renderSidebar==='function'){
-      try{renderSidebar()}catch(e){console.warn('Tahfizh menu render:',e)}
+      try{renderSidebar()}catch(e){console.warn('Kabid Tahfizh menu render:',e)}
     }
     return ok;
   }
@@ -90,14 +87,14 @@
     setTimeout(boot,250);
   })();
 
-  if(typeof enterApp==='function'&&!enterApp.__cqTahfizhStableV6){
+  if(typeof enterApp==='function'&&!enterApp.__cqTahfizhKabidOnlyV7){
     const originalEnter=enterApp;
     const wrapped=function(){
       const out=originalEnter.apply(this,arguments);
       setTimeout(install,60);
       return out;
     };
-    wrapped.__cqTahfizhStableV6=true;
+    wrapped.__cqTahfizhKabidOnlyV7=true;
     enterApp=wrapped;
   }
 })();
