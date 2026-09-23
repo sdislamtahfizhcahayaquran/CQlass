@@ -71,6 +71,7 @@
       }
 
       const oldGroup=MODULE_GROUPS.find(g=>g&&norm(g.id)==='kesiswaan');
+      const originalKesiswaanItems=oldGroup&&Array.isArray(oldGroup.items)?oldGroup.items.slice():[];
       if(oldGroup&&Array.isArray(oldGroup.roles))oldGroup.roles=oldGroup.roles.filter(r=>!CENTER_ROLES.includes(norm(r)));
 
       for(const g of MODULE_GROUPS){
@@ -81,7 +82,6 @@
       if(oldCenterGroup>=0)MODULE_GROUPS.splice(oldCenterGroup,1);
 
       const center={id:CENTER_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],built:true,render:renderCenter};
-      const originalKesiswaanItems=oldGroup&&Array.isArray(oldGroup.items)?oldGroup.items:[];
       const absensi=originalKesiswaanItems.find(x=>x&&x.id==='absensi');
       const masalah=originalKesiswaanItems.find(x=>x&&x.id==='masalah');
       const items=[];
