@@ -7,26 +7,38 @@
   const num=v=>{const n=Number(v);return Number.isFinite(n)&&n>=0?Math.trunc(n):0};
 
   function installUniformReportBorders(){
-    const id='cq-rapor-uniform-border-v2';
+    const id='cq-rapor-uniform-border-v3';
     let style=document.getElementById(id);
     if(!style){style=document.createElement('style');style.id=id;document.head.appendChild(style)}
     style.textContent=`
-      #rpv-preview .rpv-template-head,
-      #rpv-preview .rpv-table{
+      /* Only these report tables use the thinner 1px grid requested by the school.
+         Header identity, Tahfizh block, signatures and teaching-team area are untouched. */
+      #rpv-preview .rpv-academic,
+      #rpv-preview .rpv-attendance,
+      #rpv-preview .rpv-score-table,
+      #rpv-preview .rpv-exkul,
+      #rpv-preview .rpv-merit,
+      #rpv-preview .rpv-discipline{
         border-collapse:collapse!important;
         border-spacing:0!important;
       }
-      #rpv-preview .rpv-template-head{
-        border:1px solid #111!important;
-      }
-      #rpv-preview .rpv-template-head td,
-      #rpv-preview .rpv-table th,
-      #rpv-preview .rpv-table td{
-        border:1px solid #111!important;
-      }
-      #rpv-preview .rpv-total-line{
-        border:1px solid #111!important;
-        border-top:0!important;
+      #rpv-preview .rpv-academic th,
+      #rpv-preview .rpv-academic td,
+      #rpv-preview .rpv-attendance th,
+      #rpv-preview .rpv-attendance td,
+      #rpv-preview .rpv-score-table th,
+      #rpv-preview .rpv-score-table td,
+      #rpv-preview .rpv-exkul th,
+      #rpv-preview .rpv-exkul td,
+      #rpv-preview .rpv-merit th,
+      #rpv-preview .rpv-merit td,
+      #rpv-preview .rpv-discipline th,
+      #rpv-preview .rpv-discipline td{
+        border-width:1px!important;
+        border-style:solid!important;
+        border-color:#222!important;
+        box-shadow:none!important;
+        outline:0!important;
       }
       #rpv-preview .rpv-team-simple td{
         border:0!important;
