@@ -111,8 +111,11 @@
       if(!inbox){inbox={id:'internal-report-inbox',label:'Laporan Masuk',roles:['sapras','kesiswaan'],built:true,render:renderInbox};g.items.push(inbox)}
       else Object.assign(inbox,{label:'Laporan Masuk',roles:['sapras','kesiswaan'],built:true,render:renderInbox});
 
-      const ts=g.items.findIndex(x=>x&&x.id==='timesheet'); const fb=g.items.findIndex(x=>x&&x.id==='internal-feedback');
-      if(ts>=0&&fb>=0&&fb!==ts+1){const [x]=g.items.splice(fb,1);const nts=g.items.findIndex(i=>i&&i.id==='timesheet');g.items.splice(nts+1,0,x)}
+      const order=['timesheet','laporan-promosi','internal-feedback'];
+      g.items.sort((a,b)=>{
+        const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));
+        return (ai<0?99:ai)-(bi<0?99:bi);
+      });
 
       if(typeof DASHBOARD_MODULE!=='undefined'&&Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes('sapras')) DASHBOARD_MODULE.roles.push('sapras');
       return true;
