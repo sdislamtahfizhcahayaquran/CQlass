@@ -14,7 +14,7 @@
   function token(){try{return getAuthToken()}catch(_){return localStorage.getItem('cqlass_session_token')||''}}
   async function api(){
     const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
-    const res=await fetch(BASE,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify({semester_no:1})});
+    const res=await fetch(BASE,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify({})});
     const j=await res.json().catch(()=>({}));
     if(!res.ok||j.success===false) throw Error(j.error||'Gagal memuat live report Tahfizh');
     return j;
