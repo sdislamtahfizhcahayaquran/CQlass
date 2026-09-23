@@ -20,7 +20,7 @@
       return norm(u.role||u.primary_role||u.role_code||saved.role||'');
     }catch(_){return''}
   }
-  function allowed(){return role()===ROLE}
+  function allowed(){return role()===ROLE && !window.__CQ_TAHFIZH_KABID_DASH__}
   function go(def){if(!allowed()||!def)return false;window.location.href=def.url;return true}
   function byId(id){return TOOLS.find(x=>x.id===String(id||''))||null}
   function withoutKabid(arr){return Array.isArray(arr)?arr.filter(r=>norm(r)!==ROLE):[]}
