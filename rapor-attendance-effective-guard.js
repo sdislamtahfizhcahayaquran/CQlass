@@ -47,9 +47,12 @@
     return d;
   }
 
+  function currentReport(){
+    try{return typeof raporPreviewState!=='undefined'?raporPreviewState?.report:null}catch(_){return null}
+  }
   const validGrade=v=>['A','B','C','D'].includes(String(v??'').trim().toUpperCase());
   function cleanExtracurricularDisplay(){
-    const eks=window.raporPreviewState?.report?.extracurricular;
+    const eks=currentReport()?.extracurricular;
     if(!eks||typeof eks!=='object') return;
 
     /* If the student does not join an extracurricular, or no PTS/PAS assessment
@@ -149,7 +152,7 @@
     if(typeof renderRaporPreview==='function'&&!renderRaporPreview.__cqEffectiveGuard){
       const original=renderRaporPreview;
       const guarded=function(){
-        try{normalizeAttendance(window.raporPreviewState?.report)}catch(_){}
+        try{normalizeAttendance(currentReport())}catch(_){}
         const result=original.apply(this,arguments);
         try{cleanExtracurricularDisplay()}catch(_){}
         return result;
