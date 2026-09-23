@@ -101,7 +101,7 @@
 
       for(const it of g.items){
         if(!it||!Array.isArray(it.roles))continue;
-        if(!['timesheet','internal-feedback'].includes(String(it.id||''))) it.roles=it.roles.filter(r=>r!=='walas');
+        if(!['timesheet','laporan-promosi','internal-feedback'].includes(String(it.id||''))) it.roles=it.roles.filter(r=>r!=='walas');
       }
       let feedback=g.items.find(x=>x&&x.id==='internal-feedback');
       if(!feedback){feedback={id:'internal-feedback',label:'Saran & Masukan',roles:['walas'],built:true,render:renderReporter};g.items.push(feedback)}
