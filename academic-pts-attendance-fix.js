@@ -77,8 +77,8 @@
       const base=await response.clone().json();
       if(base?.success===false)return response;
       const headers=cloneHeaders(init?.headers||(input instanceof Request?input.headers:null));
-      const body=init?.body||(input instanceof Request?await input.clone().text():JSON.stringify({semester_no:1}));
-      const ar=await nativeFetch(ATT,{method:'POST',headers,body:body||JSON.stringify({semester_no:1})});
+      const body=init?.body||(input instanceof Request?await input.clone().text():JSON.stringify({}));
+      const ar=await nativeFetch(ATT,{method:'POST',headers,body:body||JSON.stringify({})});
       const aj=await ar.json().catch(()=>({}));
       if(!ar.ok||aj?.success===false)return response;
       const merged=merge(base,aj);
