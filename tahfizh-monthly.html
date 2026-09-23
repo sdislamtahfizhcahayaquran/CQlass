@@ -5,36 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Laporan Bulanan Tahfizh — CQlass</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f5f8f8;color:#17343a}
-.top{background:#08746f;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
-.top h1{margin:0;font-size:20px}.top p{margin:5px 0 0;opacity:.86;font-size:12px}
-.back{background:#ffffff1c;color:#fff;border:1px solid #ffffff45;border-radius:8px;padding:9px 12px;text-decoration:none;font-weight:700;font-size:12px}
-.wrap{max-width:1400px;margin:auto;padding:18px}
-.panel{background:#fff;border:1px solid #dceae6;border-radius:14px;padding:16px;box-shadow:0 2px 10px #0000000b;margin-bottom:16px}
-.controls{display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:12px;align-items:end}
-.field label{display:block;font-size:11px;font-weight:700;margin-bottom:6px;color:#527078}
-.field select,.field input{width:100%;height:40px;border:1px solid #cbd9d6;border-radius:8px;padding:7px 9px;background:#fff;font:inherit}
-.btn{height:40px;border:0;border-radius:8px;background:#08746f;color:#fff;font-weight:700;padding:0 16px;cursor:pointer}
-.btn:disabled{opacity:.6;cursor:default}
-.status{font-size:13px;margin-top:10px;padding:10px 12px;border-radius:8px;background:#eef6f5}
-.status.err{background:#fff0f0;color:#a12b2b}
-.tablewrap{overflow:auto;max-height:65vh;border:1px solid #dfe9e7;border-radius:10px}
-table{border-collapse:separate;border-spacing:0;min-width:980px;width:100%;font-size:12px}
-th{position:sticky;top:0;z-index:2;background:#123f52;color:#fff;padding:9px 7px;text-align:left}
-td{padding:6px;border-right:1px solid #e4ecea;border-bottom:1px solid #e4ecea;background:#fff;vertical-align:top}
-.nm{min-width:190px;font-weight:700}.gender{width:60px;text-align:center;color:#647b77}
-.cell{width:100%;min-width:150px;border:1px solid #cbd9d6;border-radius:6px;padding:7px;font:inherit}
-.savebar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap}
-.muted{color:#6e858a;font-size:12px}
-.hist{font-size:11px;color:#08746f;cursor:pointer;text-decoration:underline}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f5f8fb;color:#16324a}.top{background:#173f63;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.top h1{margin:0;font-size:20px}.top p{margin:5px 0 0;opacity:.86;font-size:12px}.back{background:#ffffff1c;color:#fff;border:1px solid #ffffff45;border-radius:8px;padding:9px 12px;text-decoration:none;font-weight:700;font-size:12px}.wrap{max-width:1450px;margin:auto;padding:18px}.panel{background:#fff;border:1px solid #dce5ee;border-radius:14px;padding:16px;box-shadow:0 2px 10px #0000000b;margin-bottom:16px}.controls{display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:12px;align-items:end}.field label{display:block;font-size:11px;font-weight:700;margin-bottom:6px;color:#526a7e}.field select,.field input{width:100%;height:40px;border:1px solid #cbd7e2;border-radius:8px;padding:7px 9px;background:#fff;font:inherit}.btn{height:40px;border:0;border-radius:8px;background:#1e5f99;color:#fff;font-weight:700;padding:0 16px;cursor:pointer}.btn.secondary{background:#eef4fa;color:#173f63;border:1px solid #cddae6}.btn:disabled{opacity:.6;cursor:default}.status{font-size:13px;margin-top:10px;padding:10px 12px;border-radius:8px;background:#edf5fb}.status.err{background:#fff0f0;color:#a12b2b}.tablewrap{overflow:auto;max-height:65vh;border:1px solid #dfe7ee;border-radius:10px}table{border-collapse:separate;border-spacing:0;min-width:1080px;width:100%;font-size:12px}th{position:sticky;top:0;z-index:2;background:#173f63;color:#fff;padding:9px 7px;text-align:left}td{padding:6px;border-right:1px solid #e4ebf0;border-bottom:1px solid #e4ebf0;background:#fff;vertical-align:top}.nm{min-width:190px;font-weight:700}.cell{width:100%;min-width:130px;border:1px solid #cbd7e2;border-radius:6px;padding:7px;font:inherit}.lp{min-width:90px}.savebar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap}.actions{display:flex;gap:8px;flex-wrap:wrap}.muted{color:#6e808f;font-size:12px}.hist{font-size:11px;color:#1e5f99;cursor:pointer;text-decoration:underline}#printArea{display:none}
 @media(max-width:760px){.controls{grid-template-columns:1fr}.wrap{padding:10px}}
+@page{size:A4 landscape;margin:10mm}
+@media print{body{background:#fff;color:#111}.screen-ui{display:none!important}#printArea{display:block!important;width:100%}.print-head{text-align:center;margin-bottom:8mm}.print-head h1{font-size:16pt;margin:0 0 3mm}.print-head p{font-size:9pt;margin:1mm 0}.print-table{width:100%;min-width:0;border-collapse:collapse;font-size:8.5pt}.print-table th,.print-table td{position:static;border:1px solid #777;padding:2.2mm 1.8mm;background:#fff;color:#111}.print-table th{font-weight:700;text-align:center}.print-table td:first-child{text-align:center;width:8mm}.print-foot{margin-top:6mm;font-size:8pt;text-align:right}}
 </style>
 </head>
 <body>
-<div class="top">
-  <div><h1>Laporan Bulanan Tahfizh</h1><p>Kabid Tahfizh · target &amp; pencapaian santri per rentang periode.</p></div>
-  <a class="back" href="./">← Kembali ke CQlass</a>
-</div>
+<div class="screen-ui">
+<div class="top"><div><h1>Laporan Tahfizh Bulanan</h1><p>Kabid Tahfizh · LP, target, pencapaian, juz, dan Tilawah/BBQ per periode.</p></div><a class="back" href="./">← Kembali ke CQlass</a></div>
 <div class="wrap">
   <div class="panel">
     <div class="controls">
@@ -44,100 +23,29 @@ td{padding:6px;border-right:1px solid #e4ecea;border-bottom:1px solid #e4ecea;ba
       <button class="btn" id="load">Tampilkan Siswa</button>
     </div>
     <div id="meta" class="status">Memeriksa sesi CQlass...</div>
-    <div id="histWrap" style="margin-top:8px;display:none"><span class="muted">Periode sebelumnya untuk kelas ini: </span><span id="histList"></span></div>
+    <div id="histWrap" style="margin-top:8px;display:none"><span class="muted">Periode sebelumnya: </span><span id="histList"></span></div>
   </div>
   <div class="panel">
     <div id="empty" class="muted">Pilih kelas dan rentang tanggal, lalu klik <b>Tampilkan Siswa</b>.</div>
     <div id="tablewrap" class="tablewrap" style="display:none">
-      <table>
-        <thead><tr><th>No</th><th>Nama</th><th>LP</th><th>Target Bulan</th><th>Pencapaian Akhir</th><th>Juz</th><th>Tilawah/BBQ</th></tr></thead>
-        <tbody id="tbody"></tbody>
-      </table>
+      <table><thead><tr><th>No</th><th>Nama</th><th>LP</th><th>Target Bulan (sedang proses)</th><th>Pencapaian Akhir Bulan</th><th>Juz</th><th>Tilawah/BBQ</th></tr></thead><tbody id="tbody"></tbody></table>
     </div>
-    <div class="savebar">
-      <div class="muted">Data tersimpan otomatis terkunci per siswa &amp; periode — mengisi ulang periode yang sama akan memperbarui isinya.</div>
-      <button class="btn" id="save" style="display:none">Simpan Laporan</button>
-    </div>
+    <div class="savebar"><div class="muted">Nama siswa otomatis dari database CQlass. Periode yang sama akan memperbarui data, bukan membuat duplikat.</div><div class="actions"><button class="btn secondary" id="print" style="display:none">Cetak A4</button><button class="btn" id="save" style="display:none">Simpan Laporan</button></div></div>
   </div>
 </div>
+</div>
+<div id="printArea"></div>
 <script>
-const API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/tahfizh-monthly-report',
-      KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93',
-      TOKEN=localStorage.getItem('cqlass_session_token')||'';
-let boot=null,current=[];
-const el=id=>document.getElementById(id);
-const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-async function api(body){
-  if(!TOKEN)throw Error('Sesi CQlass tidak ditemukan. Silakan login dari halaman utama.');
-  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(body)});
-  const j=await r.json().catch(()=>({}));
-  if(r.status===401)throw Error('Sesi login berakhir. Silakan login ulang di CQlass.');
-  if(r.status===403)throw Error('Akun ini tidak memiliki akses ke Laporan Bulanan Tahfizh.');
-  if(!r.ok||j.success===false)throw Error(j.error||'Gagal memproses data');
-  return j;
-}
+const API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/tahfizh-monthly-report',KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93',TOKEN=localStorage.getItem('cqlass_session_token')||'';let boot=null,current=[];const el=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+async function api(body){if(!TOKEN)throw Error('Sesi CQlass tidak ditemukan. Silakan login dari halaman utama.');const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(r.status===401)throw Error('Sesi login berakhir. Silakan login ulang di CQlass.');if(r.status===403)throw Error('Akun ini tidak memiliki akses ke Laporan Bulanan Tahfizh.');if(!r.ok||j.success===false)throw Error(j.error||'Gagal memproses data');return j}
 function setStatus(t,e=false){el('meta').textContent=t;el('meta').className='status'+(e?' err':'')}
-async function loadHistory(){
-  const cid=el('kelas').value; if(!cid){el('histWrap').style.display='none';return}
-  try{
-    const j=await api({action:'history',class_id:cid});
-    if(!j.periods?.length){el('histWrap').style.display='none';return}
-    el('histList').innerHTML=j.periods.map(p=>`<span class="hist" data-s="${p.period_start}" data-e="${p.period_end}">${p.period_start} s/d ${p.period_end}</span>`).join(' · ');
-    el('histWrap').style.display='block';
-    el('histList').querySelectorAll('.hist').forEach(s=>s.onclick=()=>{el('mulai').value=s.dataset.s;el('selesai').value=s.dataset.e;loadRoster()});
-  }catch(_){el('histWrap').style.display='none'}
-}
-async function init(){
-  try{
-    boot=await api({action:'bootstrap'});
-    el('kelas').innerHTML='<option value="">— Pilih kelas —</option>'+boot.classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
-    setStatus(`Tahun Ajaran ${boot.academic_year} · Semester ${boot.semester_no}`);
-  }catch(e){setStatus(e.message,true);el('kelas').innerHTML='<option value="">Tidak dapat memuat kelas</option>'}
-}
-async function loadRoster(){
-  const cid=el('kelas').value,ps=el('mulai').value,pe=el('selesai').value;
-  if(!cid)return setStatus('Pilih kelas terlebih dahulu.',true);
-  if(!ps||!pe)return setStatus('Isi tanggal mulai dan tanggal selesai.',true);
-  if(pe<ps)return setStatus('Tanggal selesai tidak boleh sebelum tanggal mulai.',true);
-  try{
-    setStatus('Memuat data siswa...');
-    const j=await api({action:'roster',class_id:cid,period_start:ps,period_end:pe});
-    current=j.rows||[];
-    el('tbody').innerHTML=current.map((s,i)=>`<tr data-id="${s.student_id}">
-      <td>${i+1}</td>
-      <td class="nm">${esc(s.name)}</td>
-      <td class="gender">${esc(s.gender||'—')}</td>
-      <td><input class="cell" data-k="target_bulan" value="${esc(s.target_bulan)}"></td>
-      <td><input class="cell" data-k="pencapaian_akhir" value="${esc(s.pencapaian_akhir)}"></td>
-      <td><input class="cell" data-k="juz" value="${esc(s.juz)}"></td>
-      <td><input class="cell" data-k="tilawah_bbq" value="${esc(s.tilawah_bbq)}"></td>
-    </tr>`).join('');
-    el('empty').style.display=current.length?'none':'block';
-    el('tablewrap').style.display=current.length?'block':'none';
-    el('save').style.display=current.length?'block':'none';
-    const c=boot.classes.find(x=>x.id===cid);
-    setStatus(`${c?.name||''}: ${current.length} siswa · periode ${ps} s/d ${pe}`);
-    loadHistory();
-  }catch(e){setStatus(e.message,true)}
-}
-async function save(){
-  const cid=el('kelas').value,ps=el('mulai').value,pe=el('selesai').value;
-  const rows=[...el('tbody').querySelectorAll('tr')].map(tr=>{
-    const o={student_id:tr.dataset.id};
-    tr.querySelectorAll('[data-k]').forEach(x=>o[x.dataset.k]=x.value.trim());
-    return o;
-  });
-  if(!rows.length)return;
-  const b=el('save');
-  try{
-    b.disabled=true;b.textContent='Menyimpan...';
-    const j=await api({action:'save',class_id:cid,period_start:ps,period_end:pe,rows});
-    setStatus(j.message);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Laporan',1600);
-    loadHistory();
-  }catch(e){setStatus(e.message,true);b.textContent='Simpan Laporan'}finally{b.disabled=false}
-}
-el('load').onclick=loadRoster;el('save').onclick=save;el('kelas').onchange=loadHistory;
-init();
+async function loadHistory(){const cid=el('kelas').value;if(!cid){el('histWrap').style.display='none';return}try{const j=await api({action:'history',class_id:cid});if(!j.periods?.length){el('histWrap').style.display='none';return}el('histList').innerHTML=j.periods.map(p=>`<span class="hist" data-s="${p.period_start}" data-e="${p.period_end}">${p.period_start} s/d ${p.period_end}</span>`).join(' · ');el('histWrap').style.display='block';el('histList').querySelectorAll('.hist').forEach(s=>s.onclick=()=>{el('mulai').value=s.dataset.s;el('selesai').value=s.dataset.e;loadRoster()})}catch(_){el('histWrap').style.display='none'}}
+async function init(){try{boot=await api({action:'bootstrap'});el('kelas').innerHTML='<option value="">— Pilih kelas —</option>'+boot.classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');setStatus(`Tahun Ajaran ${boot.academic_year} · Semester ${boot.semester_no}`)}catch(e){setStatus(e.message,true);el('kelas').innerHTML='<option value="">Tidak dapat memuat kelas</option>'}}
+async function loadRoster(){const cid=el('kelas').value,ps=el('mulai').value,pe=el('selesai').value;if(!cid)return setStatus('Pilih kelas terlebih dahulu.',true);if(!ps||!pe)return setStatus('Isi tanggal mulai dan tanggal selesai.',true);if(pe<ps)return setStatus('Tanggal selesai tidak boleh sebelum tanggal mulai.',true);try{setStatus('Memuat data siswa...');const j=await api({action:'roster',class_id:cid,period_start:ps,period_end:pe});current=j.rows||[];el('tbody').innerHTML=current.map((s,i)=>`<tr data-id="${s.student_id}"><td>${i+1}</td><td class="nm">${esc(s.name)}</td><td><input class="cell lp" data-k="lp" value="${esc(s.lp)}" placeholder="LP"></td><td><input class="cell" data-k="target_bulan" value="${esc(s.target_bulan)}"></td><td><input class="cell" data-k="pencapaian_akhir" value="${esc(s.pencapaian_akhir)}"></td><td><input class="cell" data-k="juz" value="${esc(s.juz)}"></td><td><input class="cell" data-k="tilawah_bbq" value="${esc(s.tilawah_bbq)}"></td></tr>`).join('');const has=current.length>0;el('empty').style.display=has?'none':'block';el('tablewrap').style.display=has?'block':'none';el('save').style.display=has?'block':'none';el('print').style.display=has?'block':'none';const c=boot.classes.find(x=>x.id===cid);setStatus(`${c?.name||''}: ${current.length} siswa · periode ${ps} s/d ${pe}`);loadHistory()}catch(e){setStatus(e.message,true)}}
+function collectRows(){return [...el('tbody').querySelectorAll('tr')].map(tr=>{const o={student_id:tr.dataset.id,name:tr.querySelector('.nm')?.textContent?.trim()||''};tr.querySelectorAll('[data-k]').forEach(x=>o[x.dataset.k]=x.value.trim());return o})}
+async function save(){const cid=el('kelas').value,ps=el('mulai').value,pe=el('selesai').value,rows=collectRows();if(!rows.length)return;const b=el('save');try{b.disabled=true;b.textContent='Menyimpan...';const j=await api({action:'save',class_id:cid,period_start:ps,period_end:pe,rows});setStatus(j.message);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Laporan',1600);loadHistory()}catch(e){setStatus(e.message,true);b.textContent='Simpan Laporan'}finally{b.disabled=false}}
+function printMonthly(){const rows=collectRows();if(!rows.length)return setStatus('Belum ada data untuk dicetak.',true);const c=boot?.classes?.find(x=>x.id===el('kelas').value);el('printArea').innerHTML=`<div class="print-head"><h1>SD Islam Tahfizh Cahaya Qur'an</h1><p><b>LAPORAN TAHFIZH BULANAN</b></p><p>Kelas: ${esc(c?.name||'—')} · Tahun Ajaran ${esc(boot?.academic_year||'—')} · Semester ${esc(boot?.semester_no||'—')}</p><p>Periode: ${esc(el('mulai').value)} s/d ${esc(el('selesai').value)}</p></div><table class="print-table"><thead><tr><th>No</th><th>Nama</th><th>LP</th><th>Target Bulan</th><th>Pencapaian Akhir Bulan</th><th>Juz</th><th>Tilawah/BBQ</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.lp||'—')}</td><td>${esc(r.target_bulan||'—')}</td><td>${esc(r.pencapaian_akhir||'—')}</td><td>${esc(r.juz||'—')}</td><td>${esc(r.tilawah_bbq||'—')}</td></tr>`).join('')}</tbody></table><div class="print-foot">Dicetak dari CQlass</div>`;window.print()}
+el('load').onclick=loadRoster;el('save').onclick=save;el('print').onclick=printMonthly;el('kelas').onchange=loadHistory;init();
 </script>
 </body>
 </html>
