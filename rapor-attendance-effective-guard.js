@@ -6,8 +6,14 @@
    Report output guards in this file also ensure:
    - students without an extracurricular assessment show blank Rating/Remarks
      for extracurricular rows 1-3 (school activity row remains independent),
-   - Tahfizh report range wording is standardized to English "to" without
-     changing the stored Tahfizh source data,
+   - Tahfizh report wording is standardized for the English report without
+     changing the stored Tahfizh source data:
+       * "s.d" / "s/d" => "to",
+       * surat / ayat / baris => Surah(s) / Verse(s) / Line(s),
+       * Number of Surahs/Lines/Verses always receives the correct English unit
+         even when the database only stores a number or stores the wrong suffix,
+       * free-text fields only translate units that actually exist; they do not
+         invent a new unit, and the word "Drilling" remains unchanged,
    - generated report PDFs keep the exact report layout/content while using a
      print-quality lossless render instead of the old low-resolution JPEG path.
 */
@@ -75,13 +81,63 @@
     });
   }
 
-  function normalizeTahfizhEnglishRanges(){
-    /* Report language is English, so only the displayed Tahfizh range separator
-       is normalized. Stored/imported values remain unchanged. */
-    document.querySelectorAll('#rpv-preview .rpv-tahfizh tbody tr td:nth-child(3)').forEach(cell=>{
-      const original=cell.textContent||'';
-      const normalized=original.replace(/s\s*(?:\/|\.)\s*d\.?/gi,'to');
-      if(normalized!==original) cell.textContent=normalized;
+  const isDashValue=value=>/^[-–—]+$/.test(String(value??'').trim());
+  const countIsOne=value=>{
+    const n=Number(String(value??'').replace(',','.'));
+    return Number.isFinite(n)&&Math.abs(n)===1;
+  };
+  function normalizeTahfizhRange(value){
+    return String(value??'')
+      .replace(/\s*s\.\s*d\.?\s*/gi,' to ')
+      .replace(/\s*s\/d\s*/gi,' to ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+  function normalizeTahfizhFreeText(value){
+    let text=normalizeTahfizhRange(value);
+    if(!text||isDashValue(text)) return text;
+
+    /* Numeric unit phrases are normalized first so singular/plural follows the
+       actual number. This also fixes already-English values such as "1 Verses". */
+    text=text
+      .replace(/\b(\d+(?:[.,]\d+)?)\s*(?:surat|surah|surahs)\b/gi,(_,n)=>`${n} ${countIsOne(n)?'Surah':'Surahs'}`)
+      .replace(/\b(\d+(?:[.,]\d+)?)\s*(?:ayat|verse|verses)\b/gi,(_,n)=>`${n} ${countIsOne(n)?'Verse':'Verses'}`)
+      .replace(/\b(\d+(?:[.,]\d+)?)\s*(?:baris|line|lines)\b/gi,(_,n)=>`${n} ${countIsOne(n)?'Line':'Lines'}`)
+      .replace(/\bsurat\b/gi,'Surah')
+      .replace(/\bayat\b/gi,'Verse')
+      .replace(/\bbaris\b/gi,'Line');
+
+    return text.replace(/\s+/g,' ').trim();
+  }
+  function normalizeTahfizhStructuredCount(value,singular,plural){
+    const raw=String(value??'').trim();
+    if(!raw||isDashValue(raw)) return raw;
+
+    /* Structured count rows define their own unit. Therefore a source such as
+       "141 Baris" inside Number of Verses is intentionally rendered as
+       "141 Verses", not "141 Lines". */
+    const match=raw.match(/\d+(?:[.,]\d+)?/);
+    if(!match) return normalizeTahfizhFreeText(raw);
+    return `${match[0]} ${countIsOne(match[0])?singular:plural}`;
+  }
+  function normalizeTahfizhEnglishDisplay(){
+    document.querySelectorAll('#rpv-preview .rpv-tahfizh tbody tr').forEach(row=>{
+      const cells=[...row.querySelectorAll('td')];
+      if(cells.length<2) return;
+      const label=String(cells[0]?.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      const valueCell=cells[cells.length-1];
+      if(!valueCell) return;
+      const raw=valueCell.textContent||'';
+
+      if(label.includes('number of surahs')){
+        valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Surah','Surahs');
+      }else if(label.includes('number of lines')){
+        valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Line','Lines');
+      }else if(label.includes('number of verses')){
+        valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Verse','Verses');
+      }else{
+        valueCell.textContent=normalizeTahfizhFreeText(raw);
+      }
     });
   }
 
@@ -167,7 +223,7 @@
         try{normalizeAttendance(currentReport())}catch(_){}
         const result=original.apply(this,arguments);
         try{cleanExtracurricularDisplay()}catch(_){}
-        try{normalizeTahfizhEnglishRanges()}catch(_){}
+        try{normalizeTahfizhEnglishDisplay()}catch(_){}
         return result;
       };
       guarded.__cqEffectiveGuard=true;
