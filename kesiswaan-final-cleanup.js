@@ -81,10 +81,17 @@
       if(oldCenterGroup>=0)MODULE_GROUPS.splice(oldCenterGroup,1);
 
       const center={id:CENTER_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],built:true,render:renderCenter};
-      const group={id:CENTER_GROUP_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],items:[
+      const originalKesiswaanItems=oldGroup&&Array.isArray(oldGroup.items)?oldGroup.items:[];
+      const absensi=originalKesiswaanItems.find(x=>x&&x.id==='absensi');
+      const masalah=originalKesiswaanItems.find(x=>x&&x.id==='masalah');
+      const items=[];
+      if(absensi)items.push({...absensi,roles:[...CENTER_ROLES]});
+      items.push(
         {id:'kedisiplinan',label:'Kedisiplinan',roles:[...CENTER_ROLES],built:true,render:c=>openPoint('kedisiplinan',c)},
         {id:'reward',label:'Reward',roles:[...CENTER_ROLES],built:true,render:c=>openPoint('reward',c)}
-      ]};
+      );
+      if(masalah)items.push({...masalah,roles:[...CENTER_ROLES]});
+      const group={id:CENTER_GROUP_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],items};
       const infoIndex=MODULE_GROUPS.findIndex(g=>g&&norm(g.id)==='info');
       MODULE_GROUPS.splice(infoIndex>=0?infoIndex:MODULE_GROUPS.length,0,group);
       return true;
