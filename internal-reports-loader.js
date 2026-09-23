@@ -36,6 +36,7 @@
   // Hindari file yang sudah dimuat langsung dari index atau loader lain.
   const common=[
     'report-preview-v2-route.js?v=20260917-report3',
+    'report-period-control.js?v=20260923-reportperiod1',
     'rapor-identity-fix.js?v=20260917-nisnisn1',
     'academic-report-class-picker.js?v=20260921-classpicker1',
     'rapor-achievement-stars.js?v=20260922-stars8',
