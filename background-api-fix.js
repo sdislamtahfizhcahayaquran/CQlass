@@ -180,10 +180,10 @@
       add('./guru-partner-tahfizh-menu.js?v=20260922-sidebarfix2','__cqPartnerTahfizhMenuFreshV2',false);
     }
     if(r==='kabid_tahfizh'){
-      add('./tahfizh-kabid-shell-fix.js?v=20260924-kabidonly1','__cqTahfizhKabidShellFixLoaderInstalled',false);
+      add('./tahfizh-kabid-shell-fix.js?v=20260924-kabidonly2','__cqTahfizhKabidShellFixLoaderInstalled',false);
     }
-    if(r==='tahfizh'||r==='kabid_tahfizh'){
-      add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260922-single3','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
+    if(r==='tahfizh'){
+      add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-tahfizhonly1','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
     }
   }
 
