@@ -47,7 +47,7 @@ async function auth(s: any, req: Request, b: any) {
   return { account, roles: [...new Set(roles)] };
 }
 function canUse(a: any) {
-  return a?.roles?.some((r: string) => r === "admin" || r === "tahfizh" || r === "kabid_tahfizh" || (r.includes("kabid") && r.includes("tahfizh")));
+  return a?.roles?.includes("kabid_tahfizh");
 }
 
 async function context(s: any) {
