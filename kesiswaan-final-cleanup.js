@@ -64,7 +64,9 @@
         if(!g)continue;
         if(Array.isArray(g.items))g.items=g.items.filter(it=>{
           const id=norm(it?.id),label=norm(it?.label);
-          return !REMOVE.has(id)&&!POINT_IDS.has(id)&&!POINT_LABELS.has(label);
+          if(REMOVE.has(id))return false;
+          if(g.id!==CENTER_GROUP_ID&&(POINT_IDS.has(id)||POINT_LABELS.has(label)))return false;
+          return true;
         });
       }
 
