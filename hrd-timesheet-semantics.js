@@ -23,13 +23,13 @@ function patchText(){
     else if(/^\d+(?:[.,]\d+)?\s*JP\s*·\s*\d+\s*aktivitas$/i.test(s))el.textContent=s.replace(/^\d+(?:[.,]\d+)?\s*JP\s*·\s*/i,'')+' aktivitas';
     else if(s.includes('kelas-mapel memenuhi minimum rapor'))el.textContent=s.replace('kelas-mapel memenuhi minimum rapor','kelas-mapel memenuhi target 2 TP pekan ini');
     else if(/\d+\s*TP terisi\s*·/i.test(s))el.textContent=s.replace(/(\d+)\s*TP terisi/i,'$1/2 TP target pekan ini');
-    else if(s==='Belum ada entry mengajar/JP pada periode ini.')el.textContent='Semua slot kerja sudah terisi penuh pada periode ini.';
+    else if(s==='Belum ada entry mengajar/JP pada periode ini.')el.textContent='Belum ada data Timesheet pada periode ini.';
   });
 }
 function patchTimesheetPage(){
   const root=document.querySelector('.tsv2');if(!root)return;
   const title=root.querySelector('.tsv2-title');if(title)title.textContent='Timesheet';
-  const sub=root.querySelector('.tsv2-sub');if(sub)sub.textContent='Senin–Jumat: isi aktivitas produktif pada waktu kerja. Sabtu: seluruh jam kerja 07.30–12.00 ditampilkan sebagai satu timeline; mengajar/ekskul dan agenda HRD mengambil prioritas atas slot kerja umum.';
+  const sub=root.querySelector('.tsv2-sub');if(sub)sub.textContent='Senin–Jumat: aktivitas kerja ditampilkan dalam satu timeline. Sabtu: seluruh jam kerja 07.30–12.00 mengikuti penugasan sekolah dan agenda HRD.';
   const kpis=root.querySelector('.tsv2-kpis');if(kpis)kpis.style.display='none';
   root.querySelectorAll('.tsv2-card').forEach(card=>{
     const b=card.querySelector(':scope > b');const head=(b?.textContent||'').trim();
@@ -38,7 +38,7 @@ function patchTimesheetPage(){
     }
     if(/^Timesheet\s/i.test(head)){
       b.textContent='Timesheet';
-      const h=card.querySelector('.tsv2-help');if(h)h.textContent='Senin–Jumat mengikuti waktu kerja. Sabtu mengikuti jam kerja 07.30–12.00 dengan prioritas penugasan sekolah dan agenda HRD.';
+      const h=card.querySelector('.tsv2-help');if(h)h.textContent='Timeline kerja guru. JP hanya informasi beban mengajar dan bukan penentu tunggal kelengkapan Timesheet.';
       const table=card.querySelector('.tsv2-table');if(table){
         table.querySelectorAll('tbody tr').forEach(tr=>{const first=(tr.querySelector('td')?.textContent||'').trim();const isSat=/Sab/i.test(first);const badge=(tr.querySelector('.tsv2-badge')?.textContent||'').trim();const recurring=tr.dataset.recurring==='1';if(!isSat&&!recurring&&badge&&badge!=='Diisi guru')tr.style.display='none'});
         table.querySelectorAll('th:nth-child(6),td:nth-child(6)').forEach(x=>x.style.display='none');
@@ -55,13 +55,48 @@ function patchTimesheetPopup(){
   groups.forEach(g=>{
     const h=g.querySelector('h5');const txt=(h?.textContent||'').trim();
     if(/Mengajar\s*\/\s*JP/i.test(txt)){
-      if(h)h.textContent='Waktu kerja belum terisi penuh';
-      g.classList.remove('done');g.classList.add('todo');
-      g.querySelectorAll('.cqts-empty').forEach(x=>{if(/mengajar|JP/i.test(x.textContent||''))x.textContent='Semua slot kerja sudah terisi penuh pada periode ini.'});
+      if(h)h.textContent='Data mengajar';
+      g.querySelectorAll('.cqts-empty').forEach(x=>{if(/mengajar|JP/i.test(x.textContent||''))x.textContent='Belum ada data mengajar pada periode ini.'});
     }else if(/Aktivitas Kerja/i.test(txt)&&h)h.textContent='Aktivitas produktif yang sudah dicatat';
   });
 }
-function patch(){patchText();patchTimesheetPage();patchTimesheetPopup()}
+function isHrd(){return String(window.currentUser?.role||'').toLowerCase()==='hrd'||(Array.isArray(window.currentUser?.roles)&&window.currentUser.roles.map(x=>String(x||'').toLowerCase()).includes('hrd'))}
+function openTeacherTimesheet(teacherId){
+  if(!teacherId)return;
+  try{if(typeof setActiveModule==='function')setActiveModule('timesheet')}catch(_){}
+  let n=0;const apply=()=>{
+    n++;
+    try{
+      if(typeof window.tsv2Teacher==='function'){
+        window.tsv2Teacher(teacherId);
+        return;
+      }
+      const sel=document.querySelector('.tsv2-sel');
+      if(sel){sel.value=teacherId;sel.dispatchEvent(new Event('change',{bubbles:true}));return}
+    }catch(_){}
+    if(n<20)setTimeout(apply,120);
+  };
+  setTimeout(apply,60);
+}
+function patchHrdCards(){
+  if(!isHrd())return;
+  document.querySelectorAll('.hrd-admin-card[id^="hrd-teacher-"]').forEach(card=>{
+    const teacherId=String(card.id||'').replace(/^hrd-teacher-/,'');if(!teacherId)return;
+    const teacher=card.querySelector('.hrd-admin-card-head .hrd-teacher');
+    if(teacher&&!teacher.dataset.hrdTsOpen){
+      teacher.dataset.hrdTsOpen='1';teacher.style.cursor='pointer';teacher.title='Klik untuk membuka Timesheet lengkap guru';
+      teacher.addEventListener('click',()=>openTeacherTimesheet(teacherId));
+    }
+    card.querySelectorAll('.hrd-admin-chip').forEach(btn=>{
+      const label=(btn.querySelector('.hrd-chip-top b')?.textContent||'').trim();
+      if(label!=='Timesheet'||btn.dataset.hrdTsOpen)return;
+      btn.dataset.hrdTsOpen='1';btn.title='Buka Timesheet lengkap guru';
+      btn.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();openTeacherTimesheet(teacherId)},true);
+    });
+  });
+}
+window.hrdOpenTeacherTimesheet=openTeacherTimesheet;
+function patch(){patchText();patchTimesheetPage();patchTimesheetPopup();patchHrdCards()}
 let timer=null;new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(patch,40)}).observe(document.documentElement,{childList:true,subtree:true});
 document.addEventListener('DOMContentLoaded',()=>setTimeout(patch,100));setTimeout(patch,500);
 })();
