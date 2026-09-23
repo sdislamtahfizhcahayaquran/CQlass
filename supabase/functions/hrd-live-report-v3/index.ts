@@ -16,7 +16,7 @@ async function enrich(data:any,start:string,end:string){
   const teachers=data.teachers||[],teacherIds=uniq(teachers.map((t:any)=>T(t.teacher_id)));if(!teacherIds.length)return;
   const{data:unit}=await sb.from("school_units").select("id").eq("code","SD").maybeSingle();if(!unit)return;
   const{data:year}=await sb.from("academic_years").select("id,name").eq("school_unit_id",unit.id).eq("is_active",true).order("created_at",{ascending:false}).limit(1).maybeSingle();if(!year)return;
-  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||1);
+  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||0);if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");
   const [asgR,classR,subR,enrR,objR,activities]=await Promise.all([
     sb.from("teacher_subject_assignments").select("teacher_id,class_id,subject_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true).in("teacher_id",teacherIds),
     sb.from("classes").select("id,name,grade_level").eq("academic_year_id",year.id).eq("is_active",true),
