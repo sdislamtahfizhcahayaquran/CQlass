@@ -28,7 +28,7 @@ async function period(){
   const {data:y}=await sb.from("academic_years").select("id,name").eq("is_active",true).order("created_at",{ascending:false}).limit(1).maybeSingle();
   if(!y)throw Error("academic_year_missing");
   const {data:s}=await sb.from("semesters").select("semester_no").eq("academic_year_id",y.id).eq("is_active",true).limit(1).maybeSingle();
-  return{academic_year_id:y.id,academic_year:y.name,semester_no:Number(s?.semester_no||1)};
+  return{academic_year_id:y.id,academic_year:y.name,semester_no:(()=>{const n=Number(s?.semester_no||0);if(![1,2].includes(n))throw Error("active_semester_not_found");return n})()};
 }
 async function fetchInBatches(table:string,select:string,column:string,ids:string[],batch=70){
   const out:any[]=[];const uniq=[...new Set(ids.filter(Boolean))];
