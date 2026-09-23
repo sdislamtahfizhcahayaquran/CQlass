@@ -46,6 +46,17 @@
         item.built=true;
         item.render=window.renderTeacherTimesheet||item.render;
         reports.items.push(item);
+        // Walas/Guru: urutan Laporan final harus Timesheet, Promosi Socmed, Saran & Masukan.
+        const r=String((typeof currentUser!=='undefined'&&currentUser?.role)||'').toLowerCase();
+        if(r==='walas'||r==='guru'){
+          const allowed=new Set(['timesheet','laporan-promosi','internal-feedback']);
+          for(const it of reports.items){
+            if(!it||!Array.isArray(it.roles))continue;
+            if(!allowed.has(String(it.id||'')))it.roles=it.roles.filter(x=>!['walas','guru'].includes(String(x||'').toLowerCase()));
+          }
+          const order=['timesheet','laporan-promosi','internal-feedback'];
+          reports.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
+        }
       }
       return Boolean(item||reports.items.some(x=>x&&x.id==='timesheet'));
     }catch(err){
