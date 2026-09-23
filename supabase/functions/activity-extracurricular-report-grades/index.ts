@@ -43,7 +43,7 @@ async function build(){
     sb.from("classes").select("id,name,code,grade_level").eq("academic_year_id",p.academic_year_id).eq("is_active",true),
     sb.from("extracurriculars").select("id,name,code,is_active").eq("is_active",true).order("name"),
     sb.from("extracurricular_members").select("id,student_id,extracurricular_id,status").eq("academic_year_id",p.academic_year_id),
-    sb.from("extracurricular_assessments").select("id,student_id,extracurricular_id,semester_no,activity_grade,skill_grade,competition_grade,final_score,final_rating,final_remarks,description,assessment_period,updated_at").eq("academic_year_id",p.academic_year_id).eq("assessment_period","PTS"),
+    sb.from("extracurricular_assessments").select("id,student_id,extracurricular_id,semester_no,activity_grade,skill_grade,competition_grade,final_score,final_rating,final_remarks,description,assessment_period,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("assessment_period","PTS"),
     sb.from("extracurricular_external_students").select("id,student_id,activity_name,institution_name,is_active,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("is_active",true),
     sb.from("extracurricular_external_assessments").select("id,external_student_id,student_id,activity_grade,skill_grade,competition_grade,competition_note,assessment_period,updated_at").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no).eq("assessment_period","PTS"),
     sb.from("school_activity_matrix_marks").select("class_id,student_id,activity_code,participated").eq("academic_year_id",p.academic_year_id).eq("semester_no",p.semester_no),
