@@ -14,6 +14,8 @@
          even when the database only stores a number or stores the wrong suffix,
        * free-text fields only translate units that actually exist; they do not
          invent a new unit, and the word "Drilling" remains unchanged,
+       * UKJ remains the school acronym; common Indonesian UKJ statuses are
+         rendered with one consistent English template,
    - generated report PDFs keep the exact report layout/content while using a
      print-quality lossless render instead of the old low-resolution JPEG path.
 */
@@ -120,6 +122,24 @@
     if(!match) return normalizeTahfizhFreeText(raw);
     return `${match[0]} ${countIsOne(match[0])?singular:plural}`;
   }
+  function normalizeUkjAssessment(value){
+    let raw=String(value??'').trim();
+    if(!raw||isDashValue(raw)) return raw;
+    raw=raw.replace(/\bujian\s+kenaikan\s+juz\b/gi,'UKJ').replace(/\bukj\b/gi,'UKJ').replace(/\s+/g,' ').trim();
+
+    const juz=(raw.match(/\b(?:juz\s*)?(\d{1,2})\b/i)||[])[1]||'';
+    const tag=`UKJ${juz?' '+juz:''}`;
+
+    if(/\b(?:belum|tidak)\s+lulus\b/i.test(raw)) return `${tag} Not Yet Passed`;
+    if(/\blulus\b/i.test(raw)) return `Passed ${tag}`;
+    if(/\bbelum\b/i.test(raw)) return `${tag} Not Yet Completed`;
+    if(/\bsudah\b/i.test(raw)) return `Completed ${tag}`;
+
+    /* If the source only contains UKJ + juz number, keep it concise and do not
+       invent a completion/pass status that was never entered. */
+    if(/\bUKJ\b/i.test(raw)) return tag;
+    return normalizeTahfizhFreeText(raw);
+  }
   function normalizeTahfizhEnglishDisplay(){
     document.querySelectorAll('#rpv-preview .rpv-tahfizh tbody tr').forEach(row=>{
       const cells=[...row.querySelectorAll('td')];
@@ -135,6 +155,8 @@
         valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Line','Lines');
       }else if(label.includes('number of verses')){
         valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Verse','Verses');
+      }else if(label.includes('juz advancement assessment')){
+        valueCell.textContent=normalizeUkjAssessment(raw);
       }else{
         valueCell.textContent=normalizeTahfizhFreeText(raw);
       }
