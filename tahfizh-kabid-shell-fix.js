@@ -1,141 +1,175 @@
-/* CQlass — Kabid Tahfizh/Qur'an clean shell + live PTS input report */
+/* CQlass — Kabid Tahfizh shell + reliable Tahfizh tools menu */
 (function(){
   'use strict';
-  if(window.__CQ_TAHFIZH_SHELL_FIX_V3__) return;
-  window.__CQ_TAHFIZH_SHELL_FIX_V3__=1;
+  if(window.__CQ_TAHFIZH_SHELL_FIX_V4__) return;
+  window.__CQ_TAHFIZH_SHELL_FIX_V4__=1;
 
-  const API=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/tahfizh-input-status';
-  const REFRESH_MS=30000;
-  let live=null,loading=false,filter='all',lastFetch=0;
+  const ROLES=['tahfizh','kabid_tahfizh'];
+  const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
+  const API=BASE+'/functions/v1/tahfizh-input-status';
+  const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  function role(){try{return String(currentUser?.role||'').toLowerCase().replace(/[\s-]+/g,'_')}catch(_){try{return String(JSON.parse(localStorage.getItem('cqlass_user')||'{}').role||'').toLowerCase().replace(/[\s-]+/g,'_')}catch(_2){return''}}}
-  function isTahfizh(){const r=role();return r==='tahfizh'||r==='kabid_tahfizh'||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')))}
-  function token(){try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){return localStorage.getItem('cqlass_session_token')||''}}
-  function dashboardActive(){try{if(typeof activeModule!=='undefined')return String(activeModule||'')==='dashboard'}catch(_){}const sb=document.getElementById('sidebar');const a=sb?.querySelector('.nav-item.active,.active');return !!(a&&String(a.textContent||'').trim().toLowerCase()==='dashboard')}
 
-  function removeRole(arr){return Array.isArray(arr)?arr.filter(x=>!['tahfizh','kabid_tahfizh'].includes(String(x||'').toLowerCase())):arr}
-  function stripModel(){
-    if(!isTahfizh())return;
+  function role(){
     try{
-      if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return;
-      for(const g of MODULE_GROUPS){
-        const key=String(g?.id||'').toLowerCase(),label=String(g?.label||'').trim().toLowerCase();
-        if(key==='akademik'||key==='kesiswaan'||key==='kegiatan'||key==='kegiatan-v2'||label==='akademik'||label==='kesiswaan'||label==='kegiatan'){
-          g.roles=removeRole(g.roles);
-          for(const it of (g.items||[]))it.roles=removeRole(it.roles);
-        }
-      }
-    }catch(e){console.warn('Tahfizh scope model:',e)}
+      const u=(typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{};
+      return norm(u.role||u.primary_role||u.role_code||'');
+    }catch(_){return ''}
   }
-  function cleanSidebar(){
-    if(!isTahfizh())return;
-    const sb=document.getElementById('sidebar');if(!sb)return;
-    [...sb.querySelectorAll('.nav-group-head')].forEach(h=>{
-      const label=String(h.querySelector('span')?.textContent||h.textContent||'').trim().toLowerCase();
-      if(label==='akademik'||label==='kesiswaan'||label==='kegiatan'){
-        const n=h.nextElementSibling;
-        if(n?.classList?.contains('nav-group-items'))n.remove();
-        h.remove();
-      }
-    });
+  function isTahfizh(){
+    const r=role();
+    return ROLES.includes(r)||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')));
   }
-  function cleanDashboardCrossDomain(){
-    if(!isTahfizh()||!dashboardActive())return;
-    const c=document.getElementById('content');if(!c)return;
-    c.querySelectorAll('tbody tr').forEach(tr=>{
-      const first=String(tr.children?.[0]?.textContent||'').trim().toLowerCase();
-      if(first==='kesiswaan'||first==='akademik'||first==='kegiatan')tr.remove();
-    });
+  function token(){
+    try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}
+    catch(_){return localStorage.getItem('cqlass_session_token')||''}
+  }
+  function openPage(url,label){
+    return function(content){
+      if(content) content.innerHTML=`<div class="card"><span class="spinner"></span> Membuka ${esc(label)}...</div>`;
+      setTimeout(()=>{window.location.href=url},20);
+    };
   }
 
-  function css(){if(document.getElementById('cq-tahfizh-live-css'))return;const s=document.createElement('style');s.id='cq-tahfizh-live-css';s.textContent=`
-    #cq-tahfizh-live{background:#fff;border:1px solid #d8e7e3;border-radius:16px;padding:18px 20px;margin:16px 0;box-shadow:0 8px 28px rgba(15,83,77,.06)}
-    .cqtl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.cqtl-title{font-size:18px;font-weight:900;color:#0c4f4b}.cqtl-sub{font-size:12px;color:#6f8581;margin-top:4px}.cqtl-btn{border:1px solid #cce0db;background:#f8fbfa;color:#08746f;border-radius:10px;padding:8px 11px;font-weight:800;cursor:pointer}
-    .cqtl-sums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}.cqtl-sum{border:1px solid #dceae6;background:#f8fbfa;border-radius:12px;padding:11px 12px;text-align:left;cursor:pointer}.cqtl-sum.on{outline:2px solid #0b8b7e;outline-offset:-2px}.cqtl-sum b{display:block;font-size:22px;color:#083f3c}.cqtl-sum span{font-size:11px;color:#71837f}
-    .cqtl-wrap{overflow:auto}.cqtl-table{width:100%;border-collapse:collapse;min-width:900px}.cqtl-table th,.cqtl-table td{padding:10px 9px;border-bottom:1px solid #edf2f0;text-align:left;font-size:12px;vertical-align:top}.cqtl-table th{font-size:11px;color:#56706c;background:#f8fbfa}.cqtl-teacher{font-weight:900;color:#193b38}.cqtl-class{color:#647b77}.cqtl-bar{height:7px;background:#e8efed;border-radius:99px;overflow:hidden;margin-top:5px;min-width:150px}.cqtl-bar i{display:block;height:100%;background:#0b8b7e;border-radius:99px}.cqtl-status{display:inline-block;padding:5px 9px;border-radius:99px;font-size:10px;font-weight:900;white-space:nowrap}.cqtl-done{background:#e4f7ee;color:#116b4c}.cqtl-run{background:#fff3d6;color:#835d00}.cqtl-none{background:#ffeaea;color:#a13939}.cqtl-miss{max-width:260px;color:#657b77;line-height:1.4}.cqtl-error{padding:12px;border-radius:10px;background:#fff0f0;color:#963b3b;margin-top:10px}
-    @media(max-width:900px){.cqtl-sums{grid-template-columns:repeat(2,1fr)}#cq-tahfizh-live{padding:14px}}
-  `;document.head.appendChild(s)}
+  const TOOL_DEFS=[
+    {id:'tahfizh-monthly-report',label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260923-a4-v2'},
+    {id:'tahfizh-ukj-score',label:'UKJ',url:'tahfizh-ukj-score.html?v=20260923-a4-v2'}
+  ];
+
+  function ensureTools(){
+    if(!isTahfizh()||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS)) return false;
+
+    let group=MODULE_GROUPS.find(g=>g&&(
+      norm(g.id)==='tahfizh' || norm(g.id)==='tahfizh_tools' || norm(g.label)==='tahfizh'
+    ));
+    if(!group){
+      group={id:'tahfizh-tools',label:'Tahfizh',roles:[...ROLES],items:[]};
+      const dashIndex=MODULE_GROUPS.findIndex(g=>g&&norm(g.id)==='dashboard');
+      MODULE_GROUPS.splice(dashIndex>=0?dashIndex+1:0,0,group);
+    }
+
+    group.label='Tahfizh';
+    group.roles=[...new Set([...(Array.isArray(group.roles)?group.roles:[]),...ROLES])];
+    if(!Array.isArray(group.items)) group.items=[];
+
+    for(const d of TOOL_DEFS){
+      let item=group.items.find(x=>x&&x.id===d.id);
+      if(!item){
+        item={id:d.id,label:d.label,roles:[...ROLES],built:true,render:openPage(d.url,d.label)};
+        group.items.push(item);
+      }else{
+        item.label=d.label;
+        item.roles=[...new Set([...(Array.isArray(item.roles)?item.roles:[]),...ROLES])];
+        item.built=true;
+        item.render=openPage(d.url,d.label);
+      }
+    }
+    return true;
+  }
+
+  function hasDomMenu(){
+    const sb=document.getElementById('sidebar');
+    if(!sb)return false;
+    const text=String(sb.textContent||'').replace(/[\u200B-\u200D\uFEFF]/g,'').toLowerCase();
+    return text.includes('laporan bulanan')&&text.includes('ukj');
+  }
+
+  let rendering=false;
+  function rebuildSidebar(){
+    if(!isTahfizh()||rendering)return false;
+    const ok=ensureTools();
+    if(!ok)return false;
+    if(typeof renderSidebar==='function'){
+      try{rendering=true;renderSidebar()}catch(e){console.warn('Tahfizh sidebar rebuild:',e)}finally{rendering=false}
+    }
+    return true;
+  }
+
+  function patchRender(){
+    if(typeof renderSidebar!=='function'||renderSidebar.__cqTahfizhToolsV4)return;
+    const old=renderSidebar;
+    const wrapped=function(){
+      if(isTahfizh())ensureTools();
+      return old.apply(this,arguments);
+    };
+    wrapped.__cqTahfizhToolsV4=true;
+    renderSidebar=wrapped;
+  }
+
+  function dashboardActive(){
+    try{if(typeof activeModule!=='undefined')return String(activeModule||'')==='dashboard'}catch(_){}
+    const sb=document.getElementById('sidebar');
+    const a=sb?.querySelector('.nav-item.active,.active');
+    return !!(a&&String(a.textContent||'').trim().toLowerCase()==='dashboard');
+  }
+
+  let live=null,loading=false,lastFetch=0;
+  function installCss(){
+    if(document.getElementById('cq-tahfizh-live-css'))return;
+    const s=document.createElement('style');s.id='cq-tahfizh-live-css';s.textContent=`
+      #cq-tahfizh-live{background:#fff;border:1px solid #d8e7e3;border-radius:16px;padding:18px 20px;margin:16px 0;box-shadow:0 8px 28px rgba(15,83,77,.06)}
+      .cqtl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.cqtl-title{font-size:18px;font-weight:900;color:#173f63}.cqtl-sub{font-size:12px;color:#6f7f8e;margin-top:4px}.cqtl-btn{border:1px solid #cddae6;background:#f7f9fc;color:#173f63;border-radius:10px;padding:8px 11px;font-weight:800;cursor:pointer}.cqtl-wrap{overflow:auto;margin-top:12px}.cqtl-table{width:100%;border-collapse:collapse;min-width:760px}.cqtl-table th,.cqtl-table td{padding:9px;border-bottom:1px solid #edf1f5;text-align:left;font-size:12px}.cqtl-table th{font-size:11px;color:#526a7e;background:#f7f9fc}.cqtl-status{font-weight:800}.cqtl-error{padding:10px;border-radius:8px;background:#fff0f0;color:#963b3b;margin-top:10px}
+    `;document.head.appendChild(s);
+  }
   function fmt(v){if(!v)return'—';try{return new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(v))}catch(_){return String(v)}}
-  function sLabel(s){return s==='selesai'?'Selesai':s==='sedang_input'?'Sedang Input':'Belum Mulai'}
-  function sClass(s){return s==='selesai'?'cqtl-done':s==='sedang_input'?'cqtl-run':'cqtl-none'}
-  function rows(){const a=(live?.teachers||[]).filter(x=>filter==='all'||x.status===filter);if(!a.length)return'<tr><td colspan="6">Tidak ada guru pada status ini.</td></tr>';return a.map(x=>{const miss=x.missing_students||[],show=miss.slice(0,5),more=Math.max(0,miss.length-show.length),p=Math.max(0,Math.min(100,Number(x.progress_percent)||0));return `<tr><td><div class="cqtl-teacher">${esc(x.teacher_name||'Tanpa Guru')}</div></td><td class="cqtl-class">${esc((x.classes||[]).join(', ')||'—')}</td><td><b>${esc(x.complete_students)} / ${esc(x.total_students)} siswa lengkap</b><div class="cqtl-bar"><i style="width:${p}%"></i></div><div style="margin-top:4px;color:#6f8581">${p}%</div></td><td><span class="cqtl-status ${sClass(x.status)}">${sLabel(x.status)}</span></td><td>${fmt(x.last_update)}</td><td class="cqtl-miss">${miss.length?esc(show.join(', '))+(more?` <b>+${more}</b>`:''):'—'}</td></tr>`}).join('')}
+  function liveRows(){
+    const rows=live?.teachers||[];
+    if(!rows.length)return '<tr><td colspan="5">Belum ada data guru halaqah.</td></tr>';
+    return rows.map(x=>`<tr><td><b>${esc(x.teacher_name||'Tanpa Guru')}</b></td><td>${esc((x.classes||[]).join(', ')||'—')}</td><td>${esc(x.complete_students||0)} / ${esc(x.total_students||0)}</td><td class="cqtl-status">${esc(x.status==='selesai'?'Selesai':x.status==='sedang_input'?'Sedang Input':'Belum Mulai')}</td><td>${fmt(x.last_update)}</td></tr>`).join('');
+  }
   function renderLive(error=''){
     if(!isTahfizh()||!dashboardActive())return;
-    css();const c=document.getElementById('content');if(!c)return;
-    let box=document.getElementById('cq-tahfizh-live');if(!box){box=document.createElement('section');box.id='cq-tahfizh-live';const hero=c.querySelector('.cq-role-hero,[data-cq-role-theme="1"],.rd-hero,.dashboard-hero');if(hero)hero.insertAdjacentElement('afterend',box);else c.prepend(box)}
-    if(error){box.innerHTML=`<div class="cqtl-head"><div><div class="cqtl-title">Live Report Input PTS Tahfizh</div><div class="cqtl-sub">Kabid Qur’an · monitoring input guru halaqah</div></div><button class="cqtl-btn" onclick="cqTahfizhLiveRefresh()">Perbarui</button></div><div class="cqtl-error">${esc(error)}</div>`;return}
+    installCss();
+    const c=document.getElementById('content');if(!c)return;
+    let box=document.getElementById('cq-tahfizh-live');
+    if(!box){box=document.createElement('section');box.id='cq-tahfizh-live';const hero=c.querySelector('.cq-role-hero,[data-cq-role-theme="1"],.rd-hero,.dashboard-hero');if(hero)hero.insertAdjacentElement('afterend',box);else c.prepend(box)}
+    if(error){box.innerHTML=`<div class="cqtl-head"><div><div class="cqtl-title">Live Report Input PTS Tahfizh</div><div class="cqtl-sub">Monitoring input guru halaqah</div></div><button class="cqtl-btn" onclick="cqTahfizhLiveRefresh()">Perbarui</button></div><div class="cqtl-error">${esc(error)}</div>`;return}
     if(!live){box.innerHTML='<div class="cqtl-title">Live Report Input PTS Tahfizh</div><div class="cqtl-sub">Memuat progres guru halaqah...</div>';return}
-    const s=live.summary||{};box.innerHTML=`<div class="cqtl-head"><div><div class="cqtl-title">Live Report Input PTS Tahfizh</div><div class="cqtl-sub">Kabid Qur’an · otomatis diperbarui setiap 30 detik · sinkron ${fmt(live.generated_at)}</div></div><button class="cqtl-btn" onclick="cqTahfizhLiveRefresh()">↻ Perbarui</button></div><div class="cqtl-sums"><button class="cqtl-sum ${filter==='all'?'on':''}" onclick="cqTahfizhLiveFilter('all')"><b>${esc(s.teachers||0)}</b><span>Guru halaqah</span></button><button class="cqtl-sum ${filter==='selesai'?'on':''}" onclick="cqTahfizhLiveFilter('selesai')"><b>${esc(s.done||0)}</b><span>Selesai</span></button><button class="cqtl-sum ${filter==='sedang_input'?'on':''}" onclick="cqTahfizhLiveFilter('sedang_input')"><b>${esc(s.in_progress||0)}</b><span>Sedang input</span></button><button class="cqtl-sum ${filter==='belum_mulai'?'on':''}" onclick="cqTahfizhLiveFilter('belum_mulai')"><b>${esc(s.not_started||0)}</b><span>Belum mulai</span></button></div><div class="cqtl-wrap"><table class="cqtl-table"><thead><tr><th>Guru Halaqah</th><th>Kelas</th><th>Progres Input</th><th>Status</th><th>Update Terakhir</th><th>Siswa Belum Lengkap</th></tr></thead><tbody>${rows()}</tbody></table></div>`;
+    box.innerHTML=`<div class="cqtl-head"><div><div class="cqtl-title">Live Report Input PTS Tahfizh</div><div class="cqtl-sub">Sinkron ${fmt(live.generated_at)}</div></div><button class="cqtl-btn" onclick="cqTahfizhLiveRefresh()">↻ Perbarui</button></div><div class="cqtl-wrap"><table class="cqtl-table"><thead><tr><th>Guru Halaqah</th><th>Kelas</th><th>Progres</th><th>Status</th><th>Update</th></tr></thead><tbody>${liveRows()}</tbody></table></div>`;
   }
-  async function load(force=false){
-    if(!isTahfizh()||loading)return;
+  async function loadLive(force=false){
+    if(!isTahfizh()||!dashboardActive()||loading)return;
     if(!force&&Date.now()-lastFetch<5000)return;
-    loading=true;
-    if(!document.getElementById('cq-tahfizh-live'))renderLive();
+    loading=true;renderLive();
     try{
-      const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
-      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify({})});
+      const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
+      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:'{}'});
       const d=await r.json().catch(()=>({}));
       if(!r.ok||d.success===false)throw Error(d.error||'Gagal memuat live report Tahfizh');
       live=d;lastFetch=Date.now();renderLive();
     }catch(e){renderLive(e.message)}finally{loading=false}
   }
-  window.cqTahfizhLiveRefresh=()=>load(true);
-  window.cqTahfizhLiveFilter=f=>{filter=f;renderLive()};
+  window.cqTahfizhLiveRefresh=()=>loadLive(true);
 
-  function apply(){
+  function apply(forceRender=false){
     if(!isTahfizh())return;
-    stripModel();cleanSidebar();cleanDashboardCrossDomain();
-    if(dashboardActive()){
-      if(!document.getElementById('cq-tahfizh-live'))renderLive();
-      load(false);
+    patchRender();
+    const ok=ensureTools();
+    if(ok&&(forceRender||!hasDomMenu()))rebuildSidebar();
+    if(dashboardActive())loadLive(false);
+  }
+
+  let tries=0;
+  const bootTimer=setInterval(()=>{
+    tries++;
+    apply(tries===1);
+    if((hasDomMenu()&&tries>=3)||tries>=30)clearInterval(bootTimer);
+  },300);
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>apply(true),50),{once:true});
+  else setTimeout(()=>apply(true),50);
+  window.addEventListener('load',()=>setTimeout(()=>apply(true),50),{once:true});
+
+  const observer=new MutationObserver(()=>{
+    if(!isTahfizh())return;
+    patchRender();
+    if(!hasDomMenu()){
+      ensureTools();
+      setTimeout(()=>{if(!hasDomMenu())rebuildSidebar()},30);
     }
-  }
-  function patchFunctions(){
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqTahfizhClean){const old=renderSidebar;const wrapped=function(){stripModel();const out=old.apply(this,arguments);setTimeout(cleanSidebar,0);return out};wrapped.__cqTahfizhClean=true;renderSidebar=wrapped}
-    if(typeof enterApp==='function'&&!enterApp.__cqTahfizhClean){const old=enterApp;const wrapped=function(){stripModel();const out=old.apply(this,arguments);setTimeout(apply,80);return out};wrapped.__cqTahfizhClean=true;enterApp=wrapped}
-  }
-  patchFunctions();
-  const ob=new MutationObserver(()=>{
-    if(!isTahfizh())return;
-    cleanSidebar();cleanDashboardCrossDomain();
-    if(dashboardActive()&&!document.getElementById('cq-tahfizh-live')){renderLive();load(false)}
+    if(dashboardActive()&&!document.getElementById('cq-tahfizh-live'))loadLive(false);
   });
-  ob.observe(document.documentElement,{childList:true,subtree:true});
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{patchFunctions();apply()},120));
-  setTimeout(()=>{patchFunctions();apply()},120);
-  setInterval(()=>{if(isTahfizh()){cleanSidebar();cleanDashboardCrossDomain();if(dashboardActive()&&!document.getElementById('cq-tahfizh-live')){renderLive();load(false)}}},3000);
-  setInterval(()=>{if(isTahfizh()&&dashboardActive())load(true)},REFRESH_MS);
-})();
+  observer.observe(document.documentElement,{childList:true,subtree:true});
 
-/* Kabid Tahfizh — tautan operasional Laporan Bulanan + UKJ di sidebar. */
-(function(){
-  'use strict';
-  if(window.__cqTahfizhMonthlyUkjMenu20260923)return;
-  window.__cqTahfizhMonthlyUkjMenu20260923=true;
-  const ROLES=['tahfizh','kabid_tahfizh'];
-  const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
-  function role(){try{return norm(currentUser?.role||JSON.parse(localStorage.getItem('cqlass_user')||'{}').role)}catch(_){return''}}
-  function active(){const r=role();return ROLES.includes(r)||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')))}
-  function redirect(url,label){return function(content){if(content)content.innerHTML=`<div class="card"><span class="spinner"></span> Membuka ${label}...</div>`;setTimeout(()=>{window.location.href=url},30)}}
-  function ensure(){
-    if(!active()||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
-    let g=MODULE_GROUPS.find(x=>x&&(norm(x.id)==='tahfizh'||norm(x.id)==='tahfizh_tools'||norm(x.label)==='tahfizh'));
-    if(!g){g={id:'tahfizh-tools',label:'Tahfizh',roles:[...ROLES],items:[]};MODULE_GROUPS.push(g)}
-    g.roles=[...new Set([...(Array.isArray(g.roles)?g.roles:[]),...ROLES])];
-    if(!Array.isArray(g.items))g.items=[];
-    const defs=[
-      {id:'tahfizh-monthly-report',label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260923-a4'},
-      {id:'tahfizh-ukj-score',label:'UKJ',url:'tahfizh-ukj-score.html?v=20260923-a4'}
-    ];
-    for(const d of defs){
-      let it=g.items.find(x=>x&&x.id===d.id);
-      if(!it){it={id:d.id,label:d.label,roles:[...ROLES],built:true,render:redirect(d.url,d.label)};g.items.push(it)}
-      else{it.label=d.label;it.roles=[...new Set([...(Array.isArray(it.roles)?it.roles:[]),...ROLES])];it.built=true;it.render=redirect(d.url,d.label)}
-    }
-    return true;
-  }
-  function refresh(){if(!ensure())return;try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){}}
-  setTimeout(refresh,180);
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,220));
+  setInterval(()=>{if(isTahfizh()){apply(false);if(dashboardActive())loadLive(false)}},5000);
 })();
