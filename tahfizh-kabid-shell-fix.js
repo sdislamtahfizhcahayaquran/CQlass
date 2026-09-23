@@ -107,3 +107,35 @@
   setInterval(()=>{if(isTahfizh()){cleanSidebar();cleanDashboardCrossDomain();if(dashboardActive()&&!document.getElementById('cq-tahfizh-live')){renderLive();load(false)}}},3000);
   setInterval(()=>{if(isTahfizh()&&dashboardActive())load(true)},REFRESH_MS);
 })();
+
+/* Kabid Tahfizh — tautan operasional Laporan Bulanan + UKJ di sidebar. */
+(function(){
+  'use strict';
+  if(window.__cqTahfizhMonthlyUkjMenu20260923)return;
+  window.__cqTahfizhMonthlyUkjMenu20260923=true;
+  const ROLES=['tahfizh','kabid_tahfizh'];
+  const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  function role(){try{return norm(currentUser?.role||JSON.parse(localStorage.getItem('cqlass_user')||'{}').role)}catch(_){return''}}
+  function active(){const r=role();return ROLES.includes(r)||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')))}
+  function redirect(url,label){return function(content){if(content)content.innerHTML=`<div class="card"><span class="spinner"></span> Membuka ${label}...</div>`;setTimeout(()=>{window.location.href=url},30)}}
+  function ensure(){
+    if(!active()||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
+    let g=MODULE_GROUPS.find(x=>x&&(norm(x.id)==='tahfizh'||norm(x.id)==='tahfizh_tools'||norm(x.label)==='tahfizh'));
+    if(!g){g={id:'tahfizh-tools',label:'Tahfizh',roles:[...ROLES],items:[]};MODULE_GROUPS.push(g)}
+    g.roles=[...new Set([...(Array.isArray(g.roles)?g.roles:[]),...ROLES])];
+    if(!Array.isArray(g.items))g.items=[];
+    const defs=[
+      {id:'tahfizh-monthly-report',label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260923-a4'},
+      {id:'tahfizh-ukj-score',label:'UKJ',url:'tahfizh-ukj-score.html?v=20260923-a4'}
+    ];
+    for(const d of defs){
+      let it=g.items.find(x=>x&&x.id===d.id);
+      if(!it){it={id:d.id,label:d.label,roles:[...ROLES],built:true,render:redirect(d.url,d.label)};g.items.push(it)}
+      else{it.label=d.label;it.roles=[...new Set([...(Array.isArray(it.roles)?it.roles:[]),...ROLES])];it.built=true;it.render=redirect(d.url,d.label)}
+    }
+    return true;
+  }
+  function refresh(){if(!ensure())return;try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){}}
+  setTimeout(refresh,180);
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,220));
+})();
