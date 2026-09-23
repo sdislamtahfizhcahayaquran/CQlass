@@ -92,6 +92,32 @@
       const studentIndex=MODULE_GROUPS.findIndex(g=>g&&g.id==='kesiswaan');
       MODULE_GROUPS.splice(studentIndex>=0?studentIndex:0,0,learningGroup);
 
+      // Satu sumber struktur sidebar Walas/Guru: jangan biarkan patch lain menyebarkan menu Kesiswaan ke Laporan.
+      const student=MODULE_GROUPS.find(g=>g&&g.id==='kesiswaan');
+      if(student&&Array.isArray(student.items)){
+        student.roles=[...new Set([...(student.roles||[]),...TEACHER_ROLES])];
+        const byId=id=>student.items.find(x=>x&&x.id===id);
+        const abs=byId('absensi'),dis=byId('kedisiplinan'),rew=byId('reward'),mas=byId('masalah');
+        const ordered=[];
+        if(abs)ordered.push({...abs,roles:[...new Set([...(abs.roles||[]),'walas'])]});
+        if(dis)ordered.push({...dis,label:'Kedisiplinan',roles:[...new Set([...(dis.roles||[]),...TEACHER_ROLES])]});
+        if(rew)ordered.push({...rew,label:'Reward',roles:[...new Set([...(rew.roles||[]),...TEACHER_ROLES])]});
+        if(mas)ordered.push({...mas,roles:[...new Set([...(mas.roles||[]),'walas'])]});
+        student.items=ordered;
+      }
+      if(reports&&Array.isArray(reports.items)){
+        const allowed=new Set(['timesheet','laporan-promosi','internal-feedback']);
+        for(const it of reports.items){
+          if(!it||!Array.isArray(it.roles))continue;
+          if(!allowed.has(String(it.id||'')))it.roles=without(it.roles,TEACHER_ROLES);
+        }
+        const order=['timesheet','laporan-promosi','internal-feedback'];
+        reports.items.sort((a,b)=>{
+          const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));
+          return (ai<0?99:ai)-(bi<0?99:bi);
+        });
+      }
+
       // Akademik Walas hanya dua menu: Rapor Kegiatan dan Cetak Rapor.
       const rapor=academic.items.find(x=>x&&x.id==='rapor');
       removeGroup('akademik-walas');
