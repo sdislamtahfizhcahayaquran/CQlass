@@ -1,7 +1,14 @@
 /* CQlass — hard guard for report attendance.
    Present on report = Admin effective days - Sick - Excused - Unexcused.
    This request path intentionally bypasses window.fetch wrappers so Preview/PDF
-   always reads the verified report-preview-v2 Edge Function directly. */
+   always reads the verified report-preview-v2 Edge Function directly.
+
+   Report output guards in this file also ensure:
+   - students without an extracurricular assessment show blank Rating/Remarks
+     for extracurricular rows 1-3 (school activity row remains independent),
+   - generated report PDFs keep the exact report layout/content while using a
+     print-quality lossless render instead of the old low-resolution JPEG path.
+*/
 (function(){
   'use strict';
   if(window.__CQ_RAPOR_EFFECTIVE_ATTENDANCE_GUARD__) return;
@@ -40,6 +47,74 @@
     return d;
   }
 
+  const validGrade=v=>['A','B','C','D'].includes(String(v??'').trim().toUpperCase());
+  function cleanExtracurricularDisplay(){
+    const eks=window.raporPreviewState?.report?.extracurricular;
+    if(!eks||typeof eks!=='object') return;
+
+    /* If the student does not join an extracurricular, or no PTS/PAS assessment
+       exists yet, do not print placeholder dashes/activity names in rows 1-3.
+       Row 4 (school activities) is intentionally untouched because it is sourced
+       independently from the school activity matrix. */
+    const noAssessment=!validGrade(eks.activity_grade)&&!validGrade(eks.skill_grade)&&!validGrade(eks.competition_grade);
+    const notParticipating=String(eks.status||'').trim().toUpperCase()==='TIDAK_IKUT';
+    if(!notParticipating&&!noAssessment) return;
+
+    document.querySelectorAll('#rpv-preview .rpv-exkul tbody').forEach(tbody=>{
+      const rows=[...tbody.querySelectorAll('tr')];
+      rows.slice(0,3).forEach(row=>{
+        const cells=row.querySelectorAll('td');
+        if(cells[2]) cells[2].textContent='';
+        if(cells[3]) cells[3].textContent='';
+      });
+    });
+  }
+
+  function installHdPdfRenderer(){
+    if(typeof rpElementPdfBlob!=='function'||typeof rpEnsurePdfLibs!=='function'||typeof rpWaitForImages!=='function') return false;
+    if(rpElementPdfBlob.__cqHdPrint) return true;
+
+    const hdRenderer=async function(el){
+      await rpEnsurePdfLibs(false);
+      const pages=[...el.querySelectorAll('.rpv-paper')];
+      if(!pages.length) throw new Error('Halaman rapor tidak ditemukan.');
+      const {jsPDF}=window.jspdf||{};
+      if(!jsPDF) throw new Error('Library PDF belum siap.');
+
+      /* 3.2x on an A4 CSS page is approximately print-quality ~300 DPI.
+         PNG is lossless, so text, thin borders, signatures and logos stay sharp.
+         Layout dimensions stay exactly A4 210 x 297 mm. */
+      const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+      if(document.fonts?.ready){try{await document.fonts.ready}catch(_){}}
+
+      for(let i=0;i<pages.length;i++){
+        const page=pages[i];
+        await rpWaitForImages(page);
+        const canvas=await window.html2canvas(page,{
+          scale:3.2,
+          useCORS:true,
+          backgroundColor:'#ffffff',
+          logging:false,
+          scrollX:0,
+          scrollY:0,
+          width:page.scrollWidth,
+          height:page.scrollHeight,
+          windowWidth:page.scrollWidth,
+          windowHeight:page.scrollHeight,
+          imageSmoothingEnabled:true
+        });
+        if(i>0) pdf.addPage('a4','portrait');
+        pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,210,297,undefined,'SLOW');
+        canvas.width=1;
+        canvas.height=1;
+      }
+      return pdf.output('blob');
+    };
+    hdRenderer.__cqHdPrint=true;
+    rpElementPdfBlob=hdRenderer;
+    return true;
+  }
+
   function install(){
     if(typeof getAuthToken!=='function'||typeof SUPABASE_URL==='undefined'||typeof SUPABASE_PUBLISHABLE_KEY==='undefined'){
       return setTimeout(install,50);
@@ -73,10 +148,17 @@
 
     if(typeof renderRaporPreview==='function'&&!renderRaporPreview.__cqEffectiveGuard){
       const original=renderRaporPreview;
-      const guarded=function(){try{normalizeAttendance(raporPreviewState?.report)}catch(_){}return original.apply(this,arguments)};
+      const guarded=function(){
+        try{normalizeAttendance(window.raporPreviewState?.report)}catch(_){}
+        const result=original.apply(this,arguments);
+        try{cleanExtracurricularDisplay()}catch(_){}
+        return result;
+      };
       guarded.__cqEffectiveGuard=true;
       renderRaporPreview=guarded;
     }
+
+    if(!installHdPdfRenderer()) setTimeout(installHdPdfRenderer,50);
   }
   install();
 })();
