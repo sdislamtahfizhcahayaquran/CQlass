@@ -92,6 +92,15 @@
       );
       if(masalah)items.push({...masalah,roles:[...CENTER_ROLES]});
       const group={id:CENTER_GROUP_ID,label:'Kesiswaan',roles:[...CENTER_ROLES],items};
+      const report=MODULE_GROUPS.find(g=>g&&norm(g.id)==='laporan');
+      if(report&&Array.isArray(report.items)){
+        const keep=new Set(['timesheet','laporan-promosi','internal-feedback']);
+        for(const it of report.items){
+          if(it&&Array.isArray(it.roles)&&!keep.has(String(it.id||'')))it.roles=it.roles.filter(x=>!CENTER_ROLES.includes(norm(x)));
+        }
+        const order=['timesheet','laporan-promosi','internal-feedback'];
+        report.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
+      }
       const infoIndex=MODULE_GROUPS.findIndex(g=>g&&norm(g.id)==='info');
       MODULE_GROUPS.splice(infoIndex>=0?infoIndex:MODULE_GROUPS.length,0,group);
       return true;
