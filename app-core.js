@@ -3111,7 +3111,7 @@ async function pointsV2Request(action,payload={},timeoutMs=25000){
 async function pointV2Bootstrap(force=false){
   if(!force&&POINT_V2.boot&&Date.now()-POINT_V2.bootAt<600000)return POINT_V2.boot;
   const d=await pointsV2Request('bootstrap',{},20000);
-  POINT_V2.boot=d;POINT_V2.bootAt=Date.now();
+  POINT_V2.boot=d;POINT_V2.bootAt=Date.now();POINT_V2.studentCache.clear();
   return d;
 }
 async function pointV2Students(classId){
@@ -3447,8 +3447,10 @@ async function pv2Render(kind,content){
   <div class="page-sub">${kind==='violation'?'Input, edit, rekap, dan eskalasi sesuai Tata Tertib resmi.':'Input reward dan pengurangan poin sesuai Tata Tertib resmi.'}</div>
   <div id="pv2-root-${kind}"><div class="card"><span class="spinner"></span> Memuat data...</div></div>`;
   try{
-    const b=await pointV2Bootstrap();
-    if(!POINT_V2.classId[kind]&&b.default_class_id)POINT_V2.classId[kind]=b.default_class_id;
+    const b=await pointV2Bootstrap(true);
+    const allowedClassIds=new Set((b.classes||[]).map(x=>String(x.id||'')));
+    if(!allowedClassIds.has(String(POINT_V2.classId[kind]||'')))POINT_V2.classId[kind]=b.default_class_id||'';
+    POINT_V2.studentId[kind]='';POINT_V2.snapshot[kind]=null;
     await pv2RenderWorkspace(kind);
   }catch(e){
     document.getElementById(`pv2-root-${kind}`).innerHTML=`<div class="card"><div class="pv2-alert">${escapeHtml(e.message||'Gagal membuka modul.')}</div></div>`;
