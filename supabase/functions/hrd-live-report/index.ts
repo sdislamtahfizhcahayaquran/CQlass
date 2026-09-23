@@ -55,7 +55,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const accountByTeacher=new Map((accounts.data||[]).filter((a:any)=>a.teacher_id).map((a:any)=>[a.teacher_id,a.id]));
   const classMap=new Map((classes.data||[]).map((c:any)=>[c.id,c.name]));
   const subjectMap=new Map((subjects.data||[]).map((s:any)=>[s.id,s.name||s.code||"Mapel"]));
-  const activeYearId=T(activeYear.data?.id),semNo=Number(x.data?.source_period?.semester_no||1);
+  const activeYearId=T(activeYear.data?.id),semNo=Number(x.data?.source_period?.semester_no||0);if(![1,2].includes(semNo))throw Error("active_semester_not_found");
   const homeroomByTeacher=new Map<string,string[]>();for(const r of reportAssignments.data||[]){if(activeYearId&&T(r.academic_year_id)!==activeYearId)continue;if(Number(r.semester_no||semNo)!==semNo)continue;if(!r.homeroom_teacher_id)continue;if(!homeroomByTeacher.has(r.homeroom_teacher_id))homeroomByTeacher.set(r.homeroom_teacher_id,[]);homeroomByTeacher.get(r.homeroom_teacher_id)!.push(r.class_id)}
   const reqs=(reportRequests.data||[]).filter((r:any)=>!["cancelled","canceled","draft"].includes(L(r.status))&&(r.categories||[]).some((c:any)=>["reward","discipline","pelanggaran"].includes(L(c))));
   const confs=reportConfirmations.data||[];
