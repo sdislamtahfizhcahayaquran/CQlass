@@ -6,6 +6,8 @@
    Report output guards in this file also ensure:
    - students without an extracurricular assessment show blank Rating/Remarks
      for extracurricular rows 1-3 (school activity row remains independent),
+   - Tahfizh report range wording is standardized to English "to" without
+     changing the stored Tahfizh source data,
    - generated report PDFs keep the exact report layout/content while using a
      print-quality lossless render instead of the old low-resolution JPEG path.
 */
@@ -70,6 +72,16 @@
         if(cells[2]) cells[2].textContent='';
         if(cells[3]) cells[3].textContent='';
       });
+    });
+  }
+
+  function normalizeTahfizhEnglishRanges(){
+    /* Report language is English, so only the displayed Tahfizh range separator
+       is normalized. Stored/imported values remain unchanged. */
+    document.querySelectorAll('#rpv-preview .rpv-tahfizh tbody tr td:nth-child(3)').forEach(cell=>{
+      const original=cell.textContent||'';
+      const normalized=original.replace(/s\s*(?:\/|\.)\s*d\.?/gi,'to');
+      if(normalized!==original) cell.textContent=normalized;
     });
   }
 
@@ -155,6 +167,7 @@
         try{normalizeAttendance(currentReport())}catch(_){}
         const result=original.apply(this,arguments);
         try{cleanExtracurricularDisplay()}catch(_){}
+        try{normalizeTahfizhEnglishRanges()}catch(_){}
         return result;
       };
       guarded.__cqEffectiveGuard=true;
