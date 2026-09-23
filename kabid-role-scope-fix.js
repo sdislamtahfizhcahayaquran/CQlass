@@ -257,7 +257,7 @@
 (function(){
   if(document.querySelector('script[data-cq-teacher-walas-clean]')) return;
   const s=document.createElement('script');
-  s.src='teacher-walas-sidebar-clean.js?v=20260923-authority1';
+  s.src='teacher-walas-sidebar-clean.js?v=20260923-authority2-rekap1';
   s.dataset.cqTeacherWalasClean='1';
   document.head.appendChild(s);
 })();
