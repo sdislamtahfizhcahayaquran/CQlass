@@ -48,7 +48,7 @@ async function enrichAcademicTP(teachers:any[]){
       sb.from("academic_years").select("id,name").eq("is_active",true).maybeSingle(),
       sb.from("semesters").select("id,academic_year_id,semester_no").eq("is_active",true).maybeSingle()
     ]);if(ye||se||!year||!sem)return;
-    const semNo=Number(sem.semester_no)||1,teacherIds=uniq(teachers.map(t=>T(t.teacher_id)));if(!teacherIds.length)return;
+    const semNo=Number(sem.semester_no||0);if(![1,2].includes(semNo))throw Error("active_semester_not_found");const teacherIds=uniq(teachers.map(t=>T(t.teacher_id)));if(!teacherIds.length)return;
     const [asgR,classR,subR,objR,scoreR]=await Promise.all([
       sb.from("teacher_subject_assignments").select("teacher_id,class_id,subject_id,is_active").eq("academic_year_id",year.id).eq("semester_no",semNo).eq("is_active",true).in("teacher_id",teacherIds),
       sb.from("classes").select("id,name,grade_level,is_active"),
