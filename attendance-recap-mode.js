@@ -35,7 +35,7 @@
    *
    * Some attendance re-renders keep #mt9-tabs but remove/replace its recap panel.
    * mt-v7 setup intentionally returns when #mt9-tabs already exists, which made
-   * Rekap Editable disappear until a hard reload.  Repair the whole MT shell
+   * Rekap Editable disappear until a hard reload. Repair the whole MT shell
    * whenever its structure becomes incomplete so a later renderer cannot leave
    * Walas with only one recap.
    */
@@ -58,15 +58,27 @@
     if(repairing||dualRecapComplete())return;
     repairing=true;
     try{
+      var recapWasOpen=!!(
+        document.querySelector('.mt9-tab[data-tab="recap"].active') ||
+        document.querySelector('#mt9-recap.active')
+      );
       ['mt9-tabs','mt9-leaderboard','mt9-recap'].forEach(function(id){
         var el=document.getElementById(id);if(el)el.remove();
       });
       window.__CQMTV9=false;
       document.querySelectorAll('script[data-cq-mt-v9-repair]').forEach(function(x){x.remove()});
       var r=document.createElement('script');
-      r.src='mt-v7.js?v=20260923-dualrecap-repair1';
+      r.src='mt-v7.js?v=20260923-dualrecap-repair2';
       r.dataset.cqMtV9Repair='1';
-      r.onload=function(){repairing=false};
+      r.onload=function(){
+        repairing=false;
+        if(recapWasOpen){
+          setTimeout(function(){
+            var b=document.querySelector('.mt9-tab[data-tab="recap"]');
+            if(b)b.click();
+          },80);
+        }
+      };
       r.onerror=function(){repairing=false};
       document.head.appendChild(r);
     }catch(_){repairing=false}
