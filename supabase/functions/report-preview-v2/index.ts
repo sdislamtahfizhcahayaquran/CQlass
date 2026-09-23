@@ -34,7 +34,7 @@ function publicReportType(v:any){const x=txt(v).toUpperCase();return x==="SEMEST
 function storedReportType(v:any){return publicReportType(v)==="PAS"?"SEMESTER":"PTS"}
 async function reportPeriodForRequest(s:any,b:any){
   const action=txt(b?.action).toLowerCase();
-  if(!["preview","bulk"].includes(action))return null;
+  if(!["preview","class_reports","bulk"].includes(action))return null;
   const yearName=txt(b?.academic_year),semesterNo=Number(b?.semester_no||0),type=publicReportType(b?.report_type);
   if(!yearName||![1,2].includes(semesterNo))return null;
   const yearId=await resolveYearId(s,yearName);if(!yearId)return null;
@@ -147,14 +147,24 @@ async function finalizedRows(s:any,yearId:string,semesterNo:number,classId:strin
   const map=new Map<string,any>();for(const row of data||[])map.set(txt(row.student_id),row);
   finalizationCache.set(key,map);return map;
 }
-async function attendanceFromEffectiveDays(s:any,reports:any[]){
+async function attendanceFromEffectiveDays(s:any,reports:any[],requestedType:any=""){
   for(const r of reports||[]){
     const sid=txt(r?.student?.id),classId=txt(r?.class?.id),yearName=txt(r?.academic_year),semesterNo=Number(r?.semester_no||1);
     if(!sid||!classId||!yearName)continue;
     const yearId=await resolveYearId(s,yearName);if(!yearId)continue;
-    const assessmentPeriod=txt(r?.report_type).toUpperCase()==="SEMESTER"?"PAS":"PTS";
-    const effective=await effectiveDays(s,yearId,semesterNo,assessmentPeriod,classId);
-    if(effective===null)continue;
+    const requestedPublic=publicReportType(requestedType||r?.report_type);
+    const assessmentPeriod=requestedPublic==="PAS"?"PAS":"PTS";
+    let effective=await effectiveDays(s,yearId,semesterNo,assessmentPeriod,classId);
+    if(effective===null){
+      const {data:fallback,error:fe}=await s.from("class_effective_days")
+        .select("effective_days")
+        .eq("class_id",classId).eq("semester_no",semesterNo).eq("assessment_period",assessmentPeriod)
+        .order("updated_at",{ascending:false}).limit(1).maybeSingle();
+      if(fe)throw fe;
+      const fv=fallback?.effective_days==null?null:Number(fallback.effective_days);
+      effective=fv!==null&&Number.isFinite(fv)&&fv>=0?Math.trunc(fv):null;
+    }
+    if(effective===null)throw Error(`Hari efektif ${assessmentPeriod} belum ditetapkan Admin untuk kelas ${txt(r?.class?.name)||classId}.`);
 
     const base=(r.attendance&&typeof r.attendance==="object")?r.attendance:{};
     let sick=count(base.sick),excused=count(base.excused),unexcused=count(base.unexcused),late=count(base.late);
@@ -179,6 +189,8 @@ async function attendanceFromEffectiveDays(s:any,reports:any[]){
       effective_days:effective,
       source_mode:source,
       present_formula:"effective_days_minus_sick_excused_unexcused",
+      effective_source:"admin_class_effective_days",
+      requested_report_type:requestedPublic,
       percent:{
         ...(base.percent||{}),
         present:Math.round(present/denom*100),
@@ -191,8 +203,8 @@ async function attendanceFromEffectiveDays(s:any,reports:any[]){
   return reports;
 }
 
-async function enrich(s:any,reports:any[]){
-  await attendanceFromEffectiveDays(s,reports);
+async function enrich(s:any,reports:any[],requestedType:any=""){
+  await attendanceFromEffectiveDays(s,reports,requestedType);
   await schoolGrades(s,reports);
   await academicStars(s,reports);
   return reports;
@@ -218,8 +230,9 @@ Deno.serve(async(req:Request)=>{
     const text=await upstream.text();let out:any;
     try{out=text?JSON.parse(text):{}}catch(_){return new Response(text,{status:upstream.status,headers:CORS})}
     if(!upstream.ok||out?.success===false)return reply(out,upstream.status);
-    if(out?.report)await enrich(s,[out.report]);
-    if(Array.isArray(out?.reports))await enrich(s,out.reports);
+    const requestedType=publicReportType(body?.report_type||body?.assessment_period);
+    if(out?.report)await enrich(s,[out.report],requestedType);
+    if(Array.isArray(out?.reports))await enrich(s,out.reports,requestedType);
     if(reportPeriod){
       out.report_period=reportPeriod;
       if(out?.report&&typeof out.report==="object")out.report.report_period=reportPeriod;
