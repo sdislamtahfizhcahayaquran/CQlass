@@ -3537,9 +3537,9 @@ function injectRaporPreviewStyles(){
 }
 async function renderCetakRapor(content){
   injectRaporPreviewStyles();
-  raporPreviewState={academicYear:'2026/2027',semester:1,reportType:'PTS',classes:[],classLocked:false,classId:'',students:[],studentId:'',startDate:rpDefaultStartYmd(),endDate:rpTodayYmd(),printDate:rpTodayYmd(),hijriDate:'',report:null,classReports:[]};
+  raporPreviewState={academicYear:'',semester:0,reportType:'PTS',classes:[],classLocked:false,classId:'',students:[],studentId:'',startDate:rpDefaultStartYmd(),endDate:rpTodayYmd(),printDate:rpTodayYmd(),hijriDate:'',report:null,classReports:[]};
   content.innerHTML=`<div class="page-title">Rapor</div><div class="page-sub">Preview dan cetak rapor siswa sesuai kelas wali.</div><div id="rpv-root"><div class="card"><span class="spinner"></span> Menyiapkan Rapor...</div></div>`;
-  try{const b=await reportPreviewRequest('bootstrap',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester});raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();if(raporPreviewState.classId)await rpLoadStudents()}catch(e){document.getElementById('rpv-root').innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuka Rapor.')}</div></div>`}
+  try{const b=await reportPreviewRequest('bootstrap',{});raporPreviewState.academicYear=b.academic_year||'';raporPreviewState.semester=Number(b.semester_no)||0;raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();if(raporPreviewState.classId)await rpLoadStudents()}catch(e){document.getElementById('rpv-root').innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuka Rapor.')}</div></div>`}
 }
 
 function renderRaporControls(){
