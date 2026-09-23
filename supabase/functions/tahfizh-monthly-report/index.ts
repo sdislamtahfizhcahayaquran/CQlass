@@ -73,7 +73,7 @@ async function roster(s: any, ctx: any, classId: string, periodStart: string, pe
   if (ee) throw ee;
   const ids = [...new Set((e || []).map((x: any) => x.student_id).filter(Boolean))] as string[];
   if (!ids.length) return [];
-  const { data: studs, error: se } = await s.from("students").select("id,full_name,gender,status").in("id", ids);
+  const { data: studs, error: se } = await s.from("students").select("id,full_name,status").in("id", ids);
   if (se) throw se;
   const { data: reports, error: re } = await s.from("tahfizh_monthly_reports").select("*")
     .in("student_id", ids).eq("period_start", periodStart).eq("period_end", periodEnd);
@@ -82,10 +82,10 @@ async function roster(s: any, ctx: any, classId: string, periodStart: string, pe
   return (studs || [])
     .filter((x: any) => isActive(x.status))
     .map((x: any) => {
-      const r = rm.get(x.id) || {};
+      const r: any = rm.get(x.id) || {};
       return {
-        student_id: x.id, name: x.full_name, gender: x.gender || "",
-        target_bulan: r.target_bulan || "", pencapaian_akhir: r.pencapaian_akhir || "",
+        student_id: x.id, name: x.full_name,
+        lp: r.lp || "", target_bulan: r.target_bulan || "", pencapaian_akhir: r.pencapaian_akhir || "",
         juz: r.juz || "", tilawah_bbq: r.tilawah_bbq || "", report_id: r.id || null,
       };
     })
@@ -101,7 +101,7 @@ async function save(s: any, classId: string, periodStart: string, periodEnd: str
   const now = new Date().toISOString();
   const payload = rows.map((r: any) => ({
     student_id: T(r.student_id), class_id: classId, period_start: periodStart, period_end: periodEnd,
-    target_bulan: T(r.target_bulan) || null, pencapaian_akhir: T(r.pencapaian_akhir) || null,
+    lp: T(r.lp) || null, target_bulan: T(r.target_bulan) || null, pencapaian_akhir: T(r.pencapaian_akhir) || null,
     juz: T(r.juz) || null, tilawah_bbq: T(r.tilawah_bbq) || null,
     created_by_account_id: accountId, updated_at: now,
   })).filter((r: any) => r.student_id);
