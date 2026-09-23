@@ -22,7 +22,7 @@
     const ctrl=new AbortController();
     const timer=setTimeout(()=>ctrl.abort(),12000);
     try{
-      const res=await fetch(API(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,semester_no:1,...payload})});
+      const res=await fetch(API(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,...payload})});
       const data=await res.json().catch(()=>({success:false,error:'Respons sistem tidak valid'}));
       if(!res.ok||data.success===false) throw new Error(data.error||`Gagal memuat data (${res.status})`);
       return data;
