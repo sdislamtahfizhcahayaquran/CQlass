@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nilai UKJ — CQlass</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f5f8f8;color:#17343a}
+.top{background:#08746f;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.top h1{margin:0;font-size:20px}.top p{margin:5px 0 0;opacity:.86;font-size:12px}
+.back{background:#ffffff1c;color:#fff;border:1px solid #ffffff45;border-radius:8px;padding:9px 12px;text-decoration:none;font-weight:700;font-size:12px}
+.wrap{max-width:1100px;margin:auto;padding:18px}
+.panel{background:#fff;border:1px solid #dceae6;border-radius:14px;padding:16px;box-shadow:0 2px 10px #0000000b;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field label{display:block;font-size:11px;font-weight:700;margin-bottom:6px;color:#527078}
+.field select,.field input,.field textarea{width:100%;height:40px;border:1px solid #cbd9d6;border-radius:8px;padding:7px 9px;background:#fff;font:inherit}
+.field textarea{height:70px;resize:vertical}
+.scores{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.btn{height:40px;border:0;border-radius:8px;background:#08746f;color:#fff;font-weight:700;padding:0 18px;cursor:pointer;margin-top:14px}
+.btn:disabled{opacity:.6;cursor:default}
+.status{font-size:13px;margin-top:10px;padding:10px 12px;border-radius:8px;background:#eef6f5}
+.status.err{background:#fff0f0;color:#a12b2b}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{padding:8px;border-bottom:1px solid #edf2f0;text-align:left}
+th{background:#f8fbfa;color:#527078;font-size:10px;text-transform:uppercase}
+@media(max-width:760px){.grid,.scores{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div><h1>Input Nilai UKJ</h1><p>Kabid Tahfizh · hasil Ujian Kenaikan Juz per siswa.</p></div>
+  <a class="back" href="./">← Kembali ke CQlass</a>
+</div>
+<div class="wrap">
+  <div class="panel">
+    <div class="grid">
+      <div class="field"><label>Kelas</label><select id="kelas"><option value="">Memuat kelas...</option></select></div>
+      <div class="field"><label>Nama Siswa</label><select id="siswa"><option value="">— Pilih kelas dulu —</option></select></div>
+      <div class="field"><label>Juz</label><input id="juz" placeholder="mis. Juz 25"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="tanggal"></div>
+    </div>
+    <div class="scores" style="margin-top:12px">
+      <div class="field"><label>Kelancaran (0–100)</label><input id="nk" type="number" min="0" max="100"></div>
+      <div class="field"><label>Makhraj (0–100)</label><input id="nm" type="number" min="0" max="100"></div>
+      <div class="field"><label>Mad (0–100)</label><input id="nmd" type="number" min="0" max="100"></div>
+      <div class="field"><label>Ghunnah (0–100)</label><input id="ng" type="number" min="0" max="100"></div>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Catatan</label><textarea id="catatan" placeholder="Opsional"></textarea></div>
+    <button class="btn" id="save">Simpan Nilai UKJ</button>
+    <div id="meta" class="status">Memeriksa sesi CQlass...</div>
+  </div>
+  <div class="panel">
+    <div style="font-weight:800;margin-bottom:8px">Riwayat Nilai UKJ Terbaru</div>
+    <div style="overflow:auto"><table id="recentTable"><thead><tr><th>Tanggal</th><th>Siswa</th><th>Juz</th><th>Kelancaran</th><th>Makhraj</th><th>Mad</th><th>Ghunnah</th><th>Catatan</th></tr></thead><tbody id="recentBody"><tr><td colspan="8">Memuat...</td></tr></tbody></table></div>
+  </div>
+</div>
+<script>
+const API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/tahfizh-ukj-score',
+      KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93',
+      TOKEN=localStorage.getItem('cqlass_session_token')||'';
+let boot=null,students=[];
+const el=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+async function api(body){
+  if(!TOKEN)throw Error('Sesi CQlass tidak ditemukan. Silakan login dari halaman utama.');
+  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401)throw Error('Sesi login berakhir. Silakan login ulang di CQlass.');
+  if(r.status===403)throw Error('Akun ini tidak memiliki akses ke Nilai UKJ.');
+  if(!r.ok||j.success===false)throw Error(j.error||'Gagal memproses data');
+  return j;
+}
+function setStatus(t,e=false){el('meta').textContent=t;el('meta').className='status'+(e?' err':'')}
+async function loadStudents(){
+  const cid=el('kelas').value;
+  if(!cid){el('siswa').innerHTML='<option value="">— Pilih kelas dulu —</option>';return}
+  try{
+    const j=await api({action:'roster',class_id:cid});
+    students=j.students||[];
+    el('siswa').innerHTML='<option value="">— Pilih siswa —</option>'+students.map(s=>`<option value="${s.student_id}">${esc(s.name)}</option>`).join('');
+  }catch(e){setStatus(e.message,true)}
+}
+function fmtNum(v){return v===null||v===undefined?'—':v}
+async function loadRecent(){
+  try{
+    const j=await api({action:'recent',class_id:el('kelas').value||''});
+    const rows=j.rows||[];
+    el('recentBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.tanggal)}</td><td>${esc(r.student_name)}</td><td>${esc(r.juz)}</td><td>${fmtNum(r.nilai_kelancaran)}</td><td>${fmtNum(r.nilai_makhraj)}</td><td>${fmtNum(r.nilai_mad)}</td><td>${fmtNum(r.nilai_ghunnah)}</td><td>${esc(r.catatan||'—')}</td></tr>`).join(''):'<tr><td colspan="8">Belum ada nilai UKJ tercatat.</td></tr>';
+  }catch(e){el('recentBody').innerHTML=`<tr><td colspan="8">${esc(e.message)}</td></tr>`}
+}
+async function init(){
+  try{
+    boot=await api({action:'bootstrap'});
+    el('kelas').innerHTML='<option value="">— Pilih kelas —</option>'+boot.classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    el('tanggal').value=new Date().toISOString().slice(0,10);
+    setStatus(`Tahun Ajaran ${boot.academic_year} · Semester ${boot.semester_no}`);
+    loadRecent();
+  }catch(e){setStatus(e.message,true);el('kelas').innerHTML='<option value="">Tidak dapat memuat kelas</option>'}
+}
+async function save(){
+  const body={action:'save',class_id:el('kelas').value,student_id:el('siswa').value,juz:el('juz').value.trim(),
+    tanggal:el('tanggal').value,catatan:el('catatan').value.trim(),
+    nilai_kelancaran:el('nk').value,nilai_makhraj:el('nm').value,nilai_mad:el('nmd').value,nilai_ghunnah:el('ng').value};
+  if(!body.class_id||!body.student_id)return setStatus('Pilih kelas dan siswa terlebih dahulu.',true);
+  if(!body.juz)return setStatus('Isi Juz yang diujikan.',true);
+  const b=el('save');
+  try{
+    b.disabled=true;b.textContent='Menyimpan...';
+    const j=await api(body);
+    setStatus(j.message);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Nilai UKJ',1600);
+    el('juz').value='';el('catatan').value='';el('nk').value=el('nm').value=el('nmd').value=el('ng').value='';
+    loadRecent();
+  }catch(e){setStatus(e.message,true);b.textContent='Simpan Nilai UKJ'}finally{b.disabled=false}
+}
+el('kelas').onchange=()=>{loadStudents();loadRecent()};
+el('save').onclick=save;
+init();
+</script>
+</body>
+</html>
