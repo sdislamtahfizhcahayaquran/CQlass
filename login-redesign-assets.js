@@ -119,3 +119,23 @@
     }).observe(loginBtn,{childList:true,subtree:true});
   }
 })();
+
+/* Ensure every report preview/PDF request uses the effective-day attendance calculation.
+   This file loads before app-core.js, so the route is active before REPORT_PREVIEW_URL is used. */
+(function(){
+  'use strict';
+  if(window.__cqReportPreviewV2EarlyRoute)return;
+  window.__cqReportPreviewV2EarlyRoute=true;
+  const originalFetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    try{
+      if(typeof input==='string'&&input.includes('/functions/v1/report-preview')&&!input.includes('/functions/v1/report-preview-v2')){
+        input=input.replace('/functions/v1/report-preview','/functions/v1/report-preview-v2');
+      }else if(input instanceof Request&&input.url.includes('/functions/v1/report-preview')&&!input.url.includes('/functions/v1/report-preview-v2')){
+        const url=input.url.replace('/functions/v1/report-preview','/functions/v1/report-preview-v2');
+        input=new Request(url,input);
+      }
+    }catch(_){ }
+    return originalFetch(input,init);
+  };
+})();
