@@ -21,7 +21,7 @@ async function rppDetail(teacherId:string,start:string,end:string){
     sb.from("subjects").select("id,name,code,is_active")
   ]);
   if(ye||se||ae||ce||sue)throw ye||se||ae||ce||sue;if(!year||!sem)return{expected:[],submitted:[],missing:[]};
-  const semNo=Number(sem.semester_no)||1;
+  const semNo=Number(sem.semester_no||0);if(![1,2].includes(semNo))throw Error("active_semester_not_found");
   const assignments=(assign||[]).filter((a:any)=>T(a.academic_year_id)===T(year.id)&&Number(a.semester_no)===semNo);
   const classMap=new Map((classes||[]).map((x:any)=>[T(x.id),x])),subjectMap=new Map((subjects||[]).map((x:any)=>[T(x.id),x]));
   const [{data:targets,error:te},{data:tracking,error:tre},{data:subs,error:re}]=await Promise.all([
