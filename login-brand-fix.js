@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const semantic=document.createElement('script');
-  semantic.src='hrd-timesheet-semantics.js?v=20260924-hrd-drill1';
+  semantic.src='hrd-timesheet-semantics.js?v=20260924-hrd-drill2';
   semantic.id='cq-hrd-timesheet-semantics';
   document.head.appendChild(semantic);
   const brand=document.querySelector('#login-screen .brand-row');
