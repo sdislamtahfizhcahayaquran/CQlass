@@ -29,21 +29,24 @@ function patchText(){
 }
 function patchTimesheetPage(){
   const root=document.querySelector('.tsv2');if(!root)return;
+  const hrd=isHrd();
   const title=root.querySelector('.tsv2-title');if(title)title.textContent='Timesheet';
-  const sub=root.querySelector('.tsv2-sub');if(sub)sub.textContent='Senin–Jumat: aktivitas kerja ditampilkan dalam satu timeline. Sabtu: seluruh jam kerja 07.30–12.00 mengikuti penugasan sekolah dan agenda HRD.';
-  const kpis=root.querySelector('.tsv2-kpis');if(kpis)kpis.style.display=isHrd()?'grid':'none';
+  const sub=root.querySelector('.tsv2-sub');if(sub)sub.textContent=hrd?'Mode HRD — hanya melihat. Seluruh aktivitas kerja guru ditampilkan dalam satu timeline.':'Senin–Jumat: aktivitas kerja ditampilkan dalam satu timeline. Sabtu: seluruh jam kerja 07.30–12.00 mengikuti penugasan sekolah dan agenda HRD.';
+  const kpis=root.querySelector('.tsv2-kpis');if(kpis)kpis.style.display=hrd?'grid':'none';
   root.querySelectorAll('.tsv2-card').forEach(card=>{
     const b=card.querySelector(':scope > b');const head=(b?.textContent||'').trim();
-    if(head==='Aktivitas Timesheet'||head==='Aktivitas pada Jam Kosong'){
+    if(head==='Aktivitas Timesheet'||head==='Aktivitas pada Jam Kosong'||head==='Aktivitas Pendukung'){
       if(b)b.textContent='Aktivitas Pendukung';
       const h=card.querySelector('.tsv2-help');if(h)h.textContent='Isi hanya pada waktu yang benar-benar bebas dari penugasan terjadwal. Sistem menolak waktu yang bertabrakan dengan mengajar, badal, MT/Morning Talk, literasi, snack/istirahat, ishoma, briefing, penyambutan, Eduhub/administrasi rutin, UKS terjadwal, atau Timesheet yang sudah ada.';
+      if(hrd)card.style.display='none';
     }
     if(/^Timesheet\s/i.test(head)){
       b.textContent='Timesheet';
       const h=card.querySelector('.tsv2-help');if(h)h.textContent='Timeline kerja guru. JP hanya informasi beban mengajar dan bukan penentu tunggal kelengkapan Timesheet.';
       const table=card.querySelector('.tsv2-table');if(table){
-        if(isHrd())table.querySelectorAll('tbody tr').forEach(tr=>tr.style.display='');
-        table.querySelectorAll('th:nth-child(6),td:nth-child(6)').forEach(x=>x.style.display='none');
+        if(hrd)table.querySelectorAll('tbody tr').forEach(tr=>tr.style.display='');
+        if(hrd)table.querySelectorAll('th:nth-child(6),td:nth-child(6),th:nth-child(7),td:nth-child(7)').forEach(x=>x.style.display='none');
+        else table.querySelectorAll('th:nth-child(6),td:nth-child(6)').forEach(x=>x.style.display='none');
       }
     }
   });
