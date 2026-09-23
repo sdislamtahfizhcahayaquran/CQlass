@@ -7,7 +7,7 @@
   if(window.__cqReportPeriodControl)return;
   window.__cqReportPeriodControl=true;
 
-  const API=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/report-period-config';
+  const API=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/admin-academic-period';
   const MONTHS_H=['Muharram','Safar','Rabiul Awal','Rabiul Akhir','Jumadil Awal','Jumadil Akhir','Rajab','Syaban','Ramadan','Syawal','Dzulqaidah','Dzulhijjah'];
   const cache=new Map();
   let syncing=false,lastKey='',observerTimer=0;
@@ -35,7 +35,7 @@
   function reportKey(year,semester,type){return [String(year||''),Number(semester||0),pubType(type)].join('|')}
   async function getConfig(year,semester,type,force=false){
     const k=reportKey(year,semester,type);if(!force&&cache.has(k))return cache.get(k);
-    const d=await rpc('get',{academic_year:year,semester_no:Number(semester),report_type:pubType(type)});
+    const d=await rpc('report_config_get',{academic_year:year,semester_no:Number(semester),report_type:pubType(type)});
     cache.set(k,d.config||{configured:false});return d.config||{configured:false};
   }
   function ymdText(v,short=false){
@@ -74,7 +74,7 @@
     const status=document.getElementById('cq-rp-status');
     try{
       if(status)status.textContent='Memuat pengaturan...';
-      const d=await rpc('get',{academic_year_id:yearId,semester_no:semester,report_type:type}),c=d.config||{};
+      const d=await rpc('report_config_get',{academic_year_id:yearId,semester_no:semester,report_type:type}),c=d.config||{};
       const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||''};
       set('cq-rp-start',c.data_start_date);set('cq-rp-end',c.data_end_date);set('cq-rp-date',c.report_date_gregorian);set('cq-rp-hijri',c.report_date_hijri);
       if(status)status.innerHTML=c.configured?`Aktif untuk <b>${esc(type)} • Semester ${semester} • ${esc(year?.name||'')}</b>. Perubahan akan berlaku global pada rapor.`:`Belum ada periode tersimpan untuk <b>${esc(type)} • Semester ${semester} • ${esc(year?.name||'')}</b>.`;
@@ -83,7 +83,7 @@
   async function adminRender(container){
     css();container.innerHTML='<div class="cq-rp-admin"><div class="page-title">Pengaturan Rapor</div><div class="page-sub">Atur satu periode resmi untuk seluruh halaman, preview, dan cetak rapor.</div><div class="card"><span class="spinner"></span> Memuat periode...</div></div>';
     try{
-      const d=await rpc('years');adminYears=d.years||[];const def=activeDefaults();
+      const d=await rpc('report_config_years');adminYears=d.years||[];const def=activeDefaults();
       container.innerHTML=`<div class="cq-rp-admin"><div class="page-title">Pengaturan Rapor</div><div class="page-sub">Satu sumber tanggal untuk PTS dan PAS agar data rapor tidak berbeda antarrole.</div><div class="card"><div class="card-title">Periode Data Rapor</div><div class="cq-rp-note">Pilih Tahun Ajaran, Semester, dan Jenis Rapor. Periode yang disimpan akan menjadi sumber resmi. Guru dapat melihat dan memeriksa rentangnya, tetapi tidak dapat mengubahnya dari halaman rapor.</div><div class="cq-rp-grid"><div class="cq-rp-field"><label>Tahun Ajaran</label><select id="cq-rp-year" class="cq-rp-control">${yearOptions(def.yearId)}</select></div><div class="cq-rp-field"><label>Semester</label><select id="cq-rp-sem" class="cq-rp-control"><option value="1" ${def.semester===1?'selected':''}>Semester 1</option><option value="2" ${def.semester===2?'selected':''}>Semester 2</option></select></div><div class="cq-rp-field"><label>Jenis Rapor</label><select id="cq-rp-type" class="cq-rp-control"><option value="PTS">PTS</option><option value="PAS">PAS</option></select></div></div><div id="cq-rp-status" class="cq-rp-note">Memuat pengaturan...</div><div class="cq-rp-grid dates"><div class="cq-rp-field"><label>Data Mulai</label><input id="cq-rp-start" type="date" class="cq-rp-control"><div class="cq-rp-help">Tanggal awal data yang boleh masuk ke rapor.</div></div><div class="cq-rp-field"><label>Data Selesai</label><input id="cq-rp-end" type="date" class="cq-rp-control"><div class="cq-rp-help">Tanggal akhir data yang boleh masuk ke rapor.</div></div><div class="cq-rp-field"><label>Tanggal Rapor (Masehi)</label><input id="cq-rp-date" type="date" class="cq-rp-control"><div class="cq-rp-help">Tanggal resmi pembagian/penandatanganan rapor.</div></div><div class="cq-rp-field"><label>Tanggal Rapor (Hijriah)</label><input id="cq-rp-hijri" class="cq-rp-control" placeholder="Contoh: 8 Muharram 1448 AH"><div class="cq-rp-help">Terisi otomatis dari tanggal Masehi dan tetap dapat dikoreksi Admin.</div></div></div><div class="cq-rp-actions"><button class="btn" id="cq-rp-save">Simpan Periode Rapor</button></div></div></div>`;
       ['cq-rp-year','cq-rp-sem','cq-rp-type'].forEach(id=>document.getElementById(id)?.addEventListener('change',adminLoadConfig));
       document.getElementById('cq-rp-date')?.addEventListener('change',e=>{const h=document.getElementById('cq-rp-hijri');if(h)h.value=hijriSuggestion(e.target.value)});
@@ -93,7 +93,7 @@
           if(btn){btn.disabled=true;btn.textContent='Menyimpan...'}
           const yearId=document.getElementById('cq-rp-year')?.value||'',semester=Number(document.getElementById('cq-rp-sem')?.value||1),type=pubType(document.getElementById('cq-rp-type')?.value||'PTS');
           const payload={academic_year_id:yearId,semester_no:semester,report_type:type,data_start_date:document.getElementById('cq-rp-start')?.value||'',data_end_date:document.getElementById('cq-rp-end')?.value||'',report_date_gregorian:document.getElementById('cq-rp-date')?.value||'',report_date_hijri:(document.getElementById('cq-rp-hijri')?.value||'').trim()};
-          const d=await rpc('save',payload),c=d.config||{};
+          const d=await rpc('report_config_save',payload),c=d.config||{};
           const y=adminYears.find(x=>String(x.id)===String(yearId));cache.set(reportKey(y?.name,semester,type),c);
           if(typeof showToast==='function')showToast('Periode rapor berhasil disimpan dan berlaku global.');
           await adminLoadConfig();scheduleSync(true);
