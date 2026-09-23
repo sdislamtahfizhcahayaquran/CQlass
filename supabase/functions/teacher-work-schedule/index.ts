@@ -24,7 +24,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const dates=monthDates(month),monthStart=dates[0],monthEnd=dates[dates.length-1],today=todayJakarta();
   const{data:teacher,error:teacherError}=await sb.from("teachers").select("school_unit_id").eq("id",teacherId).maybeSingle();if(teacherError)throw teacherError;
   const yearQuery=sb.from("academic_years").select("id,start_date,end_date").eq("is_active",true).lte("start_date",monthEnd).gte("end_date",monthStart);if(teacher?.school_unit_id)yearQuery.eq("school_unit_id",teacher.school_unit_id);const{data:years,error:yearError}=await yearQuery.limit(1);if(yearError)throw yearError;const year=years?.[0];if(!year)return reply({success:true,items:[],unresolved:[]});
-  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||1);
+  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||0);if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");
   const[tplRes,uksRes,reportRes]=await Promise.all([
     sb.from("teacher_work_schedule_templates").select("*").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true).or(`applies_to_all.eq.true,teacher_id.eq.${teacherId}`).order("day_of_week").order("start_time"),
     sb.from("uks_duty_schedule").select("id,teacher_id,weekday,shift_no,start_time,end_time,is_active").eq("teacher_id",teacherId).eq("is_active",true).order("weekday").order("shift_no"),
