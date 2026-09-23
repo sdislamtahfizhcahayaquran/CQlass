@@ -12,7 +12,7 @@
   const POINT_LABELS=new Set(['kedisiplinan','reward','reward siswa']);
   const CENTER_ID='kesiswaan-center';
   const CENTER_GROUP_ID='kesiswaan-input-center';
-  const CENTER_ROLES=['guru','walas'];
+  const CENTER_ROLES=[]; // Walas/Guru sidebar is authoritative in teacher-walas-sidebar-clean.js
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
   function role(){
