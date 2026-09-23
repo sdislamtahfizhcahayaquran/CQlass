@@ -27,7 +27,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const dates=monthDates(month),monthStart=dates[0],monthEnd=dates[dates.length-1];
   const{data:teacher,error:teacherError}=await sb.from("teachers").select("id,school_unit_id,full_name").eq("id",teacherId).maybeSingle();if(teacherError)throw teacherError;if(!teacher)return reply({success:false,error:"teacher_not_found"},404);
   let yq=sb.from("academic_years").select("id,school_unit_id,start_date,end_date").eq("is_active",true).order("created_at",{ascending:false}).limit(1);if(teacher.school_unit_id)yq=yq.eq("school_unit_id",teacher.school_unit_id);const{data:years,error:yearError}=await yq;if(yearError)throw yearError;const year=years?.[0];if(!year)return reply({success:true,teacher,patterns:[],items:[],editable});
-  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||1);
+  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||0);if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");
 
   if(action==="save"){
     if(!editable)return reply({success:false,error:"forbidden"},403);
