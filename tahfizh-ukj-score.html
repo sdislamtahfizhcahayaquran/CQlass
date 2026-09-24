@@ -5,58 +5,203 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Nilai UKJ — CQlass</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f5f8fb;color:#16324a}.top{background:#173f63;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.top h1{margin:0;font-size:20px}.top p{margin:5px 0 0;opacity:.86;font-size:12px}.back{background:#ffffff1c;color:#fff;border:1px solid #ffffff45;border-radius:8px;padding:9px 12px;text-decoration:none;font-weight:700;font-size:12px}.wrap{max-width:1180px;margin:auto;padding:18px}.panel{background:#fff;border:1px solid #dce5ee;border-radius:14px;padding:16px;box-shadow:0 2px 10px #0000000b;margin-bottom:16px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;font-size:11px;font-weight:700;margin-bottom:6px;color:#526a7e}.field select,.field input,.field textarea{width:100%;height:40px;border:1px solid #cbd7e2;border-radius:8px;padding:7px 9px;background:#fff;font:inherit}.field textarea{height:70px;resize:vertical}.scores{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.finalbox{height:40px;border-radius:8px;background:#eaf4ff;border:1px solid #bdd6ec;padding:9px 10px;font-weight:900;color:#145587}.btn{height:40px;border:0;border-radius:8px;background:#1e5f99;color:#fff;font-weight:700;padding:0 18px;cursor:pointer}.btn.secondary{background:#eef4fa;color:#173f63;border:1px solid #cddae6}.btn.small{height:30px;padding:0 10px;font-size:11px}.btn:disabled{opacity:.6;cursor:default}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.status{font-size:13px;margin-top:10px;padding:10px 12px;border-radius:8px;background:#edf5fb}.status.err{background:#fff0f0;color:#a12b2b}.panelhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.paneltitle{font-weight:800}table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:8px;border-bottom:1px solid #edf1f5;text-align:left;vertical-align:top}th{background:#f7f9fc;color:#526a7e;font-size:10px;text-transform:uppercase}.nowrap{white-space:nowrap}#printArea{display:none}
-@media(max-width:840px){.grid,.scores{grid-template-columns:1fr}.wrap{padding:10px}}
-@page{size:A4 portrait;margin:14mm}
-@media print{body{background:#fff;color:#111}.screen-ui{display:none!important}#printArea{display:block!important}.ukj-sheet{width:100%;min-height:267mm;page-break-after:always;padding:0}.ukj-sheet:last-child{page-break-after:auto}.p-head{text-align:center;border-bottom:2px solid #111;padding-bottom:5mm;margin-bottom:7mm}.p-head h1{font-size:15pt;margin:0 0 2mm}.p-head h2{font-size:12pt;margin:0}.p-meta{width:100%;border-collapse:collapse;margin-bottom:7mm;font-size:10pt}.p-meta td{border:none;padding:1.5mm 0}.p-meta td:first-child{width:34mm;font-weight:700}.p-score{width:100%;border-collapse:collapse;margin:6mm 0;font-size:10pt}.p-score th,.p-score td{border:1px solid #555;padding:3mm;text-align:center}.p-score th{background:#fff;color:#111;font-size:9pt}.p-final{font-size:13pt;font-weight:800;margin:5mm 0}.p-note{border:1px solid #777;min-height:28mm;padding:4mm;margin-top:3mm;font-size:10pt}.p-sign{display:grid;grid-template-columns:1fr 1fr;gap:30mm;text-align:center;margin-top:20mm;font-size:10pt}.p-sign .line{margin-top:20mm;border-top:1px solid #111;padding-top:2mm}.p-foot{position:relative;margin-top:10mm;text-align:right;font-size:8pt;color:#555}}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f5f8f8;color:#17343a}
+.top{background:#08746f;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.top h1{margin:0;font-size:20px}.top p{margin:5px 0 0;opacity:.86;font-size:12px}
+.back{background:#ffffff1c;color:#fff;border:1px solid #ffffff45;border-radius:8px;padding:9px 12px;text-decoration:none;font-weight:700;font-size:12px}
+.wrap{max-width:1200px;margin:auto;padding:18px}
+.panel{background:#fff;border:1px solid #dceae6;border-radius:14px;padding:16px;box-shadow:0 2px 10px #0000000b;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field label{display:block;font-size:11px;font-weight:700;margin-bottom:6px;color:#527078}
+.field select,.field input,.field textarea{width:100%;height:40px;border:1px solid #cbd9d6;border-radius:8px;padding:7px 9px;background:#fff;font:inherit}
+.field textarea{height:64px;resize:vertical}
+.aspek{border:1px solid #dceae6;border-radius:12px;padding:12px;margin-top:10px}
+.aspek-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.aspek-head b{font-size:13px}
+.aspek-head .poin{font-size:11px;color:#527078;background:#eef6f5;border-radius:20px;padding:3px 9px}
+.aspek-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end}
+.aspek-nilai{text-align:center;font-weight:800;font-size:18px;color:#08746f;background:#eef6f5;border-radius:8px;padding:8px}
+.total-bar{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:14px;background:#0b3f3c;color:#fff;border-radius:12px}
+.total-bar b{font-size:26px}
+.radio-group{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.radio-group label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;cursor:pointer}
+.radio-group input{width:auto;height:auto}
+.btn{height:42px;border:0;border-radius:8px;background:#08746f;color:#fff;font-weight:700;padding:0 18px;cursor:pointer;margin-top:14px}
+.btn:disabled{opacity:.6;cursor:default}
+.status{font-size:13px;margin-top:10px;padding:10px 12px;border-radius:8px;background:#eef6f5}
+.status.err{background:#fff0f0;color:#a12b2b}
+table{border-collapse:collapse;width:100%;font-size:11px}
+th,td{padding:7px;border-bottom:1px solid #edf2f0;text-align:left}
+th{background:#f8fbfa;color:#527078;font-size:9px;text-transform:uppercase}
+@media(max-width:760px){.grid,.aspek-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="screen-ui">
-<div class="top"><div><h1>Input Nilai UKJ</h1><p>Kabid Tahfizh · hasil Ujian Kenaikan Juz per siswa.</p></div><a class="back" href="./">← Kembali ke CQlass</a></div>
+<div class="top">
+  <div><h1>Nilai UKJ</h1><p>Lembar Ujian Kenaikan Juz — Kabid Tahfizh.</p></div>
+  <a class="back" href="./">← Kembali ke CQlass</a>
+</div>
 <div class="wrap">
   <div class="panel">
     <div class="grid">
       <div class="field"><label>Kelas</label><select id="kelas"><option value="">Memuat kelas...</option></select></div>
-      <div class="field"><label>Nama Siswa</label><select id="siswa"><option value="">— Pilih kelas dulu —</option></select></div>
-      <div class="field"><label>Juz</label><input id="juz" placeholder="mis. Juz 25"></div>
-      <div class="field"><label>Tanggal UKJ</label><input type="date" id="tanggal"></div>
+      <div class="field"><label>Nama Santri</label><select id="siswa"><option value="">— Pilih kelas dulu —</option></select></div>
+      <div class="field"><label>Juz yang Diujikan</label><input id="juz" placeholder="mis. 25"></div>
+      <div class="field"><label>Surat yang Diujikan</label><input id="surat" placeholder="mis. Asy-Syura' - Al Jatsiyah"></div>
     </div>
-    <div class="scores" style="margin-top:12px">
-      <div class="field"><label>Kelancaran (0–100)</label><input class="score" id="nk" type="number" min="0" max="100"></div>
-      <div class="field"><label>Makhraj (0–100)</label><input class="score" id="nm" type="number" min="0" max="100"></div>
-      <div class="field"><label>Mad (0–100)</label><input class="score" id="nmd" type="number" min="0" max="100"></div>
-      <div class="field"><label>Ghunnah (0–100)</label><input class="score" id="ng" type="number" min="0" max="100"></div>
-      <div class="field"><label>Nilai Akhir</label><div class="finalbox" id="finalScore">—</div></div>
+
+    <div class="aspek" data-aspek="kelancaran">
+      <div class="aspek-head"><b>Kelancaran</b><span class="poin">Poin awal 40</span></div>
+      <div class="aspek-grid">
+        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"></div>
+        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
+        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">40</div></div>
+      </div>
     </div>
-    <div class="field" style="margin-top:12px"><label>Catatan</label><textarea id="catatan" placeholder="Catatan penguji (opsional)"></textarea></div>
-    <div class="actions"><button class="btn" id="save">Simpan Nilai UKJ</button><button class="btn secondary" id="printCurrent">Cetak A4</button></div>
+    <div class="aspek" data-aspek="gunnah">
+      <div class="aspek-head"><b>Gunnah</b><span class="poin">Poin awal 20</span></div>
+      <div class="aspek-grid">
+        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"></div>
+        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
+        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">20</div></div>
+      </div>
+    </div>
+    <div class="aspek" data-aspek="mad">
+      <div class="aspek-head"><b>Mad</b><span class="poin">Poin awal 20</span></div>
+      <div class="aspek-grid">
+        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"></div>
+        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
+        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">20</div></div>
+      </div>
+    </div>
+    <div class="aspek" data-aspek="makhroj">
+      <div class="aspek-head"><b>Makhroj</b><span class="poin">Poin awal 20</span></div>
+      <div class="aspek-grid">
+        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"></div>
+        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
+        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">20</div></div>
+      </div>
+    </div>
+
+    <div class="total-bar"><span>TOTAL NILAI</span><b id="totalNilai">100</b></div>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="field"><label>Predikat</label><select id="predikat">
+        <option value="ممتاز">ممتاز (Mumtaz)</option>
+        <option value="جيّد جدّا">جيّد جدّا (Jayyid Jiddan)</option>
+        <option value="جيّد">جيّد (Jayyid)</option>
+        <option value="أحسن">أحسن (Ahsan)</option>
+        <option value="مقبول">مقبول (Maqbul)</option>
+        <option value="راسب">راسب (Rasib)</option>
+      </select></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="tanggal"></div>
+    </div>
+
+    <div class="field" style="margin-top:12px">
+      <label>Keputusan Penguji</label>
+      <div class="radio-group">
+        <label><input type="radio" name="keputusan" value="lulus_lanjut" checked> Lulus, lanjut juz / surat berikutnya</label>
+        <label><input type="radio" name="keputusan" value="mengulang"> Mengulang pada surat: <input id="mengulangSurat" placeholder="nama surat" style="height:30px;width:200px;margin-left:6px;display:inline-block"></label>
+        <label><input type="radio" name="keputusan" value="tidak_lulus"> Tidak lulus / ujian ulang</label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Catatan Penguji</label><textarea id="catatan" placeholder="mis. Barakallahu fiikum..."></textarea></div>
+
+    <button class="btn" id="save">Simpan Nilai UKJ</button>
     <div id="meta" class="status">Memeriksa sesi CQlass...</div>
   </div>
   <div class="panel">
-    <div class="panelhead"><div class="paneltitle">Riwayat Nilai UKJ Terbaru</div><button class="btn secondary" id="printAll" style="display:none">Cetak Semua A4</button></div>
-    <div style="overflow:auto"><table id="recentTable"><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kelas</th><th>Juz</th><th>Kelancaran</th><th>Makhraj</th><th>Mad</th><th>Ghunnah</th><th>Nilai Akhir</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody id="recentBody"><tr><td colspan="11">Memuat...</td></tr></tbody></table></div>
+    <div style="font-weight:800;margin-bottom:8px">Riwayat Nilai UKJ Terbaru</div>
+    <div style="overflow:auto"><table id="recentTable"><thead><tr><th>Tanggal</th><th>Siswa</th><th>Juz</th><th>Total</th><th>Predikat</th><th>Keputusan</th></tr></thead><tbody id="recentBody"><tr><td colspan="6">Memuat...</td></tr></tbody></table></div>
   </div>
 </div>
-</div>
-<div id="printArea"></div>
 <script>
-const API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/tahfizh-ukj-score',KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93',TOKEN=localStorage.getItem('cqlass_session_token')||'';let boot=null,students=[],recentRows=[];const el=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
-async function api(body){if(!TOKEN)throw Error('Sesi CQlass tidak ditemukan. Silakan login dari halaman utama.');const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(r.status===401)throw Error('Sesi login berakhir. Silakan login ulang di CQlass.');if(r.status===403)throw Error('Akun ini tidak memiliki akses ke Nilai UKJ.');if(!r.ok||j.success===false)throw Error(j.error||'Gagal memproses data');return j}
+const API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/tahfizh-ukj-score',
+      KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93',
+      TOKEN=localStorage.getItem('cqlass_session_token')||'';
+const POIN_AWAL={kelancaran:40,gunnah:20,mad:20,makhroj:20};
+const KEPUTUSAN_LABEL={lulus_lanjut:'Lulus lanjut',mengulang:'Mengulang',tidak_lulus:'Tidak lulus'};
+let boot=null;
+const el=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+async function api(body){
+  if(!TOKEN)throw Error('Sesi CQlass tidak ditemukan. Silakan login dari halaman utama.');
+  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401)throw Error('Sesi login berakhir. Silakan login ulang di CQlass.');
+  if(r.status===403)throw Error('Akun ini tidak memiliki akses ke Nilai UKJ.');
+  if(!r.ok||j.success===false)throw Error(j.error||'Gagal memproses data');
+  return j;
+}
 function setStatus(t,e=false){el('meta').textContent=t;el('meta').className='status'+(e?' err':'')}
-function className(id){return boot?.classes?.find(c=>c.id===id)?.name||'—'}
-function avg(r){const raw=[r.nilai_kelancaran,r.nilai_makhraj,r.nilai_mad,r.nilai_ghunnah];if(raw.some(v=>v===null||v===undefined||String(v).trim()===''))return null;const a=raw.map(Number);return a.every(v=>Number.isFinite(v)&&v>=0&&v<=100)?a.reduce((x,y)=>x+y,0)/4:null}
-function fmtScore(v){if(v===null||v===undefined||String(v).trim()==='')return'—';const n=Number(v);return Number.isFinite(n)?n.toFixed(2).replace(/\.00$/,''):'—'}
-function calcCurrent(){const vals=['nk','nm','nmd','ng'].map(id=>el(id).value===''?NaN:Number(el(id).value));const ok=vals.every(v=>Number.isFinite(v)&&v>=0&&v<=100);const n=ok?vals.reduce((a,b)=>a+b,0)/4:null;el('finalScore').textContent=n===null?'—':n.toFixed(2);return n}
-async function loadStudents(){const cid=el('kelas').value;if(!cid){el('siswa').innerHTML='<option value="">— Pilih kelas dulu —</option>';students=[];return}try{const j=await api({action:'roster',class_id:cid});students=j.students||[];el('siswa').innerHTML='<option value="">— Pilih siswa —</option>'+students.map(s=>`<option value="${s.student_id}">${esc(s.name)}</option>`).join('')}catch(e){setStatus(e.message,true)}}
-async function loadRecent(){try{const j=await api({action:'recent',class_id:el('kelas').value||''});recentRows=j.rows||[];el('printAll').style.display=recentRows.length?'inline-block':'none';el('recentBody').innerHTML=recentRows.length?recentRows.map((r,i)=>`<tr><td class="nowrap">${esc(r.tanggal)}</td><td><b>${esc(r.student_name)}</b></td><td>${esc(className(r.class_id))}</td><td>${esc(r.juz)}</td><td>${fmtScore(r.nilai_kelancaran)}</td><td>${fmtScore(r.nilai_makhraj)}</td><td>${fmtScore(r.nilai_mad)}</td><td>${fmtScore(r.nilai_ghunnah)}</td><td><b>${fmtScore(avg(r))}</b></td><td>${esc(r.catatan||'—')}</td><td><button class="btn secondary small" onclick="printRecent(${i})">Cetak</button></td></tr>`).join(''):'<tr><td colspan="11">Belum ada nilai UKJ tercatat.</td></tr>'}catch(e){recentRows=[];el('printAll').style.display='none';el('recentBody').innerHTML=`<tr><td colspan="11">${esc(e.message)}</td></tr>`}}
-async function init(){try{boot=await api({action:'bootstrap'});el('kelas').innerHTML='<option value="">— Pilih kelas —</option>'+boot.classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');const d=new Date();el('tanggal').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;setStatus(`Tahun Ajaran ${boot.academic_year} · Semester ${boot.semester_no}`);loadRecent()}catch(e){setStatus(e.message,true);el('kelas').innerHTML='<option value="">Tidak dapat memuat kelas</option>'}}
-function currentRecord(){const sid=el('siswa').value,s=students.find(x=>x.student_id===sid);return {student_name:s?.name||'',class_id:el('kelas').value,juz:el('juz').value.trim(),tanggal:el('tanggal').value,nilai_kelancaran:el('nk').value,nilai_makhraj:el('nm').value,nilai_mad:el('nmd').value,nilai_ghunnah:el('ng').value,catatan:el('catatan').value.trim()}}
-async function save(){const body={action:'save',class_id:el('kelas').value,student_id:el('siswa').value,juz:el('juz').value.trim(),tanggal:el('tanggal').value,catatan:el('catatan').value.trim(),nilai_kelancaran:el('nk').value,nilai_makhraj:el('nm').value,nilai_mad:el('nmd').value,nilai_ghunnah:el('ng').value};if(!body.class_id||!body.student_id)return setStatus('Pilih kelas dan siswa terlebih dahulu.',true);if(!body.juz)return setStatus('Isi Juz yang diujikan.',true);if(calcCurrent()===null)return setStatus('Isi empat komponen nilai 0–100.',true);const b=el('save');try{b.disabled=true;b.textContent='Menyimpan...';const j=await api(body);setStatus(j.message);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Nilai UKJ',1600);loadRecent()}catch(e){setStatus(e.message,true);b.textContent='Simpan Nilai UKJ'}finally{b.disabled=false}}
-function sheet(r){const a=avg(r);return `<section class="ukj-sheet"><div class="p-head"><h1>SD Islam Tahfizh Cahaya Qur'an</h1><h2>LEMBAR HASIL UJIAN KENAIKAN JUZ (UKJ)</h2></div><table class="p-meta"><tr><td>Nama Siswa</td><td>: ${esc(r.student_name||'—')}</td></tr><tr><td>Kelas</td><td>: ${esc(className(r.class_id))}</td></tr><tr><td>Juz</td><td>: ${esc(r.juz||'—')}</td></tr><tr><td>Tanggal UKJ</td><td>: ${esc(r.tanggal||'—')}</td></tr><tr><td>Tahun Ajaran</td><td>: ${esc(boot?.academic_year||'—')} · Semester ${esc(boot?.semester_no||'—')}</td></tr></table><table class="p-score"><thead><tr><th>Kelancaran</th><th>Makhraj</th><th>Mad</th><th>Ghunnah</th></tr></thead><tbody><tr><td>${fmtScore(r.nilai_kelancaran)}</td><td>${fmtScore(r.nilai_makhraj)}</td><td>${fmtScore(r.nilai_mad)}</td><td>${fmtScore(r.nilai_ghunnah)}</td></tr></tbody></table><div class="p-final">Nilai Akhir: ${fmtScore(a)}</div><div><b>Catatan:</b></div><div class="p-note">${esc(r.catatan||'—')}</div><div class="p-sign"><div><div>Penguji</div><div class="line">(........................................)</div></div><div><div>Kabid Tahfizh</div><div class="line">(........................................)</div></div></div><div class="p-foot">Dicetak dari CQlass</div></section>`}
-function printRecords(rows){if(!rows?.length)return setStatus('Belum ada data untuk dicetak.',true);if(rows.some(r=>avg(r)===null))return setStatus('Ada data UKJ yang belum memiliki empat komponen nilai lengkap.',true);el('printArea').innerHTML=rows.map(sheet).join('');window.print()}
-function printCurrent(){const r=currentRecord();if(!r.student_name||!r.class_id)return setStatus('Pilih kelas dan siswa terlebih dahulu.',true);if(!r.juz)return setStatus('Isi Juz yang diujikan.',true);if(calcCurrent()===null)return setStatus('Isi empat komponen nilai 0–100 sebelum mencetak.',true);printRecords([r])}
-window.printRecent=i=>printRecords([recentRows[i]]);el('kelas').onchange=()=>{loadStudents();loadRecent()};el('save').onclick=save;el('printCurrent').onclick=printCurrent;el('printAll').onclick=()=>printRecords(recentRows);document.querySelectorAll('.score').forEach(x=>x.addEventListener('input',calcCurrent));init();
+function recalc(){
+  let total=0;
+  document.querySelectorAll('.aspek').forEach(box=>{
+    const aspek=box.dataset.aspek,awal=POIN_AWAL[aspek];
+    const tanbih=Math.max(0,Number(box.querySelector('.tanbih').value)||0);
+    const bantuan=Math.max(0,Number(box.querySelector('.bantuan').value)||0);
+    const nilai=Math.max(0,awal-tanbih-bantuan);
+    box.querySelector('.aspek-nilai').textContent=nilai;
+    total+=nilai;
+  });
+  el('totalNilai').textContent=Math.round(total*100)/100;
+}
+document.querySelectorAll('.tanbih,.bantuan').forEach(inp=>inp.addEventListener('input',recalc));
+document.querySelectorAll('input[name="keputusan"]').forEach(r=>r.addEventListener('change',()=>{
+  el('mengulangSurat').disabled=document.querySelector('input[name="keputusan"]:checked').value!=='mengulang';
+}));
+el('mengulangSurat').disabled=true;
+async function loadStudents(){
+  const cid=el('kelas').value;
+  if(!cid){el('siswa').innerHTML='<option value="">— Pilih kelas dulu —</option>';return}
+  try{
+    const j=await api({action:'roster',class_id:cid});
+    el('siswa').innerHTML='<option value="">— Pilih siswa —</option>'+(j.students||[]).map(s=>`<option value="${s.student_id}">${esc(s.name)}</option>`).join('');
+  }catch(e){setStatus(e.message,true)}
+}
+function fmtNum(v){return v===null||v===undefined?'—':v}
+async function loadRecent(){
+  try{
+    const j=await api({action:'recent',class_id:el('kelas').value||''});
+    const rows=j.rows||[];
+    el('recentBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.tanggal)}</td><td>${esc(r.student_name)}</td><td>${esc(r.juz)}</td><td>${fmtNum(r.total_nilai)}</td><td>${esc(r.predikat||'—')}</td><td>${esc(KEPUTUSAN_LABEL[r.keputusan_penguji]||'—')}</td></tr>`).join(''):'<tr><td colspan="6">Belum ada nilai UKJ tercatat.</td></tr>';
+  }catch(e){el('recentBody').innerHTML=`<tr><td colspan="6">${esc(e.message)}</td></tr>`}
+}
+async function init(){
+  try{
+    boot=await api({action:'bootstrap'});
+    el('kelas').innerHTML='<option value="">— Pilih kelas —</option>'+boot.classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    el('tanggal').value=new Date().toISOString().slice(0,10);
+    setStatus(`Tahun Ajaran ${boot.academic_year} · Semester ${boot.semester_no}`);
+    loadRecent();recalc();
+  }catch(e){setStatus(e.message,true);el('kelas').innerHTML='<option value="">Tidak dapat memuat kelas</option>'}
+}
+async function save(){
+  const keputusan=document.querySelector('input[name="keputusan"]:checked').value;
+  const body={action:'save',class_id:el('kelas').value,student_id:el('siswa').value,juz:el('juz').value.trim(),
+    surat_diujikan:el('surat').value.trim(),tanggal:el('tanggal').value,catatan:el('catatan').value.trim(),
+    predikat:el('predikat').value,keputusan_penguji:keputusan,keputusan_detail:keputusan==='mengulang'?el('mengulangSurat').value.trim():''};
+  document.querySelectorAll('.aspek').forEach(box=>{
+    const aspek=box.dataset.aspek;
+    body[aspek+'_tanbih']=box.querySelector('.tanbih').value||0;
+    body[aspek+'_bantuan']=box.querySelector('.bantuan').value||0;
+  });
+  if(!body.class_id||!body.student_id)return setStatus('Pilih kelas dan siswa terlebih dahulu.',true);
+  if(!body.juz)return setStatus('Isi Juz yang diujikan.',true);
+  if(keputusan==='mengulang'&&!body.keputusan_detail)return setStatus('Isi nama surat yang harus diulang.',true);
+  const b=el('save');
+  try{
+    b.disabled=true;b.textContent='Menyimpan...';
+    const j=await api(body);
+    setStatus(j.message);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Nilai UKJ',1600);
+    el('juz').value='';el('surat').value='';el('catatan').value='';el('mengulangSurat').value='';
+    document.querySelectorAll('.tanbih,.bantuan').forEach(i=>i.value=0);recalc();
+    loadRecent();
+  }catch(e){setStatus(e.message,true);b.textContent='Simpan Nilai UKJ'}finally{b.disabled=false}
+}
+el('kelas').onchange=()=>{loadStudents();loadRecent()};
+el('save').onclick=save;
+init();
 </script>
 </body>
 </html>
