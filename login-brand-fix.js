@@ -73,12 +73,7 @@
     }
   },25);
 
-  // Timesheet semantic drill-down tetap dibutuhkan HRD. Panel Laporan Masuk lama
-  // tidak lagi dimuat global karena navigasi HRD sekarang dipisah per kebutuhan.
-  const semantic=document.createElement('script');
-  semantic.src='hrd-timesheet-semantics.js?v=20260924-hrd-drill3';
-  semantic.id='cq-hrd-timesheet-semantics';
-  document.head.appendChild(semantic);
+  // HRD uses its isolated report workspace; do not load teacher Timesheet patch globally.
 
   const brand=document.querySelector('#login-screen .brand-row');
   if(brand){
