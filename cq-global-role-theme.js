@@ -7,7 +7,7 @@
   if(window.__CQ_GLOBAL_ROLE_THEME_V3__) return;
 
   function norm(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');}
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m];});}
+  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
   function readUser(){
     try{if(typeof currentUser!=='undefined'&&currentUser)return currentUser;}catch(_){ }
     try{return JSON.parse(localStorage.getItem('cqlass_user')||'null')||{};}catch(_){return {};}
@@ -120,16 +120,13 @@
   function enforceOneHero(){
     var root=content();
     if(!root||!dashboardActive()||!appVisible())return;
-
     var natives=nativeHeroes(root);
     var akHero=natives.find(function(el){return el.classList.contains('ak7-hero');});
-
     if(isAcademic()&&akHero){
       var f0=fallbackHero(root);if(f0)f0.remove();
       natives.forEach(function(el){if(el===akHero)showHero(el);else hideHero(el);});
       return;
     }
-
     var fallback=fallbackHero(root);
     if(!fallback)fallback=buildFallback(root);
     natives.forEach(hideHero);
@@ -147,7 +144,6 @@
     if(dashboardActive()&&appVisible())enforceOneHero();
     else restoreOutsideDashboard();
   }
-
   var timer=0;
   function schedule(){clearTimeout(timer);timer=setTimeout(sync,25);}
   var observer=new MutationObserver(schedule);
@@ -157,7 +153,6 @@
   window.addEventListener('load',function(){setTimeout(sync,100);},{once:true});
   setInterval(function(){if(dashboardActive()&&appVisible())enforceOneHero();},900);
   setTimeout(sync,70);
-
   window.__CQ_GLOBAL_ROLE_THEME__=true;
   window.__CQ_GLOBAL_ROLE_THEME_V3__=true;
 })();
