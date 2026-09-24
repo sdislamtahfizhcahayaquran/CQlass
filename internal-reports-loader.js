@@ -1,5 +1,8 @@
 (function(){
   'use strict';
+  if(window.__cqInternalReportsRoleLoaderV2)return;
+  window.__cqInternalReportsRoleLoaderV2=true;
+  let started=false;
 
   function readUser(){
     try{
@@ -16,7 +19,6 @@
     const rs=(Array.isArray(u.roles)?u.roles:[]).map(x=>String(typeof x==='string'?x:(x?.role_code||x?.role||'')).trim().toLowerCase());
     return r==='hrd'||username==='hrd'||rs.includes('hrd');
   }
-  function isKabidTahfizh(){return role()==='kabid_tahfizh'}
   function fileName(src){
     try{return new URL(src,location.href).pathname.split('/').pop()}catch(_){return String(src).split('?')[0].split('/').pop()}
   }
@@ -34,7 +36,6 @@
     });
   }
 
-  // Paket ini adalah fitur lintas Akademik/Kesiswaan/Kegiatan, bukan shell Kabid Tahfizh.
   const common=[
     'report-preview-v2-route.js?v=20260917-report3',
     'report-period-control.js?v=20260923-reportperiod1',
@@ -57,10 +58,27 @@
     'pramuka-special-access.js?v=20260916-pramuka3'
   ];
 
-  const hrdOnly=[];
-  const sources=isKabidTahfizh()?[]:(isHrd()?hrdOnly:common);
+  function start(){
+    if(started)return true;
+    const r=role();
+    if(!r)return false; // jangan pernah menebak role sebelum login/session selesai
+    started=true;
 
-  Promise.allSettled(sources.map(load)).then(()=>{
-    if(!isHrd()&&!isKabidTahfizh())load('kesiswaan-final-cleanup.js?v=20260924-roleisolated1');
-  });
+    if(r==='kabid_tahfizh'||isHrd())return true;
+
+    Promise.allSettled(common.map(load)).then(()=>{
+      const now=role();
+      if(now&&now!=='kabid_tahfizh'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20260924-roleisolated2');
+    });
+    return true;
+  }
+
+  start();
+  if(typeof enterApp==='function'&&!enterApp.__cqInternalReportsRoleLoaderV2){
+    const old=enterApp;
+    const wrapped=function(){const out=old.apply(this,arguments);setTimeout(start,0);return out};
+    wrapped.__cqInternalReportsRoleLoaderV2=true;
+    enterApp=wrapped;
+  }
+  let tries=0;const timer=setInterval(()=>{tries++;if(start()||tries>=20)clearInterval(timer)},250);
 })();
