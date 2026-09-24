@@ -1,8 +1,8 @@
 /* CQlass — HRD clean workspace */
 (function(){
 'use strict';
-if(window.__cqHrdRoleCleanupV2)return;
-window.__cqHrdRoleCleanupV2=true;
+if(window.__cqHrdRoleCleanupV5)return;
+window.__cqHrdRoleCleanupV5=true;
 
 const jktDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const state={active:'dashboard',month:jktDate().slice(0,7),admin:null,liveQuery:'',liveSort:'issues'};
@@ -16,7 +16,7 @@ const minDate=(a,b)=>String(a)<=String(b)?String(a):String(b);
 const monthRange=m=>{const[y,mo]=String(m).split('-').map(Number);return{start:m+'-01',end:new Date(Date.UTC(y,mo,0)).toISOString().slice(0,10)}};
 
 function readUser(){try{return (typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{}}catch(_){return{}}}
-function isHrd(){const u=readUser(),r=[u.role,u.primary_role,u.role_code,...(Array.isArray(u.roles)?u.roles.map(x=>typeof x==='string'?x:(x?.role_code||x?.role||'')):[])].map(x=>low(x).replace(/[\s-]+/g,'_'));return low(u.username)==='hrd'||r.includes('hrd')}
+function isHrd(){const u=readUser(),norm=x=>low(x).replace(/[\s-]+/g,'_'),r=[u.role,u.primary_role,u.role_code,...(Array.isArray(u.roles)?u.roles.map(x=>typeof x==='string'?x:(x?.role_code||x?.role||'')):[])].map(norm);return norm(u.username)==='hrd'||r.includes('hrd')||r.includes('human_resources')||r.includes('human_resource')}
 
 async function api(slug,payload){
   const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),45000);
@@ -155,7 +155,7 @@ function install(){
 
 if(typeof renderSidebar==='function'&&!renderSidebar.__cqHrdCleanV2){const old=renderSidebar;const wrapped=function(){return isHrd()?drawSidebar():old.apply(this,arguments)};wrapped.__cqHrdCleanV2=true;renderSidebar=wrapped}
 const observer=new MutationObserver(()=>{if(isHrd()){const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();const old=document.getElementById('hrd-report-inbox-panel');if(old)old.remove()}});
-function start(){observer.observe(document.body,{childList:true,subtree:true});if(install()){setTimeout(()=>{drawSidebar();renderDashboard()},60);setTimeout(()=>drawSidebar(),500);setTimeout(()=>drawSidebar(),1500)}}
+function start(){observer.observe(document.body,{childList:true,subtree:true});if(install()){setTimeout(()=>{drawSidebar();renderDashboard()},60);setTimeout(()=>drawSidebar(),500);setTimeout(()=>drawSidebar(),1500)}else{let n=0;const t=setInterval(()=>{n++;if(install()){clearInterval(t);drawSidebar();renderDashboard()}else if(n>=40)clearInterval(t)},250)}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 if(typeof enterApp==='function'&&!enterApp.__cqHrdCleanV2){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(install()){drawSidebar();renderDashboard();setTimeout(()=>drawSidebar(),500)}},90);return out};wrapped.__cqHrdCleanV2=true;enterApp=wrapped}
 })();
