@@ -2,6 +2,31 @@
 (function(){
   'use strict';
 
+  // Force the real school logo for browser tab / shortcut icons.
+  // index.html used an inline "C" favicon, and browsers cache favicons aggressively.
+  // This replaces every icon link at runtime with a cache-busted school logo.
+  function forceSchoolFavicon(){
+    try{
+      document.querySelectorAll('link[rel="icon"],link[rel="shortcut icon"],link[rel="apple-touch-icon"]').forEach(function(el){el.remove();});
+      const href='logo_sd.png?v=20260924-school-logo2';
+      const defs=[
+        ['icon','image/png'],
+        ['shortcut icon','image/png'],
+        ['apple-touch-icon','']
+      ];
+      defs.forEach(function(def){
+        const link=document.createElement('link');
+        link.rel=def[0];
+        if(def[1])link.type=def[1];
+        link.href=href;
+        document.head.appendChild(link);
+      });
+    }catch(_){ }
+  }
+  forceSchoolFavicon();
+  document.addEventListener('DOMContentLoaded',forceSchoolFavicon,{once:true});
+  window.addEventListener('load',forceSchoolFavicon,{once:true});
+
   // Legacy HRD compatibility: some cached clients still call the removed -v2 route.
   // Rewrite it before any dashboard script runs so CORS/preflight never reaches a 404 route.
   if(!window.__cqHrdLegacyRouteGuard){
