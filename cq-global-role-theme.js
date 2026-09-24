@@ -1,5 +1,6 @@
 /* CQlass shared role theme runtime
-   Keeps one lightweight building hero on every role dashboard.
+   Keeps one lightweight building hero on role dashboards unless a role has its own
+   intended dashboard hero (Kabid Akademik and the restored Walas Dashboard V3).
    Does not touch data, permissions, routing, forms, or module contents.
 */
 (function(){
@@ -24,6 +25,10 @@
   function isAcademic(){
     var r=roleNorm();
     return r==='akademik'||r==='kabid_akademik'||r==='academic'||r.indexOf('kabid_akademik')>=0;
+  }
+  function isWalas(){
+    var r=roleNorm();
+    return r==='walas'||r==='wali_kelas';
   }
   function roleLabel(){
     var r=roleNorm();
@@ -131,7 +136,17 @@
       return;
     }
 
-    /* Every other role uses one shared greeting hero. Native/legacy hero blocks are suppressed. */
+    /* Walas Dashboard V3 has its own compact class hero. Do not replace it. */
+    var wdHero=root.querySelector('.wd-hero');
+    if(isWalas()&&wdHero){
+      var fw=fallbackHero(root);if(fw)fw.remove();
+      showHero(wdHero);
+      natives.forEach(hideHero);
+      restoreLooseTitles();
+      return;
+    }
+
+    /* Other roles use the shared greeting hero. */
     var fallback=fallbackHero(root);
     if(!fallback)fallback=buildFallback(root);
     natives.forEach(hideHero);
@@ -142,6 +157,7 @@
     if(root){
       var f=fallbackHero(root);if(f)f.remove();
       nativeHeroes(root).forEach(showHero);
+      var wd=root.querySelector('.wd-hero');if(wd)showHero(wd);
     }
     restoreLooseTitles();
   }
