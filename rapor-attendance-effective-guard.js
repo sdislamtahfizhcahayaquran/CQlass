@@ -1,71 +1,30 @@
-/* CQlass — hard guard for report attendance and printable report output. */
+/* CQlass — hard guard for report attendance.
+   Present on report = Admin effective days - Sick - Excused - Unexcused.
+   This request path intentionally bypasses window.fetch wrappers so Preview/PDF
+   always reads the verified report-preview-v2 Edge Function directly.
+
+   Report output guards in this file also ensure:
+   - students without an extracurricular assessment show blank Rating/Remarks
+     for extracurricular rows 1-3 (school activity row remains independent),
+   - Tahfizh report wording is standardized for the English report without
+     changing the stored Tahfizh source data:
+       * "s.d" / "s/d" => "to",
+       * surat / ayat / baris => Surah(s) / Verse(s) / Line(s),
+       * Number of Surahs/Lines/Verses always receives the correct English unit
+         even when the database only stores a number or stores the wrong suffix,
+       * free-text fields only translate units that actually exist; they do not
+         invent a new unit, and the word "Drilling" remains unchanged,
+       * UKJ remains the school acronym; common Indonesian UKJ statuses are
+         rendered with one consistent English template,
+   - generated report PDFs keep the exact report layout/content while using a
+     print-quality lossless render instead of the old low-resolution JPEG path.
+*/
 (function(){
   'use strict';
   if(window.__CQ_RAPOR_EFFECTIVE_ATTENDANCE_GUARD__) return;
   window.__CQ_RAPOR_EFFECTIVE_ATTENDANCE_GUARD__=true;
 
-  // app-core is loaded immediately before this file. Protect its sidebar renderer
-  // before the many role-specific wrappers are loaded. Startup/logout/session restore
-  // may legitimately have currentUser=null; in that state the sidebar must simply wait.
-  try{
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqNullUserGuard){
-      const originalSidebar=renderSidebar;
-      const safeSidebar=function(){
-        if(typeof currentUser==='undefined'||!currentUser){
-          const sidebar=document.getElementById('sidebar');
-          if(sidebar)sidebar.innerHTML='';
-          return;
-        }
-        return originalSidebar.apply(this,arguments);
-      };
-      safeSidebar.__cqNullUserGuard=true;
-      renderSidebar=safeSidebar;
-      window.renderSidebar=safeSidebar;
-    }
-  }catch(_){ }
-
   const num=v=>{const n=Number(v);return Number.isFinite(n)&&n>=0?Math.trunc(n):0};
-
-  function installUniformReportBorders(){
-    const id='cq-rapor-uniform-border-v3';
-    let style=document.getElementById(id);
-    if(!style){style=document.createElement('style');style.id=id;document.head.appendChild(style)}
-    style.textContent=`
-      /* Only these report tables use the thinner 1px grid requested by the school.
-         Header identity, Tahfizh block, signatures and teaching-team area are untouched. */
-      #rpv-preview .rpv-academic,
-      #rpv-preview .rpv-attendance,
-      #rpv-preview .rpv-score-table,
-      #rpv-preview .rpv-exkul,
-      #rpv-preview .rpv-merit,
-      #rpv-preview .rpv-discipline{
-        border-collapse:collapse!important;
-        border-spacing:0!important;
-      }
-      #rpv-preview .rpv-academic th,
-      #rpv-preview .rpv-academic td,
-      #rpv-preview .rpv-attendance th,
-      #rpv-preview .rpv-attendance td,
-      #rpv-preview .rpv-score-table th,
-      #rpv-preview .rpv-score-table td,
-      #rpv-preview .rpv-exkul th,
-      #rpv-preview .rpv-exkul td,
-      #rpv-preview .rpv-merit th,
-      #rpv-preview .rpv-merit td,
-      #rpv-preview .rpv-discipline th,
-      #rpv-preview .rpv-discipline td{
-        border-width:1px!important;
-        border-style:solid!important;
-        border-color:#222!important;
-        box-shadow:none!important;
-        outline:0!important;
-      }
-      #rpv-preview .rpv-team-simple td{
-        border:0!important;
-      }
-    `;
-  }
-
   function normalizeAttendance(report){
     if(!report||typeof report!=='object'||!report.attendance||typeof report.attendance!=='object') return report;
     const a=report.attendance;
@@ -92,7 +51,6 @@
     };
     return report;
   }
-
   function normalizePayload(d){
     if(d?.report) normalizeAttendance(d.report);
     if(Array.isArray(d?.reports)) d.reports.forEach(normalizeAttendance);
@@ -102,15 +60,19 @@
   function currentReport(){
     try{return typeof raporPreviewState!=='undefined'?raporPreviewState?.report:null}catch(_){return null}
   }
-
   const validGrade=v=>['A','B','C','D'].includes(String(v??'').trim().toUpperCase());
-
   function cleanExtracurricularDisplay(){
     const eks=currentReport()?.extracurricular;
     if(!eks||typeof eks!=='object') return;
+
+    /* If the student does not join an extracurricular, or no PTS/PAS assessment
+       exists yet, do not print placeholder dashes/activity names in rows 1-3.
+       Row 4 (school activities) is intentionally untouched because it is sourced
+       independently from the school activity matrix. */
     const noAssessment=!validGrade(eks.activity_grade)&&!validGrade(eks.skill_grade)&&!validGrade(eks.competition_grade);
     const notParticipating=String(eks.status||'').trim().toUpperCase()==='TIDAK_IKUT';
     if(!notParticipating&&!noAssessment) return;
+
     document.querySelectorAll('#rpv-preview .rpv-exkul tbody').forEach(tbody=>{
       const rows=[...tbody.querySelectorAll('tr')];
       rows.slice(0,3).forEach(row=>{
@@ -126,7 +88,6 @@
     const n=Number(String(value??'').replace(',','.'));
     return Number.isFinite(n)&&Math.abs(n)===1;
   };
-
   function normalizeTahfizhRange(value){
     return String(value??'')
       .replace(/\s*s\.\s*d\.?\s*/gi,' to ')
@@ -134,10 +95,12 @@
       .replace(/\s+/g,' ')
       .trim();
   }
-
   function normalizeTahfizhFreeText(value){
     let text=normalizeTahfizhRange(value);
     if(!text||isDashValue(text)) return text;
+
+    /* Numeric unit phrases are normalized first so singular/plural follows the
+       actual number. This also fixes already-English values such as "1 Verses". */
     text=text
       .replace(/\b(\d+(?:[.,]\d+)?)\s*(?:surat|surah|surahs)\b/gi,(_,n)=>`${n} ${countIsOne(n)?'Surah':'Surahs'}`)
       .replace(/\b(\d+(?:[.,]\d+)?)\s*(?:ayat|verse|verses)\b/gi,(_,n)=>`${n} ${countIsOne(n)?'Verse':'Verses'}`)
@@ -145,31 +108,38 @@
       .replace(/\bsurat\b/gi,'Surah')
       .replace(/\bayat\b/gi,'Verse')
       .replace(/\bbaris\b/gi,'Line');
+
     return text.replace(/\s+/g,' ').trim();
   }
-
   function normalizeTahfizhStructuredCount(value,singular,plural){
     const raw=String(value??'').trim();
     if(!raw||isDashValue(raw)) return raw;
+
+    /* Structured count rows define their own unit. Therefore a source such as
+       "141 Baris" inside Number of Verses is intentionally rendered as
+       "141 Verses", not "141 Lines". */
     const match=raw.match(/\d+(?:[.,]\d+)?/);
     if(!match) return normalizeTahfizhFreeText(raw);
     return `${match[0]} ${countIsOne(match[0])?singular:plural}`;
   }
-
   function normalizeUkjAssessment(value){
     let raw=String(value??'').trim();
     if(!raw||isDashValue(raw)) return raw;
     raw=raw.replace(/\bujian\s+kenaikan\s+juz\b/gi,'UKJ').replace(/\bukj\b/gi,'UKJ').replace(/\s+/g,' ').trim();
+
     const juz=(raw.match(/\b(?:juz\s*)?(\d{1,2})\b/i)||[])[1]||'';
     const tag=`UKJ${juz?' '+juz:''}`;
+
     if(/\b(?:belum|tidak)\s+lulus\b/i.test(raw)) return `${tag} Not Yet Passed`;
     if(/\blulus\b/i.test(raw)) return `Passed ${tag}`;
     if(/\bbelum\b/i.test(raw)) return `${tag} Not Yet Completed`;
     if(/\bsudah\b/i.test(raw)) return `Completed ${tag}`;
+
+    /* If the source only contains UKJ + juz number, keep it concise and do not
+       invent a completion/pass status that was never entered. */
     if(/\bUKJ\b/i.test(raw)) return tag;
     return normalizeTahfizhFreeText(raw);
   }
-
   function normalizeTahfizhEnglishDisplay(){
     document.querySelectorAll('#rpv-preview .rpv-tahfizh tbody tr').forEach(row=>{
       const cells=[...row.querySelectorAll('td')];
@@ -178,37 +148,58 @@
       const valueCell=cells[cells.length-1];
       if(!valueCell) return;
       const raw=valueCell.textContent||'';
-      if(label.includes('number of surahs')) valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Surah','Surahs');
-      else if(label.includes('number of lines')) valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Line','Lines');
-      else if(label.includes('number of verses')) valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Verse','Verses');
-      else if(label.includes('juz advancement assessment')) valueCell.textContent=normalizeUkjAssessment(raw);
-      else valueCell.textContent=normalizeTahfizhFreeText(raw);
+
+      if(label.includes('number of surahs')){
+        valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Surah','Surahs');
+      }else if(label.includes('number of lines')){
+        valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Line','Lines');
+      }else if(label.includes('number of verses')){
+        valueCell.textContent=normalizeTahfizhStructuredCount(raw,'Verse','Verses');
+      }else if(label.includes('juz advancement assessment')){
+        valueCell.textContent=normalizeUkjAssessment(raw);
+      }else{
+        valueCell.textContent=normalizeTahfizhFreeText(raw);
+      }
     });
   }
 
   function installHdPdfRenderer(){
     if(typeof rpElementPdfBlob!=='function'||typeof rpEnsurePdfLibs!=='function'||typeof rpWaitForImages!=='function') return false;
     if(rpElementPdfBlob.__cqHdPrint) return true;
+
     const hdRenderer=async function(el){
-      installUniformReportBorders();
       await rpEnsurePdfLibs(false);
       const pages=[...el.querySelectorAll('.rpv-paper')];
       if(!pages.length) throw new Error('Halaman rapor tidak ditemukan.');
       const {jsPDF}=window.jspdf||{};
       if(!jsPDF) throw new Error('Library PDF belum siap.');
+
+      /* 3.2x on an A4 CSS page is approximately print-quality ~300 DPI.
+         PNG is lossless, so text, thin borders, signatures and logos stay sharp.
+         Layout dimensions stay exactly A4 210 x 297 mm. */
       const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
       if(document.fonts?.ready){try{await document.fonts.ready}catch(_){}}
+
       for(let i=0;i<pages.length;i++){
         const page=pages[i];
         await rpWaitForImages(page);
         const canvas=await window.html2canvas(page,{
-          scale:3.2,useCORS:true,backgroundColor:'#ffffff',logging:false,
-          scrollX:0,scrollY:0,width:page.scrollWidth,height:page.scrollHeight,
-          windowWidth:page.scrollWidth,windowHeight:page.scrollHeight,imageSmoothingEnabled:true
+          scale:3.2,
+          useCORS:true,
+          backgroundColor:'#ffffff',
+          logging:false,
+          scrollX:0,
+          scrollY:0,
+          width:page.scrollWidth,
+          height:page.scrollHeight,
+          windowWidth:page.scrollWidth,
+          windowHeight:page.scrollHeight,
+          imageSmoothingEnabled:true
         });
         if(i>0) pdf.addPage('a4','portrait');
         pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,210,297,undefined,'SLOW');
-        canvas.width=1;canvas.height=1;
+        canvas.width=1;
+        canvas.height=1;
       }
       return pdf.output('blob');
     };
@@ -218,15 +209,17 @@
   }
 
   function install(){
-    installUniformReportBorders();
-    if(typeof getAuthToken!=='function'||typeof SUPABASE_URL==='undefined'||typeof SUPABASE_PUBLISHABLE_KEY==='undefined') return setTimeout(install,50);
+    if(typeof getAuthToken!=='function'||typeof SUPABASE_URL==='undefined'||typeof SUPABASE_PUBLISHABLE_KEY==='undefined'){
+      return setTimeout(install,50);
+    }
 
     reportPreviewRequest=async function(action,payload={},timeoutMs=35000){
       const token=getAuthToken();if(!token)throw new Error('Sesi login tidak ditemukan.');
       const url=SUPABASE_URL+'/functions/v1/report-preview-v2?cq_effective=20260923-1';
       return await new Promise((resolve,reject)=>{
         const xhr=new XMLHttpRequest();
-        xhr.open('POST',url,true);xhr.timeout=timeoutMs;
+        xhr.open('POST',url,true);
+        xhr.timeout=timeoutMs;
         xhr.setRequestHeader('Content-Type','application/json');
         xhr.setRequestHeader('apikey',SUPABASE_PUBLISHABLE_KEY);
         xhr.setRequestHeader('Authorization','Bearer '+SUPABASE_PUBLISHABLE_KEY);
@@ -249,7 +242,6 @@
     if(typeof renderRaporPreview==='function'&&!renderRaporPreview.__cqEffectiveGuard){
       const original=renderRaporPreview;
       const guarded=function(){
-        installUniformReportBorders();
         try{normalizeAttendance(currentReport())}catch(_){}
         const result=original.apply(this,arguments);
         try{cleanExtracurricularDisplay()}catch(_){}
