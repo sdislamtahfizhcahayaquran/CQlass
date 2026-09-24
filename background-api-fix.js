@@ -1,3 +1,24 @@
+/* CQlass — core sidebar runtime guard.
+   Capture the original app-core navigation before role-specific wrappers are loaded.
+   This prevents pre-login sidebar calls from crashing when currentUser is still null. */
+(function(){
+  'use strict';
+  if(window.__cqSidebarCoreGuardInstalled)return;
+  window.__cqSidebarCoreGuardInstalled=true;
+  if(typeof renderSidebar==='function'){
+    const base=renderSidebar;
+    window.__cqBaseRenderSidebar=base;
+    const safe=function(){
+      let u=null;try{u=(typeof currentUser!=='undefined')?currentUser:null}catch(_){u=null}
+      if(!u||!u.role){const s=document.getElementById('sidebar');if(s)s.innerHTML='';return null}
+      return base.apply(this,arguments);
+    };
+    safe.__cqCoreSidebarSafe=true;
+    renderSidebar=safe;
+  }
+  if(typeof setActiveModule==='function')window.__cqBaseSetActiveModule=setActiveModule;
+})();
+
 /* CQlass — background request fix
    Request non-kritis tidak boleh memunculkan toast error global.
    Error penting pada aksi pengguna tetap ditangani oleh callApi utama/caller. */
@@ -147,7 +168,7 @@
   };
 })();
 
-/* Load shell enhancements and only the scripts needed by the active role. */
+/* Load shell enhancements only after the active role is known. */
 (function(){
   'use strict';
   if(window.__cqShellEnhancementLoaderInstalled) return;
@@ -163,12 +184,41 @@
   function role(){
     try{
       const u=(typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{};
-      return String(u.role||u.primary_role||u.role_code||'').trim().toLowerCase();
+      return String(u.role||u.primary_role||u.role_code||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
     }catch(_){return ''}
+  }
+
+  function primeDashboardRole(r){
+    try{
+      if(r==='kabid_tahfizh'&&typeof DASHBOARD_MODULE!=='undefined'){
+        if(!Array.isArray(DASHBOARD_MODULE.roles))DASHBOARD_MODULE.roles=[];
+        if(!DASHBOARD_MODULE.roles.includes('kabid_tahfizh'))DASHBOARD_MODULE.roles.push('kabid_tahfizh');
+      }
+    }catch(_){ }
   }
 
   function loadForRole(){
     const r=role();
+    if(!r)return;
+    primeDashboardRole(r);
+
+    if(['guru','walas','partner','guru_partner','pengabdian','akademik','pimpinan'].includes(r)){
+      add('./academic-sidebar-order.js?v=20260924-rolelazy1','__cqAcademicSidebarOrderRoleLazy',false);
+    }
+    if(['akademik','pimpinan','admin'].includes(r)){
+      add('./academic-teacher-report.js?v=20260924-rolelazy1','__cqAcademicTeacherReportRoleLazy',false);
+    }
+    if(['admin','akademik','kegiatan'].includes(r)){
+      add('./kabid-role-scope-fix.js?v=20260924-rolelazy1','__cqKabidRoleScopeRoleLazy',false);
+    }
+
+    if(r==='akademik'){
+      add('./academic-kabid-cleanup.js?v=20260924-rolelazy1','__cqAcademicKabidCleanupRoleLazy',false);
+      add('./academic-kabid-ui-v2.js?v=20260924-rolelazy1','__cqAcademicKabidUiV2RoleLazy',false);
+      add('./academic-teacher-report-v3.js?v=20260924-rolelazy1','__cqAcademicTeacherReportV3RoleLazy',false);
+      add('./academic-dashboard-standalone-v7.js?v=20260924-rolelazy1','__cqAcademicDashboardV7RoleLazy',false);
+      add('./academic-header-shell-v8.js?v=20260924-rolelazy1','__cqAcademicHeaderV8RoleLazy',false);
+    }
     if(r==='kegiatan'){
       add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);
       add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
@@ -177,15 +227,18 @@
       add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
     }
     if(r==='partner'){
-      add('./guru-partner-tahfizh-menu.js?v=20260922-sidebarfix2','__cqPartnerTahfizhMenuFreshV2',false);
+      add('./guru-partner-tahfizh-menu.js?v=20260924-rolelazy1','__cqPartnerTahfizhMenuRoleLazy',false);
     }
     if(r==='kabid_tahfizh'){
-      add('./tahfizh-kabid-dashboard-layout.js?v=20260924-kabid6','__cqTahfizhKabidDashboardLayoutV1',false);
-      add('./tahfizh-kabid-shell-fix.js?v=20260924-kabid6','__cqTahfizhKabidShellFixLoaderInstalled',false);
-      add('./tahfizh-kabid-input-live.js?v=20260924-kabid6','__cqTahfizhKabidInputLiveLoaderInstalled',false);
+      add('./tahfizh-kabid-dashboard-layout.js?v=20260924-kabid7','__cqTahfizhKabidDashboardLayoutV1',false);
+      add('./tahfizh-kabid-shell-fix.js?v=20260924-kabid7','__cqTahfizhKabidShellFixLoaderInstalled',false);
+      add('./tahfizh-kabid-input-live.js?v=20260924-kabid7','__cqTahfizhKabidInputLiveLoaderInstalled',false);
     }
     if(r==='tahfizh'){
-      add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-tahfizhonly2','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
+      add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-rolelazy1','__cqTahfizhKesiswaanSidebarRoleLazy',false);
+    }
+    if(r==='kesiswaan'){
+      add('./uks-duty-kesiswaan.js?v=20260924-rolelazy1','__cqUksDutyKesiswaanRoleLazy',false);
     }
   }
 
@@ -196,10 +249,18 @@
 
   loadForRole();
 
-  if(typeof enterApp==='function'&&!enterApp.__cqRoleLazyLoader){
+  if(typeof enterApp==='function'&&!enterApp.__cqRoleLazyLoaderV2){
     const oldEnter=enterApp;
-    const wrapped=function(){const out=oldEnter.apply(this,arguments);setTimeout(loadForRole,0);return out};
-    wrapped.__cqRoleLazyLoader=true;
+    const wrapped=function(){
+      const r=role();
+      primeDashboardRole(r);
+      loadForRole();
+      const out=oldEnter.apply(this,arguments);
+      setTimeout(loadForRole,0);
+      if(r==='kabid_tahfizh')setTimeout(()=>{try{window.cqStabilizeKabidTahfizh?.(true)}catch(_){}},80);
+      return out;
+    };
+    wrapped.__cqRoleLazyLoaderV2=true;
     enterApp=wrapped;
   }
 })();
