@@ -155,7 +155,7 @@ function install(){
 
 if(typeof renderSidebar==='function'&&!renderSidebar.__cqHrdCleanV2){const old=renderSidebar;const wrapped=function(){return isHrd()?drawSidebar():old.apply(this,arguments)};wrapped.__cqHrdCleanV2=true;renderSidebar=wrapped}
 const observer=new MutationObserver(()=>{if(isHrd()){const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();const old=document.getElementById('hrd-report-inbox-panel');if(old)old.remove()}});
-function start(){observer.observe(document.body,{childList:true,subtree:true});if(install())setTimeout(renderDashboard,60)}
+function start(){observer.observe(document.body,{childList:true,subtree:true});if(install()){setTimeout(()=>{drawSidebar();renderDashboard()},60);setTimeout(()=>drawSidebar(),500);setTimeout(()=>drawSidebar(),1500)}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-if(typeof enterApp==='function'&&!enterApp.__cqHrdCleanV2){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(install())renderDashboard()},90);return out};wrapped.__cqHrdCleanV2=true;enterApp=wrapped}
+if(typeof enterApp==='function'&&!enterApp.__cqHrdCleanV2){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(install()){drawSidebar();renderDashboard();setTimeout(()=>drawSidebar(),500)}},90);return out};wrapped.__cqHrdCleanV2=true;enterApp=wrapped}
 })();
