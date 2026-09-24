@@ -7,6 +7,25 @@
   // Pengabdian hanya menerima tugas badal/aktivitas kerja; bukan pengelola akademik atau Tahfizh.
   const TIMESHEET_ROLES=['guru','walas','partner','guru_partner','pengabdian'];
 
+  // Pulihkan pola sebelum isolasi role 24 Sep: Walas tetap Guru Mapel,
+  // dengan fitur wali kelas sebagai tambahan. Keduanya memakai satu cleaner yang sama.
+  function restoreTeacherWalasStructure(){
+    try{
+      const r=String((typeof currentUser!=='undefined'&&currentUser?.role)||'').trim().toLowerCase();
+      if(r!=='guru'&&r!=='walas') return false;
+      if(window.__cqTeacherWalasSidebarClean) return true;
+      if(document.querySelector('script[data-cq-teacher-walas-clean]')) return true;
+      const s=document.createElement('script');
+      s.src='teacher-walas-sidebar-clean.js?v=20260924-role-restore1';
+      s.dataset.cqTeacherWalasClean='1';
+      s.onload=function(){
+        try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){}
+      };
+      document.head.appendChild(s);
+      return true;
+    }catch(_){return false}
+  }
+
   function ensurePengabdianDashboard(){
     try{
       if(typeof DASHBOARD_MODULE!=='undefined'&&Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes('pengabdian')){
@@ -84,16 +103,19 @@
   }
 
   function fixSidebar(){
+    restoreTeacherWalasStructure();
     ensurePengabdianDashboard();
     relocateTimesheet();
     fixAcademicOrder();
   }
 
   function install(){
+    restoreTeacherWalasStructure();
     fixSidebar();
     if(typeof renderSidebar==='function'&&!renderSidebar.__cqlassSidebarOrderGuard){
       const original=renderSidebar;
       const wrapped=function(){
+        restoreTeacherWalasStructure();
         fixSidebar();
         return original.apply(this,arguments);
       };
