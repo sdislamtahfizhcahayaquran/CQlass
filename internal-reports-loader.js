@@ -64,7 +64,11 @@
     if(!r)return false; // jangan pernah menebak role sebelum login/session selesai
     started=true;
 
-    if(r==='kabid_tahfizh'||isHrd())return true;
+    if(isHrd()){
+      load('hrd-role-cleanup.js?v=20260924-hrd-clean1');
+      return true;
+    }
+    if(r==='kabid_tahfizh')return true;
 
     Promise.allSettled(common.map(load)).then(()=>{
       const now=role();
