@@ -54,7 +54,7 @@
   document.head.appendChild(semantic);
 
   const inbox=document.createElement('script');
-  inbox.src='hrd-report-inbox.js?v=20260924-inbox1';
+  inbox.src='hrd-report-inbox.js?v=20260924-inbox2';
   inbox.id='cq-hrd-report-inbox';
   document.head.appendChild(inbox);
 
