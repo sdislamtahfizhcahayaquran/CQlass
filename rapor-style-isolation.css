@@ -10,36 +10,6 @@
   max-width:100%!important;
 }
 
-/* Thin 1px grid only for the requested report sections:
-   subject assessment, attendance, extracurricular, and discipline/merit. */
-#app-screen .content .rpv-academic,
-#app-screen .content .rpv-attendance,
-#app-screen .content .rpv-score-table,
-#app-screen .content .rpv-exkul,
-#app-screen .content .rpv-merit,
-#app-screen .content .rpv-discipline{
-  border-collapse:collapse!important;
-  border-spacing:0!important;
-}
-#app-screen .content .rpv-academic th,
-#app-screen .content .rpv-academic td,
-#app-screen .content .rpv-attendance th,
-#app-screen .content .rpv-attendance td,
-#app-screen .content .rpv-score-table th,
-#app-screen .content .rpv-score-table td,
-#app-screen .content .rpv-exkul th,
-#app-screen .content .rpv-exkul td,
-#app-screen .content .rpv-merit th,
-#app-screen .content .rpv-merit td,
-#app-screen .content .rpv-discipline th,
-#app-screen .content .rpv-discipline td{
-  border-width:1px!important;
-  border-style:solid!important;
-  border-color:#222!important;
-  box-shadow:none!important;
-  outline:0!important;
-}
-
 #app-screen .content .rpv-template-head{
   width:100%!important;
   font-size:11px!important;
@@ -108,7 +78,6 @@
 #app-screen .content .rpv-merit th,
 #app-screen .content .rpv-merit td{height:6.9mm!important}
 
-/* Class teaching-team table is intentionally borderless. */
 #app-screen .content .rpv-team-simple td{
   border:0!important;
   padding:2px 1px!important;
