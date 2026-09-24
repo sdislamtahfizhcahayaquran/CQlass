@@ -4,6 +4,26 @@
   if(window.__CQ_RAPOR_EFFECTIVE_ATTENDANCE_GUARD__) return;
   window.__CQ_RAPOR_EFFECTIVE_ATTENDANCE_GUARD__=true;
 
+  // app-core is loaded immediately before this file. Protect its sidebar renderer
+  // before the many role-specific wrappers are loaded. Startup/logout/session restore
+  // may legitimately have currentUser=null; in that state the sidebar must simply wait.
+  try{
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqNullUserGuard){
+      const originalSidebar=renderSidebar;
+      const safeSidebar=function(){
+        if(typeof currentUser==='undefined'||!currentUser){
+          const sidebar=document.getElementById('sidebar');
+          if(sidebar)sidebar.innerHTML='';
+          return;
+        }
+        return originalSidebar.apply(this,arguments);
+      };
+      safeSidebar.__cqNullUserGuard=true;
+      renderSidebar=safeSidebar;
+      window.renderSidebar=safeSidebar;
+    }
+  }catch(_){ }
+
   const num=v=>{const n=Number(v);return Number.isFinite(n)&&n>=0?Math.trunc(n):0};
 
   function installUniformReportBorders(){
