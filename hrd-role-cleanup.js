@@ -56,11 +56,11 @@ function drawSidebar(active){
     ${navButton('timesheet','Timesheet','openHrdCleanTimesheet()')}
     ${navButton('administration','Administrasi Guru','openHrdCleanAdministration()')}
     ${navButton('attendance','Kehadiran','openHrdCleanAttendance()')}
-    ${navButton('promotion','Promosi Socmed','openHrdCleanPromotion()')}
+    ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}
     ${navButton('saturday','Kegiatan Sabtu','openHrdCleanSaturday()')}
     ${navButton('monthly','Rekap Bulanan','openHrdCleanMonthly()')}
     <div class="cq-hrd-section">Pengelolaan</div>
-    ${navButton('saturday-manage','Jadwal Kegiatan Sabtu','openHrdCleanSaturdayManage()')}
+    ${navButton('periods','Periode Laporan','openHrdReportPeriods()')}\n    ${navButton('saturday-manage','Jadwal Kegiatan Sabtu','openHrdCleanSaturdayManage()')}
   </div>`;
   return true;
 }
@@ -99,9 +99,14 @@ async function renderAdministration(){
 
 function findPromotion(t){return (t.categories||[]).find(x=>x&&x.key==='promotion')||null}
 async function renderPromotion(){
-  setActive('promotion');loading('Promosi Socmed');
-  try{const d=await getAdmin(),rows=d.teachers||[],c=content();if(!c)return;const done=rows.filter(t=>findPromotion(t)?.status==='present').length,missing=rows.filter(t=>findPromotion(t)?.status!=='present').length;c.innerHTML=`<div class="cq-hrd-clean">${head('Promosi Socmed','Monitoring minimal 1 foto promosi per guru pada periode berjalan.')}<div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Total Guru</span><b>${rows.length}</b></div><div class="cq-hrd-kpi"><span>Sudah</span><b>${done}</b></div><div class="cq-hrd-kpi"><span>Belum</span><b>${missing}</b></div><div class="cq-hrd-kpi"><span>Target</span><b>1</b><small>foto / bulan</small></div></div><div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>Guru</th><th>Role</th><th>Status</th><th>Jumlah</th><th>Terakhir</th></tr></thead><tbody>${rows.map(t=>{const p=findPromotion(t),ok=p?.status==='present';return `<tr><td><b>${esc(teacherName(t))}</b></td><td>${esc(rolesText(t))}</td><td><span class="cq-hrd-chip ${ok?'ok':'bad'}">${ok?'Sudah':'Belum'}</span></td><td>${Number(p?.item_count||0)}</td><td>${esc(p?.last_created_at?String(p.last_created_at).slice(0,10):'—')}</td></tr>`}).join('')}</tbody></table></div></div></div>`}catch(e){errorView('Promosi Socmed',e)}
+  setActive('promotion');loading('Laporan Promo Socmed');
+  try{const ps=await api('hrd-live-report',{action:'period_list'}),active=(ps.periods||[]).find(x=>x.is_active)||(ps.periods||[])[0];if(!active)throw new Error('Buat Periode Laporan terlebih dahulu.');const d=await api('hrd-live-report',{action:'promotion_center',start:active.start_date,end:active.end_date}),rows=d.rows||[],c=content();if(!c)return;const sm=d.summary||{};c.innerHTML=`<div class="cq-hrd-clean">${head('Laporan Promo Socmed',active.name+' • '+active.start_date+' s.d. '+active.end_date)}<div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Personel</span><b>${sm.people||0}</b></div><div class="cq-hrd-kpi"><span>Sudah</span><b>${sm.done||0}</b></div><div class="cq-hrd-kpi"><span>Belum</span><b>${sm.missing||0}</b></div><div class="cq-hrd-kpi"><span>Total Unggahan</span><b>${sm.uploads||0}</b></div></div><div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>Nama</th><th>Role</th><th>Status</th><th>Jumlah</th><th>Bukti</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${esc((x.roles||[]).join(', ')||'—')}</td><td><span class="cq-hrd-chip ${x.count?'ok':'bad'}">${x.count?'Sudah':'Belum'}</span></td><td>${x.count}</td><td>${(x.items||[]).map(i=>i.photo_url?`<a class="cq-hrd-chip" href="${esc(i.photo_url)}" target="_blank" rel="noopener">${esc(i.activity_date)} · Lihat Foto</a>`:`<span class="cq-hrd-chip">${esc(i.activity_date)}</span>`).join('')||'—'}</td></tr>`).join('')}</tbody></table></div></div></div>`}catch(e){errorView('Laporan Promo Socmed',e)}
 }
+async function renderPeriods(){
+ setActive('periods');loading('Periode Laporan');
+ try{const d=await api('hrd-live-report',{action:'period_list'}),rows=d.periods||[],c=content();if(!c)return;c.innerHTML=`<div class="cq-hrd-clean">${head('Periode Laporan','Rentang tanggal fleksibel untuk laporan HRD. Data asli tidak disalin atau diubah.')}<div class="cq-hrd-panel"><h2>Buat Periode</h2><div class="cq-hrd-form" style="grid-template-columns:1.4fr 1fr 1fr .8fr auto"><div class="cq-hrd-field"><label>Nama Periode</label><input id="hrdp-name" placeholder="Oktober 2026"></div><div class="cq-hrd-field"><label>Mulai</label><input id="hrdp-start" type="date"></div><div class="cq-hrd-field"><label>Selesai</label><input id="hrdp-end" type="date"></div><div class="cq-hrd-field"><label>Status</label><select id="hrdp-active"><option value="1">Aktif</option><option value="0">Arsip</option></select></div><button class="cq-hrd-btn" onclick="saveHrdPeriod()">Simpan</button></div></div><div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>Periode</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.start_date)}</td><td>${esc(x.end_date)}</td><td><span class="cq-hrd-chip ${x.is_active?'ok':''}">${x.is_active?'Aktif':'Arsip'}</span></td></tr>`).join('')}</tbody></table></div></div></div>`}catch(e){errorView('Periode Laporan',e)}
+}
+window.saveHrdPeriod=async()=>{try{const p={action:'period_save',name:document.getElementById('hrdp-name')?.value,start_date:document.getElementById('hrdp-start')?.value,end_date:document.getElementById('hrdp-end')?.value,is_active:document.getElementById('hrdp-active')?.value==='1'};const r=await api('hrd-live-report',p);if(r.success===false)throw new Error(r.error==='period_overlap'?'Rentang bertabrakan dengan periode yang sudah ada.':r.error);if(typeof showToast==='function')showToast('Periode laporan tersimpan.');renderPeriods()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
 
 function waitRenderer(name,title){const c=content();let n=0;(function step(){n++;if(typeof window[name]==='function')return window[name](c);if(n<35)return setTimeout(step,100);if(c)c.innerHTML=`<div class="cq-hrd-clean">${head(title,'Data ditarik langsung dari CQlass.')}<div class="cq-hrd-panel cq-hrd-empty">${esc(title)} belum dapat dimuat. Muat ulang halaman.</div></div>`})()}
 function renderTimesheet(){setActive('timesheet');loading('Timesheet');waitRenderer('renderTeacherTimesheet','Timesheet')}
@@ -136,7 +141,7 @@ window.openHrdCleanLive=renderLive;
 window.openHrdCleanTimesheet=renderTimesheet;
 window.openHrdCleanAdministration=renderAdministration;
 window.openHrdCleanAttendance=renderAttendance;
-window.openHrdCleanPromotion=renderPromotion;
+window.openHrdCleanPromotion=renderPromotion;\nwindow.openHrdReportPeriods=renderPeriods;
 window.openHrdCleanSaturday=renderSaturday;
 window.openHrdCleanMonthly=renderMonthly;
 window.openHrdCleanSaturdayManage=renderSaturdayManage;
