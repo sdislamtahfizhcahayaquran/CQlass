@@ -180,14 +180,16 @@
       add('./guru-partner-tahfizh-menu.js?v=20260922-sidebarfix2','__cqPartnerTahfizhMenuFreshV2',false);
     }
     if(r==='kabid_tahfizh'){
-      add('./tahfizh-kabid-shell-fix.js?v=20260924-kabid5','__cqTahfizhKabidShellFixLoaderInstalled',false);
-      add('./tahfizh-kabid-input-live.js?v=20260924-kabid4','__cqTahfizhKabidInputLiveLoaderInstalled',false);
+      add('./tahfizh-kabid-dashboard-layout.js?v=20260924-kabid6','__cqTahfizhKabidDashboardLayoutV1',false);
+      add('./tahfizh-kabid-shell-fix.js?v=20260924-kabid6','__cqTahfizhKabidShellFixLoaderInstalled',false);
+      add('./tahfizh-kabid-input-live.js?v=20260924-kabid6','__cqTahfizhKabidInputLiveLoaderInstalled',false);
     }
     if(r==='tahfizh'){
       add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-tahfizhonly2','__cqTahfizhKesiswaanSidebarCleanLoaderInstalled',false);
     }
   }
 
+  add('./tahfizh-report-preview-polish.js?v=20260924-previewhd1','__cqTahfizhReportPreviewPolishV1',false);
   add('./profile-dropdown.js?v=20260914-profile1','__cqProfileDropdownLoader',false);
   add('./push-notifications.js?v=20260914-push3','__cqPushLoaderInstalled',true);
   add('./reminder-center.js?v=20260915-bell-all-role2','__cqReminderCenterLoaderInstalled',true);
