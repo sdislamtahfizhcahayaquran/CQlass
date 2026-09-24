@@ -798,6 +798,17 @@ const MODULE_GROUPS = [
   }
 ];
 
+// Admin modules are declared here (not only injected by late-loaded scripts)
+// so the sidebar remains deterministic on GitHub Pages/mobile browsers.
+MODULE_GROUPS.push({
+  id:'administrasi', label:'Administrasi', roles:['admin'], items:[
+    { id:'kegiatan-khusus', label:'Kegiatan Khusus', roles:['admin'], built:true, render:(c)=>{
+      if(typeof window.renderAdminSpecialActivity==='function') return window.renderAdminSpecialActivity(c);
+      c.innerHTML='<div class="card">Modul Kegiatan Khusus sedang dimuat. Silakan muat ulang halaman.</div>';
+    }}
+  ]
+});
+
 // Dashboard utama untuk Walas, Kesiswaan, dan Pimpinan.
 const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderDashboard };
 
