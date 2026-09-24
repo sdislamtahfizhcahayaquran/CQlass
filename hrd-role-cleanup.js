@@ -123,7 +123,7 @@ async function renderPeriods(){
 window.saveHrdPeriod=async()=>{try{const p={action:'period_save',name:document.getElementById('hrdp-name')?.value,start_date:document.getElementById('hrdp-start')?.value,end_date:document.getElementById('hrdp-end')?.value,is_active:document.getElementById('hrdp-active')?.value==='1'};const r=await api('hrd-live-report',p);if(r.success===false)throw new Error(r.error==='period_overlap'?'Rentang bertabrakan dengan periode yang sudah ada.':r.error);if(typeof showToast==='function')showToast('Periode laporan tersimpan.');renderPeriods()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
 
 function waitRenderer(name,title){const c=content();let n=0;(function step(){n++;if(typeof window[name]==='function')return window[name](c);if(n<35)return setTimeout(step,100);if(c)c.innerHTML=`<div class="cq-hrd-clean">${head(title,'Data ditarik langsung dari CQlass.')}<div class="cq-hrd-panel cq-hrd-empty">${esc(title)} belum dapat dimuat. Muat ulang halaman.</div></div>`})()}
-function renderTimesheet(){setActive('timesheet');loading('Timesheet');waitRenderer('renderTeacherTimesheet','Timesheet')}
+function renderTimesheet(){setActive('timesheet');const c=content();if(c)c.innerHTML=`<div class="cq-hrd-clean">${head('Timesheet','Monitoring Timesheet guru tersedia melalui Laporan Bulanan. HRD tidak memiliki form input Timesheet guru.')}<div class="cq-hrd-panel cq-hrd-empty">Pilih guru dari Laporan Bulanan untuk melihat detail aktivitas kerjanya.</div></div>`}
 
 async function renderAttendance(){
   setActive('attendance');loading('Kehadiran');
