@@ -9,13 +9,14 @@
   }
   function role(){
     const u=readUser();
-    return String(u.role||u.primary_role||u.role_code||'').trim().toLowerCase();
+    return String(u.role||u.primary_role||u.role_code||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   }
   function isHrd(){
     const u=readUser(),r=role(),username=String(u.username||'').trim().toLowerCase();
     const rs=(Array.isArray(u.roles)?u.roles:[]).map(x=>String(typeof x==='string'?x:(x?.role_code||x?.role||'')).trim().toLowerCase());
     return r==='hrd'||username==='hrd'||rs.includes('hrd');
   }
+  function isKabidTahfizh(){return role()==='kabid_tahfizh'}
   function fileName(src){
     try{return new URL(src,location.href).pathname.split('/').pop()}catch(_){return String(src).split('?')[0].split('/').pop()}
   }
@@ -33,7 +34,7 @@
     });
   }
 
-  // Hindari file yang sudah dimuat langsung dari index atau loader lain.
+  // Paket ini adalah fitur lintas Akademik/Kesiswaan/Kegiatan, bukan shell Kabid Tahfizh.
   const common=[
     'report-preview-v2-route.js?v=20260917-report3',
     'report-period-control.js?v=20260923-reportperiod1',
@@ -57,9 +58,9 @@
   ];
 
   const hrdOnly=[];
-  const sources=isHrd()?hrdOnly:common;
+  const sources=isKabidTahfizh()?[]:(isHrd()?hrdOnly:common);
 
   Promise.allSettled(sources.map(load)).then(()=>{
-    if(!isHrd())load('kesiswaan-final-cleanup.js?v=20260922-single6');
+    if(!isHrd()&&!isKabidTahfizh())load('kesiswaan-final-cleanup.js?v=20260924-roleisolated1');
   });
 })();
