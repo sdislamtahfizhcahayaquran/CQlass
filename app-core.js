@@ -835,9 +835,23 @@ function enterApp(){
   document.getElementById('user-role').textContent = currentUser.role.toUpperCase();
   updateProfilePhotoUI();
 
-  activeModule = DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi';
-  renderSidebar();
-  setActiveModule(activeModule);
+  // HRD memakai workspace laporan terisolasi. Role lain tetap memakai router lama.
+  if(String(currentUser?.role||'').trim().toLowerCase()==='hrd'){
+    activeModule='dashboard';
+    if(typeof window.openHrdCleanDashboard==='function'){
+      try{renderSidebar()}catch(_){}
+      window.openHrdCleanDashboard();
+    }else{
+      const sc=document.createElement('script');
+      sc.src='hrd-role-cleanup.js?v=20260925-core-route6';
+      sc.onload=()=>{try{renderSidebar()}catch(_){};window.openHrdCleanDashboard?.()};
+      document.head.appendChild(sc);
+    }
+  }else{
+    activeModule = DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi';
+    renderSidebar();
+    setActiveModule(activeModule);
+  }
 
   // UI tampil dahulu; request non-kritis ditunda agar login terasa cepat.
   if(currentUser.role === 'walas'){
