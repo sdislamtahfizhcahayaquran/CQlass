@@ -32,7 +32,7 @@ async function api(slug,payload){
 function installCss(){
   if(document.getElementById('cq-hrd-clean-css'))return;
   const s=document.createElement('style');s.id='cq-hrd-clean-css';s.textContent=`
-  .cq-hrd-side{padding:18px 14px 26px;display:flex;flex-direction:column;gap:7px}.cq-hrd-section{margin:17px 8px 4px;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#718582}.cq-hrd-nav{width:100%;min-height:44px;border:0;border-radius:12px;background:transparent;color:#294846;padding:0 13px;display:flex;align-items:center;font:750 13px/1.2 Inter,system-ui,sans-serif;text-align:left;cursor:pointer}.cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-nav.active{background:#0a6e6e;color:#fff}
+  .cq-hrd-side{padding:18px 14px 26px;display:flex;flex-direction:column;gap:7px}.cq-hrd-section{margin:17px 8px 4px;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#718582}.cq-hrd-nav{width:100%;min-height:44px;border:0;border-radius:12px;background:transparent;color:#294846;padding:0 13px;display:flex;align-items:center;font:750 13px/1.2 Inter,system-ui,sans-serif;text-align:left;cursor:pointer}.cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-nav.active{background:#0a6e6e;color:#fff}.cq-hrd-navgroup{margin-top:4px}.cq-hrd-navgroup>summary{list-style:none;cursor:pointer;min-height:44px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;border-radius:12px;color:#294846;font:850 12px/1.2 Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em}.cq-hrd-navgroup>summary::-webkit-details-marker{display:none}.cq-hrd-navgroup>summary:hover{background:#eef7f5}.cq-hrd-navgroup>summary span{font-size:15px;transition:.2s}.cq-hrd-navgroup[open]>summary span{transform:rotate(180deg)}.cq-hrd-sub{display:grid;gap:3px;padding:4px 0 4px 9px}.cq-hrd-sub .cq-hrd-nav{min-height:38px;font-size:12px}
   .cq-hrd-clean{display:grid;gap:14px}.cq-hrd-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-end;padding:19px 20px;border-radius:18px;background:linear-gradient(135deg,#073f43,#0a6e6e);color:#fff}.cq-hrd-head h1{font-size:22px;margin:3px 0 5px}.cq-hrd-head p{margin:0;color:#d9eeee;font-size:11px;line-height:1.55}.cq-hrd-eyebrow{font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:#aee2de}
   .cq-hrd-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.cq-hrd-tools input,.cq-hrd-tools select{height:39px;border:1px solid #d6e5e3;border-radius:11px;background:#fff;padding:0 11px;color:#294846}.cq-hrd-btn{height:39px;border:0;border-radius:11px;background:#0a6e6e;color:#fff;padding:0 13px;font-weight:850;cursor:pointer}.cq-hrd-btn.alt{background:#e9f4f2;color:#0a6763}.cq-hrd-btn.danger{background:#fff0ee;color:#a13d35}
   .cq-hrd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.cq-hrd-kpi,.cq-hrd-panel{background:#fff;border:1px solid #dce9e7;border-radius:16px;padding:15px;box-shadow:0 5px 18px rgba(20,70,70,.04)}.cq-hrd-kpi span{display:block;font-size:10px;color:#748986;font-weight:750}.cq-hrd-kpi b{display:block;font-size:24px;color:#183f3d;margin-top:7px}.cq-hrd-kpi small{display:block;font-size:9px;color:#91a19e;margin-top:3px}.cq-hrd-panel h2{margin:0 0 12px;font-size:15px;color:#214441}
@@ -49,18 +49,23 @@ function navButton(id,label,fn){return `<button class="cq-hrd-nav${state.active=
 function drawSidebar(active){
   if(!isHrd())return false;installCss();if(active)state.active=active;
   const s=document.getElementById('sidebar');if(!s)return false;
+  const reportOpen=['live','timesheet','administration','attendance','promotion','saturday','monthly'].includes(state.active);
+  const manageOpen=['periods','saturday-manage'].includes(state.active);
   s.innerHTML=`<div class="cq-hrd-side">
     ${navButton('dashboard','Dashboard','openHrdCleanDashboard()')}
-    <div class="cq-hrd-section">Laporan</div>
-    ${navButton('live','Live Report','openHrdCleanLive()')}
-    ${navButton('timesheet','Timesheet','openHrdCleanTimesheet()')}
-    ${navButton('administration','Administrasi Guru','openHrdCleanAdministration()')}
-    ${navButton('attendance','Kehadiran','openHrdCleanAttendance()')}
-    ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}
-    ${navButton('saturday','Kegiatan Sabtu','openHrdCleanSaturday()')}
-    ${navButton('monthly','Rekap Bulanan','openHrdCleanMonthly()')}
-    <div class="cq-hrd-section">Pengelolaan</div>
-    ${navButton('periods','Periode Laporan','openHrdReportPeriods()')}\n    ${navButton('saturday-manage','Jadwal Kegiatan Sabtu','openHrdCleanSaturdayManage()')}
+    <details class="cq-hrd-navgroup" ${reportOpen?'open':''}><summary>Laporan <span>⌄</span></summary><div class="cq-hrd-sub">
+      ${navButton('live','Live Report','openHrdCleanLive()')}
+      ${navButton('monthly','Laporan Bulanan','openHrdCleanMonthly()')}
+      ${navButton('promotion','Promo Socmed','openHrdCleanPromotion()')}
+      ${navButton('timesheet','Timesheet','openHrdCleanTimesheet()')}
+      ${navButton('administration','Administrasi Guru','openHrdCleanAdministration()')}
+      ${navButton('attendance','Kehadiran','openHrdCleanAttendance()')}
+      ${navButton('saturday','Kegiatan Sabtu','openHrdCleanSaturday()')}
+    </div></details>
+    <details class="cq-hrd-navgroup" ${manageOpen?'open':''}><summary>Pengaturan <span>⌄</span></summary><div class="cq-hrd-sub">
+      ${navButton('periods','Periode Laporan','openHrdReportPeriods()')}
+      ${navButton('saturday-manage','Jadwal Kegiatan Sabtu','openHrdCleanSaturdayManage()')}
+    </div></details>
   </div>`;
   return true;
 }
