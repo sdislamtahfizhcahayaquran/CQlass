@@ -44,6 +44,7 @@ function draw(active){
     ${button('input-access','Periode & Kunci Input',I.lock,'openCleanAdminInputAccess()')}
     ${button('students','Siswa & Kelas',I.students,'openCleanAdminStudents()')}
     ${button('uks','Jadwal UKS',I.uks,'openCleanAdminUks()')}
+    ${button('kegiatan-khusus','Kegiatan Khusus',I.schedule,'openCleanAdminSpecialActivity()')}
     <div class="cq-admin-note">Role baru dibuat di Kelola Role, lalu dapat langsung dipilih pada Guru & Pengguna.</div>
   </div>`;
   return true
@@ -90,6 +91,7 @@ window.openCleanAdminReportPeriod=function(){
 window.openCleanAdminInputAccess=function(){if(!isAdmin())return;set('input-access');const c=document.getElementById('content');if(typeof window.renderInputAccessControlAdmin==='function')return window.renderInputAccessControlAdmin(c);if(c)c.innerHTML='<div class="card">Memuat Periode & Kunci Penginputan...</div>';setTimeout(()=>window.renderInputAccessControlAdmin?.(c),250)};
 window.openCleanAdminStudents=function(){if(!isAdmin())return;set('students');location.href='master-data.html'};
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
+window.openCleanAdminSpecialActivity=function(){if(!isAdmin())return;set('kegiatan-khusus');const c=document.getElementById('content');if(typeof window.renderAdminSpecialActivity==='function')return window.renderAdminSpecialActivity(c);if(c)c.innerHTML='<div class="card">Memuat Kegiatan Khusus...</div>';setTimeout(()=>window.renderAdminSpecialActivity?.(c),250)};
 window.openCleanAdminHalaqahRoute=function(){if(!isAdmin())return;set('halaqah');if(window.openCleanAdminHalaqah)return window.openCleanAdminHalaqah();const c=document.getElementById('content');if(c)c.innerHTML='<div class="card">Memuat Pembagian Halaqah...</div>'};
 if(typeof renderSidebar==='function'){const o=renderSidebar;renderSidebar=function(){return isAdmin()?draw():o.apply(this,arguments)}}
 const ob=new MutationObserver(()=>{const s=document.getElementById('sidebar');if(isAdmin()&&s&&!s.querySelector('.cq-admin-side'))draw()});
