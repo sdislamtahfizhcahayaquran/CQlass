@@ -49,22 +49,17 @@ function navButton(id,label,fn){return `<button class="cq-hrd-nav${state.active=
 function drawSidebar(active){
   if(!isHrd())return false;installCss();if(active)state.active=active;
   const s=document.getElementById('sidebar');if(!s)return false;
-  const reportOpen=['live','timesheet','administration','attendance','promotion','saturday','monthly'].includes(state.active);
+  const reportOpen=['monthly','promotion'].includes(state.active);
   const manageOpen=['periods','saturday-manage'].includes(state.active);
   s.innerHTML=`<div class="cq-hrd-side">
     ${navButton('dashboard','Dashboard','openHrdCleanDashboard()')}
     <details class="cq-hrd-navgroup" ${reportOpen?'open':''}><summary>Laporan <span>⌄</span></summary><div class="cq-hrd-sub">
-      ${navButton('live','Live Report','openHrdCleanLive()')}
       ${navButton('monthly','Laporan Bulanan','openHrdCleanMonthly()')}
-      ${navButton('promotion','Promo Socmed','openHrdCleanPromotion()')}
-      ${navButton('timesheet','Timesheet','openHrdCleanTimesheet()')}
-      ${navButton('administration','Administrasi Guru','openHrdCleanAdministration()')}
-      ${navButton('attendance','Kehadiran','openHrdCleanAttendance()')}
-      ${navButton('saturday','Kegiatan Sabtu','openHrdCleanSaturday()')}
+      ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}
     </div></details>
-    <details class="cq-hrd-navgroup" ${manageOpen?'open':''}><summary>Pengaturan <span>⌄</span></summary><div class="cq-hrd-sub">
-      ${navButton('periods','Periode Laporan','openHrdReportPeriods()')}
-      ${navButton('saturday-manage','Jadwal Kegiatan Sabtu','openHrdCleanSaturdayManage()')}
+    <details class="cq-hrd-navgroup" ${manageOpen?'open':''}><summary>Pengelolaan <span>⌄</span></summary><div class="cq-hrd-sub">
+      ${navButton('periods','Pengaturan Periode','openHrdReportPeriods()')}
+      ${navButton('saturday-manage','Kegiatan Hari Sabtu','openHrdCleanSaturdayManage()')}
     </div></details>
   </div>`;
   return true;
