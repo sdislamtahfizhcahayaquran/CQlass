@@ -1,6 +1,5 @@
 /* CQlass shared role theme runtime
-   Keeps one lightweight building hero on role dashboards unless a role has its own
-   intended dashboard hero (Kabid Akademik and the restored Walas Dashboard V3).
+   Keeps one lightweight building hero on every role dashboard.
    Does not touch data, permissions, routing, forms, or module contents.
 */
 (function(){
@@ -8,7 +7,7 @@
   if(window.__CQ_GLOBAL_ROLE_THEME_V3__) return;
 
   function norm(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');}
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+  function esc(v){return String(v||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m];});}
   function readUser(){
     try{if(typeof currentUser!=='undefined'&&currentUser)return currentUser;}catch(_){ }
     try{return JSON.parse(localStorage.getItem('cqlass_user')||'null')||{};}catch(_){return {};}
@@ -25,10 +24,6 @@
   function isAcademic(){
     var r=roleNorm();
     return r==='akademik'||r==='kabid_akademik'||r==='academic'||r.indexOf('kabid_akademik')>=0;
-  }
-  function isWalas(){
-    var r=roleNorm();
-    return r==='walas'||r==='wali_kelas';
   }
   function roleLabel(){
     var r=roleNorm();
@@ -129,24 +124,12 @@
     var natives=nativeHeroes(root);
     var akHero=natives.find(function(el){return el.classList.contains('ak7-hero');});
 
-    /* Kabid Akademik already has its intended single hero with controls; preserve it. */
     if(isAcademic()&&akHero){
       var f0=fallbackHero(root);if(f0)f0.remove();
       natives.forEach(function(el){if(el===akHero)showHero(el);else hideHero(el);});
       return;
     }
 
-    /* Walas Dashboard V3 has its own compact class hero. Do not replace it. */
-    var wdHero=root.querySelector('.wd-hero');
-    if(isWalas()&&wdHero){
-      var fw=fallbackHero(root);if(fw)fw.remove();
-      showHero(wdHero);
-      natives.forEach(hideHero);
-      restoreLooseTitles();
-      return;
-    }
-
-    /* Other roles use the shared greeting hero. */
     var fallback=fallbackHero(root);
     if(!fallback)fallback=buildFallback(root);
     natives.forEach(hideHero);
@@ -157,7 +140,6 @@
     if(root){
       var f=fallbackHero(root);if(f)f.remove();
       nativeHeroes(root).forEach(showHero);
-      var wd=root.querySelector('.wd-hero');if(wd)showHero(wd);
     }
     restoreLooseTitles();
   }
