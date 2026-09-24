@@ -12,9 +12,22 @@
       input.title='Materi otomatis sesuai jenjang kelas';
     });
   }
+  function renamePartnerDashboard(root=document){
+    const role=String(window.currentUser?.role||'').trim().toLowerCase();
+    if(role!=='partner')return;
+    root.querySelectorAll?.('#sidebar button,#sidebar a,#sidebar .nav-item,#sidebar .menu-item,#sidebar [data-module]').forEach(el=>{
+      if(String(el.textContent||'').trim().toLowerCase()==='live report hrd'){
+        const span=[...el.children].find(x=>String(x.textContent||'').trim().toLowerCase()==='live report hrd');
+        if(span)span.textContent='Dashboard';
+        else el.textContent='Dashboard';
+      }
+    });
+  }
   const observer=new MutationObserver(muts=>{
-    for(const m of muts)for(const n of m.addedNodes)if(n.nodeType===1)applyMaterial(n);
+    for(const m of muts)for(const n of m.addedNodes)if(n.nodeType===1){applyMaterial(n);renamePartnerDashboard(n)}
+    renamePartnerDashboard(document);
   });
   observer.observe(document.documentElement,{childList:true,subtree:true});
   applyMaterial(document);
+  renamePartnerDashboard(document);
 })();
