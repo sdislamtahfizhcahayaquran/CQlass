@@ -187,7 +187,7 @@
     }
 
     const alerts=[];
-    teachers.filter(x=>String(x.status||'').toLowerCase().includes('belum input')||num(x.zero_assignments)>0).slice(0,2).forEach(x=>alerts.push(['bad',x.teacher_name||'Guru mapel',(num(x.zero_assignments)||1)+' penugasan belum mulai diisi.']));
+    teachers.filter(x=>String(x.status||'').toLowerCase().includes('belum input sama sekali')&&num(x.total_filled)<=0).slice(0,2).forEach(x=>alerts.push(['bad',x.teacher_name||'Guru mapel','Belum ada nilai yang terinput pada penugasan aktif.']));
     pending.slice(0,2).forEach(x=>alerts.push(['warn',(x.subject_name||'Mapel')+' · '+(x.class_name||''),'Kelengkapan nilai '+pct(x.completion)+'.']));
     if(prio) alerts.push(['info','Siswa prioritas',prio+' siswa memerlukan perhatian akademik.']);
     const alertEl=document.getElementById('ak7-alerts');if(alertEl)alertEl.innerHTML=alerts.slice(0,5).map(a=>`<div class="ak7-alert ${a[0]}"><i></i><div><b>${esc(a[1])}</b><span>${esc(a[2])}</span></div></div>`).join('')||'<div class="ak7-empty">Tidak ada prioritas tinggi dari data yang tersedia.</div>';
