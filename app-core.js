@@ -843,7 +843,7 @@ function enterApp(){
       window.openHrdCleanDashboard();
     }else{
       const sc=document.createElement('script');
-      sc.src='hrd-role-cleanup.js?v=20260925-stable13';
+      sc.src='hrd-role-cleanup.js?v=20260925-stable14';
       sc.onload=()=>{try{renderSidebar()}catch(_){};window.openHrdCleanDashboard?.()};
       document.head.appendChild(sc);
     }
