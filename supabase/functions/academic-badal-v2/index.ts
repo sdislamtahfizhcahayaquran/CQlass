@@ -55,7 +55,7 @@ function overlap(a1:unknown,a2:unknown,b1:unknown,b2:unknown){const x1=minutes(a
 function roleLabel(roles:string[]){
   if(roles.includes('pengabdian'))return 'Pengabdian';
   if(roles.includes('kabid_akademik'))return 'Kabid Akademik';
-  if(roles.includes('kabid_tahfizh'))return 'Kabid Tahfizh';
+  if(roles.includes('kabid_quran'))return "Kabid Qur'an";
   if(roles.includes('kabid_kesiswaan'))return 'Kabid Kesiswaan';
   if(roles.includes('kabid_kegiatan'))return 'Kabid Kegiatan';
   return 'Guru';
