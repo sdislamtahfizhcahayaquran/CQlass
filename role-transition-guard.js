@@ -1,4 +1,4 @@
-/* CQlass — role transition guard: prevent wrong sidebar/content flash before Kabid Tahfizh shell is ready */
+/* CQlass — role transition guard: prevent wrong sidebar/content flash before Kabid Qur'an shell is ready */
 (function(){
   'use strict';
   if(window.__cqRoleTransitionGuardV1||typeof enterApp!=='function')return;
@@ -7,7 +7,7 @@
   const role=()=>{try{return norm((typeof currentUser!=='undefined'&&currentUser?.role)||JSON.parse(localStorage.getItem('cqlass_user')||'{}').role||'')}catch(_){return''}};
   const old=enterApp;
   enterApp=function(){
-    const isKabid=role()==='kabid_tahfizh';
+    const isKabid=role()==='kabid_quran';
     const sidebar=document.getElementById('sidebar'),content=document.getElementById('content');
     if(isKabid){
       if(sidebar)sidebar.style.visibility='hidden';
