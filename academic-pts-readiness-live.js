@@ -176,7 +176,6 @@
         <div class="akpts-kpi gold"><strong>${E(s.walas_done||0)} / ${E(s.walas||0)}</strong><span>Wali kelas selesai</span><small>Reward · disiplin · kegiatan · absen · ekskul · TTD</small></div>
         <div class="akpts-kpi purple"><strong>${E(s.tahfizh_teachers_done||0)} / ${E(s.tahfizh_teachers||0)}</strong><span>Tahfizh selesai</span><small>Input PTS halaqah lengkap</small></div>
       </div>
-      ${unmapped.length?`<div class="akpts-unmapped"><b>${E(unmapped.length)} akun aktif belum terpetakan ke penugasan rapor:</b> ${E(unmappedText)}. Akun seperti ini sekarang tidak lagi hilang diam-diam dari audit.</div>`:''}
       <div class="akpts-toolbar">
         <div class="akpts-tabs">
           <button class="akpts-tab ${tab==='classes'?'on':''}" onclick="akPtsTab('classes')">Per Kelas</button>
