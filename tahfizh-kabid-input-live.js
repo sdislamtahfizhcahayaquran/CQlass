@@ -1,10 +1,10 @@
-/* CQlass — Live Report Laporan Bulanan Tahfizh khusus Kabid Tahfizh */
+/* CQlass — Live Report Laporan Bulanan Tahfizh khusus Kabid Qur'an */
 (function(){
   'use strict';
   if(window.__CQ_TAHFIZH_INPUT_LIVE_V2__) return;
   window.__CQ_TAHFIZH_INPUT_LIVE_V2__=1;
 
-  const ROLE='kabid_tahfizh';
+  const ROLE='kabid_quran';
   const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/tahfizh-monthly-status';
   const REFRESH_MS=30000;
   let data=null,busy=false,lastLoad=0,filter='all';
@@ -83,7 +83,7 @@
     if(error){box.innerHTML=`<div class="ktdl-head"><div><div class="ktdl-title">Live Report Laporan Bulanan Tahfizh</div><div class="ktdl-sub">Monitoring input guru halaqah</div></div><button class="ktdl-refresh" onclick="ktdLiveRefresh()">↻ Perbarui</button></div><div class="ktdl-error">${E(error)}</div>`;return}
     if(!data){box.innerHTML='<div class="ktdl-title">Live Report Laporan Bulanan Tahfizh</div><div class="ktdl-sub">Memuat progres guru halaqah...</div>';return}
     const s=data.summary||{};
-    box.innerHTML=`<div class="ktdl-head"><div><div class="ktdl-title">Live Report Laporan Bulanan Tahfizh</div><div class="ktdl-sub">Kabid Tahfizh · otomatis diperbarui setiap 30 detik · terakhir sinkron ${fmtTime(data.generated_at)}</div></div><button class="ktdl-refresh" onclick="ktdLiveRefresh()">↻ Perbarui</button></div><div class="ktdl-summary"><button class="ktdl-sum ${filter==='all'?'on':''}" onclick="ktdLiveFilter('all')"><b>${E(s.teachers||0)}</b><span>Guru halaqah</span></button><button class="ktdl-sum ${filter==='selesai'?'on':''}" onclick="ktdLiveFilter('selesai')"><b>${E(s.done||0)}</b><span>Selesai</span></button><button class="ktdl-sum ${filter==='sedang_input'?'on':''}" onclick="ktdLiveFilter('sedang_input')"><b>${E(s.in_progress||0)}</b><span>Sedang input</span></button><button class="ktdl-sum ${filter==='belum_mulai'?'on':''}" onclick="ktdLiveFilter('belum_mulai')"><b>${E(s.not_started||0)}</b><span>Belum mulai</span></button></div><div class="ktdl-wrap"><table class="ktdl-table"><thead><tr><th>Guru Halaqah</th><th>Kelas</th><th>Progres Input</th><th>Status</th><th>Update Terakhir</th><th>Siswa Belum Lengkap</th></tr></thead><tbody>${rowsHtml()}</tbody></table></div>`;
+    box.innerHTML=`<div class="ktdl-head"><div><div class="ktdl-title">Live Report Laporan Bulanan Tahfizh</div><div class="ktdl-sub">Kabid Qur'an · otomatis diperbarui setiap 30 detik · terakhir sinkron ${fmtTime(data.generated_at)}</div></div><button class="ktdl-refresh" onclick="ktdLiveRefresh()">↻ Perbarui</button></div><div class="ktdl-summary"><button class="ktdl-sum ${filter==='all'?'on':''}" onclick="ktdLiveFilter('all')"><b>${E(s.teachers||0)}</b><span>Guru halaqah</span></button><button class="ktdl-sum ${filter==='selesai'?'on':''}" onclick="ktdLiveFilter('selesai')"><b>${E(s.done||0)}</b><span>Selesai</span></button><button class="ktdl-sum ${filter==='sedang_input'?'on':''}" onclick="ktdLiveFilter('sedang_input')"><b>${E(s.in_progress||0)}</b><span>Sedang input</span></button><button class="ktdl-sum ${filter==='belum_mulai'?'on':''}" onclick="ktdLiveFilter('belum_mulai')"><b>${E(s.not_started||0)}</b><span>Belum mulai</span></button></div><div class="ktdl-wrap"><table class="ktdl-table"><thead><tr><th>Guru Halaqah</th><th>Kelas</th><th>Progres Input</th><th>Status</th><th>Update Terakhir</th><th>Siswa Belum Lengkap</th></tr></thead><tbody>${rowsHtml()}</tbody></table></div>`;
   }
   async function load(force=false){
     if(!isKabid()||!isDashboard()||busy)return;
