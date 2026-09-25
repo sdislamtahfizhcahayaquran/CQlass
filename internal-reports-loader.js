@@ -65,7 +65,7 @@
     started=true;
 
     if(isHrd()){
-      load('hrd-role-cleanup.js?v=20260925-stable14');
+      load('hrd-role-cleanup.js?v=20260925-stable15');
       return true;
     }
     if(r==='kabid_tahfizh')return true;
