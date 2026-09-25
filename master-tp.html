@@ -88,7 +88,21 @@ function fillSubjects(target='subject',gradeId='grade',selected=''){
   sel.innerHTML=groups.map(g=>{const s=g.grades.find(x=>+x.grade_level===grade);return `<option value="${s.subject_id}" data-name="${esc(g.name)}">${esc(g.name)}</option>`}).join('');
   if(selected&&[...sel.options].some(o=>o.value===selected))sel.value=selected;
 }
-async function init(){try{boot=await api({action:'bootstrap'});renderBoot();await loadList();st('Master TP siap. Import massal dilindungi agar tidak menimpa TP yang sudah berjalan.','ok')}catch(e){st(e.message,'err')}}
+function restoreTajwid(){
+  if(!boot||!Array.isArray(boot.subjects))return;
+  let g=boot.subjects.find(x=>String(x.name||'').trim().toLowerCase()==='tajwid');
+  if(!g){g={name:'Tajwid',grades:[]};boot.subjects.push(g)}
+  const rows=[
+    {grade_level:4,subject_id:'f0079185-add0-4a91-8e3d-98c95bbc1ee2',subject_code:'TJW-4'},
+    {grade_level:5,subject_id:'1754e09f-5bf3-4d0e-acf5-6c33ce9f1da0',subject_code:'TJW-5'},
+    {grade_level:6,subject_id:'0b2407c6-8ef7-4b5b-a430-bb72205cccc4',subject_code:'TJW-6'}
+  ];
+  const have=new Set((g.grades||[]).map(x=>+x.grade_level));
+  rows.forEach(x=>{if(!have.has(+x.grade_level))g.grades.push(x)});
+  g.grades.sort((a,b)=>+a.grade_level-+b.grade_level);
+  boot.subjects.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
+}
+async function init(){try{boot=await api({action:'bootstrap'});restoreTajwid();renderBoot();await loadList();st('Master TP siap. Import massal dilindungi agar tidak menimpa TP yang sudah berjalan.','ok')}catch(e){st(e.message,'err')}}
 function templateSemesters(){const v=$('templateSem').value;return v==='both'?[1,2]:[+v]}
 function downloadTemplate(){if(!boot)return;const wb=XLSX.utils.book_new(),sems=templateSemesters();for(const g of boot.subjects){const rows=[];for(const gr of g.grades)for(const sem of sems)for(let i=1;i<=7;i++)rows.push({'Kelas':gr.grade_level,'Semester':sem,'Urutan TP':'TP'+i,'Topik/Materi':'','Tujuan Pembelajaran':''});const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:10},{wch:11},{wch:12},{wch:30},{wch:85}];XLSX.utils.book_append_sheet(wb,ws,g.name.slice(0,31))}XLSX.writeFile(wb,`Template_TP_CQlass_${String(boot.academic_year).replace(/\//g,'-')}.xlsx`)}
 async function exportCurrent(){try{st('Menyiapkan export TP...');const sem=+$('semester').value,j=await api({action:'list_objectives',semester_no:sem}),wb=XLSX.utils.book_new();for(const g of boot.subjects){const items=j.items.filter(x=>canonical(x.subjects?.name)===g.name);if(!items.length)continue;const rows=items.map(x=>({'Kelas':x.grade_level,'Semester':x.semester_no,'Urutan TP':'TP'+x.sort_order,'Topik/Materi':x.topic||'','Tujuan Pembelajaran':x.description||''}));const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:10},{wch:11},{wch:12},{wch:30},{wch:85}];XLSX.utils.book_append_sheet(wb,ws,g.name.slice(0,31))}XLSX.writeFile(wb,`Master_TP_CQlass_${String(boot.academic_year).replace(/\//g,'-')}_S${sem}.xlsx`);st('Export TP selesai.','ok')}catch(e){st(e.message,'err')}}
@@ -101,7 +115,7 @@ function drawList(){if(!current.length){$('listBox').innerHTML='<div class="empt
 function openAdd(){editId='';$('modalTitle').textContent='Tambah TP';$('mSem').disabled=false;$('mGrade').disabled=false;$('mSubject').disabled=false;$('mSem').classList.remove('lockedinput');$('mGrade').classList.remove('lockedinput');$('mSubject').classList.remove('lockedinput');$('mSem').value=$('semester').value;$('mGrade').value=$('grade').value;fillSubjects('mSubject','mGrade',$('subject').value);$('mOrder').value=(Math.max(0,...current.map(x=>+x.sort_order||0))+1);$('mTopic').value='';$('mDesc').value='';$('modalBack').classList.add('show')}
 function openEdit(id){const x=current.find(y=>y.id===id);if(!x)return;editId=id;$('modalTitle').textContent=`Edit TP${x.sort_order}`;$('mSem').value=x.semester_no;$('mGrade').value=x.grade_level;fillSubjects('mSubject','mGrade',x.subject_id);$('mSubject').value=x.subject_id;[$('mSem'),$('mGrade'),$('mSubject')].forEach(el=>{el.disabled=true;el.classList.add('lockedinput')});$('mOrder').value=x.sort_order;$('mTopic').value=x.topic||'';$('mDesc').value=x.description||'';$('modalBack').classList.add('show')}
 function closeModal(){$('modalBack').classList.remove('show')}
-async function save(force=false){try{const body={action:'save_objective',id:editId||undefined,semester_no:+$('mSem').value,grade_level:+$('mGrade').value,subject_id:$('mSubject').value,sort_order:orderVal($('mOrder').value),topic:$('mTopic').value.trim(),description:$('mDesc').value.trim(),force};if(!body.description)throw Error('Tujuan Pembelajaran wajib diisi.');$('save').disabled=true;await api(body);closeModal();st(editId?'TP berhasil diperbarui.':'TP baru berhasil ditambahkan.','ok');await loadList();boot=await api({action:'bootstrap'});renderBoot()}catch(e){if(e.payload?.warning&&e.payload?.warning_code==='order_has_scores'){if(confirm(e.message+'\n\nTetap ubah urutan TP?'))return save(true)}st(e.message,'err')}finally{$('save').disabled=false}}
+async function save(force=false){try{const body={action:'save_objective',id:editId||undefined,semester_no:+$('mSem').value,grade_level:+$('mGrade').value,subject_id:$('mSubject').value,sort_order:orderVal($('mOrder').value),topic:$('mTopic').value.trim(),description:$('mDesc').value.trim(),force};if(!body.description)throw Error('Tujuan Pembelajaran wajib diisi.');$('save').disabled=true;await api(body);closeModal();st(editId?'TP berhasil diperbarui.':'TP baru berhasil ditambahkan.','ok');await loadList();boot=await api({action:'bootstrap'});restoreTajwid();renderBoot()}catch(e){if(e.payload?.warning&&e.payload?.warning_code==='order_has_scores'){if(confirm(e.message+'\n\nTetap ubah urutan TP?'))return save(true)}st(e.message,'err')}finally{$('save').disabled=false}}
 $('downloadTemplate').onclick=downloadTemplate;$('exportCurrent').onclick=exportCurrent;$('preview').onclick=preview;$('import').onclick=doImport;$('add').onclick=openAdd;$('cancel').onclick=closeModal;$('save').onclick=()=>save(false);$('grade').onchange=()=>{fillSubjects();loadList()};$('semester').onchange=loadList;$('subject').onchange=loadList;$('mGrade').onchange=()=>fillSubjects('mSubject','mGrade');$('modalBack').addEventListener('click',e=>{if(e.target===$('modalBack'))closeModal()});init();
 </script>
 </body></html>
