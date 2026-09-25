@@ -1,9 +1,9 @@
-/* CQlass — focused dashboard for Kabid Tahfizh */
+/* CQlass — focused dashboard for Kabid Qur'an */
 (function(){
   'use strict';
   if(window.__CQ_TAHFIZH_KABID_DASH_V1__)return;
   window.__CQ_TAHFIZH_KABID_DASH_V1__=1;
-  const ROLE='kabid_tahfizh';
+  const ROLE='kabid_quran';
   const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   function role(){
     try{
@@ -36,11 +36,11 @@
     content.innerHTML=`<div class="ktd">
       <section class="ktd-hero">
         <div class="ktd-kicker">CQlass · Tahfizh</div>
-        <div class="ktd-title">Dashboard Kabid Tahfizh</div>
+        <div class="ktd-title">Dashboard Kabid Qur'an</div>
         <div class="ktd-sub">Pusat monitoring nilai PTS, laporan bulanan, dan UKJ${name?` · ${esc(name)}`:''}. Live Report di bawah ini membaca progres guru halaqah langsung dari data CQlass.</div>
       </section>
       <section class="ktd-section">
-        <div class="ktd-section-head"><b>Akses Utama</b><span>Tiga modul kerja Kabid Tahfizh</span></div>
+        <div class="ktd-section-head"><b>Akses Utama</b><span>Tiga modul kerja Kabid Qur'an</span></div>
         <div class="ktd-quick">
           <button type="button" class="ktd-card ktd-action" onclick="setActiveModule('tahfizh-pts-kabid')"><div class="ktd-action-top"><div class="ktd-icon">PTS</div><div class="ktd-arrow">→</div></div><b>Nilai PTS</b><p>Lihat dan kelola data nilai Tahfizh PTS seluruh kelas dalam satu jalur.</p></button>
           <button type="button" class="ktd-card ktd-action" onclick="setActiveModule('tahfizh-monthly-report')"><div class="ktd-action-top"><div class="ktd-icon">BLN</div><div class="ktd-arrow">→</div></div><b>Laporan Bulanan</b><p>LP, target bulan, pencapaian akhir bulan, juz, dan Tilawah/BBQ.</p></button>
