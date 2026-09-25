@@ -20,7 +20,7 @@
     catch(_){try{return norm(JSON.parse(localStorage.getItem('cqlass_user')||'{}').role).replace(/[ -]+/g,'_')}catch(_2){return''}}
   }
   function usesDedicatedKesiswaan(r=role()){
-    return r==='partner'||r==='tahfizh'||r==='kabid_tahfizh'||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')));
+    return r==='partner'||r==='tahfizh'||r==='kabid_quran'||(r.includes('kabid')&&(r.includes('tahfizh')||r.includes('quran')));
   }
 
   function injectCss(){
