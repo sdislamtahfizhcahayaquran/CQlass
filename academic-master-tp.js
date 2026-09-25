@@ -95,7 +95,22 @@
     container=container||document.getElementById('content');if(!container)return;
     container.innerHTML=`<div class="aktp"><div class="aktp-head"><div><h2>Master Tujuan Pembelajaran</h2><div class="aktp-sub">Kelola TP kelas 1–6. Untuk perubahan tengah semester gunakan Tambah/Edit; import massal tetap khusus Admin.</div></div></div><div id="aktp-status" class="aktp-status">Memuat master TP...</div><div class="aktp-grid"><div class="aktp-card"><div class="aktp-row"><div class="aktp-field"><label>Semester</label><select id="aktp-sem"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div><div class="aktp-field"><label>Kelas</label><select id="aktp-grade">${[1,2,3,4,5,6].map(n=>`<option value="${n}">Kelas ${n}</option>`).join('')}</select></div><div class="aktp-field"><label>Mapel</label><select id="aktp-subject"></select></div></div><div id="aktp-list" class="aktp-table"><div class="aktp-empty">Memuat...</div></div></div><div id="aktp-form" class="aktp-card"><h3 id="aktp-form-title" style="margin:0 0 5px">Tambah TP</h3><div class="aktp-note">Edit teks/topik aman karena ID TP tetap. Jika urutan TP yang sudah memiliki nilai diubah, sistem akan memberi peringatan karena posisi TP di Legger ikut berubah.</div><div class="aktp-field"><label>Urutan TP</label><input id="aktp-order" inputmode="numeric" placeholder="Contoh: 5"></div><div class="aktp-field" style="margin-top:9px"><label>Topik / Materi</label><input id="aktp-topic" placeholder="Materi atau topik"></div><div class="aktp-field" style="margin-top:9px"><label>Tujuan Pembelajaran</label><textarea id="aktp-desc" placeholder="Tuliskan tujuan pembelajaran..."></textarea></div><div style="display:flex;gap:8px;margin-top:10px"><button id="aktp-save" class="aktp-btn">Simpan TP</button><button id="aktp-cancel" class="aktp-btn alt" style="display:none">Batal Edit</button></div></div></div></div>`;
     try{
-      S.boot=await api({action:'bootstrap'});S.semester=+S.boot.active_semester||1;S.grade=1;document.getElementById('aktp-sem').value=String(S.semester);document.getElementById('aktp-grade').value='1';fillSubjectOptions();
+      S.boot=await api({action:'bootstrap'});
+      // Backend lama menyembunyikan Tajwid dari bootstrap. Pulihkan hanya master subject
+      // yang memang sudah ada agar dapat dipilih untuk membuat TP; tidak mengubah nilai.
+      const tajwidGrades=[
+        {grade_level:4,subject_id:'f0079185-add0-4a91-8e3d-98c95bbc1ee2',subject_code:'TJW-4'},
+        {grade_level:5,subject_id:'1754e09f-5bf3-4d0e-acf5-6c33ce9f1da0',subject_code:'TJW-5'},
+        {grade_level:6,subject_id:'0b2407c6-8ef7-4b5b-a430-bb72205cccc4',subject_code:'TJW-6'}
+      ];
+      if(!Array.isArray(S.boot.subjects))S.boot.subjects=[];
+      let tajwid=S.boot.subjects.find(x=>String(x.name||'').trim().toLowerCase()==='tajwid');
+      if(!tajwid){tajwid={name:'Tajwid',grades:[]};S.boot.subjects.push(tajwid)}
+      const have=new Set((tajwid.grades||[]).map(x=>+x.grade_level));
+      tajwidGrades.forEach(x=>{if(!have.has(+x.grade_level))tajwid.grades.push(x)});
+      tajwid.grades.sort((a,b)=>+a.grade_level-+b.grade_level);
+      S.boot.subjects.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
+      S.semester=+S.boot.active_semester||1;S.grade=1;document.getElementById('aktp-sem').value=String(S.semester);document.getElementById('aktp-grade').value='1';fillSubjectOptions();
       document.getElementById('aktp-sem').onchange=async e=>{S.semester=+e.target.value;clearForm();await loadList()};
       document.getElementById('aktp-grade').onchange=async e=>{S.grade=+e.target.value;S.subjectId='';fillSubjectOptions();clearForm();await loadList()};
       document.getElementById('aktp-subject').onchange=async e=>{S.subjectId=e.target.value;clearForm();await loadList()};
