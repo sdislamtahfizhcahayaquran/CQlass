@@ -15,7 +15,7 @@
     try{return norm(currentUser?.role||currentUser?.primary_role||currentUser?.role_code).replace(/[ -]+/g,'_')}
     catch(_){try{return norm(JSON.parse(localStorage.getItem('cqlass_user')||'{}').role).replace(/[ -]+/g,'_')}catch(_2){return''}}
   }
-  function isKabidTahfizhActive(){try{return !!window.__CQ_TAHFIZH_KABID_DASH__ || role()==='kabid_tahfizh'}catch(_){return false}}
+  function isKabidTahfizhActive(){try{return !!window.__CQ_TAHFIZH_KABID_DASH__ || role()==='kabid_quran'}catch(_){return false}}
   function isTahfizh(){return role()==='tahfizh' && !isKabidTahfizhActive()}
   function removeTahfizhRole(arr){return Array.isArray(arr)?arr.filter(x=>!ROLES.includes(norm(x).replace(/[ -]+/g,'_'))):[]}
   function removeGroup(id){if(typeof MODULE_GROUPS==='undefined')return;const i=MODULE_GROUPS.findIndex(g=>g&&g.id===id);if(i>=0)MODULE_GROUPS.splice(i,1)}
