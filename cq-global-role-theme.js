@@ -30,7 +30,7 @@
     var labels={
       akademik:'Kabid Akademik',kabid_akademik:'Kabid Akademik',
       kesiswaan:'Kabid Kesiswaan',kabid_kesiswaan:'Kabid Kesiswaan',
-      tahfizh:'Kabid Tahfizh',kabid_tahfizh:'Kabid Tahfizh',
+      tahfizh:"Kabid Qur'an",kabid_quran:"Kabid Qur'an",
       kegiatan:'Kabid Kegiatan',kabid_kegiatan:'Kabid Kegiatan',
       hrd:'HRD',pimpinan:'Pimpinan',kepsek:'Kepala Sekolah',kepala_sekolah:'Kepala Sekolah',
       admin:'Admin',guru:'Guru',walas:'Wali Kelas',wali_kelas:'Wali Kelas',
