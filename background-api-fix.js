@@ -190,9 +190,9 @@
 
   function primeDashboardRole(r){
     try{
-      if(r==='kabid_tahfizh'&&typeof DASHBOARD_MODULE!=='undefined'){
+      if(r==='kabid_quran'&&typeof DASHBOARD_MODULE!=='undefined'){
         if(!Array.isArray(DASHBOARD_MODULE.roles))DASHBOARD_MODULE.roles=[];
-        if(!DASHBOARD_MODULE.roles.includes('kabid_tahfizh'))DASHBOARD_MODULE.roles.push('kabid_tahfizh');
+        if(!DASHBOARD_MODULE.roles.includes('kabid_quran'))DASHBOARD_MODULE.roles.push('kabid_quran');
       }
     }catch(_){ }
   }
@@ -229,7 +229,7 @@
     if(r==='partner'){
       add('./guru-partner-tahfizh-menu.js?v=20260924-rolelazy1','__cqPartnerTahfizhMenuRoleLazy',false);
     }
-    if(r==='kabid_tahfizh'){
+    if(r==='kabid_quran'){
       add('./tahfizh-kabid-dashboard-layout.js?v=20260924-kabid7','__cqTahfizhKabidDashboardLayoutV1',false);
       add('./tahfizh-kabid-shell-fix.js?v=20260924-kabid7','__cqTahfizhKabidShellFixLoaderInstalled',false);
       add('./tahfizh-kabid-input-live.js?v=20260924-kabid7','__cqTahfizhKabidInputLiveLoaderInstalled',false);
@@ -257,7 +257,7 @@
       loadForRole();
       const out=oldEnter.apply(this,arguments);
       setTimeout(loadForRole,0);
-      if(r==='kabid_tahfizh')setTimeout(()=>{try{window.cqStabilizeKabidTahfizh?.(true)}catch(_){}},80);
+      if(r==='kabid_quran')setTimeout(()=>{try{window.cqStabilizeKabidTahfizh?.(true)}catch(_){}},80);
       return out;
     };
     wrapped.__cqRoleLazyLoaderV2=true;
