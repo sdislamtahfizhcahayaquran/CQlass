@@ -1,10 +1,10 @@
-/* CQlass — Kabid Tahfizh stable shell: bypass global role wrapper stack */
+/* CQlass — Kabid Qur'an stable shell: bypass global role wrapper stack */
 (function(){
   'use strict';
   if(window.__CQ_TAHFIZH_SHELL_FIX_V11__)return;
   window.__CQ_TAHFIZH_SHELL_FIX_V11__=1;
 
-  const ROLE='kabid_tahfizh';
+  const ROLE='kabid_quran';
   const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   const TOOLS=[
     {id:'tahfizh-pts-kabid',label:'Nilai PTS',url:'tahfizh-pts.html?v=20260924-kabid7'},
@@ -136,7 +136,7 @@
       if(typeof fn==='function')fn.call(window,'dashboard');
       else if(typeof window.renderKabidTahfizhDashboard==='function')window.renderKabidTahfizhDashboard(document.getElementById('content'));
     }else{
-      try{stableRender()}catch(e){console.warn('Kabid Tahfizh stable sidebar:',e)}
+      try{stableRender()}catch(e){console.warn('Kabid Qur'an stable sidebar:',e)}
       if(key==='dashboard'&&typeof window.renderKabidTahfizhDashboard==='function'){
         try{window.renderKabidTahfizhDashboard(document.getElementById('content'))}catch(_){}
       }
