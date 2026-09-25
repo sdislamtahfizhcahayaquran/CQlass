@@ -3679,10 +3679,10 @@ function rpAcademicRows(rows){
     const backend=String(r.kktp??'').trim(),master=RP_KKTP_FINAL[slot.label]||'-';
     // Nilai 0 dari backend adalah placeholder, bukan KKTP. Gunakan MASTER_KKTP fallback.
     const backendValid=backend && !/^0(?:[.,]0+)?$/.test(backend) && backend!=='-';
-    const kktp=escapeHtml(backendValid?backend:master);
-    const los=[0,1,2,3,4].map(x=>{const future=sg4&&x>=2;return`<td class="rpv-center${future?' rpv-start4':''}">${future?'':rpScore(r.lo?.[x])}</td>`}).join('');
+    const kktp=sg4?'':escapeHtml(backendValid?backend:master);
+    const los=[0,1,2,3,4].map(x=>`<td class="rpv-center${sg4?' rpv-start4':''}">${sg4?'':rpScore(r.lo?.[x])}</td>`).join('');
     const remarks=sg4?'Starting Grade 4':escapeHtml(r.remarks||'');
-    return`<tr><td class="rpv-center">${no}</td><td${isSub?' class="rpv-sub"':''}>${escapeHtml(slot.label)}</td><td class="rpv-center">${kktp}</td>${los}<td class="rpv-center">${remarks}</td></tr>`;
+    return`<tr><td class="rpv-center">${no}</td><td${isSub?' class="rpv-sub"':''}>${escapeHtml(slot.label)}</td><td class="rpv-center${sg4?' rpv-start4':''}">${kktp}</td>${los}<td class="rpv-center${sg4?' rpv-start4':''}">${remarks}</td></tr>`;
   }).join('');
 }
 function rpEnglishRange(s){return String(s||'').replace(/\s*s\.\s*d\.?\s*/gi,' to ').replace(/\s*s\/d\s*/gi,' to ').replace(/\s+/g,' ').trim();}
