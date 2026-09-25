@@ -7,7 +7,7 @@ const L=(v:any)=>T(v).toLowerCase();
 const U=(v:any)=>T(v).toUpperCase();
 const ACTIVE_BAD=new Set(["nonaktif","inactive","disabled","blocked","blokir","keluar","lulus"]);
 const TAH_CORE=["materi_hafalan","lp_tahfizh","realisasi_saat_ini","jumlah_surat","jumlah_baris","jumlah_ayat","jumlah_baris_lp"];
-const MANAGEMENT_ROLES=new Set(["admin","hrd","pimpinan","sapras","kabid_akademik","kabid_kesiswaan","kabid_kegiatan","kabid_tahfizh"]);
+const MANAGEMENT_ROLES=new Set(["admin","hrd","pimpinan","sapras","kabid_akademik","kabid_kesiswaan","kabid_kegiatan","kabid_quran"]);
 
 function serviceKey(){const packed=Deno.env.get("SUPABASE_SECRET_KEYS");if(packed){try{const p=JSON.parse(packed);if(p?.default)return String(p.default)}catch{}}const k=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||Deno.env.get("SUPABASE_SECRET_KEY");if(!k)throw Error("service_key_missing");return k}
 function db(){const url=Deno.env.get("SUPABASE_URL");if(!url)throw Error("supabase_url_missing");return createClient(url,serviceKey(),{auth:{persistSession:false,autoRefreshToken:false}})}
