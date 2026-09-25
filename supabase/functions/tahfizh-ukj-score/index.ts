@@ -48,7 +48,7 @@ async function auth(s: any, req: Request, b: any) {
   return { account, roles: [...new Set(roles)] };
 }
 function canUse(a: any) {
-  return a?.roles?.includes("kabid_tahfizh");
+  return a?.roles?.includes("kabid_quran");
 }
 
 async function context(s: any) {
