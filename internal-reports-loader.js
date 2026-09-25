@@ -68,11 +68,11 @@
       load('hrd-role-cleanup.js?v=20260925-stable16');
       return true;
     }
-    if(r==='kabid_tahfizh')return true;
+    if(r==='kabid_quran')return true;
 
     Promise.allSettled(common.map(load)).then(()=>{
       const now=role();
-      if(now&&now!=='kabid_tahfizh'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20260924-roleisolated2');
+      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20260924-roleisolated2');
     });
     return true;
   }
