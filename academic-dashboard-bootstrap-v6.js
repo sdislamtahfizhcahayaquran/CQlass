@@ -181,7 +181,7 @@
 (function(){
   if(document.querySelector('script[data-cq-ak-master-tp]')) return;
   const s=document.createElement('script');
-  s.src='academic-master-tp.js?v=20260916-akmastertp1';
+  s.src='academic-master-tp.js?v=20260925-tajwid-seni1';
   s.dataset.cqAkMasterTp='1';
   document.head.appendChild(s);
 })();
