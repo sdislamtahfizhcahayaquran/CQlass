@@ -14,7 +14,8 @@ Deno.serve(async(req)=>{
   const a=await auth(req);if(!a)return J({success:false,error:"session_invalid"},401);
   const b=await req.json().catch(()=>({})),action=T(b.action),classId=T(b.class_id);if(!classId)return J({success:false,error:"class_required"},400);
   const {start,end}=dates(b),p=await period();
-  if(action==="load"){\n   const{data:ed,error:ede}=await sb.from("class_effective_days").select("effective_days").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("assessment_period","PTS").eq("class_id",classId).maybeSingle();if(ede)throw ede;const effectiveDays=ed?.effective_days==null?null:N(ed.effective_days);
+  if(action==="load"){
+   const{data:ed,error:ede}=await sb.from("class_effective_days").select("effective_days").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("assessment_period","PTS").eq("class_id",classId).maybeSingle();if(ede)throw ede;const effectiveDays=ed?.effective_days==null?null:N(ed.effective_days);
    const[{data:rows,error:re},{data:sel,error:se}]=await Promise.all([
     sb.from("attendance_report_finalization").select("student_id,present_count,late_count,sick_count,excused_count,unexcused_count,validation_status,validated_at,updated_at").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end),
     sb.from("attendance_report_source_selection").select("source_mode,selected_at").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end).maybeSingle()
