@@ -101,17 +101,29 @@ async function academicStars(s:any,reports:any[]){
     const key=`${yearId}|${semesterNo}|${gradeLevel}`;let ranked=cache.get(key);
     if(!ranked){
       const {data:classes,error:cErr}=await s.from("classes").select("id").eq("academic_year_id",yearId).eq("grade_level",gradeLevel).eq("is_active",true);if(cErr)throw cErr;
-      const classIds=(classes||[]).map((x:any)=>x.id);if(!classIds.length)continue;
-      const {data:scores,error:sErr}=await s.from("academic_scores").select("student_id,subject_id,score").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("assessment_type","TP").is("deleted_at",null).not("score","is",null).in("class_id",classIds);if(sErr)throw sErr;
-      const subjects=new Map<string,{sum:number,n:number}>();
-      for(const row of scores||[]){const studentId=txt(row.student_id),subjectId=txt(row.subject_id),v=Number(row.score);if(!studentId||!subjectId||!Number.isFinite(v))continue;const k=studentId+"|"+subjectId,a=subjects.get(k)||{sum:0,n:0};a.sum+=v;a.n++;subjects.set(k,a)}
-      const students=new Map<string,{sum:number,n:number}>();
-      for(const [k,a] of subjects){const studentId=k.split("|")[0],subjectAverage=a.sum/a.n,st=students.get(studentId)||{sum:0,n:0};st.sum+=subjectAverage;st.n++;students.set(studentId,st)}
-      ranked=[...students.entries()].map(([student_id,a])=>({student_id,average:a.sum/a.n,subject_count:a.n})).sort((a,b)=>b.average-a.average||a.student_id.localeCompare(b.student_id));
+      const classIds=(classes||[]).map((x:any)=>txt(x.id)).filter(Boolean);if(!classIds.length)continue;
+      const {data:scores,error:sErr}=await s.from("academic_scores").select("student_id,subject_id,class_id,score").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("assessment_type","TP").is("deleted_at",null).not("score","is",null).in("class_id",classIds);if(sErr)throw sErr;
+
+      const subjectsByClass=new Map<string,Set<string>>();
+      for(const cid of classIds)subjectsByClass.set(cid,new Set());
+      for(const row of scores||[]){const cid=txt(row.class_id),sub=txt(row.subject_id);if(cid&&sub&&subjectsByClass.has(cid))subjectsByClass.get(cid)!.add(sub)}
+      let common:string[]=[];
+      for(const cid of classIds){const set=subjectsByClass.get(cid)||new Set<string>();common=common.length?common.filter(x=>set.has(x)):[...set]}
+      const commonSet=new Set(common);
+      const perSubject=new Map<string,{sum:number,n:number}>();
+      for(const row of scores||[]){const studentId=txt(row.student_id),subjectId=txt(row.subject_id),v=Number(row.score);if(!studentId||!commonSet.has(subjectId)||!Number.isFinite(v))continue;const k=studentId+"|"+subjectId,a=perSubject.get(k)||{sum:0,n:0};a.sum+=v;a.n++;perSubject.set(k,a)}
+      const students=new Map<string,Map<string,number>>();
+      for(const [k,a] of perSubject){const cut=k.indexOf("|"),studentId=k.slice(0,cut),subjectId=k.slice(cut+1);if(!students.has(studentId))students.set(studentId,new Map());students.get(studentId)!.set(subjectId,a.sum/a.n)}
+      const eligible:any[]=[];
+      for(const [student_id,vals] of students){if(!common.length||common.some(sub=>!vals.has(sub)))continue;const average=common.reduce((sum,sub)=>sum+Number(vals.get(sub)),0)/common.length;eligible.push({student_id,average,subject_count:common.length})}
+      eligible.sort((x,y)=>y.average-x.average||x.student_id.localeCompare(y.student_id));
+      let previous:number|null=null,denseRank=0;
+      ranked=eligible.map((x:any)=>{const rounded=Number(x.average.toFixed(6));if(previous===null||Math.abs(rounded-previous)>0.000001)denseRank++;previous=rounded;return{...x,rank:denseRank}});
       cache.set(key,ranked);
     }
-    const idx=ranked.findIndex((x:any)=>x.student_id===sid);if(idx<0)continue;
-    r.academic_summary={...(r.academic_summary||{}),grade_level:gradeLevel,grade_rank:idx+1,grade_cohort_size:ranked.length,is_top10:idx<10,average_subject_pts:Number(ranked[idx].average.toFixed(2)),subject_count:ranked[idx].subject_count,ranking_scope:"GRADE_COHORT_SUBJECT_REPORT_AVERAGES_CURRENT_ENTERED_TP"};
+    const item=ranked.find((x:any)=>x.student_id===sid);
+    if(!item){r.academic_summary={...(r.academic_summary||{}),grade_level:gradeLevel,is_top10:false,ranking_eligible:false,ranking_scope:"GRADE_COHORT_COMMON_PTS_SUBJECTS_COMPLETE_ONLY"};continue}
+    r.academic_summary={...(r.academic_summary||{}),grade_level:gradeLevel,grade_rank:item.rank,grade_cohort_size:ranked.length,is_top10:item.rank<=10,ranking_eligible:true,average_subject_pts:Number(item.average.toFixed(2)),subject_count:item.subject_count,ranking_scope:"GRADE_COHORT_COMMON_PTS_SUBJECTS_COMPLETE_ONLY"};
   }
   return reports;
 }
