@@ -4354,6 +4354,11 @@ function renderEkskulRekap(content){
       </div>`:''}
     <div id="ek-rekap-body"></div>`;
   if(kelas) loadEkskulRekap(kelas);
+  else if(currentUser.role==='kegiatan'){
+    const body=document.getElementById('ek-rekap-body');
+    if(body)body.innerHTML='<div class="card"><span class="spinner"></span> Memeriksa kelengkapan absensi ekskul...</div>';
+    kegiatanEkskulAttendanceGaps().then(rows=>{ekskulAttendanceGaps=rows||[];if(body)body.innerHTML=ekV56GapPanel()}).catch(e=>{if(body)body.innerHTML='<div class="empty-state">'+escapeHtml(e.message||'Gagal memuat kelengkapan absensi ekskul.')+'</div>'});
+  }
 }
 function loadEkskulRekapAdmin(){
   const kelas=(document.getElementById('ek-rekap-kelas')?.value||'').trim();
