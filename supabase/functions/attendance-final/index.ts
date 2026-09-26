@@ -1,0 +1,39 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-session-token","Access-Control-Allow-Methods":"POST, OPTIONS"};
+const J=(b:any,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{...H,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
+const T=(v:any)=>String(v??"").trim(),L=(v:any)=>T(v).toLowerCase(),N=(v:any)=>Math.max(0,Math.trunc(Number(v)||0));
+function key(){const p=Deno.env.get("SUPABASE_SECRET_KEYS");if(p){try{const x=JSON.parse(p);if(x?.default)return String(x.default)}catch{}}const k=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||Deno.env.get("SUPABASE_SECRET_KEY");if(!k)throw Error("service_key_missing");return k}
+const sb=createClient(Deno.env.get("SUPABASE_URL")!,key(),{auth:{persistSession:false,autoRefreshToken:false}});
+async function sha(v:string){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return[...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function auth(req:Request){const tok=T(req.headers.get("x-session-token"));if(!tok)return null;const{data:ss}=await sb.from("user_sessions").select("user_account_id,expires_at,revoked_at").eq("token_hash",await sha(tok)).maybeSingle();if(!ss||ss.revoked_at||!ss.expires_at||Date.parse(ss.expires_at)<=Date.now())return null;const{data:a}=await sb.from("user_accounts").select("id,teacher_id,username,status").eq("id",ss.user_account_id).maybeSingle();if(!a||["nonaktif","inactive","disabled","blocked"].includes(L(a.status)))return null;const roles:string[]=[L(a.username)];const{data:r}=await sb.from("user_account_roles").select("role_code,role,is_active").eq("user_account_id",a.id).eq("is_active",true);for(const x of r||[])roles.push(L(x.role_code||x.role));if(a.teacher_id){const{data:u}=await sb.from("user_roles").select("role_code,is_active").eq("teacher_id",a.teacher_id).eq("is_active",true);for(const x of u||[])roles.push(L(x.role_code))}return{...a,roles:[...new Set(roles.filter(Boolean))]}}
+async function period(){const{data:unit,error:ue}=await sb.from("school_units").select("id").eq("code","SD").maybeSingle();if(ue||!unit)throw Error("school_unit_not_found");const{data:y,error:ye}=await sb.from("academic_years").select("id").eq("school_unit_id",unit.id).eq("is_active",true).order("created_at",{ascending:false}).limit(1).maybeSingle();if(ye||!y)throw Error("academic_year_not_found");const{data:s,error:se}=await sb.from("semesters").select("semester_no").eq("academic_year_id",y.id).eq("is_active",true).limit(1).maybeSingle();if(se||!s)throw Error("semester_not_found");return{yearId:y.id,semesterNo:Number(s.semester_no)}}
+function dates(b:any){const start=T(b.start),end=T(b.end);if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)throw Error("invalid_period");return{start,end}}
+Deno.serve(async(req)=>{
+ if(req.method==="OPTIONS")return new Response(null,{headers:H});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);
+ try{
+  const a=await auth(req);if(!a)return J({success:false,error:"session_invalid"},401);
+  const b=await req.json().catch(()=>({})),action=T(b.action),classId=T(b.class_id);if(!classId)return J({success:false,error:"class_required"},400);
+  const {start,end}=dates(b),p=await period();
+  if(action==="load"){
+   const[{data:rows,error:re},{data:sel,error:se}]=await Promise.all([
+    sb.from("attendance_report_finalization").select("student_id,present_count,late_count,sick_count,excused_count,unexcused_count,validation_status,validated_at,updated_at").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end),
+    sb.from("attendance_report_source_selection").select("source_mode,selected_at").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end).maybeSingle()
+   ]);if(re)throw re;if(se)throw se;return J({success:true,rows:rows||[],selection:sel?{...sel,source_type:sel.source_mode}:null})
+  }
+  const canWrite=a.roles.some((x:string)=>["admin","walas","wali_kelas","akademik","kabid_akademik"].includes(x));if(!canWrite)return J({success:false,error:"forbidden"},403);
+  if(action==="save"){
+   const rows=Array.isArray(b.rows)?b.rows:[];if(!rows.length)return J({success:false,error:"rows_required"},400);
+   const ids=[...new Set(rows.map((x:any)=>T(x.student_id)).filter(Boolean))];const{data:en,error:ee}=await sb.from("student_enrollments").select("student_id").eq("class_id",classId).eq("academic_year_id",p.yearId).eq("is_active",true).in("student_id",ids);if(ee)throw ee;const allowed=new Set((en||[]).map((x:any)=>T(x.student_id)));if(ids.some(x=>!allowed.has(x)))return J({success:false,error:"student_not_in_class"},400);
+   const now=new Date().toISOString(),payload=rows.map((x:any)=>({academic_year_id:p.yearId,semester_no:p.semesterNo,class_id:classId,student_id:T(x.student_id),period_start:start,period_end:end,present_count:N(x.present_count),late_count:N(x.late_count),sick_count:N(x.sick_count),excused_count:N(x.excused_count),unexcused_count:N(x.unexcused_count),validation_status:"validated",validated_at:now,updated_at:now}));
+   const del=await sb.from("attendance_report_finalization").delete().eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end).in("student_id",ids);if(del.error)throw del.error;
+   const ins=await sb.from("attendance_report_finalization").insert(payload);if(ins.error)throw ins.error;return J({success:true,saved:payload.length})
+  }
+  if(action==="select_source"){
+   const source=T(b.source_type)==="editable"?"editable":"system";
+   if(source==="editable"){const{data:r,error:e}=await sb.from("attendance_report_finalization").select("student_id,validation_status").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end);if(e)throw e;if(!(r||[]).some((x:any)=>L(x.validation_status)==="validated"))return J({success:false,error:"editable_not_saved"},400)}
+   const d=await sb.from("attendance_report_source_selection").delete().eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end);if(d.error)throw d.error;
+   const i=await sb.from("attendance_report_source_selection").insert({academic_year_id:p.yearId,semester_no:p.semesterNo,class_id:classId,period_start:start,period_end:end,source_mode:source,selected_at:new Date().toISOString()});if(i.error)throw i.error;return J({success:true,source_type:source})
+  }
+  return J({success:false,error:"unknown_action"},400);
+ }catch(e){return J({success:false,error:T(e?.message||e)},500)}
+});
