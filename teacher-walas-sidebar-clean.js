@@ -106,12 +106,12 @@
         student.items=ordered;
       }
       if(reports&&Array.isArray(reports.items)){
-        const allowed=new Set(['timesheet','laporan-promosi','internal-feedback']);
+        const allowed=new Set(['academic-ranking-report','timesheet','laporan-promosi','internal-feedback']);
         for(const it of reports.items){
           if(!it||!Array.isArray(it.roles))continue;
           if(!allowed.has(String(it.id||'')))it.roles=without(it.roles,TEACHER_ROLES);
         }
-        const order=['timesheet','laporan-promosi','internal-feedback'];
+        const order=['academic-ranking-report','timesheet','laporan-promosi','internal-feedback'];
         reports.items.sort((a,b)=>{
           const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));
           return (ai<0?99:ai)-(bi<0?99:bi);
@@ -152,11 +152,12 @@
           if(!it&&typeof renderFn==='function'){it={id,label,roles:[...TEACHER_ROLES],built:true,render:renderFn};reports.items.push(it)}
           if(it){it.label=label;it.roles=[...new Set([...(it.roles||[]),...TEACHER_ROLES])];it.built=true}
         };
+        ensureReport('academic-ranking-report','Ranking',window.renderAcademicRankingReport);
         ensureReport('timesheet','Timesheet',window.renderTeacherTimesheet);
         ensureReport('laporan-promosi','Promosi Socmed',window.renderPromotionReport);
         const feedback=reports.items.find(x=>x&&x.id==='internal-feedback');
         if(feedback){feedback.roles=[...new Set([...(feedback.roles||[]),...TEACHER_ROLES])];feedback.label='Saran & Masukan'}
-        const order=['timesheet','laporan-promosi','internal-feedback'];
+        const order=['academic-ranking-report','timesheet','laporan-promosi','internal-feedback'];
         reports.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
       }
 
