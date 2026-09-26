@@ -10,6 +10,7 @@ const ATTENDANCE_URL = `${SUPABASE_URL}/functions/v1/attendance`;
 const STUDENT_POINTS_URL = `${SUPABASE_URL}/functions/v1/student-points`;
 const ROLE_DASHBOARD_URL = `${SUPABASE_URL}/functions/v1/role-dashboard`;
 const EXTRACURRICULAR_PUBLIC_URL = `${SUPABASE_URL}/functions/v1/extracurricular-public`;
+const ACTIVITY_EXTRACURRICULAR_URL = `${SUPABASE_URL}/functions/v1/activity-extracurricular`;
 const STUDENT_CASES_URL = `${SUPABASE_URL}/functions/v1/student-cases`;
 const ACADEMIC_SCORES_URL = `${SUPABASE_URL}/functions/v1/academic-scores`;
 const REPORT_PREVIEW_URL = `${SUPABASE_URL}/functions/v1/report-preview`;
@@ -4322,6 +4323,19 @@ function injectEkskulV56Styles(){
   document.head.appendChild(s);
 }
 let ekskulV56Rows=[];
+let ekskulAttendanceGaps=[];
+async function kegiatanEkskulAttendanceGaps(){
+  if(currentUser.role!=='kegiatan')return [];
+  const token=getAuthToken();if(!token)return [];
+  const res=await fetch(ACTIVITY_EXTRACURRICULAR_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify({action:'attendance_gaps'})});
+  const data=await res.json().catch(()=>({}));if(!res.ok||!data.success)throw new Error(data.error||'Gagal memuat tanggal absensi ekskul yang kosong.');return data.rows||[];
+}
+function ekV56GapPanel(){
+  if(currentUser.role!=='kegiatan')return '';
+  if(!ekskulAttendanceGaps.length)return '<div class="card"><div class="card-title">Kelengkapan Absensi Ekskul</div><div class="page-sub">Semua sesi yang tercatat sudah memiliki absensi untuk seluruh peserta aktif.</div></div>';
+  const grouped={};ekskulAttendanceGaps.forEach(x=>{(grouped[x.extracurricular_name]??=[]).push(x)});
+  return '<div class="card"><div class="card-title">Tanggal Absensi Ekskul yang Belum Lengkap</div><div class="page-sub" style="margin-bottom:10px">Tanggal di bawah berasal dari sesi nyata. Angka menunjukkan peserta yang absensinya masih kosong.</div>'+Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'id')).map(n=>'<div style="padding:9px 0;border-top:1px solid var(--border)"><strong>'+escapeHtml(n)+'</strong><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+grouped[n].map(x=>'<span class="ek-v56-chip" title="'+escapeHtml((x.missing_students||[]).map(s=>s.name).join(', '))+'">'+escapeHtml(new Date(x.session_date+'T12:00:00+07:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}))+' · '+Number(x.missing_count||0)+' siswa kosong</span>').join('')+'</div></div>').join('')+'</div>';
+}
 function renderEkskulRekap(content){
   injectEkskulV56Styles();
   const kelas=currentUser.role==='walas'?(currentUser.kelas||''):'';
@@ -4370,6 +4384,7 @@ function ekV56Render(rows,kelas){
   const totalPert=rows.reduce((z,r)=>z+Number(r.totalPertemuan||0),0);
   const avg=totalPert?Math.round(totalHadir*100/totalPert):0;
   body.innerHTML=`
+    ${ekV56GapPanel()}
     <div class="ek-v56-kpis">
       <div class="ek-v56-kpi"><strong>${eksNames.length}</strong><span>Ekskul Aktif</span></div>
       <div class="ek-v56-kpi"><strong>${totalSiswa}</strong><span>Siswa Terdata</span></div>
@@ -4411,7 +4426,8 @@ async function loadEkskulRekap(kelas){
   const body=document.getElementById('ek-rekap-body');if(!body)return;
   body.innerHTML=`<div class="card"><span class="spinner"></span> Memuat rekap ekskul...</div>`;
   try{
-    const res=await ekskulV6Api('recap',{class_name:kelas});
+    const [res,gaps]=await Promise.all([ekskulV6Api('recap',{class_name:kelas}),kegiatanEkskulAttendanceGaps().catch(()=>[])]);
+    ekskulAttendanceGaps=gaps||[];
     ekskulV56Rows=res.rows||[];
     if(!ekskulV56Rows.length){body.innerHTML=`<div class="empty-state"><div class="icon">—</div>Belum ada data pertemuan ekskul untuk kelas ${escapeHtml(kelas)}.</div>`;return}
     // Adapter V6 agar renderer V5.6 tetap ringan.
