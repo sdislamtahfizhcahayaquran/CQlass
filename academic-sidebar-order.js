@@ -73,7 +73,7 @@
             if(!it||!Array.isArray(it.roles))continue;
             if(!allowed.has(String(it.id||'')))it.roles=it.roles.filter(x=>!['walas','guru'].includes(String(x||'').toLowerCase()));
           }
-          const order=['timesheet','laporan-promosi','internal-feedback'];
+          const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
           reports.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
         }
       }
