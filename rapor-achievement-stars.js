@@ -1,7 +1,7 @@
 /* CQlass — Dynamic PTS Achievement Stars */
 (function(){
 'use strict';
-var INSTANCE='20260926-stars16';
+var INSTANCE='20260926-stars17';
 window.__cqAchievementStarsActiveInstance=INSTANCE;
 function active(){return window.__cqAchievementStarsActiveInstance===INSTANCE}
 function num(v){if(v===null||v===undefined||v==='')return null;var n=Number(String(v).replace('%','').replace(',','.').trim());return Number.isFinite(n)?n:null}
