@@ -22,13 +22,21 @@
   function fileName(src){
     try{return new URL(src,location.href).pathname.split('/').pop()}catch(_){return String(src).split('?')[0].split('/').pop()}
   }
+  function scriptKey(src){
+    try{const u=new URL(src,location.href);return u.pathname.split('/').pop()+(u.search||'')}catch(_){return String(src)}
+  }
   function already(src){
-    const name=fileName(src);
-    return [...document.scripts].some(s=>fileName(s.src||'')===name);
+    const key=scriptKey(src);
+    return [...document.scripts].some(s=>scriptKey(s.src||'')===key);
   }
   function load(src){
     return new Promise(resolve=>{
       if(already(src))return resolve(false);
+      const name=fileName(src);
+      if(name==='rapor-achievement-stars.js'){
+        [...document.scripts].filter(s=>fileName(s.src||'')===name&&scriptKey(s.src||'')!==scriptKey(src)).forEach(s=>s.remove());
+        try{delete window.__cqRaporAchievementStars}catch(_){window.__cqRaporAchievementStars=false}
+      }
       const s=document.createElement('script');
       s.src=src;s.async=true;
       s.onload=()=>resolve(true);s.onerror=()=>{console.warn('CQlass script gagal dimuat:',src);resolve(false)};
@@ -41,7 +49,7 @@
     'report-period-control.js?v=20260923-reportperiod1',
     'rapor-identity-fix.js?v=20260917-nisnisn1',
     'academic-report-class-picker.js?v=20260921-classpicker1',
-    'rapor-achievement-stars.js?v=20260926-stars13',
+    'rapor-achievement-stars.js?v=20260926-stars15',
     'kesiswaan-points-recap.js?v=20260915-3',
     'kesiswaan-super-report.js?v=20260921-live2',
     'kesiswaan-case-followup-ui.js?v=20260921-followup1',
