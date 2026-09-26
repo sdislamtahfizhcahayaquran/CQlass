@@ -131,18 +131,20 @@ async function effectiveDays(s:any,yearId:string,semesterNo:number,assessmentPer
   effectiveCache.set(key,value);return value;
 }
 async function selectedSource(s:any,yearId:string,semesterNo:number,classId:string,start:string,end:string){
-  if(!start||!end)return"system";
   const key=`${yearId}|${semesterNo}|${classId}|${start}|${end}`;
   if(sourceCache.has(key))return sourceCache.get(key)!;
-  const {data,error}=await s.from("attendance_report_source_selection").select("source_mode").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end).maybeSingle();
+  let q=s.from("attendance_report_source_selection").select("source_mode,period_start,period_end,selected_at").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("class_id",classId).eq("source_mode","editable");
+  if(end)q=q.lte("period_start",end);
+  const {data,error}=await q.order("selected_at",{ascending:false}).limit(1).maybeSingle();
   if(error)throw error;
   const mode=txt(data?.source_mode)==="editable"?"editable":"system";
-  sourceCache.set(key,mode);return mode;
+  const value=mode==="editable"?`editable|${txt(data?.period_start)}|${txt(data?.period_end)}`:"system";
+  sourceCache.set(key,value);return value;
 }
 async function finalizedRows(s:any,yearId:string,semesterNo:number,classId:string,start:string,end:string){
   const key=`${yearId}|${semesterNo}|${classId}|${start}|${end}`;
   if(finalizationCache.has(key))return finalizationCache.get(key)!;
-  const {data,error}=await s.from("attendance_report_finalization").select("student_id,late_count,sick_count,excused_count,unexcused_count").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end);
+  const {data,error}=await s.from("attendance_report_finalization").select("student_id,late_count,sick_count,excused_count,unexcused_count").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end).eq("validation_status","validated");
   if(error)throw error;
   const map=new Map<string,any>();for(const row of data||[])map.set(txt(row.student_id),row);
   finalizationCache.set(key,map);return map;
@@ -169,9 +171,10 @@ async function attendanceFromEffectiveDays(s:any,reports:any[],requestedType:any
     const base=(r.attendance&&typeof r.attendance==="object")?r.attendance:{};
     let sick=count(base.sick),excused=count(base.excused),unexcused=count(base.unexcused),late=count(base.late);
     const start=txt(r?.date_range?.start),end=txt(r?.date_range?.end);
-    const source=await selectedSource(s,yearId,semesterNo,classId,start,end);
+    const sourceInfo=await selectedSource(s,yearId,semesterNo,classId,start,end);
+    const sourceParts=sourceInfo.split("|"),source=sourceParts[0];
     if(source==="editable"){
-      const rows=await finalizedRows(s,yearId,semesterNo,classId,start,end);
+      const rows=await finalizedRows(s,yearId,semesterNo,classId,sourceParts[1],sourceParts[2]);
       const row=rows.get(sid);
       if(row){sick=count(row.sick_count);excused=count(row.excused_count);unexcused=count(row.unexcused_count);late=count(row.late_count)}
     }
