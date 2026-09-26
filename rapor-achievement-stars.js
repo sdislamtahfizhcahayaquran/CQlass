@@ -5,7 +5,7 @@ function num(v){if(v===null||v===undefined||v==='')return null;var n=Number(Stri
 function txt(v){return String(v==null?'':v).trim().toLowerCase()}
 function currentReport(){try{if(typeof raporPreviewState!=='undefined'&&raporPreviewState&&raporPreviewState.report)return raporPreviewState.report}catch(e){}return window.raporPreviewState&&window.raporPreviewState.report||null}
 function tahfizhEarned(r){var t=r.tahfizh||{},pct=num(t.percentage),s=txt(t.juz_assessment||t.assessment||t.achievement_status||t.status);return (pct!==null&&pct>100)||/beyond|melewati|melampaui|di atas|above/.test(s)}
-function academicEarned(r){var a=r.academic_summary||{};if(typeof a.is_top10==='boolean')return a.is_top10;var rank=num(a.grade_rank),size=num(a.grade_cohort_size);return rank!==null&&rank>=1&&rank<=10&&size!==null&&size>0}
+function academicEarned(r){var a=r.academic_summary||{};return a.ranking_eligible===true&&a.is_top10===true&&txt(a.ranking_scope)==='grade_cohort_common_pts_subjects_complete_only'}
 function attendanceEarned(r){var a=r.attendance||{},p=a.percent||{},present=num(p.present!=null?p.present:(p.hadir!=null?p.hadir:(a.present_percentage!=null?a.present_percentage:a.percentage)));return present!==null&&present>=100}
 function gradeIsA(v){return txt(v)==='a'}
 function activityEarned(r){var ex=r.extracurricular||{};var extra=[ex.activity_grade,ex.skill_grade,ex.competition_grade],school=[ex.school_activity_grade],all=extra.concat(school);if(!all.every(function(v){return v!=null&&String(v).trim()!==''&&String(v).trim()!=='-'}))return false;return extra.every(gradeIsA)&&school.every(gradeIsA)}
