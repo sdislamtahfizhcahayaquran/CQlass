@@ -111,7 +111,7 @@
           if(!it||!Array.isArray(it.roles))continue;
           if(!allowed.has(String(it.id||'')))it.roles=without(it.roles,TEACHER_ROLES);
         }
-        const order=['academic-ranking-report','timesheet','laporan-promosi','internal-feedback'];
+        const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
         reports.items.sort((a,b)=>{
           const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));
           return (ai<0?99:ai)-(bi<0?99:bi);
@@ -157,7 +157,7 @@
         ensureReport('laporan-promosi','Promosi Socmed',window.renderPromotionReport);
         const feedback=reports.items.find(x=>x&&x.id==='internal-feedback');
         if(feedback){feedback.roles=[...new Set([...(feedback.roles||[]),...TEACHER_ROLES])];feedback.label='Saran & Masukan'}
-        const order=['academic-ranking-report','timesheet','laporan-promosi','internal-feedback'];
+        const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
         reports.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
       }
 
