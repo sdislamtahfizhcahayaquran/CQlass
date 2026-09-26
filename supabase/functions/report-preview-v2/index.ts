@@ -117,8 +117,7 @@ async function academicStars(s:any,reports:any[]){
       const eligible:any[]=[];
       for(const [student_id,vals] of students){if(!common.length||common.some(sub=>!vals.has(sub)))continue;const average=common.reduce((sum,sub)=>sum+Number(vals.get(sub)),0)/common.length;eligible.push({student_id,average,subject_count:common.length})}
       eligible.sort((x,y)=>y.average-x.average||x.student_id.localeCompare(y.student_id));
-      let previous:number|null=null,denseRank=0;
-      ranked=eligible.map((x:any)=>{const rounded=Number(x.average.toFixed(6));if(previous===null||Math.abs(rounded-previous)>0.000001)denseRank++;previous=rounded;return{...x,rank:denseRank}});
+      ranked=eligible.map((x:any,index:number)=>({...x,rank:index+1}));
       cache.set(key,ranked);
     }
     const item=ranked.find((x:any)=>x.student_id===sid);
