@@ -20,7 +20,7 @@ Deno.serve(async(req)=>{
     sb.from("attendance_report_source_selection").select("source_mode,selected_at").eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("period_start",start).eq("period_end",end).maybeSingle()
    ]);if(re)throw re;if(se)throw se;return J({success:true,rows:rows||[],selection:sel?{...sel,source_type:sel.source_mode}:null})
   }
-  const canWrite=a.roles.some((x:string)=>["admin","walas","wali_kelas","akademik","kabid_akademik"].includes(x));if(!canWrite)return J({success:false,error:"forbidden"},403);
+  let canWrite=a.roles.some((x:string)=>["admin","akademik","kabid_akademik"].includes(x));if(!canWrite&&a.teacher_id){const{data:ta,error:te}=await sb.from("teacher_assignments").select("id").eq("teacher_id",a.teacher_id).eq("academic_year_id",p.yearId).eq("semester_no",p.semesterNo).eq("class_id",classId).eq("assignment_type","WALAS").eq("is_active",true).limit(1);if(te)throw te;canWrite=!!ta?.length}if(!canWrite)return J({success:false,error:"forbidden"},403);
   if(action==="save"){
    const rows=Array.isArray(b.rows)?b.rows:[];if(!rows.length)return J({success:false,error:"rows_required"},400);
    const ids=[...new Set(rows.map((x:any)=>T(x.student_id)).filter(Boolean))];const{data:en,error:ee}=await sb.from("student_enrollments").select("student_id").eq("class_id",classId).eq("academic_year_id",p.yearId).eq("is_active",true).in("student_id",ids);if(ee)throw ee;const allowed=new Set((en||[]).map((x:any)=>T(x.student_id)));if(ids.some(x=>!allowed.has(x)))return J({success:false,error:"student_not_in_class"},400);
