@@ -50,7 +50,6 @@
     'rapor-identity-fix.js?v=20260917-nisnisn1',
     'academic-report-class-picker.js?v=20260921-classpicker1',
     'rapor-achievement-stars.js?v=20260926-stars18',
-    'academic-ranking-report.js?v=20260927-total3',
     'kesiswaan-points-recap.js?v=20260915-3',
     'kesiswaan-super-report.js?v=20260921-live2',
     'kesiswaan-case-followup-ui.js?v=20260921-followup1',
@@ -81,7 +80,7 @@
 
     Promise.allSettled(common.map(load)).then(()=>{
       const now=role();
-      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20260924-roleisolated2');
+      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20260927-ranking5');
     });
     return true;
   }
