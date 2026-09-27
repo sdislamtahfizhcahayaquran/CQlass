@@ -85,15 +85,15 @@
         if(Array.isArray(g.items))g.items=g.items.filter(x=>x&&x.id!==CENTER_ID);
       }
 
-      // Untuk Walas/Guru, Laporan hanya Timesheet, Promosi Socmed, Saran & Masukan.
+      // Laporan Walas/Guru: satu daftar baku, termasuk Ranking.
       const report=MODULE_GROUPS.find(g=>g&&norm(g.id)==='laporan');
       if(report&&Array.isArray(report.items)){
-        const keep=new Set(['timesheet','laporan-promosi','internal-feedback']);
+        const keep=new Set(['timesheet','laporan-promosi','internal-feedback','academic-ranking-report']);
         for(const it of report.items){
           if(!it||!Array.isArray(it.roles))continue;
           if(!keep.has(String(it.id||'')))it.roles=it.roles.filter(x=>!CENTER_ROLES.includes(norm(x)));
         }
-        const order=['timesheet','laporan-promosi','internal-feedback'];
+        const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
         report.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
       }
       return true;
