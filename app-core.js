@@ -3710,7 +3710,7 @@ function renderRaporPreview(){
 
   area.innerHTML=`<div class="card"><div class="pv2-toolbar"><div><div class="card-title" style="margin:0">Preview Rapor - ${escapeHtml(st.name||'-')}</div><div class="page-sub" style="margin-top:3px">Ukuran final A4, 2 halaman.</div></div><button class="btn btn-sm rpv-print-btn" onclick="rpPrintStudentPdf()">${pointSvg('save',15)} Cetak PDF</button></div></div>
   <div class="rpv-paper-wrap" id="rpv-preview">
-    <section class="rpv-paper">
+    <section class="rpv-paper" data-student-id="${escapeHtml(st.id||'')}" data-student-name="${escapeHtml(st.name||'')}">
       <table class="rpv-template-head"><tbody>
         <tr><td class="head-left">${reportTitle}</td><td class="head-right"><span class="hr-label">Student Name</span><span class="hr-colon">:</span><span class="hr-value"><b>${escapeHtml(st.name||'-')}</b></span></td></tr>
         <tr><td class="head-left">${semTxt}</td><td class="head-right"><span class="hr-label">Student ID/NISN</span><span class="hr-colon">:</span><span class="hr-value">${escapeHtml(idText)}</span></td></tr>
