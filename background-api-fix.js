@@ -203,7 +203,7 @@
     primeDashboardRole(r);
 
     if(['guru','walas','partner','guru_partner','pengabdian','akademik','pimpinan'].includes(r)){
-      add('./academic-sidebar-order.js?v=20260924-rolelazy1','__cqAcademicSidebarOrderRoleLazy',false);
+      add('./academic-sidebar-order.js?v=20260927-ranking7','__cqAcademicSidebarOrderRoleLazy',false);
     }
     if(['akademik','pimpinan','admin'].includes(r)){
       add('./academic-teacher-report.js?v=20260924-rolelazy1','__cqAcademicTeacherReportRoleLazy',false);
