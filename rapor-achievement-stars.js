@@ -1,7 +1,7 @@
 /* CQlass — Dynamic PTS Achievement Stars */
 (function(){
 'use strict';
-var INSTANCE='20260927-stars20';
+var INSTANCE='20260927-stars21';
 window.__cqAchievementStarsActiveInstance=INSTANCE;
 function active(){return window.__cqAchievementStarsActiveInstance===INSTANCE}
 function num(v){if(v===null||v===undefined||v==='')return null;var n=Number(String(v).replace('%','').replace(',','.').trim());return Number.isFinite(n)?n:null}
@@ -19,7 +19,7 @@ function currentReport(){
   return r
 }
 function tahfizhEarned(r){var t=r.tahfizh||{},pct=num(t.percentage),s=txt(t.juz_assessment||t.assessment||t.achievement_status||t.status);return (pct!==null&&pct>100)||/beyond|melewati|melampaui|di atas|above/.test(s)}
-function academicEarned(r){var a=r.academic_summary||{};return a.ranking_eligible===true&&a.is_top10===true&&txt(a.ranking_scope)==='grade_cohort_common_pts_subjects_complete_only'}
+function academicEarned(r){var a=r.academic_summary||{};return a.ranking_eligible===true&&a.is_top10===true&&txt(a.ranking_scope)==='grade_cohort_total_available_subject_averages'}
 function attendanceEarned(r){var a=r.attendance||{},p=a.percent||{},present=num(p.present!=null?p.present:(p.hadir!=null?p.hadir:(a.present_percentage!=null?a.present_percentage:a.percentage)));return present!==null&&present>=100}
 function gradeIsA(v){return txt(v)==='a'}
 function activityEarned(r){var ex=r.extracurricular||{};return gradeIsA(ex.school_activity_grade)}
