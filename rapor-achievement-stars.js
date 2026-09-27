@@ -1,7 +1,7 @@
 /* CQlass — Dynamic PTS Achievement Stars */
 (function(){
 'use strict';
-var INSTANCE='20260927-stars19';
+var INSTANCE='20260927-stars20';
 window.__cqAchievementStarsActiveInstance=INSTANCE;
 function active(){return window.__cqAchievementStarsActiveInstance===INSTANCE}
 function num(v){if(v===null||v===undefined||v==='')return null;var n=Number(String(v).replace('%','').replace(',','.').trim());return Number.isFinite(n)?n:null}
@@ -22,7 +22,7 @@ function tahfizhEarned(r){var t=r.tahfizh||{},pct=num(t.percentage),s=txt(t.juz_
 function academicEarned(r){var a=r.academic_summary||{};return a.ranking_eligible===true&&a.is_top10===true&&txt(a.ranking_scope)==='grade_cohort_common_pts_subjects_complete_only'}
 function attendanceEarned(r){var a=r.attendance||{},p=a.percent||{},present=num(p.present!=null?p.present:(p.hadir!=null?p.hadir:(a.present_percentage!=null?a.present_percentage:a.percentage)));return present!==null&&present>=100}
 function gradeIsA(v){return txt(v)==='a'}
-function activityEarned(r){var ex=r.extracurricular||{},status=txt(ex.status),extra=[ex.activity_grade,ex.skill_grade,ex.competition_grade];if(status==='luar')return extra.every(function(v){return v!=null&&String(v).trim()!==''&&String(v).trim()!=='-'&&gradeIsA(v)});if(status==='sekolah')return extra.every(function(v){return v!=null&&String(v).trim()!==''&&String(v).trim()!=='-'&&gradeIsA(v)})&&gradeIsA(ex.school_activity_grade);return false}
+function activityEarned(r){var ex=r.extracurricular||{};return gradeIsA(ex.school_activity_grade)}
 function characterEarned(r){var p=r.points||r.character_discipline||{};var reward=num(p.reward_total!=null?p.reward_total:(p.total_reward!=null?p.total_reward:(p.reward_points!=null?p.reward_points:r.reward_points)));var violation=num(p.violation_total!=null?p.violation_total:(p.total_violation!=null?p.total_violation:(p.violation_points!=null?p.violation_points:r.violation_points)));return reward!==null&&reward>=50&&violation!==null&&violation===0}
 function starSvg(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.95 5.98 6.6.96-4.78 4.66 1.13 6.58L12 17.58l-5.9 3.1 1.13-6.58-4.78-4.66 6.6-.96L12 2.5z"/></svg>'}
 function rows(r){return [{key:'tahfizh',label:'Tahfizh Star',desc:'Beyond Tahfizh Target',color:'#49A968',bg:'#E2F1E7',earned:tahfizhEarned(r)},{key:'academic',label:'Academic Star',desc:'Outstanding Achievement',color:'#3E86D9',bg:'#E0ECF9',earned:academicEarned(r)},{key:'attendance',label:'Attendance Star',desc:'Perfect Attendance',color:'#E9AD22',bg:'#FBF2DC',earned:attendanceEarned(r)},{key:'activity',label:'Activity Star',desc:'Active & Accomplished',color:'#8B59C8',bg:'#ECE4F6',earned:activityEarned(r)},{key:'character',label:'Character Star',desc:'Positive & Disciplined',color:'#EB7A3A',bg:'#FCEADF',earned:characterEarned(r)}].filter(function(x){return x.earned})}
