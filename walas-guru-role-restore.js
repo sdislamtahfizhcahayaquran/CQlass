@@ -65,8 +65,8 @@
   function ensureTeacherWalasStack(){
     if(!isTeacher())return false;
     stripLegacyRequestFromModel();
-    loadOnce('teacher-walas-sidebar-clean.js?v=20260924-restore3','__cqTeacherWalasSidebarClean',rerender);
-    loadOnce('internal-report-center.js?v=20260924-restore3','__cqInternalReportCenter',rerender);
+    loadOnce('teacher-walas-sidebar-clean.js?v=20260927-ranking4','__cqTeacherWalasSidebarClean',rerender);
+    loadOnce('internal-report-center.js?v=20260927-ranking4','__cqInternalReportCenter',rerender);
     setTimeout(rerender,120);
     return true;
   }
