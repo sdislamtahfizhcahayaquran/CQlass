@@ -3630,7 +3630,14 @@ async function rpLoadPreview(){
 
 async function rpPrintStudentPdf(){
   const btn=document.getElementById('rpv-print-btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan PDF...'}
-  try{const ok=await rpLoadPreview();if(!ok)return;const el=document.getElementById('rpv-preview');if(!el)throw new Error('Preview PDF tidak ditemukan.');const blob=await rpElementPdfBlob(el);const name=rpSafeFilename(raporPreviewState.report?.student?.name||'Rapor')+'.pdf';rpDownloadBlob(blob,name);showToast('PDF rapor berhasil dibuat.')}catch(e){showToast(e.message||'Gagal membuat PDF.',true)}finally{if(btn){btn.disabled=false;btn.textContent='Cetak PDF Per Siswa'}}
+  try{
+    const selected=document.getElementById('rpv-student')?.value||raporPreviewState.studentId||'';
+    const loaded=String(raporPreviewState.report?.student?.id||'');
+    if(!raporPreviewState.report||!selected||selected!==loaded){const ok=await rpLoadPreview();if(!ok)return}
+    else if(!document.getElementById('rpv-preview'))renderRaporPreview();
+    const el=document.getElementById('rpv-preview');if(!el)throw new Error('Preview PDF tidak ditemukan.');
+    const blob=await rpElementPdfBlob(el);const name=rpSafeFilename(raporPreviewState.report?.student?.name||'Rapor')+'.pdf';rpDownloadBlob(blob,name);showToast('PDF rapor berhasil dibuat.');
+  }catch(e){showToast(e.message||'Gagal membuat PDF.',true)}finally{if(btn){btn.disabled=false;btn.textContent='Cetak PDF Per Siswa'}}
 }
 
 async function rpLoadClassPreview(autoPrint=false){
@@ -3638,7 +3645,7 @@ async function rpLoadClassPreview(autoPrint=false){
   raporPreviewState.reportType=document.getElementById('rpv-type')?.value||'PTS';raporPreviewState.startDate=document.getElementById('rpv-start')?.value||'';raporPreviewState.endDate=document.getElementById('rpv-end')?.value||'';raporPreviewState.printDate=document.getElementById('rpv-print-date')?.value||rpTodayYmd();raporPreviewState.hijriDate=(document.getElementById('rpv-hijri')?.value||'').trim();
   const btn=autoPrint?document.getElementById('rpv-print-btn'):document.getElementById('rpv-preview-btn'),area=document.getElementById('rpv-preview-area');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan...'}if(area)area.innerHTML='<div class="card"><span class="spinner"></span> Menyusun seluruh rapor kelas. Mohon tunggu...</div>';
   try{const d=await reportPreviewRequest('class_reports',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},120000);const reports=Array.isArray(d.reports)?d.reports:[];if(!reports.length)throw new Error('Tidak ada siswa aktif pada kelas ini.');const sig=await rpFetchReportSignatures(classId);reports.forEach(x=>rpApplySignatureBundle(x,sig));raporPreviewState.classReports=reports;
-    if(autoPrint){await rpEnsurePdfLibs(true);const zip=new window.JSZip();const original=raporPreviewState.report;for(let i=0;i<reports.length;i++){raporPreviewState.report=reports[i];renderRaporPreview();const el=document.getElementById('rpv-preview');if(!el)continue;if(btn)btn.textContent=`PDF ${i+1}/${reports.length}`;const blob=await rpElementPdfBlob(el);zip.file(rpSafeFilename(reports[i]?.student?.name||`Siswa ${i+1}`)+'.pdf',blob)}raporPreviewState.report=original||reports[0];const cl=reports[0]?.class?.name||'Kelas';const label=raporPreviewState.reportType==='SEMESTER'?'Rapor Akhir Semester':'Rapor PTS';const zblob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});rpDownloadBlob(zblob,`${label} ${rpSafeFilename(cl)}.zip`);showToast('ZIP rapor per kelas berhasil dibuat.');return}
+    if(autoPrint){await rpEnsurePdfLibs(true);const zip=new window.JSZip();const original=raporPreviewState.report;for(let i=0;i<reports.length;i++){raporPreviewState.report=reports[i];renderRaporPreview();const el=document.getElementById('rpv-preview');if(!el)continue;if(btn)btn.textContent=`PDF ${i+1}/${reports.length}`;const blob=await rpElementPdfBlob(el);zip.file(rpSafeFilename(reports[i]?.student?.name||`Siswa ${i+1}`)+'.pdf',blob)}raporPreviewState.report=original||reports[0];const cl=reports[0]?.class?.name||'Kelas';const label=raporPreviewState.reportType==='SEMESTER'?'Rapor Akhir Semester':'Rapor PTS';const zblob=await zip.generateAsync({type:'blob',compression:'STORE'});rpDownloadBlob(zblob,`${label} ${rpSafeFilename(cl)}.zip`);showToast('ZIP rapor per kelas berhasil dibuat.');return}
     const first=reports[0];raporPreviewState.report=first;renderRaporPreview();
   }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuat rapor kelas.')}</div></div>`}finally{if(btn){btn.disabled=false;btn.textContent=autoPrint?'Cetak PDF Per Kelas':'Preview Rapor'}}
 }
