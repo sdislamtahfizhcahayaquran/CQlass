@@ -255,20 +255,6 @@
   document.head.appendChild(s);
 })();
 (function(){
-  if(document.querySelector('script[data-cq-teacher-walas-clean]')) return;
-  const s=document.createElement('script');
-  s.src='teacher-walas-sidebar-clean.js?v=20260923-dualrecap3';
-  s.dataset.cqTeacherWalasClean='1';
-  document.head.appendChild(s);
-})();
-(function(){
-  if(document.querySelector('script[data-cq-internal-report-center]')) return;
-  const s=document.createElement('script');
-  s.src='internal-report-center.js?v=20260915-sapras-dashboard2';
-  s.dataset.cqInternalReportCenter='1';
-  document.head.appendChild(s);
-})();
-(function(){
   if(document.querySelector('script[data-cq-uks-kesiswaan]')) return;
   const s=document.createElement('script');
   s.src='uks-duty-kesiswaan.js?v=20260914-uks-kes1';
