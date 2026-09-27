@@ -16,7 +16,7 @@
       if(window.__cqTeacherWalasSidebarClean) return true;
       if(document.querySelector('script[data-cq-teacher-walas-clean]')) return true;
       const s=document.createElement('script');
-      s.src='teacher-walas-sidebar-clean.js?v=20260924-role-restore1';
+      s.src='teacher-walas-sidebar-clean.js?v=20260927-ranking6';
       s.dataset.cqTeacherWalasClean='1';
       s.onload=function(){
         try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){}
@@ -65,10 +65,10 @@
         item.built=true;
         item.render=window.renderTeacherTimesheet||item.render;
         reports.items.push(item);
-        // Walas/Guru: urutan Laporan final harus Timesheet, Promosi Socmed, Saran & Masukan.
+        // Walas/Guru: urutan Laporan final termasuk Ranking.
         const r=String((typeof currentUser!=='undefined'&&currentUser?.role)||'').toLowerCase();
         if(r==='walas'||r==='guru'){
-          const allowed=new Set(['timesheet','laporan-promosi','internal-feedback']);
+          const allowed=new Set(['timesheet','laporan-promosi','internal-feedback','academic-ranking-report']);
           for(const it of reports.items){
             if(!it||!Array.isArray(it.roles))continue;
             if(!allowed.has(String(it.id||'')))it.roles=it.roles.filter(x=>!['walas','guru'].includes(String(x||'').toLowerCase()));
