@@ -102,16 +102,20 @@ async function academicStars(s:any,reports:any[]){
     if(!ranked){
       const {data:classes,error:cErr}=await s.from("classes").select("id").eq("academic_year_id",yearId).eq("grade_level",gradeLevel).eq("is_active",true);if(cErr)throw cErr;
       const classIds=(classes||[]).map((x:any)=>txt(x.id)).filter(Boolean);if(!classIds.length)continue;
-      const {data:scores,error:sErr}=await s.from("academic_scores").select("student_id,subject_id,class_id,score").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("assessment_type","TP").is("deleted_at",null).not("score","is",null).in("class_id",classIds);if(sErr)throw sErr;
+      const {data:enroll,error:eErr}=await s.from("student_enrollments").select("student_id,class_id").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("is_active",true).in("class_id",classIds);if(eErr)throw eErr;
+      const activeClass=new Map<string,string>();for(const e of enroll||[])activeClass.set(txt(e.student_id),txt(e.class_id));
+      const activeStudentIds=[...activeClass.keys()];
+      const {data:scores,error:sErr}=activeStudentIds.length?await s.from("academic_scores").select("student_id,subject_id,class_id,score").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("assessment_type","TP").is("deleted_at",null).not("score","is",null).in("class_id",classIds).in("student_id",activeStudentIds):{data:[],error:null};if(sErr)throw sErr;
+      const activeScores=(scores||[]).filter((row:any)=>activeClass.get(txt(row.student_id))===txt(row.class_id));
 
       const subjectsByClass=new Map<string,Set<string>>();
       for(const cid of classIds)subjectsByClass.set(cid,new Set());
-      for(const row of scores||[]){const cid=txt(row.class_id),sub=txt(row.subject_id);if(cid&&sub&&subjectsByClass.has(cid))subjectsByClass.get(cid)!.add(sub)}
+      for(const row of activeScores){const cid=txt(row.class_id),sub=txt(row.subject_id);if(cid&&sub&&subjectsByClass.has(cid))subjectsByClass.get(cid)!.add(sub)}
       let common:string[]=[];
       for(const cid of classIds){const set=subjectsByClass.get(cid)||new Set<string>();common=common.length?common.filter(x=>set.has(x)):[...set]}
       const commonSet=new Set(common);
       const perSubject=new Map<string,{sum:number,n:number}>();
-      for(const row of scores||[]){const studentId=txt(row.student_id),subjectId=txt(row.subject_id),v=Number(row.score);if(!studentId||!commonSet.has(subjectId)||!Number.isFinite(v))continue;const k=studentId+"|"+subjectId,a=perSubject.get(k)||{sum:0,n:0};a.sum+=v;a.n++;perSubject.set(k,a)}
+      for(const row of activeScores){const studentId=txt(row.student_id),subjectId=txt(row.subject_id),v=Number(row.score);if(!studentId||!commonSet.has(subjectId)||!Number.isFinite(v))continue;const k=studentId+"|"+subjectId,a=perSubject.get(k)||{sum:0,n:0};a.sum+=v;a.n++;perSubject.set(k,a)}
       const students=new Map<string,Map<string,number>>();
       for(const [k,a] of perSubject){const cut=k.indexOf("|"),studentId=k.slice(0,cut),subjectId=k.slice(cut+1);if(!students.has(studentId))students.set(studentId,new Map());students.get(studentId)!.set(subjectId,a.sum/a.n)}
       const eligible:any[]=[];
