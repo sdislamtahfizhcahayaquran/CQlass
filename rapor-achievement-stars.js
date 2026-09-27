@@ -1,7 +1,7 @@
 /* CQlass — Dynamic PTS Achievement Stars */
 (function(){
 'use strict';
-var INSTANCE='20260927-stars21';
+var INSTANCE='20260927-stars22';
 window.__cqAchievementStarsActiveInstance=INSTANCE;
 function active(){return window.__cqAchievementStarsActiveInstance===INSTANCE}
 function num(v){if(v===null||v===undefined||v==='')return null;var n=Number(String(v).replace('%','').replace(',','.').trim());return Number.isFinite(n)?n:null}
@@ -11,11 +11,10 @@ function currentReport(){
   try{if(typeof raporPreviewState!=='undefined'&&raporPreviewState&&raporPreviewState.report)r=raporPreviewState.report}catch(e){}
   if(!r)r=window.raporPreviewState&&window.raporPreviewState.report||null;
   if(!r)return null;
-  var paper=document.querySelector('#rpv-preview .rpv-paper:first-child');
-  if(!paper)return null;
-  var shown=txt((paper.querySelector('.rpv-student-name,.rpv-name,[data-student-name]')||{}).textContent||'');
-  var reportName=txt((r.student||{}).name||r.student_name||r.full_name||'');
-  if(shown&&reportName&&shown!==reportName)return null;
+  var paper=document.querySelector('#rpv-preview .rpv-paper:first-child');if(!paper)return null;
+  var shownId=String(paper.getAttribute('data-student-id')||'').trim();
+  var reportId=String((r.student||{}).id||r.student_id||'').trim();
+  if(!shownId||!reportId||shownId!==reportId)return null;
   return r
 }
 function tahfizhEarned(r){var t=r.tahfizh||{},pct=num(t.percentage),s=txt(t.juz_assessment||t.assessment||t.achievement_status||t.status);return (pct!==null&&pct>100)||/beyond|melewati|melampaui|di atas|above/.test(s)}
