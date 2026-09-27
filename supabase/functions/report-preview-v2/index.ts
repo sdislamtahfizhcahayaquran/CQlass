@@ -192,10 +192,25 @@ async function attendanceFromEffectiveDays(s:any,reports:any[],requestedType:any
   return reports;
 }
 
+function achievementStars(reports:any[]){
+  for(const r of reports||[]){
+    const pct=Number(String(r?.tahfizh?.percentage??"").replace("%","").replace(",",".").trim());
+    const tahfizh=Number.isFinite(pct)&&pct>100;
+    const academic=r?.academic_summary?.ranking_eligible===true&&r?.academic_summary?.is_top10===true;
+    const present=Number(r?.attendance?.percent?.present);
+    const attendance=Number.isFinite(present)&&present>=100;
+    const activity=txt(r?.extracurricular?.school_activity_grade)==="a";
+    const reward=Number(r?.points?.reward_total),violation=Number(r?.points?.violation_total);
+    const character=Number.isFinite(reward)&&reward>=50&&Number.isFinite(violation)&&violation===0;
+    r.achievement_stars={tahfizh,academic,attendance,activity,character,source:"REPORT_PREVIEW_V2_SERVER_V15"};
+  }
+  return reports;
+}
 async function enrich(s:any,reports:any[],requestedType:any=""){
   await attendanceFromEffectiveDays(s,reports,requestedType);
   await schoolGrades(s,reports);
   await academicStars(s,reports);
+  achievementStars(reports);
   return reports;
 }
 
