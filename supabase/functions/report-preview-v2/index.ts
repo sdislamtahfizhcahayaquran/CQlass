@@ -91,42 +91,13 @@ async function schoolGrades(s:any,reports:any[]){
 }
 
 async function academicStars(s:any,reports:any[]){
-  const cache=new Map<string,any>();
+  const {data:ranking,error}=await s.rpc("academic_ranking_report_final");if(error)throw error;
+  const rows=Array.isArray(ranking?.rows)?ranking.rows:[];
+  const byStudent=new Map<string,any>();for(const x of rows)byStudent.set(txt(x.student_id),x);
   for(const r of reports||[]){
-    const sid=txt(r?.student?.id),classId=txt(r?.class?.id),yearName=txt(r?.academic_year),semesterNo=Number(r?.semester_no||1);
-    if(!sid||!classId)continue;
-    const yearId=await resolveYearId(s,yearName);if(!yearId)continue;
-    const {data:cls,error:ce}=await s.from("classes").select("grade_level").eq("id",classId).maybeSingle();if(ce)throw ce;
-    const gradeLevel=Number(cls?.grade_level);if(!gradeLevel)continue;
-    const key=`${yearId}|${semesterNo}|${gradeLevel}`;let ranked=cache.get(key);
-    if(!ranked){
-      const {data:classes,error:cErr}=await s.from("classes").select("id").eq("academic_year_id",yearId).eq("grade_level",gradeLevel).eq("is_active",true);if(cErr)throw cErr;
-      const classIds=(classes||[]).map((x:any)=>txt(x.id)).filter(Boolean);if(!classIds.length)continue;
-      const {data:enroll,error:eErr}=await s.from("student_enrollments").select("student_id,class_id").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("is_active",true).in("class_id",classIds);if(eErr)throw eErr;
-      const activeClass=new Map<string,string>();for(const e of enroll||[])activeClass.set(txt(e.student_id),txt(e.class_id));
-      const activeStudentIds=[...activeClass.keys()];
-      const {data:scores,error:sErr}=activeStudentIds.length?await s.from("academic_scores").select("student_id,subject_id,class_id,score").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("assessment_type","TP").is("deleted_at",null).not("score","is",null).in("class_id",classIds).in("student_id",activeStudentIds):{data:[],error:null};if(sErr)throw sErr;
-      const activeScores=(scores||[]).filter((row:any)=>activeClass.get(txt(row.student_id))===txt(row.class_id));
-
-      const subjectsByClass=new Map<string,Set<string>>();
-      for(const cid of classIds)subjectsByClass.set(cid,new Set());
-      for(const row of activeScores){const cid=txt(row.class_id),sub=txt(row.subject_id);if(cid&&sub&&subjectsByClass.has(cid))subjectsByClass.get(cid)!.add(sub)}
-      let common:string[]=[];
-      for(const cid of classIds){const set=subjectsByClass.get(cid)||new Set<string>();common=common.length?common.filter(x=>set.has(x)):[...set]}
-      const commonSet=new Set(common);
-      const perSubject=new Map<string,{sum:number,n:number}>();
-      for(const row of activeScores){const studentId=txt(row.student_id),subjectId=txt(row.subject_id),v=Number(row.score);if(!studentId||!commonSet.has(subjectId)||!Number.isFinite(v))continue;const k=studentId+"|"+subjectId,a=perSubject.get(k)||{sum:0,n:0};a.sum+=v;a.n++;perSubject.set(k,a)}
-      const students=new Map<string,Map<string,number>>();
-      for(const [k,a] of perSubject){const cut=k.indexOf("|"),studentId=k.slice(0,cut),subjectId=k.slice(cut+1);if(!students.has(studentId))students.set(studentId,new Map());students.get(studentId)!.set(subjectId,a.sum/a.n)}
-      const eligible:any[]=[];
-      for(const [student_id,vals] of students){if(!common.length||common.some(sub=>!vals.has(sub)))continue;const average=common.reduce((sum,sub)=>sum+Number(vals.get(sub)),0)/common.length;eligible.push({student_id,average,subject_count:common.length})}
-      eligible.sort((x,y)=>y.average-x.average||x.student_id.localeCompare(y.student_id));
-      ranked=eligible.map((x:any,index:number)=>({...x,rank:index+1}));
-      cache.set(key,ranked);
-    }
-    const item=ranked.find((x:any)=>x.student_id===sid);
-    if(!item){r.academic_summary={...(r.academic_summary||{}),grade_level:gradeLevel,is_top10:false,ranking_eligible:false,ranking_scope:"GRADE_COHORT_COMMON_PTS_SUBJECTS_COMPLETE_ONLY"};continue}
-    r.academic_summary={...(r.academic_summary||{}),grade_level:gradeLevel,grade_rank:item.rank,grade_cohort_size:ranked.length,is_top10:item.rank<=10,ranking_eligible:true,average_subject_pts:Number(item.average.toFixed(2)),subject_count:item.subject_count,ranking_scope:"GRADE_COHORT_COMMON_PTS_SUBJECTS_COMPLETE_ONLY"};
+    const sid=txt(r?.student?.id),item=byStudent.get(sid);
+    if(!item){r.academic_summary={...(r.academic_summary||{}),is_top10:false,ranking_eligible:false,ranking_scope:"GRADE_COHORT_TOTAL_AVAILABLE_SUBJECT_AVERAGES"};continue}
+    r.academic_summary={...(r.academic_summary||{}),grade_level:Number(item.grade_level),grade_rank:Number(item.grade_rank),grade_cohort_size:rows.filter((x:any)=>Number(x.grade_level)===Number(item.grade_level)).length,is_top10:Number(item.grade_rank)<=10,ranking_eligible:true,average_subject_pts:Number(item.average||0),total_subject_pts:Number(item.total||0),subject_count:Number(item.subject_count||0),expected_subject_count:Number(item.expected_subject_count||0),missing_subjects:Array.isArray(item.missing_subjects)?item.missing_subjects:[],ranking_scope:"GRADE_COHORT_TOTAL_AVAILABLE_SUBJECT_AVERAGES"};
   }
   return reports;
 }
