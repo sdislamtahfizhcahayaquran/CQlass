@@ -101,7 +101,7 @@
 
       for(const it of g.items){
         if(!it||!Array.isArray(it.roles))continue;
-        if(!['timesheet','laporan-promosi','internal-feedback'].includes(String(it.id||''))) it.roles=it.roles.filter(r=>r!=='walas');
+        if(!['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'].includes(String(it.id||''))) it.roles=it.roles.filter(r=>r!=='walas');
       }
       let feedback=g.items.find(x=>x&&x.id==='internal-feedback');
       if(!feedback){feedback={id:'internal-feedback',label:'Saran & Masukan',roles:['walas'],built:true,render:renderReporter};g.items.push(feedback)}
@@ -111,7 +111,7 @@
       if(!inbox){inbox={id:'internal-report-inbox',label:'Laporan Masuk',roles:['sapras','kesiswaan'],built:true,render:renderInbox};g.items.push(inbox)}
       else Object.assign(inbox,{label:'Laporan Masuk',roles:['sapras','kesiswaan'],built:true,render:renderInbox});
 
-      const order=['timesheet','laporan-promosi','internal-feedback'];
+      const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
       g.items.sort((a,b)=>{
         const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));
         return (ai<0?99:ai)-(bi<0?99:bi);
