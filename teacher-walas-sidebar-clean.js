@@ -150,9 +150,14 @@
         const ensureReport=(id,label,renderFn)=>{
           let it=reports.items.find(x=>x&&x.id===id);
           if(!it&&typeof renderFn==='function'){it={id,label,roles:[...TEACHER_ROLES],built:true,render:renderFn};reports.items.push(it)}
-          if(it){it.label=label;it.roles=[...new Set([...(it.roles||[]),...TEACHER_ROLES])];it.built=true}
+          if(it){it.label=label;it.roles=[...new Set([...(it.roles||[]),...TEACHER_ROLES])];it.built=true;if(typeof renderFn==='function')it.render=renderFn}
         };
-        ensureReport('academic-ranking-report','Ranking',window.renderAcademicRankingReport);
+        const rankingRender=function(content){
+          if(typeof window.renderAcademicRankingReport==='function')return window.renderAcademicRankingReport(content);
+          content.innerHTML='<div class="card">Memuat Rekapan Nilai & Ranking...</div>';
+          let n=0,t=setInterval(()=>{n++;if(typeof window.renderAcademicRankingReport==='function'){clearInterval(t);window.renderAcademicRankingReport(content)}else if(n>40){clearInterval(t);content.innerHTML='<div class="card">Modul Ranking belum berhasil dimuat. Silakan muat ulang halaman.</div>'}},150);
+        };
+        ensureReport('academic-ranking-report','Ranking',rankingRender);
         ensureReport('timesheet','Timesheet',window.renderTeacherTimesheet);
         ensureReport('laporan-promosi','Promosi Socmed',window.renderPromotionReport);
         const feedback=reports.items.find(x=>x&&x.id==='internal-feedback');
