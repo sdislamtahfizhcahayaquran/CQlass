@@ -892,6 +892,10 @@ async function refreshPendingKeterlambatanBadge(){
 
 function renderSidebar(){
   const sidebar = document.getElementById('sidebar');
+  if(String(currentUser?.role||'').trim().toLowerCase()==='hrd'){
+    if(typeof window.__cqRenderHrdSidebar==='function') return window.__cqRenderHrdSidebar();
+    return;
+  }
   sidebar.innerHTML = '';
 
   if (DASHBOARD_MODULE.roles.includes(currentUser.role)) {
@@ -936,6 +940,10 @@ function renderSidebar(){
 }
 
 function setActiveModule(id){
+  if(String(currentUser?.role||'').trim().toLowerCase()==='hrd'){
+    if(id==='dashboard') return window.openHrdCleanDashboard?.();
+    return;
+  }
   activeModule = id;
   const mod = findModuleByIdV2(id);
   if (mod) {
