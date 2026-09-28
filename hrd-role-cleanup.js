@@ -267,3 +267,34 @@ function start(){observer.observe(document.body,{childList:true,subtree:true});i
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 if(typeof enterApp==='function'&&!enterApp.__cqHrdCleanV2){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(install()){const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()}},90);return out};wrapped.__cqHrdCleanV2=true;enterApp=wrapped}
 })();
+/* HRD sidebar compact polish v7 */
+.sidebar:has(>.cq-hrd-side){padding-left:18px!important;padding-right:18px!important}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-side{display:block!important;padding:10px 0!important}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-nav{
+  display:flex!important;align-items:center!important;min-height:38px!important;
+  margin:2px 0!important;padding:8px 12px!important;border-radius:10px!important;
+  font-size:10px!important;line-height:1.2!important;font-weight:760!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-nav.active{
+  min-height:38px!important;background:#0d817b!important;color:#fff!important;
+  box-shadow:none!important;font-weight:850!important;
+}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-group-label{
+  display:flex!important;align-items:center!important;width:100%!important;min-height:30px!important;
+  margin:10px 0 2px!important;padding:5px 12px!important;border-radius:8px!important;
+  font-size:8px!important;letter-spacing:.13em!important;color:#718582!important;
+}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-group-label.open{background:transparent!important;color:#526b68!important}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-sub{display:grid!important;gap:1px!important;padding-left:7px!important}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-sub[hidden]{display:none!important}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{
+  min-height:36px!important;padding:7px 11px!important;font-size:9.5px!important;
+}
+.sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav.active{
+  min-height:36px!important;border-radius:9px!important;
+}
+@media(max-width:1180px){
+  .sidebar:has(>.cq-hrd-side) .cq-hrd-nav{font-size:9px!important}
+  .sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{font-size:8.7px!important}
+}
