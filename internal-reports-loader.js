@@ -51,7 +51,7 @@
     'academic-report-class-picker.js?v=20260921-classpicker1',
     'rapor-achievement-stars.js?v=20260927-stars23',
     'kesiswaan-points-recap.js?v=20260915-3',
-    'kesiswaan-super-report.js?v=20260921-live2',
+    'kesiswaan-super-report.js?v=20260928-kabid-full1',
     'kesiswaan-case-followup-ui.js?v=20260921-followup1',
     'kesiswaan-excel-xlsx.js?v=20260921-xlsx1',
     'promotion-report-edit.js?v=20260922-edit1',
