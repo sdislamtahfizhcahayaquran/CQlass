@@ -141,6 +141,12 @@
     restoreLooseTitles();
   }
   function sync(){
+    // HRD owns its complete workspace (sidebar + dashboard + data). Do not mutate
+    // HRD content with the generic role-theme observer.
+    if(roleNorm()==='hrd'){
+      restoreOutsideDashboard();
+      return;
+    }
     if(dashboardActive()&&appVisible())enforceOneHero();
     else restoreOutsideDashboard();
   }
@@ -151,7 +157,7 @@
   document.addEventListener('click',function(){setTimeout(sync,45);},true);
   document.addEventListener('DOMContentLoaded',function(){setTimeout(sync,70);},{once:true});
   window.addEventListener('load',function(){setTimeout(sync,100);},{once:true});
-  setInterval(function(){if(dashboardActive()&&appVisible())enforceOneHero();},900);
+  setInterval(function(){if(roleNorm()!=='hrd'&&dashboardActive()&&appVisible())enforceOneHero();},900);
   setTimeout(sync,70);
   window.__CQ_GLOBAL_ROLE_THEME__=true;
   window.__CQ_GLOBAL_ROLE_THEME_V3__=true;
