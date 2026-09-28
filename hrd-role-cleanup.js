@@ -267,9 +267,21 @@ function install(){
 if(typeof renderSidebar==='function'&&!renderSidebar.__cqHrdWorkspaceWrapped){const old=renderSidebar;const wrapped=function(){if(isHrd())return drawSidebar();return old.apply(this,arguments)};wrapped.__cqHrdWorkspaceWrapped=true;renderSidebar=wrapped;window.__cqHrdSidebarOwner=wrapped}
 let repairing=false;
 const observer=new MutationObserver(()=>{if(!isHrd()||repairing)return;const s=document.getElementById('sidebar');if(s&&(s.dataset.cqOwner!=='hrd-workspace'||!s.querySelector(':scope > .cq-hrd-side[data-cq-owner="hrd-workspace"]'))){repairing=true;drawSidebar();queueMicrotask(()=>{repairing=false})}const old=document.getElementById('hrd-report-inbox-panel');if(old)old.remove()});
-function start(){observer.observe(document.body,{childList:true,subtree:true});stampDom();if(install()){setTimeout(()=>{const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()},60)}else{let n=0;const t=setInterval(()=>{n++;if(install()){clearInterval(t);const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()}else if(n>=40)clearInterval(t)},250)}}
+function mountHrdWorkspace(){
+  if(!isHrd())return false;
+  stampDom();install();
+  const s=document.getElementById('sidebar'),c=content();
+  if(s&&!s.querySelector(':scope > .cq-hrd-side[data-cq-owner="hrd-workspace"]'))drawSidebar();
+  if(c&&!c.querySelector(':scope > .cq-hrd-clean'))renderDashboard();
+  return true;
+}
+function start(){
+  observer.observe(document.body,{childList:true,subtree:true});
+  if(mountHrdWorkspace())return;
+  let n=0;const t=setInterval(()=>{n++;if(mountHrdWorkspace()||n>=80)clearInterval(t)},250);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-if(typeof enterApp==='function'&&!enterApp.__cqHrdWorkspaceWrapped){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(isHrd()){install();drawSidebar();renderDashboard()}},90);return out};wrapped.__cqHrdWorkspaceWrapped=true;enterApp=wrapped}
+if(typeof enterApp==='function'&&!enterApp.__cqHrdWorkspaceWrapped){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{mountHrdWorkspace()},90);return out};wrapped.__cqHrdWorkspaceWrapped=true;enterApp=wrapped}
 })();
 
 ;(function(){
