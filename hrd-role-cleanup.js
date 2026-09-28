@@ -245,6 +245,7 @@ window.hrdSaveSaturday=async()=>{const date=document.getElementById('hrd-sat-dat
 window.hrdDeleteSaturday=async id=>{try{await api('hrd-saturday-schedule',{action:'delete',id});if(typeof showToast==='function')showToast('Jadwal Kegiatan Sabtu dihapus.');renderSaturdayManage()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
 
 window.hrdToggleGroup=g=>{if(g==='report'){state.reportOpen=!state.reportOpen;if(state.reportOpen)state.manageOpen=false}else if(g==='manage'){state.manageOpen=!state.manageOpen;if(state.manageOpen)state.reportOpen=false}side()};
+window.__cqRenderHrdSidebar=()=>drawSidebar();
 window.openHrdCleanDashboard=renderDashboard;
 window.openHrdCleanLive=()=>{state.reportOpen=true;renderLive()};
 window.openHrdCleanTimesheet=renderTimesheet;
