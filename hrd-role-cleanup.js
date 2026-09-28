@@ -32,15 +32,15 @@ async function api(slug,payload){
 function installCss(){
   if(document.getElementById('cq-hrd-clean-css'))return;
   const s=document.createElement('style');s.id='cq-hrd-clean-css';s.textContent=`
-  .cq-hrd-side{padding:18px 14px 26px;display:flex;flex-direction:column;gap:7px}.cq-hrd-section{margin:17px 8px 4px;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#718582}.cq-hrd-nav{width:100%;min-height:44px;border:0;border-radius:12px;background:transparent;color:#294846;padding:0 13px;display:flex;align-items:center;font:750 13px/1.2 Inter,system-ui,sans-serif;text-align:left;cursor:pointer}.cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-nav.active{background:#0a6e6e;color:#fff}.cq-hrd-navgroup{margin-top:4px}.cq-hrd-navgroup>summary{list-style:none;cursor:pointer;min-height:44px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;border-radius:12px;color:#294846;font:850 12px/1.2 Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em}.cq-hrd-navgroup>summary::-webkit-details-marker{display:none}.cq-hrd-navgroup>summary:hover{background:#eef7f5}.cq-hrd-navgroup>summary span{font-size:15px;transition:.2s}.cq-hrd-navgroup[open]>summary span{transform:rotate(180deg)}.cq-hrd-sub{display:grid;gap:3px;padding:4px 0 4px 9px}.cq-hrd-sub .cq-hrd-nav{min-height:38px;font-size:12px}
+  .cq-hrd-side{padding:18px 14px 26px;display:flex;flex-direction:column;gap:7px}.cq-hrd-section{margin:17px 8px 4px;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#718582}.cq-hrd-nav{width:100%;min-height:44px;border:0;border-radius:12px;background:transparent;color:#294846;padding:0 13px;display:flex;align-items:center;font:750 13px/1.2 Inter,system-ui,sans-serif;text-align:left;cursor:pointer}.cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-nav.active{background:#0a6e6e;color:#fff}.cq-hrd-group-label{margin:13px 8px 5px;padding:0 5px;color:#617975;font:900 10px/1.2 Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.1em}.cq-hrd-sub{display:grid;gap:4px;padding:0}.cq-hrd-sub .cq-hrd-nav{padding-left:18px;background:#f7faf9}.cq-hrd-sub .cq-hrd-nav:hover{background:#eaf4f2}.cq-hrd-sub .cq-hrd-nav{min-height:38px;font-size:12px}
   @media(max-width:760px){
     .layout:has(.cq-hrd-side){display:block!important}
     .sidebar:has(>.cq-hrd-side){width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;position:static!important;border-right:0!important;border-bottom:1px solid #d9e9e6!important}
     .sidebar:has(>.cq-hrd-side) .cq-hrd-side{padding:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
     .sidebar:has(>.cq-hrd-side) .cq-hrd-nav{min-height:38px;padding:0 9px;font-size:11px}
-    .sidebar:has(>.cq-hrd-side) .cq-hrd-navgroup{margin:0}
-    .sidebar:has(>.cq-hrd-side) .cq-hrd-navgroup>summary{min-height:38px;padding:0 9px;font-size:10px}
-    .sidebar:has(>.cq-hrd-side) .cq-hrd-sub{position:absolute;z-index:50;background:#fff;border:1px solid #d9e9e6;border-radius:12px;padding:6px;box-shadow:0 12px 28px rgba(28,65,60,.14);min-width:170px}
+    .sidebar:has(>.cq-hrd-side) .cq-hrd-group-label{margin:8px 4px 3px;grid-column:1/-1}
+    .sidebar:has(>.cq-hrd-side) .cq-hrd-sub{display:contents}
+    .sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{padding-left:9px}
     .content:has(.cq-hrd-clean-mode),.content.cq-hrd-clean-mode{width:100%!important;max-width:none!important;padding:10px!important}
     .cq-hrd-head{border-radius:16px!important;padding:16px!important}
     .cq-hrd-grid{grid-template-columns:1fr 1fr!important}
@@ -64,18 +64,19 @@ function navButton(id,label,fn){return `<button class="cq-hrd-nav${state.active=
 function drawSidebar(active){
   if(!isHrd())return false;installCss();if(active)state.active=active;
   const s=document.getElementById('sidebar');if(!s)return false;
-  const reportOpen=['monthly','promotion'].includes(state.active);
-  const manageOpen=['periods','saturday-manage'].includes(state.active);
   s.innerHTML=`<div class="cq-hrd-side">
     ${navButton('dashboard','Dashboard','openHrdCleanDashboard()')}
-    <details class="cq-hrd-navgroup" ${reportOpen?'open':''}><summary>Laporan <span>⌄</span></summary><div class="cq-hrd-sub">
+    <div class="cq-hrd-group-label">Laporan</div>
+    <div class="cq-hrd-sub">
+      ${navButton('live','Aktivitas Harian 07.00–16.00','openHrdCleanLive()')}
       ${navButton('monthly','Laporan Bulanan','openHrdCleanMonthly()')}
       ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}
-    </div></details>
-    <details class="cq-hrd-navgroup" ${manageOpen?'open':''}><summary>Pengelolaan <span>⌄</span></summary><div class="cq-hrd-sub">
+    </div>
+    <div class="cq-hrd-group-label">Pengelolaan</div>
+    <div class="cq-hrd-sub">
       ${navButton('periods','Pengaturan Periode','openHrdReportPeriods()')}
       ${navButton('saturday-manage','Kegiatan Hari Sabtu','openHrdCleanSaturdayManage()')}
-    </div></details>
+    </div>
   </div>`;
   return true;
 }
