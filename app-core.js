@@ -843,10 +843,8 @@ function enterApp(){
       try{renderSidebar()}catch(_){}
       window.openHrdCleanDashboard();
     }else{
-      const sc=document.createElement('script');
-      sc.src='hrd-role-cleanup.js?v=20260925-stable16';
-      sc.onload=()=>{try{renderSidebar()}catch(_){};window.openHrdCleanDashboard?.()};
-      document.head.appendChild(sc);
+      // HRD V8 dimuat oleh index.html. Hindari dynamic loader ganda/race condition.
+      setTimeout(()=>{try{renderSidebar()}catch(_){};window.openHrdCleanDashboard?.()},0);
     }
   }else{
     activeModule = DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi';
