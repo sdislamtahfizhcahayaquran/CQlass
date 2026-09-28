@@ -72,10 +72,7 @@
     if(!r)return false; // jangan pernah menebak role sebelum login/session selesai
     started=true;
 
-    if(isHrd()){
-      load('hrd-role-cleanup.js?v=20260925-stable16');
-      return true;
-    }
+    if(isHrd()) return true; // HRD V8 dimuat satu kali dari index.html; jangan inject ulang.
     if(r==='kabid_quran')return true;
 
     Promise.allSettled(common.map(load)).then(()=>{
