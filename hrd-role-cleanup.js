@@ -5,7 +5,7 @@ if(window.__cqHrdRoleCleanupV5)return;
 window.__cqHrdRoleCleanupV5=true;
 
 const jktDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az'};
+const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const low=v=>String(v??'').trim().toLowerCase();
 const content=()=>document.getElementById('content');
@@ -32,7 +32,7 @@ async function api(slug,payload){
 function installCss(){
   if(document.getElementById('cq-hrd-clean-css'))return;
   const s=document.createElement('style');s.id='cq-hrd-clean-css';s.textContent=`
-  .cq-hrd-side{padding:18px 14px 26px;display:flex;flex-direction:column;gap:7px}.cq-hrd-section{margin:17px 8px 4px;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#718582}.cq-hrd-nav{width:100%;min-height:44px;border:0;border-radius:12px;background:transparent;color:#294846;padding:0 13px;display:flex;align-items:center;font:750 13px/1.2 Inter,system-ui,sans-serif;text-align:left;cursor:pointer}.cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-nav.active{background:#0a6e6e;color:#fff}.cq-hrd-group-label{margin:12px 10px 4px;padding:0;color:#7a8e8b;font:900 8.5px/1.2 Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.12em}.cq-hrd-sub{display:grid;gap:2px;padding:0}.cq-hrd-sub .cq-hrd-nav{padding-left:12px;background:transparent}.cq-hrd-sub .cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-sub .cq-hrd-nav.active{background:#0d7c76;color:#fff}.cq-hrd-sub .cq-hrd-nav{min-height:38px;font-size:12px}
+  .cq-hrd-side{padding:18px 14px 26px;display:flex;flex-direction:column;gap:7px}.cq-hrd-section{margin:17px 8px 4px;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#718582}.cq-hrd-nav{width:100%;min-height:44px;border:0;border-radius:12px;background:transparent;color:#294846;padding:0 13px;display:flex;align-items:center;font:750 13px/1.2 Inter,system-ui,sans-serif;text-align:left;cursor:pointer}.cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-nav.active{background:#0a6e6e;color:#fff}.cq-hrd-group-label{width:100%;border:0;background:transparent;margin:7px 0 2px;padding:9px 11px;border-radius:9px;color:#607774;text-align:left;cursor:pointer;font:900 9px/1.2 Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.1em}.cq-hrd-group-label:hover,.cq-hrd-group-label.open{background:#eef7f5;color:#234d49}.cq-hrd-sub{display:grid;gap:2px;padding:0}.cq-hrd-sub[hidden]{display:none!important}.cq-hrd-sub .cq-hrd-nav{padding-left:12px;background:transparent}.cq-hrd-sub .cq-hrd-nav:hover{background:#eef7f5}.cq-hrd-sub .cq-hrd-nav.active{background:#0d7c76;color:#fff}.cq-hrd-sub .cq-hrd-nav{min-height:38px;font-size:12px}
   @media(max-width:760px){
     .layout:has(.cq-hrd-side){display:block!important}
     .sidebar:has(>.cq-hrd-side){width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;position:static!important;border-right:0!important;border-bottom:1px solid #d9e9e6!important}
@@ -66,14 +66,14 @@ function drawSidebar(active){
   const s=document.getElementById('sidebar');if(!s)return false;
   s.innerHTML=`<div class="cq-hrd-side">
     ${navButton('dashboard','Dashboard','openHrdCleanDashboard()')}
-    <div class="cq-hrd-group-label">Laporan</div>
-    <div class="cq-hrd-sub">
+    <button class="cq-hrd-group-label ${state.reportOpen?'open':''}" onclick="hrdToggleGroup('report')">Laporan</button>
+    <div class="cq-hrd-sub" ${state.reportOpen?'':'hidden'}>
       ${navButton('live','Aktivitas Harian 07.00–16.00','openHrdCleanLive()')}
       ${navButton('monthly','Laporan Bulanan','openHrdCleanMonthly()')}
       ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}
     </div>
-    <div class="cq-hrd-group-label">Pengelolaan</div>
-    <div class="cq-hrd-sub">
+    <button class="cq-hrd-group-label ${state.manageOpen?'open':''}" onclick="hrdToggleGroup('manage')">Pengelolaan</button>
+    <div class="cq-hrd-sub" ${state.manageOpen?'':'hidden'}>
       ${navButton('periods','Pengaturan Periode','openHrdReportPeriods()')}
       ${navButton('saturday-manage','Kegiatan Hari Sabtu','openHrdCleanSaturdayManage()')}
     </div>
@@ -242,16 +242,17 @@ window.hrdCleanReload=async()=>{state.admin=null;await renderLive()};
 window.hrdSaveSaturday=async()=>{const date=document.getElementById('hrd-sat-date')?.value||'',mid=document.getElementById('hrd-sat-master')?.value||'',start=document.getElementById('hrd-sat-start')?.value||'',end=document.getElementById('hrd-sat-end')?.value||'',note=document.getElementById('hrd-sat-note')?.value||'';if(!date||!mid)return typeof showToast==='function'?showToast('Tanggal dan kegiatan wajib dipilih.',true):alert('Tanggal dan kegiatan wajib dipilih.');if(new Date(date+'T12:00:00Z').getUTCDay()!==6)return typeof showToast==='function'?showToast('Tanggal harus hari Sabtu.',true):alert('Tanggal harus hari Sabtu.');try{await api('hrd-saturday-schedule',{action:'save',event_date:date,activity_master_id:mid,start_time:start,end_time:end,note});if(typeof showToast==='function')showToast('Jadwal Kegiatan Sabtu tersimpan.');renderSaturdayManage()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
 window.hrdDeleteSaturday=async id=>{try{await api('hrd-saturday-schedule',{action:'delete',id});if(typeof showToast==='function')showToast('Jadwal Kegiatan Sabtu dihapus.');renderSaturdayManage()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
 
+window.hrdToggleGroup=g=>{if(g==='report'){state.reportOpen=!state.reportOpen;if(state.reportOpen)state.manageOpen=false}else if(g==='manage'){state.manageOpen=!state.manageOpen;if(state.manageOpen)state.reportOpen=false}side()};
 window.openHrdCleanDashboard=renderDashboard;
-window.openHrdCleanLive=renderLive;
+window.openHrdCleanLive=()=>{state.reportOpen=true;renderLive()};
 window.openHrdCleanTimesheet=renderTimesheet;
 window.openHrdCleanAdministration=renderAdministration;
 window.openHrdCleanAttendance=renderAttendance;
-window.openHrdCleanPromotion=renderPromotion;
+window.openHrdCleanPromotion=()=>{state.reportOpen=true;renderPromotion()};
 window.openHrdReportPeriods=renderPeriods;
 window.openHrdCleanSaturday=renderSaturday;
-window.openHrdCleanMonthly=renderMonthly;
-window.openHrdCleanSaturdayManage=renderSaturdayManage;
+window.openHrdCleanMonthly=()=>{state.reportOpen=true;renderMonthly()};
+window.openHrdCleanSaturdayManage=()=>{state.manageOpen=true;renderSaturdayManage()};
 
 function install(){
   if(!isHrd())return false;installCss();
