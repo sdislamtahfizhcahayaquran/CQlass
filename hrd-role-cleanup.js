@@ -64,7 +64,7 @@ function navButton(id,label,fn){return `<button class="cq-hrd-nav${state.active=
 function drawSidebar(active){
   if(!isHrd())return false;installCss();if(active)state.active=active;
   const s=document.getElementById('sidebar');if(!s)return false;
-  s.innerHTML=`<div class="cq-hrd-side">
+  s.dataset.cqOwner='hrd-clean-v8';s.innerHTML=`<div class="cq-hrd-side" data-cq-owner="hrd-clean-v8">
     ${navButton('dashboard','Dashboard','openHrdCleanDashboard()')}
     <button class="cq-hrd-group-label ${state.reportOpen?'open':''}" onclick="hrdToggleGroup('report')">Laporan</button>
     <div class="cq-hrd-sub" ${state.reportOpen?'':'hidden'}>
@@ -261,8 +261,9 @@ function install(){
   return true;
 }
 
-if(typeof renderSidebar==='function'&&!renderSidebar.__cqHrdCleanV2){const old=renderSidebar;const wrapped=function(){return isHrd()?drawSidebar():old.apply(this,arguments)};wrapped.__cqHrdCleanV2=true;renderSidebar=wrapped}
-const observer=new MutationObserver(()=>{if(isHrd()){const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();const old=document.getElementById('hrd-report-inbox-panel');if(old)old.remove()}});
+if(typeof renderSidebar==='function'&&!renderSidebar.__cqHrdCleanV8){const old=renderSidebar;const wrapped=function(){if(isHrd())return drawSidebar();return old.apply(this,arguments)};wrapped.__cqHrdCleanV8=true;renderSidebar=wrapped;window.__cqHrdSidebarOwner=wrapped}
+let repairing=false;
+const observer=new MutationObserver(()=>{if(!isHrd()||repairing)return;const s=document.getElementById('sidebar');if(s&&(s.dataset.cqOwner!=='hrd-clean-v8'||!s.querySelector(':scope > .cq-hrd-side[data-cq-owner="hrd-clean-v8"]'))){repairing=true;drawSidebar();queueMicrotask(()=>{repairing=false})}const old=document.getElementById('hrd-report-inbox-panel');if(old)old.remove()});
 function start(){observer.observe(document.body,{childList:true,subtree:true});if(install()){setTimeout(()=>{const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()},60)}else{let n=0;const t=setInterval(()=>{n++;if(install()){clearInterval(t);const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()}else if(n>=40)clearInterval(t)},250)}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 if(typeof enterApp==='function'&&!enterApp.__cqHrdCleanV2){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(install()){const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()}},90);return out};wrapped.__cqHrdCleanV2=true;enterApp=wrapped}
