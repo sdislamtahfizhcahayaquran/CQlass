@@ -1,8 +1,8 @@
 /* CQlass — HRD clean workspace */
 (function(){
 'use strict';
-if(window.__cqHrdWorkspace)return;
-window.__cqHrdWorkspace=true;
+if(window.__cqHrdWorkspaceLoaded)return;
+window.__cqHrdWorkspaceLoaded=true;
 
 const jktDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false};
@@ -264,12 +264,12 @@ function install(){
   return true;
 }
 
-if(typeof renderSidebar==='function'&&!renderSidebar.__cqHrdWorkspace){const old=renderSidebar;const wrapped=function(){if(isHrd())return drawSidebar();return old.apply(this,arguments)};wrapped.__cqHrdWorkspace=true;renderSidebar=wrapped;window.__cqHrdSidebarOwner=wrapped}
+if(typeof renderSidebar==='function'&&!renderSidebar.__cqHrdWorkspaceWrapped){const old=renderSidebar;const wrapped=function(){if(isHrd())return drawSidebar();return old.apply(this,arguments)};wrapped.__cqHrdWorkspaceWrapped=true;renderSidebar=wrapped;window.__cqHrdSidebarOwner=wrapped}
 let repairing=false;
 const observer=new MutationObserver(()=>{if(!isHrd()||repairing)return;const s=document.getElementById('sidebar');if(s&&(s.dataset.cqOwner!=='hrd-workspace'||!s.querySelector(':scope > .cq-hrd-side[data-cq-owner="hrd-workspace"]'))){repairing=true;drawSidebar();queueMicrotask(()=>{repairing=false})}const old=document.getElementById('hrd-report-inbox-panel');if(old)old.remove()});
 function start(){observer.observe(document.body,{childList:true,subtree:true});stampDom();if(install()){setTimeout(()=>{const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()},60)}else{let n=0;const t=setInterval(()=>{n++;if(install()){clearInterval(t);const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()}else if(n>=40)clearInterval(t)},250)}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-if(typeof enterApp==='function'&&!enterApp.__cqHrdCleanV2){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(install()){const s=document.getElementById('sidebar');if(s&&!s.querySelector('.cq-hrd-side'))drawSidebar();if(!content()?.firstElementChild)renderDashboard()}},90);return out};wrapped.__cqHrdCleanV2=true;enterApp=wrapped}
+if(typeof enterApp==='function'&&!enterApp.__cqHrdWorkspaceWrapped){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(isHrd()){install();drawSidebar();renderDashboard()}},90);return out};wrapped.__cqHrdWorkspaceWrapped=true;enterApp=wrapped}
 })();
 /* HRD sidebar compact polish v7 */
 .sidebar:has(>.cq-hrd-side){padding-left:18px!important;padding-right:18px!important}
