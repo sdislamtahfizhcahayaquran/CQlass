@@ -271,34 +271,11 @@ function start(){observer.observe(document.body,{childList:true,subtree:true});s
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 if(typeof enterApp==='function'&&!enterApp.__cqHrdWorkspaceWrapped){const old=enterApp;const wrapped=function(){const out=old.apply(this,arguments);setTimeout(()=>{if(isHrd()){install();drawSidebar();renderDashboard()}},90);return out};wrapped.__cqHrdWorkspaceWrapped=true;enterApp=wrapped}
 })();
-/* HRD sidebar compact polish v7 */
-.sidebar:has(>.cq-hrd-side){padding-left:18px!important;padding-right:18px!important}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-side{display:block!important;padding:10px 0!important}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-nav{
-  display:flex!important;align-items:center!important;min-height:38px!important;
-  margin:2px 0!important;padding:8px 12px!important;border-radius:10px!important;
-  font-size:10px!important;line-height:1.2!important;font-weight:760!important;
-  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
-}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-nav.active{
-  min-height:38px!important;background:#0d817b!important;color:#fff!important;
-  box-shadow:none!important;font-weight:850!important;
-}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-group-label{
-  display:flex!important;align-items:center!important;width:100%!important;min-height:30px!important;
-  margin:10px 0 2px!important;padding:5px 12px!important;border-radius:8px!important;
-  font-size:8px!important;letter-spacing:.13em!important;color:#718582!important;
-}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-group-label.open{background:transparent!important;color:#526b68!important}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-sub{display:grid!important;gap:1px!important;padding-left:7px!important}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-sub[hidden]{display:none!important}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{
-  min-height:36px!important;padding:7px 11px!important;font-size:9.5px!important;
-}
-.sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav.active{
-  min-height:36px!important;border-radius:9px!important;
-}
-@media(max-width:1180px){
-  .sidebar:has(>.cq-hrd-side) .cq-hrd-nav{font-size:9px!important}
-  .sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{font-size:8.7px!important}
-}
+
+;(function(){
+  if(document.getElementById('cq-hrd-sidebar-polish-v7'))return;
+  const st=document.createElement('style');
+  st.id='cq-hrd-sidebar-polish-v7';
+  st.textContent="/* HRD sidebar compact polish v7 */\n.sidebar:has(>.cq-hrd-side){padding-left:18px!important;padding-right:18px!important}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-side{display:block!important;padding:10px 0!important}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-nav{\n  display:flex!important;align-items:center!important;min-height:38px!important;\n  margin:2px 0!important;padding:8px 12px!important;border-radius:10px!important;\n  font-size:10px!important;line-height:1.2!important;font-weight:760!important;\n  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;\n}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-nav.active{\n  min-height:38px!important;background:#0d817b!important;color:#fff!important;\n  box-shadow:none!important;font-weight:850!important;\n}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-group-label{\n  display:flex!important;align-items:center!important;width:100%!important;min-height:30px!important;\n  margin:10px 0 2px!important;padding:5px 12px!important;border-radius:8px!important;\n  font-size:8px!important;letter-spacing:.13em!important;color:#718582!important;\n}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-group-label.open{background:transparent!important;color:#526b68!important}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-sub{display:grid!important;gap:1px!important;padding-left:7px!important}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-sub[hidden]{display:none!important}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{\n  min-height:36px!important;padding:7px 11px!important;font-size:9.5px!important;\n}\n.sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav.active{\n  min-height:36px!important;border-radius:9px!important;\n}\n@media(max-width:1180px){\n  .sidebar:has(>.cq-hrd-side) .cq-hrd-nav{font-size:9px!important}\n  .sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{font-size:8.7px!important}\n}\n";
+  document.head.appendChild(st);
+})();
