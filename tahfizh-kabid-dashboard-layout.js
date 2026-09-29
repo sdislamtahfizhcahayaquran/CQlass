@@ -1,7 +1,7 @@
 /* CQlass — focused dashboard for Kabid Qur'an */
 (function(){
   'use strict';
-  if(window.__CQ_TAHFIZH_KABID_DASH_V1__)return;
+  if(window.__CQ_TAHFIZH_KABID_DASH_V2__)return;
   window.__CQ_TAHFIZH_KABID_DASH_V1__=1;
   const ROLE='kabid_quran';
   const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
@@ -37,23 +37,9 @@
       <section class="ktd-hero">
         <div class="ktd-kicker">CQlass · Tahfizh</div>
         <div class="ktd-title">Dashboard Kabid Qur'an</div>
-        <div class="ktd-sub">Pusat monitoring nilai PTS, laporan bulanan, dan UKJ${name?` · ${esc(name)}`:''}. Live Report di bawah ini membaca progres guru halaqah langsung dari data CQlass.</div>
-      </section>
-      <section class="ktd-section">
-        <div class="ktd-section-head"><b>Akses Utama</b><span>Lima modul kerja Kabid Qur'an</span></div>
-        <div class="ktd-quick">
-          <button type="button" class="ktd-card ktd-action" onclick="setActiveModule('tahfizh-pts-kabid')"><div class="ktd-action-top"><div class="ktd-icon">PTS</div><div class="ktd-arrow">→</div></div><b>Nilai PTS</b><p>Lihat dan kelola data nilai Tahfizh PTS seluruh kelas dalam satu jalur.</p></button>
-          <button type="button" class="ktd-card ktd-action" onclick="setActiveModule('tahfizh-daily-report')"><div class="ktd-action-top"><div class="ktd-icon">HR</div><div class="ktd-arrow">→</div></div><b>Laporan Harian</b><p>Pantau guru halaqah yang sudah dan belum melaporkan aktivitas hariannya.</p></button>
-          <button type="button" class="ktd-card ktd-action" onclick="setActiveModule('tahfizh-badal')"><div class="ktd-action-top"><div class="ktd-icon">BDL</div><div class="ktd-arrow">→</div></div><b>Badal Tahfizh</b><p>Kelola guru pengganti halaqah, jadwal, alasan, dan rekap badal.</p></button>
-          <button type="button" class="ktd-card ktd-action" onclick="setActiveModule('tahfizh-monthly-report')"><div class="ktd-action-top"><div class="ktd-icon">BLN</div><div class="ktd-arrow">→</div></div><b>Laporan Bulanan</b><p>LP, target bulan, pencapaian akhir bulan, juz, dan Tilawah/BBQ.</p></button>
-          <button type="button" class="ktd-card ktd-action" onclick="setActiveModule('tahfizh-ukj-score')"><div class="ktd-action-top"><div class="ktd-icon">UKJ</div><div class="ktd-arrow">→</div></div><b>UKJ</b><p>Kelancaran, makhraj, mad, ghunnah, catatan, nilai akhir, dan cetak A4.</p></button>
-        </div>
+        <div class="ktd-sub">Pusat monitoring Tahfizh, laporan guru halaqah, badal, penilaian, dan capaian siswa${name?` · ${esc(name)}`:''}. Live Report di bawah ini membaca progres guru halaqah langsung dari data CQlass.</div>
       </section>
       <div class="ktd-live-slot"></div>
-      <section class="ktd-section">
-        <div class="ktd-section-head"><b>Alur Kerja</b><span>Tanpa input ulang dan tanpa menu Kesiswaan</span></div>
-        <div class="ktd-note"><div><strong>1. Pantau</strong><span>Cek progres guru halaqah melalui Live Report.</span></div><div><strong>2. Lengkapi</strong><span>Buka modul PTS, Bulanan, atau UKJ sesuai kebutuhan.</span></div><div><strong>3. Cetak</strong><span>Gunakan preview A4 yang sama dengan sumber PDF agar hasil konsisten.</span></div></div>
-      </section>
     </div>`;
     setTimeout(()=>{try{window.cqTahfizhLiveEnsure?.()}catch(_){}},80);
   }
@@ -66,7 +52,7 @@
     return true;
   }
   let n=0;(function boot(){n++;if(install()||n>=30)return;setTimeout(boot,200)})();
-  if(typeof enterApp==='function'&&!enterApp.__cqKabidTahfizhDashV1){
+  if(typeof enterApp==='function'&&!enterApp.__cqKabidTahfizhDashV2){
     const old=enterApp;
     const wrapped=function(){install();const out=old.apply(this,arguments);if(allowed())setTimeout(()=>{try{if(typeof activeModule!=='undefined'&&activeModule==='dashboard')render(document.getElementById('content'))}catch(_){}},120);return out};
     wrapped.__cqKabidTahfizhDashV1=true;enterApp=wrapped;
