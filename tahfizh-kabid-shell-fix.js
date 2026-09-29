@@ -1,17 +1,17 @@
 /* CQlass — Kabid Qur'an stable shell: bypass global role wrapper stack */
 (function(){
   'use strict';
-  if(window.__CQ_TAHFIZH_SHELL_FIX_V11__)return;
+  if(window.__CQ_TAHFIZH_SHELL_FIX_V12__)return;
   window.__CQ_TAHFIZH_SHELL_FIX_V11__=1;
 
   const ROLE='kabid_quran';
   const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   const TOOLS=[
-    {id:'tahfizh-pts-kabid',label:'Nilai PTS',url:'tahfizh-pts.html?v=20260929-quran1'},
-    {id:'tahfizh-daily-report',label:'Laporan Harian',url:'tahfizh-daily-report.html?v=20260929-quran1'},
-    {id:'tahfizh-badal',label:'Badal Tahfizh',url:'tahfizh-badal.html?v=20260929-quran1'},
-    {id:'tahfizh-monthly-report',label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260924-kabid7'},
-    {id:'tahfizh-ukj-score',label:'UKJ',url:'tahfizh-ukj-score.html?v=20260924-kabid7'}
+    {id:'tahfizh-daily-report',label:'Laporan Harian',section:'Monitoring Guru',url:'tahfizh-daily-report.html?v=20260929-quran2'},
+    {id:'tahfizh-badal',label:'Badal Tahfizh',section:'Monitoring Guru',url:'tahfizh-badal.html?v=20260929-quran2'},
+    {id:'tahfizh-pts-kabid',label:'Nilai PTS',section:'Penilaian',url:'tahfizh-pts.html?v=20260929-quran2'},
+    {id:'tahfizh-ukj-score',label:'UKJ',section:'Penilaian',url:'tahfizh-ukj-score.html?v=20260929-quran2'},
+    {id:'tahfizh-monthly-report',label:'Laporan Bulanan',section:'Laporan',url:'tahfizh-monthly.html?v=20260929-quran2'}
   ];
   const BLOCKED=new Set(['kesiswaan','kesiswaan-center','kedisiplinan','reward','tahfizh-kedisiplinan','tahfizh-reward']);
   let previousRender=null,previousSetActive=null,stableRender=null,stableSetActive=null;
@@ -71,7 +71,11 @@
     }
     group.label='Tahfizh';
     group.roles=[ROLE];
-    group.items=TOOLS.map(d=>({id:d.id,label:d.label,roles:[ROLE],built:true,render:()=>go(d)}));
+    const sections=['Monitoring Guru','Penilaian','Laporan'];
+    group.items=sections.map((section,idx)=>({
+      id:'tahfizh-section-'+norm(section),label:section,roles:[ROLE],built:true,
+      items:TOOLS.filter(d=>d.section===section).map(d=>({id:d.id,label:d.label,roles:[ROLE],built:true,render:()=>go(d)}))
+    }));
     return true;
   }
 
@@ -104,7 +108,7 @@
         const fn=baseRender();
         if(typeof fn==='function')return fn.apply(this,arguments);
       };
-      stableRender.__cqKabidTahfizhStableV11=true;
+      stableRender.__cqKabidTahfizhStableV12=true;
     }
 
     if(!stableSetActive){
@@ -154,7 +158,7 @@
   [250,800,1800].forEach(ms=>setTimeout(()=>stabilize(false),ms));
   window.addEventListener('load',()=>{stabilize(false);setTimeout(()=>stabilize(false),350)},{once:true});
 
-  if(typeof enterApp==='function'&&!enterApp.__cqTahfizhKabidStableV11){
+  if(typeof enterApp==='function'&&!enterApp.__cqTahfizhKabidStableV12){
     const old=enterApp;
     const wrapped=function(){
       if(allowed())ensureDashboard();
