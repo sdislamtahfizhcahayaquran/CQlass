@@ -93,9 +93,8 @@ window.openCleanAdminStudents=function(){if(!isAdmin())return;set('students');lo
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
 window.openCleanAdminSpecialActivity=function(){if(!isAdmin())return;set('kegiatan-khusus');const c=document.getElementById('content');if(typeof window.renderAdminSpecialActivity==='function')return window.renderAdminSpecialActivity(c);if(c)c.innerHTML='<div class="card">Memuat Kegiatan Khusus...</div>';setTimeout(()=>window.renderAdminSpecialActivity?.(c),250)};
 window.openCleanAdminHalaqahRoute=function(){if(!isAdmin())return;set('halaqah');if(window.openCleanAdminHalaqah)return window.openCleanAdminHalaqah();const c=document.getElementById('content');if(c)c.innerHTML='<div class="card">Memuat Pembagian Halaqah...</div>'};
-if(typeof renderSidebar==='function'){const o=renderSidebar;renderSidebar=function(){return isAdmin()?draw():o.apply(this,arguments)}}
-const ob=new MutationObserver(()=>{const s=document.getElementById('sidebar');if(isAdmin()&&s&&!s.querySelector('.cq-admin-side'))draw()});
-document.addEventListener('DOMContentLoaded',()=>{ob.observe(document.body,{childList:true,subtree:true});setTimeout(()=>isAdmin()&&draw(),120)});
+window.__cqRenderAdminSidebar=function(){return isAdmin()?draw():false}
+document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>isAdmin()&&draw(),120)});
 window.__cqAdminSidebarClean=true
 })();
 [['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20260916-schedule2','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20260921-layout1','cq-input-access-layout-fix'],['report-period-control.js?v=20260923-reportperiod2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});
