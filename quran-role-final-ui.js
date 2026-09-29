@@ -1,14 +1,15 @@
 /* CQlass — Kabid Qur'an uses the native CQlass sidebar/module pattern (same as Walas). */
 (function(){
 'use strict';
-if(window.__CQ_QURAN_NATIVE_V1__)return;window.__CQ_QURAN_NATIVE_V1__=true;
+if(window.__CQ_QURAN_NATIVE_V2__)return;window.__CQ_QURAN_NATIVE_V2__=true;
 const ROLE='kabid_quran';
 const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
 function user(){try{return (typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{}}catch(_){return{}}}
 function allowed(){const u=user();return norm(u.role||u.primary_role||u.role_code)===ROLE}
 const defs=[
  ['quran_daily','Monitoring Guru','Laporan Harian','tahfizh-daily-report.html?v=20260929-quran11'],
- ['quran_badal','Monitoring Guru','Badal Tahfizh','tahfizh-badal.html?v=20260929-quran11'],
+ ['quran_badal','Monitoring Guru','Badal Tahfizh','tahfizh-badal.html?v=20260929-quran13'],
+ ['quran_badal_recap','Monitoring Guru','Rekapan Badal','tahfizh-badal-recap.html?v=20260929-quran13'],
  ['quran_pts','Penilaian','Nilai PTS','tahfizh-pts.html?v=20260929-quran11'],
  ['quran_ukj','Penilaian','UKJ','tahfizh-ukj-score.html?v=20260929-quran11'],
  ['quran_monthly','Laporan','Laporan Bulanan','tahfizh-monthly.html?v=20260929-quran11']
@@ -42,7 +43,21 @@ function install(){
  document.body.classList.add('cq-quran-native');document.body.classList.remove('cq-quran-final');injectCss();
  const badge=document.getElementById('user-role');if(badge)badge.textContent="KABID QUR'AN";
  if(typeof DASHBOARD_MODULE!=='undefined'&&Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes(ROLE))DASHBOARD_MODULE.roles.push(ROLE);
- // Remove this role from every pre-existing group/item first, including academic Ranking.\n MODULE_GROUPS.forEach(g=>{if(!g||String(g.id||'').startsWith('quran_'))return;\n   if(Array.isArray(g.roles))g.roles=g.roles.filter(r=>norm(r)!==ROLE);\n   if(Array.isArray(g.items))g.items.forEach(m=>{if(Array.isArray(m.roles))m.roles=m.roles.filter(r=>norm(r)!==ROLE)});\n });\n const wanted=['Monitoring Guru','Penilaian','Laporan'];
+ // Keep legacy Kabid Tahfizh/Qur'an modules. Remove only scopes that are explicitly irrelevant.
+ const blockedGroups=new Set(['ranking','academic_ranking','kesiswaan','kesiswaan_center','student_affairs','tahfizh_kesiswaan_group','partner_kesiswaan_group']);
+ const blockedItems=new Set(['ranking','academic_ranking','kedisiplinan','reward','reward_siswa','kesiswaan','kesiswaan_center']);
+ MODULE_GROUPS.forEach(g=>{
+   if(!g||String(g.id||'').startsWith('quran_'))return;
+   const gid=norm(g.id),gl=norm(g.label);
+   if(blockedGroups.has(gid)||blockedGroups.has(gl)){
+     if(Array.isArray(g.roles))g.roles=g.roles.filter(r=>norm(r)!==ROLE);
+   }
+   if(Array.isArray(g.items))g.items.forEach(m=>{
+     const mid=norm(m?.id),ml=norm(m?.label);
+     if((blockedGroups.has(gid)||blockedGroups.has(gl)||blockedItems.has(mid)||blockedItems.has(ml))&&Array.isArray(m.roles))m.roles=m.roles.filter(r=>norm(r)!==ROLE);
+   });
+ });
+ const wanted=['Monitoring Guru','Penilaian','Laporan'];
  for(const label of wanted){
    let g=MODULE_GROUPS.find(x=>x&&x.id==='quran_'+label.toLowerCase().replace(/\s+/g,'_'));
    if(!g){g={id:'quran_'+label.toLowerCase().replace(/\s+/g,'_'),label,roles:[ROLE],items:[]};MODULE_GROUPS.push(g)}
@@ -59,12 +74,13 @@ function install(){
 }
 function sync(){
  if(!install())return false;
+ try{if(typeof openGroupId!=='undefined'&&!openGroupId)openGroupId='quran_monitoring_guru'}catch(_){}
  try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){}
  return true;
 }
 let n=0;(function boot(){n++;if(sync()||n>=40)return;setTimeout(boot,150)})();
-if(typeof enterApp==='function'&&!enterApp.__cqQuranNativeV1){
- const old=enterApp;enterApp=function(){install();const out=old.apply(this,arguments);if(allowed())setTimeout(sync,50);return out};enterApp.__cqQuranNativeV1=true;
+if(typeof enterApp==='function'&&!enterApp.__cqQuranNativeV2){
+ const old=enterApp;enterApp=function(){install();const out=old.apply(this,arguments);if(allowed())setTimeout(sync,50);return out};enterApp.__cqQuranNativeV2=true;
 }
 window.cqQuranFinalUI=sync;
 })();
