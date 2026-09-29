@@ -896,6 +896,8 @@ async function refreshPendingKeterlambatanBadge(){
 
 function renderSidebar(){
   const sidebar = document.getElementById('sidebar');
+  const rawRoleForAdmin=String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  if(rawRoleForAdmin==='admin'&&typeof window.__cqRenderAdminSidebar==='function')return window.__cqRenderAdminSidebar();
   // Normalize alias Kabid Akademik only for sidebar visibility.
   // Do not mutate currentUser or permissions for any other role.
   const rawSidebarRole=String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
