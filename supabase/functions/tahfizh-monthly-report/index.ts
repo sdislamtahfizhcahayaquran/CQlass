@@ -46,8 +46,21 @@ async function auth(s: any, req: Request, b: any) {
   }
   return { account, roles: [...new Set(roles)] };
 }
-function canUse(a: any) {
-  return a?.roles?.includes("kabid_quran");
+function isManager(a: any) {
+  return a?.roles?.includes("kabid_quran") || a?.roles?.includes("admin");
+}
+async function teacherRoster(s:any, ctx:any, a:any) {
+  if (!a?.account?.teacher_id) return [];
+  const { data, error } = await s.from("partner_tahfizh_halaqah_roster")
+    .select("class_id,student_id")
+    .eq("academic_year_id",ctx.yearId).eq("semester_no",ctx.semesterNo)
+    .eq("partner_teacher_id",a.account.teacher_id).eq("is_active",true).not("student_id","is",null);
+  if (error) throw error;
+  return data || [];
+}
+async function canUse(s:any,ctx:any,a:any) {
+  if (isManager(a)) return true;
+  return (await teacherRoster(s,ctx,a)).length > 0;
 }
 
 async function context(s: any) {
@@ -61,17 +74,26 @@ async function context(s: any) {
   return { unitId: unit.id, yearId: year.id, yearName: year.name, semesterNo };
 }
 
-async function classes(s: any) {
-  const { data, error } = await s.from("classes").select("id,name,code,grade_level,rombel,gender_group").eq("is_active", true).order("grade_level").order("name");
-  if (error) throw error;
-  return data || [];
+async function classes(s: any, ctx:any, a:any) {
+  let allowed:string[]|null=null;
+  if (!isManager(a)) allowed=[...new Set((await teacherRoster(s,ctx,a)).map((x:any)=>x.class_id).filter(Boolean))] as string[];
+  if (allowed && !allowed.length) return [];
+  let q=s.from("classes").select("id,name,code,grade_level,rombel,gender_group").eq("is_active",true);
+  if (allowed) q=q.in("id",allowed);
+  const {data,error}=await q.order("grade_level").order("name");
+  if(error)throw error; return data||[];
 }
 
-async function roster(s: any, ctx: any, classId: string, periodStart: string, periodEnd: string) {
+async function roster(s: any, ctx: any, classId: string, periodStart: string, periodEnd: string, a:any) {
   const { data: e, error: ee } = await s.from("student_enrollments").select("student_id").eq("class_id", classId)
     .eq("academic_year_id", ctx.yearId).eq("semester_no", ctx.semesterNo).eq("is_active", true);
   if (ee) throw ee;
-  const ids = [...new Set((e || []).map((x: any) => x.student_id).filter(Boolean))] as string[];
+  let ids = [...new Set((e || []).map((x: any) => x.student_id).filter(Boolean))] as string[];
+  if (!isManager(a)) {
+    const own=await teacherRoster(s,ctx,a);
+    const allowed=new Set(own.filter((x:any)=>x.class_id===classId).map((x:any)=>x.student_id));
+    ids=ids.filter((id:string)=>allowed.has(id));
+  }
   if (!ids.length) return [];
   const { data: studs, error: se } = await s.from("students").select("id,full_name,status").in("id", ids);
   if (se) throw se;
@@ -92,12 +114,18 @@ async function roster(s: any, ctx: any, classId: string, periodStart: string, pe
     .sort((a: any, b: any) => a.name.localeCompare(b.name, "id"));
 }
 
-async function save(s: any, classId: string, periodStart: string, periodEnd: string, accountId: string, rows: any[]) {
+async function save(s: any, ctx:any, a:any, classId: string, periodStart: string, periodEnd: string, accountId: string, rows: any[]) {
   if (!classId) return J({ success: false, error: "class_required" }, 400);
   if (!periodStart || !periodEnd) return J({ success: false, error: "period_required" }, 400);
   if (new Date(periodEnd) < new Date(periodStart)) return J({ success: false, error: "invalid_period_range" }, 400);
   if (!Array.isArray(rows) || !rows.length) return J({ success: false, error: "rows_required" }, 400);
 
+  if (!isManager(a)) {
+    const own=await teacherRoster(s,ctx,a);
+    const allowed=new Set(own.filter((x:any)=>x.class_id===classId).map((x:any)=>String(x.student_id)));
+    const invalid=rows.some((r:any)=>!allowed.has(T(r.student_id)));
+    if(invalid)return J({success:false,error:"student_not_in_teacher_halaqah"},403);
+  }
   const now = new Date().toISOString();
   const payload = rows.map((r: any) => ({
     student_id: T(r.student_id), class_id: classId, period_start: periodStart, period_end: periodEnd,
@@ -131,17 +159,18 @@ Deno.serve(async (req: Request) => {
     const s = db();
     const body = await req.json().catch(() => ({}));
     const a = await auth(s, req, body);
-    if (!a || !canUse(a)) return J({ success: false, error: "forbidden" }, 403);
+    if (!a) return J({ success: false, error: "forbidden" }, 403);
     const ctx = await context(s);
+    if (!(await canUse(s,ctx,a))) return J({ success:false,error:"forbidden" },403);
     const action = L(body.action);
 
-    if (action === "bootstrap") return J({ success: true, academic_year: ctx.yearName, semester_no: ctx.semesterNo, classes: await classes(s) });
+    if (action === "bootstrap") return J({ success: true, academic_year: ctx.yearName, semester_no: ctx.semesterNo, classes: await classes(s,ctx,a) });
     if (action === "roster") {
       const classId = T(body.class_id), ps = T(body.period_start), pe = T(body.period_end);
       if (!classId || !ps || !pe) return J({ success: false, error: "class_and_period_required" }, 400);
-      return J({ success: true, rows: await roster(s, ctx, classId, ps, pe) });
+      return J({ success: true, rows: await roster(s, ctx, classId, ps, pe, a) });
     }
-    if (action === "save") return await save(s, T(body.class_id), T(body.period_start), T(body.period_end), a.account.id, body.rows);
+    if (action === "save") return await save(s,ctx,a,T(body.class_id),T(body.period_start),T(body.period_end),a.account.id,body.rows);
     if (action === "history") {
       const classId = T(body.class_id);
       if (!classId) return J({ success: false, error: "class_required" }, 400);
