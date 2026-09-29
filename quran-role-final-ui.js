@@ -42,7 +42,7 @@ function install(){
  document.body.classList.add('cq-quran-native');document.body.classList.remove('cq-quran-final');injectCss();
  const badge=document.getElementById('user-role');if(badge)badge.textContent="KABID QUR'AN";
  if(typeof DASHBOARD_MODULE!=='undefined'&&Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes(ROLE))DASHBOARD_MODULE.roles.push(ROLE);
- const wanted=['Monitoring Guru','Penilaian','Laporan'];
+ // Remove this role from every pre-existing group/item first, including academic Ranking.\n MODULE_GROUPS.forEach(g=>{if(!g||String(g.id||'').startsWith('quran_'))return;\n   if(Array.isArray(g.roles))g.roles=g.roles.filter(r=>norm(r)!==ROLE);\n   if(Array.isArray(g.items))g.items.forEach(m=>{if(Array.isArray(m.roles))m.roles=m.roles.filter(r=>norm(r)!==ROLE)});\n });\n const wanted=['Monitoring Guru','Penilaian','Laporan'];
  for(const label of wanted){
    let g=MODULE_GROUPS.find(x=>x&&x.id==='quran_'+label.toLowerCase().replace(/\s+/g,'_'));
    if(!g){g={id:'quran_'+label.toLowerCase().replace(/\s+/g,'_'),label,roles:[ROLE],items:[]};MODULE_GROUPS.push(g)}
@@ -55,11 +55,6 @@ function install(){
    if(!m){m={id,label,roles:[ROLE],built:true,render:()=>renderPage(url)};g.items.push(m)}
    else{m.label=label;m.roles=[ROLE];m.built=true;m.render=()=>renderPage(url)}
  }
- // Remove kabid_quran visibility from unrelated legacy groups only; never mutate other roles.
- MODULE_GROUPS.forEach(g=>{if(!g||String(g.id||'').startsWith('quran_'))return;
-   if(Array.isArray(g.roles))g.roles=g.roles.filter(r=>norm(r)!==ROLE);
-   if(Array.isArray(g.items))g.items.forEach(m=>{if(Array.isArray(m.roles))m.roles=m.roles.filter(r=>norm(r)!==ROLE)});
- });
  return true;
 }
 function sync(){
