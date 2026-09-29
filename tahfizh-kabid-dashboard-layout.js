@@ -33,14 +33,7 @@
     if(!allowed()||!content)return;
     css();
     let name='';try{name=currentUser?.nama||currentUser?.name||currentUser?.username||''}catch(_){}
-    content.innerHTML=`<div class="ktd">
-      <section class="ktd-hero">
-        <div class="ktd-kicker">CQlass · Tahfizh</div>
-        <div class="ktd-title">Dashboard Kabid Qur'an</div>
-        <div class="ktd-sub">Pusat monitoring Tahfizh, laporan guru halaqah, badal, penilaian, dan capaian siswa${name?` · ${esc(name)}`:''}. Live Report di bawah ini membaca progres guru halaqah langsung dari data CQlass.</div>
-      </section>
-      <div class="ktd-live-slot"></div>
-    </div>`;
+    content.innerHTML=`<div class="ktd"><div class="ktd-live-slot"></div></div>`;
     setTimeout(()=>{try{window.cqTahfizhLiveEnsure?.()}catch(_){}},80);
   }
   window.renderKabidTahfizhDashboard=render;
