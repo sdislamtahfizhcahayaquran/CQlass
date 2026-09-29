@@ -15,7 +15,7 @@ window.renderRoleManager=renderRoleManager;
 window.cqRoleNew=function(){const f=document.getElementById('cq-role-form');if(f)f.style.display='block'};
 window.cqRoleSave=async function(){const name=document.getElementById('cq-role-name')?.value.trim(),code=document.getElementById('cq-role-code')?.value.trim(),description=document.getElementById('cq-role-desc')?.value.trim();if(!name){if(typeof showToast==='function')showToast('Nama role wajib diisi.',true);return}try{await rpc('upsert',{role_code:code||name,display_name:name,description,is_active:true});if(typeof showToast==='function')showToast('Role berhasil ditambahkan.');await loadRoles();await renderRoleManager();await window.cqSyncAdminRoleDropdowns?.(document)}catch(e){if(typeof showToast==='function')showToast(e.message,true)}};
 window.cqRoleToggle=async function(code,is_active){try{await rpc('toggle',{role_code:code,is_active});if(typeof showToast==='function')showToast(is_active?'Role diaktifkan.':'Role dinonaktifkan.');await renderRoleManager()}catch(e){if(typeof showToast==='function')showToast(e.message,true)}};
-document.addEventListener('DOMContentLoaded',()=>{injectMenu();const sb=document.getElementById('sidebar');if(sb)new MutationObserver(()=>injectMenu()).observe(sb,{childList:true,subtree:false})});
+document.addEventListener('DOMContentLoaded',()=>{injectMenu()});
 })();
 
 /* Data Master: file sumber hasil seed Drive tetap dapat diunduh dari Admin. */
@@ -40,47 +40,3 @@ let n=0;(function hook(){if(typeof window.adminMasterDownload==='function'&&!win
   document.head.appendChild(s);
 })();
 
-/* Admin only: keep every user-role dropdown synchronized with the active role catalog. */
-(function(){
-'use strict';
-function isAdmin(){try{return String((typeof currentUser!=='undefined'&&currentUser?.role)||JSON.parse(localStorage.getItem('cqlass_user')||'{}').role||'').toLowerCase()==='admin'}catch(_){return false}}
-function roleSelects(root){
-  const scope=root&&root.querySelectorAll?root:document;
-  return Array.from(scope.querySelectorAll('select')).filter(function(s){
-    const id=(s.id||'').toLowerCase(),name=(s.name||'').toLowerCase();
-    const label=(s.closest('.modal-field,.form-group,.field,td,div')?.querySelector('label')?.textContent||'').trim().toLowerCase();
-    return id==='role'||id.includes('role')||name==='role'||name.includes('role')||label==='role'||label.includes('role pengguna');
-  });
-}
-async function syncAdminRoleDropdowns(root){
-  if(!isAdmin())return;
-  if(!roles.length)await loadRoles();
-  const active=roles.filter(function(r){return r&&r.is_active!==false&&r.role_code});
-  if(!active.length)return;
-  roleSelects(root).forEach(function(sel){
-    const current=sel.value;
-    const placeholder=Array.from(sel.options).find(function(o){return !o.value});
-    sel.innerHTML='';
-    if(placeholder)sel.appendChild(placeholder.cloneNode(true));
-    active.forEach(function(r){
-      const o=document.createElement('option');
-      o.value=String(r.role_code);
-      o.textContent=String(r.display_name||r.role_code);
-      sel.appendChild(o);
-    });
-    if(current&&Array.from(sel.options).some(function(o){return o.value===current}))sel.value=current;
-    sel.dataset.cqRoleCatalog='1';
-  });
-}
-window.cqSyncAdminRoleDropdowns=syncAdminRoleDropdowns;
-function start(){
-  if(!isAdmin())return;
-  syncAdminRoleDropdowns(document);
-  if(document.body)new MutationObserver(function(ms){
-    let need=false;
-    ms.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeType===1&&(n.matches?.('select')||n.querySelector?.('select')))need=true})});
-    if(need)setTimeout(function(){syncAdminRoleDropdowns(document)},0);
-  }).observe(document.body,{childList:true,subtree:true});
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-})();
