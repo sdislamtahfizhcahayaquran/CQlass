@@ -18,13 +18,13 @@ const sections=[
  ['Laporan',tools.slice(4)]
 ];
 function css(){if(document.getElementById('cq-quran-final-css'))return;const s=document.createElement('style');s.id='cq-quran-final-css';s.textContent=`
-body.cq-quran-final #sidebar .cq-quran-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;margin-top:8px;font-size:13px;font-weight:900;color:#49666d;cursor:pointer;text-transform:uppercase;letter-spacing:.02em}
-body.cq-quran-final #sidebar .cq-quran-section{display:flex;align-items:center;justify-content:space-between;padding:11px 18px 11px 30px;font-size:12px;font-weight:850;color:#355b61;cursor:pointer}
+body.cq-quran-final #sidebar .cq-quran-head{display:flex;align-items:center;justify-content:flex-start;padding:13px 18px;margin-top:8px;font-size:13px;font-weight:900;color:#49666d;cursor:pointer;text-transform:uppercase;letter-spacing:.02em}
+body.cq-quran-final #sidebar .cq-quran-section{display:flex;align-items:center;justify-content:flex-start;padding:11px 18px 11px 30px;font-size:12px;font-weight:850;color:#355b61;cursor:pointer}
 body.cq-quran-final #sidebar .cq-quran-leaf{padding:10px 18px 10px 44px;font-size:11.5px;font-weight:700;color:#577078;cursor:pointer;border-radius:9px;margin:2px 10px}
 body.cq-quran-final #sidebar .cq-quran-leaf:hover{background:#eef8f6;color:#087b75}
 body.cq-quran-final #sidebar .cq-quran-chevron{font-size:13px;transition:.18s}
 body.cq-quran-final #sidebar .cq-quran-section.open .cq-quran-chevron,body.cq-quran-final #sidebar .cq-quran-head.open .cq-quran-chevron{transform:rotate(180deg)}
-body.cq-quran-final #sidebar .cq-quran-sub{display:none}body.cq-quran-final #sidebar .cq-quran-sub.open{display:block}\nbody.cq-quran-final .cq-quran-module-host{position:relative;width:100%;min-height:calc(100vh - 100px);background:#f5faf9;border-radius:18px;overflow:hidden;border:1px solid #deebe8}\nbody.cq-quran-final .cq-quran-module-frame{display:block;width:100%;height:calc(100vh - 112px);min-height:720px;border:0;background:#f5faf9}\nbody.cq-quran-final .cq-quran-module-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#4c6d6a;background:#f5faf9;z-index:2}
+body.cq-quran-final #sidebar .cq-quran-sub{display:block}body.cq-quran-final #sidebar .cq-quran-static{cursor:default!important}body.cq-quran-final #sidebar .nav-chevron,body.cq-quran-final #sidebar .cq-quran-chevron{display:none!important}\nbody.cq-quran-final .cq-quran-module-host{position:relative;width:100%;min-height:calc(100vh - 100px);background:#f5faf9;border-radius:18px;overflow:hidden;border:1px solid #deebe8}\nbody.cq-quran-final .cq-quran-module-frame{display:block;width:100%;height:calc(100vh - 112px);min-height:720px;border:0;background:#f5faf9}\nbody.cq-quran-final .cq-quran-module-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#4c6d6a;background:#f5faf9;z-index:2}
 `;document.head.appendChild(s)}
 function go(url,label){
  if(!isQuran())return false;
@@ -47,11 +47,15 @@ function go(url,label){
 function draw(){
  if(!isQuran())return false;const sb=document.getElementById('sidebar');if(!sb)return false;
  document.body.classList.add('cq-quran-final');css();
- const state=window.__cqQuranFinalState||(window.__cqQuranFinalState={Tahfizh:true,'Monitoring Guru':true,'Penilaian':false,'Laporan':false});
  sb.innerHTML='';
  const d=document.createElement('div');d.className='nav-item active';d.dataset.cqQuranFinal='1';d.innerHTML='<span>Dashboard</span>';d.onclick=()=>{try{activeModule='dashboard'}catch(_){};window.renderKabidTahfizhDashboard?.(document.getElementById('content'));draw()};sb.appendChild(d);
- const h=document.createElement('div');h.className='cq-quran-head '+(state.Tahfizh?'open':'');h.dataset.cqQuranFinal='1';h.innerHTML='<span>TAHFIZH</span><span class="cq-quran-chevron">⌄</span>';h.onclick=()=>{state.Tahfizh=!state.Tahfizh;draw()};sb.appendChild(h);
- if(state.Tahfizh)sections.forEach(([name,items])=>{const sh=document.createElement('div');sh.className='cq-quran-section '+(state[name]?'open':'');sh.dataset.cqQuranFinal='1';sh.innerHTML='<span>'+name+'</span><span class="cq-quran-chevron">⌄</span>';sh.onclick=()=>{state[name]=!state[name];draw()};sb.appendChild(sh);const sub=document.createElement('div');sub.className='cq-quran-sub '+(state[name]?'open':'');sub.dataset.cqQuranFinal='1';items.forEach(x=>{const e=document.createElement('div');e.className='cq-quran-leaf';e.textContent=x.label;e.onclick=()=>go(x.url,x.label);sub.appendChild(e)});sb.appendChild(sub)});
+ const h=document.createElement('div');h.className='cq-quran-head cq-quran-static';h.dataset.cqQuranFinal='1';h.innerHTML='<span>TAHFIZH</span>';sb.appendChild(h);
+ sections.forEach(([name,items])=>{
+   const sh=document.createElement('div');sh.className='cq-quran-section cq-quran-static';sh.dataset.cqQuranFinal='1';sh.innerHTML='<span>'+name+'</span>';sb.appendChild(sh);
+   const sub=document.createElement('div');sub.className='cq-quran-sub open';sub.dataset.cqQuranFinal='1';
+   items.forEach(x=>{const e=document.createElement('div');e.className='cq-quran-leaf';e.textContent=x.label;e.onclick=()=>go(x.url,x.label);sub.appendChild(e)});
+   sb.appendChild(sub);
+ });
  return true;
 }
 function fixHeader(){if(!isQuran())return;const r=document.getElementById('user-role');if(r)r.textContent="KABID QUR'AN";}
