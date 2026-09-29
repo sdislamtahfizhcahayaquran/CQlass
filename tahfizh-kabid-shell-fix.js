@@ -79,7 +79,32 @@
     return true;
   }
 
+  function renderKabidSidebar(){
+    if(!allowed())return false;
+    const sidebar=document.getElementById('sidebar');if(!sidebar)return false;
+    const active=norm(typeof activeModule!=='undefined'?activeModule:'dashboard');
+    const sectionFor=id=>TOOLS.find(x=>x.id===id)?.section||'';
+    const activeSection=sectionFor(active);
+    const state=window.__cqQuranSidebarOpen||(window.__cqQuranSidebarOpen={Tahfizh:true,'Monitoring Guru':activeSection==='Monitoring Guru','Penilaian':activeSection==='Penilaian','Laporan':activeSection==='Laporan'});
+    const chevron=open=>'<svg class="nav-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+    sidebar.innerHTML='';
+    const dash=document.createElement('div');dash.className='nav-item'+(active==='dashboard'?' active':'');dash.innerHTML='<span>Dashboard</span>';dash.onclick=()=>stableSetActive('dashboard');sidebar.appendChild(dash);
+    const head=document.createElement('div');head.className='nav-group-head'+(state.Tahfizh?' open':'');head.innerHTML='<span>Tahfizh</span>'+chevron(state.Tahfizh);head.onclick=()=>{state.Tahfizh=!state.Tahfizh;renderKabidSidebar()};sidebar.appendChild(head);
+    if(state.Tahfizh){
+      const wrap=document.createElement('div');wrap.className='nav-group-items cq-quran-nested';
+      ['Monitoring Guru','Penilaian','Laporan'].forEach(section=>{
+        const items=TOOLS.filter(x=>x.section===section),open=!!state[section]||section===activeSection;
+        const sh=document.createElement('div');sh.className='nav-item nav-item-sub cq-quran-section'+(open?' open':'');sh.innerHTML='<span>'+section+'</span>'+chevron(open);sh.onclick=()=>{state[section]=!open;renderKabidSidebar()};wrap.appendChild(sh);
+        if(open){const sub=document.createElement('div');sub.className='cq-quran-subitems';items.forEach(d=>{const el=document.createElement('div');el.className='nav-item nav-item-sub cq-quran-leaf'+(active===norm(d.id)?' active':'');el.innerHTML='<span>'+d.label+'</span>';el.onclick=()=>stableSetActive(d.id);sub.appendChild(el)});wrap.appendChild(sub)}
+      });
+      sidebar.appendChild(wrap);
+    }
+    if(!document.getElementById('cq-quran-sidebar-css')){const st=document.createElement('style');st.id='cq-quran-sidebar-css';st.textContent='.cq-quran-section{font-weight:800!important;padding-left:26px!important}.cq-quran-section .nav-chevron{margin-left:auto}.cq-quran-subitems{border-left:1px solid rgba(10,110,110,.14);margin-left:27px}.cq-quran-leaf{padding-left:22px!important;font-size:11px!important}.cq-quran-leaf.active{font-weight:900}.cq-quran-nested>.nav-item{display:flex;align-items:center;justify-content:space-between}';document.head.appendChild(st)}
+    return true;
+  }
+
   function baseRender(){
+    if(allowed())return renderKabidSidebar;
     const fn=window.__cqBaseRenderSidebar;
     if(typeof fn==='function')return fn;
     if(typeof previousRender==='function'&&previousRender!==stableRender)return previousRender;
