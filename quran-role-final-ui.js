@@ -61,5 +61,5 @@ function start(){if(!isQuran())return;draw();fixHeader();const sb=document.getEl
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0),{once:true});else setTimeout(start,0);
 window.addEventListener('load',()=>setTimeout(start,50),{once:true});
 if(typeof enterApp==='function'&&!enterApp.__cqQuranFinalV1){const old=enterApp;enterApp=function(){const out=old.apply(this,arguments);if(isQuran())setTimeout(start,0);return out};enterApp.__cqQuranFinalV1=true}
-window.cqQuranFinalUI=start;
+window.cqQuranOpenInternal=go;\nwindow.cqQuranFinalUI=start;
 })();
