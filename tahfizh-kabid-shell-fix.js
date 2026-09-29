@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   if(window.__CQ_TAHFIZH_SHELL_FIX_V12__)return;
-  window.__CQ_TAHFIZH_SHELL_FIX_V11__=1;
+  window.__CQ_TAHFIZH_SHELL_FIX_V12__=1;
 
   const ROLE='kabid_quran';
   const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
@@ -191,6 +191,6 @@
       if(allowed())setTimeout(()=>stabilize(true),0);
       return out;
     };
-    wrapped.__cqTahfizhKabidStableV11=true;enterApp=wrapped;
+    wrapped.__cqTahfizhKabidStableV12=true;enterApp=wrapped;
   }
 })();
