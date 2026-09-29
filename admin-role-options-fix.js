@@ -15,7 +15,7 @@ window.renderRoleManager=renderRoleManager;
 window.cqRoleNew=function(){const f=document.getElementById('cq-role-form');if(f)f.style.display='block'};
 window.cqRoleSave=async function(){const name=document.getElementById('cq-role-name')?.value.trim(),code=document.getElementById('cq-role-code')?.value.trim(),description=document.getElementById('cq-role-desc')?.value.trim();if(!name){if(typeof showToast==='function')showToast('Nama role wajib diisi.',true);return}try{await rpc('upsert',{role_code:code||name,display_name:name,description,is_active:true});if(typeof showToast==='function')showToast('Role berhasil ditambahkan.');await loadRoles();await renderRoleManager();await window.cqSyncAdminRoleDropdowns?.(document)}catch(e){if(typeof showToast==='function')showToast(e.message,true)}};
 window.cqRoleToggle=async function(code,is_active){try{await rpc('toggle',{role_code:code,is_active});if(typeof showToast==='function')showToast(is_active?'Role diaktifkan.':'Role dinonaktifkan.');await renderRoleManager()}catch(e){if(typeof showToast==='function')showToast(e.message,true)}};
-document.addEventListener('DOMContentLoaded',()=>{injectMenu()});
+document.addEventListener('DOMContentLoaded',()=>{});
 })();
 
 /* Data Master: file sumber hasil seed Drive tetap dapat diunduh dari Admin. */
