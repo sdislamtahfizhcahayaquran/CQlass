@@ -8,7 +8,7 @@ function user(){try{return (typeof currentUser!=='undefined'&&currentUser)||JSON
 function allowed(){const u=user();return norm(u.role||u.primary_role||u.role_code)===ROLE}
 const defs=[
  ['quran_daily','Monitoring Guru','Laporan Harian','tahfizh-daily-report.html?v=20260929-quran11'],
- ['quran_badal','Monitoring Guru','Badal Tahfizh','tahfizh-badal.html?v=20260929-quran13'],
+ ['quran_badal','Monitoring Guru','Badal Tahfizh','tahfizh-badal.html?v=20260929-badal-search2'],
  ['quran_badal_recap','Monitoring Guru','Rekapan Badal','tahfizh-badal-recap.html?v=20260929-quran13'],
  ['quran_pts','Penilaian','Nilai PTS','tahfizh-pts.html?v=20260929-quran11'],
  ['quran_ukj','Penilaian','UKJ','tahfizh-ukj-score.html?v=20260929-quran11'],
