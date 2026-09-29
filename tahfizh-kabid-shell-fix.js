@@ -23,7 +23,7 @@
       return norm(u.role||u.primary_role||u.role_code||saved.role||'');
     }catch(_){return''}
   }
-  function allowed(){return role()===ROLE}
+  function allowed(){return false /* superseded by native Kabid Qur'an sidebar */}
   function withoutRole(arr){return Array.isArray(arr)?arr.filter(r=>norm(r)!==ROLE):[]}
   function byId(id){return TOOLS.find(x=>x.id===String(id||''))||null}
   function go(def){if(!allowed()||!def)return false;if(typeof window.cqQuranOpenInternal==='function')return window.cqQuranOpenInternal(def.url,def.label);return false}
