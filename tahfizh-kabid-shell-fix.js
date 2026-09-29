@@ -7,7 +7,9 @@
   const ROLE='kabid_quran';
   const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   const TOOLS=[
-    {id:'tahfizh-pts-kabid',label:'Nilai PTS',url:'tahfizh-pts.html?v=20260924-kabid7'},
+    {id:'tahfizh-pts-kabid',label:'Nilai PTS',url:'tahfizh-pts.html?v=20260929-quran1'},
+    {id:'tahfizh-daily-report',label:'Laporan Harian',url:'tahfizh-daily-report.html?v=20260929-quran1'},
+    {id:'tahfizh-badal',label:'Badal Tahfizh',url:'tahfizh-badal.html?v=20260929-quran1'},
     {id:'tahfizh-monthly-report',label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260924-kabid7'},
     {id:'tahfizh-ukj-score',label:'UKJ',url:'tahfizh-ukj-score.html?v=20260924-kabid7'}
   ];
