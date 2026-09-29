@@ -75,7 +75,8 @@
   }
 
   function injectAdminQuickAccess(){
-    if(!isAdmin() || typeof window.__cqAdminSidebarClean!=='undefined') return;
+    /* Legacy quick-access injector is disabled once the clean Admin sidebar owns navigation. */
+    if(!isAdmin() || window.__cqAdminSidebarClean===true || document.querySelector('.cq-admin-side')) return;
     const sidebar=document.getElementById('sidebar');
     if(!sidebar || sidebar.querySelector('#cq-admin-master-quick')) return;
     const nodes=[...sidebar.querySelectorAll('*')];
@@ -232,7 +233,7 @@
     setTimeout(function(){
       try{
         ensureAdminMasterModule();
-        if(isAdmin()&&typeof renderSidebar==='function') renderSidebar();
+        if(isAdmin()&&typeof renderSidebar==='function' && !window.__cqAdminSidebarClean && !document.querySelector('.cq-admin-side')) renderSidebar();
         injectAdminQuickAccess();
       }catch(_){ }
     },250);
