@@ -26,7 +26,7 @@
   function allowed(){return role()===ROLE}
   function withoutRole(arr){return Array.isArray(arr)?arr.filter(r=>norm(r)!==ROLE):[]}
   function byId(id){return TOOLS.find(x=>x.id===String(id||''))||null}
-  function go(def){if(!allowed()||!def)return false;window.location.href=def.url;return true}
+  function go(def){if(!allowed()||!def)return false;if(typeof window.cqQuranOpenInternal==='function')return window.cqQuranOpenInternal(def.url,def.label);return false}
   function isTahfizhGroup(g){return !!(g&&(norm(g.id)==='tahfizh'||norm(g.id)==='tahfizh_tools'||norm(g.id)==='partner_tasks'||norm(g.label)==='tahfizh'))}
 
   function stripWrongScope(){
