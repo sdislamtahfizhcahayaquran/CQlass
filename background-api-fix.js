@@ -233,9 +233,9 @@
       add('./guru-partner-tahfizh-menu.js?v=20260924-rolelazy1','__cqPartnerTahfizhMenuRoleLazy',false);
     }
     if(r==='kabid_quran'){
-      add('./tahfizh-kabid-dashboard-layout.js?v=20260924-kabid7','__cqTahfizhKabidDashboardLayoutV1',false);
-      add('./tahfizh-kabid-shell-fix.js?v=20260924-kabid7','__cqTahfizhKabidShellFixLoaderInstalled',false);
-      add('./tahfizh-kabid-input-live.js?v=20260924-kabid7','__cqTahfizhKabidInputLiveLoaderInstalled',false);
+      add('./tahfizh-kabid-dashboard-layout.js?v=20260929-quran4','__cqTahfizhKabidDashboardLayoutV2',false);
+      add('./tahfizh-kabid-shell-fix.js?v=20260929-quran4','__cqTahfizhKabidShellFixLoaderV12Installed',false);
+      add('./tahfizh-kabid-input-live.js?v=20260929-quran4','__cqTahfizhKabidInputLiveLoaderV2Installed',false);
     }
     if(r==='tahfizh'){
       add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-rolelazy1','__cqTahfizhKesiswaanSidebarRoleLazy',false);
