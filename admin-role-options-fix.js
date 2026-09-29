@@ -39,3 +39,48 @@ let n=0;(function hook(){if(typeof window.adminMasterDownload==='function'&&!win
   s.dataset.cqAdminSticky='1';
   document.head.appendChild(s);
 })();
+
+/* Admin only: keep every user-role dropdown synchronized with the active role catalog. */
+(function(){
+'use strict';
+function isAdmin(){try{return String((typeof currentUser!=='undefined'&&currentUser?.role)||JSON.parse(localStorage.getItem('cqlass_user')||'{}').role||'').toLowerCase()==='admin'}catch(_){return false}}
+function roleSelects(root){
+  const scope=root&&root.querySelectorAll?root:document;
+  return Array.from(scope.querySelectorAll('select')).filter(function(s){
+    const id=(s.id||'').toLowerCase(),name=(s.name||'').toLowerCase();
+    const label=(s.closest('.modal-field,.form-group,.field,td,div')?.querySelector('label')?.textContent||'').trim().toLowerCase();
+    return id==='role'||id.includes('role')||name==='role'||name.includes('role')||label==='role'||label.includes('role pengguna');
+  });
+}
+async function syncAdminRoleDropdowns(root){
+  if(!isAdmin())return;
+  if(!roles.length)await loadRoles();
+  const active=roles.filter(function(r){return r&&r.is_active!==false&&r.role_code});
+  if(!active.length)return;
+  roleSelects(root).forEach(function(sel){
+    const current=sel.value;
+    const placeholder=Array.from(sel.options).find(function(o){return !o.value});
+    sel.innerHTML='';
+    if(placeholder)sel.appendChild(placeholder.cloneNode(true));
+    active.forEach(function(r){
+      const o=document.createElement('option');
+      o.value=String(r.role_code);
+      o.textContent=String(r.display_name||r.role_code);
+      sel.appendChild(o);
+    });
+    if(current&&Array.from(sel.options).some(function(o){return o.value===current}))sel.value=current;
+    sel.dataset.cqRoleCatalog='1';
+  });
+}
+window.cqSyncAdminRoleDropdowns=syncAdminRoleDropdowns;
+function start(){
+  if(!isAdmin())return;
+  syncAdminRoleDropdowns(document);
+  if(document.body)new MutationObserver(function(ms){
+    let need=false;
+    ms.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeType===1&&(n.matches?.('select')||n.querySelector?.('select')))need=true})});
+    if(need)setTimeout(function(){syncAdminRoleDropdowns(document)},0);
+  }).observe(document.body,{childList:true,subtree:true});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
