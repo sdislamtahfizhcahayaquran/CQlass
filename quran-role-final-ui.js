@@ -22,8 +22,6 @@ body.cq-quran-final #sidebar .cq-quran-head{display:flex;align-items:center;just
 body.cq-quran-final #sidebar .cq-quran-section{display:flex;align-items:center;justify-content:flex-start;padding:11px 18px 11px 30px;font-size:12px;font-weight:850;color:#355b61;cursor:pointer}
 body.cq-quran-final #sidebar .cq-quran-leaf{padding:10px 18px 10px 44px;font-size:11.5px;font-weight:700;color:#577078;cursor:pointer;border-radius:9px;margin:2px 10px}
 body.cq-quran-final #sidebar .cq-quran-leaf:hover{background:#eef8f6;color:#087b75}
-body.cq-quran-final #sidebar .cq-quran-chevron{font-size:13px;transition:.18s}
-body.cq-quran-final #sidebar .cq-quran-section.open .cq-quran-chevron,body.cq-quran-final #sidebar .cq-quran-head.open .cq-quran-chevron{transform:rotate(180deg)}
 body.cq-quran-final #sidebar .cq-quran-sub{display:block}body.cq-quran-final #sidebar .cq-quran-static{cursor:default!important}body.cq-quran-final #sidebar .nav-chevron,body.cq-quran-final #sidebar .cq-quran-chevron{display:none!important}\nbody.cq-quran-final .cq-quran-module-host{position:relative;width:100%;min-height:calc(100vh - 100px);background:#f5faf9;border-radius:18px;overflow:hidden;border:1px solid #deebe8}\nbody.cq-quran-final .cq-quran-module-frame{display:block;width:100%;height:calc(100vh - 112px);min-height:720px;border:0;background:#f5faf9}\nbody.cq-quran-final .cq-quran-module-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#4c6d6a;background:#f5faf9;z-index:2}
 `;document.head.appendChild(s)}
 function go(url,label){
@@ -65,5 +63,6 @@ function start(){if(!isQuran())return;draw();fixHeader();const sb=document.getEl
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0),{once:true});else setTimeout(start,0);
 window.addEventListener('load',()=>setTimeout(start,50),{once:true});
 if(typeof enterApp==='function'&&!enterApp.__cqQuranFinalV2){const old=enterApp;enterApp=function(){const out=old.apply(this,arguments);if(isQuran())setTimeout(start,0);return out};enterApp.__cqQuranFinalV2=true}
-window.cqQuranOpenInternal=go;\nwindow.cqQuranFinalUI=start;
+window.cqQuranOpenInternal=go;
+window.cqQuranFinalUI=start;
 })();
