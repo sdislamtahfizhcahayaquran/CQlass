@@ -896,13 +896,17 @@ async function refreshPendingKeterlambatanBadge(){
 
 function renderSidebar(){
   const sidebar = document.getElementById('sidebar');
-  if(String(currentUser?.role||'').trim().toLowerCase()==='hrd'){
+  // Normalize alias Kabid Akademik only for sidebar visibility.
+  // Do not mutate currentUser or permissions for any other role.
+  const rawSidebarRole=String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  const sidebarRole=(rawSidebarRole==='kabid_akademik'||rawSidebarRole==='academic')?'akademik':rawSidebarRole;
+  if(rawSidebarRole==='hrd'){
     if(typeof window.__cqRenderHrdSidebar==='function') return window.__cqRenderHrdSidebar();
     return;
   }
   sidebar.innerHTML = '';
 
-  if (DASHBOARD_MODULE.roles.includes(currentUser.role)) {
+  if (DASHBOARD_MODULE.roles.includes(sidebarRole)) {
     const dashItem = document.createElement('div');
     dashItem.className = 'nav-item' + (activeModule === 'dashboard' ? ' active' : '');
     dashItem.innerHTML = `<span>${DASHBOARD_MODULE.label}</span>`;
@@ -910,8 +914,8 @@ function renderSidebar(){
     sidebar.appendChild(dashItem);
   }
 
-  MODULE_GROUPS.filter(g => g.roles.includes(currentUser.role)).forEach(group => {
-    const visibleItems = group.items.filter(m => m.roles.includes(currentUser.role));
+  MODULE_GROUPS.filter(g => g.roles.includes(sidebarRole)).forEach(group => {
+    const visibleItems = group.items.filter(m => m.roles.includes(sidebarRole));
     if (!visibleItems.length) return;
 
     const isOpen = openGroupId === group.id || visibleItems.some(m => m.id === activeModule);
