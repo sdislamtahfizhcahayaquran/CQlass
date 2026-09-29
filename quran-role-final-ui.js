@@ -1,7 +1,7 @@
 /* CQlass — FINAL UI authority khusus role kabid_quran. Tidak menyentuh role lain. */
 (function(){
 'use strict';
-if(window.__CQ_QURAN_FINAL_UI_V1__)return;window.__CQ_QURAN_FINAL_UI_V1__=true;
+if(window.__CQ_QURAN_FINAL_UI_V2__)return;window.__CQ_QURAN_FINAL_UI_V2__=true;
 const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
 function user(){try{return (typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{}}catch(_){return{}}}
 function isQuran(){const u=user();return norm(u.role||u.primary_role||u.role_code)==='kabid_quran'}
@@ -47,7 +47,7 @@ function go(url,label){
 function draw(){
  if(!isQuran())return false;const sb=document.getElementById('sidebar');if(!sb)return false;
  document.body.classList.add('cq-quran-final');css();
- const state=window.__cqQuranFinalState||(window.__cqQuranFinalState={Tahfizh:true,'Monitoring Guru':false,'Penilaian':false,'Laporan':false});
+ const state=window.__cqQuranFinalState||(window.__cqQuranFinalState={Tahfizh:true,'Monitoring Guru':true,'Penilaian':false,'Laporan':false});
  sb.innerHTML='';
  const d=document.createElement('div');d.className='nav-item active';d.dataset.cqQuranFinal='1';d.innerHTML='<span>Dashboard</span>';d.onclick=()=>{try{activeModule='dashboard'}catch(_){};window.renderKabidTahfizhDashboard?.(document.getElementById('content'));draw()};sb.appendChild(d);
  const h=document.createElement('div');h.className='cq-quran-head '+(state.Tahfizh?'open':'');h.dataset.cqQuranFinal='1';h.innerHTML='<span>TAHFIZH</span><span class="cq-quran-chevron">⌄</span>';h.onclick=()=>{state.Tahfizh=!state.Tahfizh;draw()};sb.appendChild(h);
@@ -60,6 +60,6 @@ function enforce(){if(!isQuran())return;fixHeader();const sb=document.getElement
 function start(){if(!isQuran())return;draw();fixHeader();const sb=document.getElementById('sidebar');if(sb&&!sb.__cqQuranFinalObserver){sb.__cqQuranFinalObserver=true;new MutationObserver(()=>queueMicrotask(enforce)).observe(sb,{childList:true,subtree:true})}setInterval(enforce,1200)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0),{once:true});else setTimeout(start,0);
 window.addEventListener('load',()=>setTimeout(start,50),{once:true});
-if(typeof enterApp==='function'&&!enterApp.__cqQuranFinalV1){const old=enterApp;enterApp=function(){const out=old.apply(this,arguments);if(isQuran())setTimeout(start,0);return out};enterApp.__cqQuranFinalV1=true}
+if(typeof enterApp==='function'&&!enterApp.__cqQuranFinalV2){const old=enterApp;enterApp=function(){const out=old.apply(this,arguments);if(isQuran())setTimeout(start,0);return out};enterApp.__cqQuranFinalV2=true}
 window.cqQuranOpenInternal=go;\nwindow.cqQuranFinalUI=start;
 })();
