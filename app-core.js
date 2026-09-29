@@ -772,6 +772,10 @@ const MODULE_GROUPS = [
       { id: 'leger',      label: 'Nilai', roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderLegger },
       { id: 'bilingual',  label: 'Bilingual', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderVocabularyBulanan },
       { id: 'pjbl',       label: 'PjBL',        roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderPjBL },
+      { id: 'akd-badal',  label: 'Badal Guru Mapel', roles: ['akademik'], built: true, render: (c)=>{
+          if(typeof window.renderAcademicBadalV2==='function') return window.renderAcademicBadalV2(c);
+          c.innerHTML='<div class="card">Modul Badal Guru Mapel sedang dimuat. Silakan buka kembali menu ini.</div>';
+        } },
       { id: 'rapor',    label: 'Cetak Rapor', roles: ['walas','akademik','pimpinan'], built: true,  render: renderCetakRapor }
     ]
   },
