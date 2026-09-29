@@ -1,0 +1,48 @@
+/* CQlass — FINAL UI authority khusus role kabid_quran. Tidak menyentuh role lain. */
+(function(){
+'use strict';
+if(window.__CQ_QURAN_FINAL_UI_V1__)return;window.__CQ_QURAN_FINAL_UI_V1__=true;
+const norm=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+function user(){try{return (typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{}}catch(_){return{}}}
+function isQuran(){const u=user();return norm(u.role||u.primary_role||u.role_code)==='kabid_quran'}
+const tools=[
+ {label:'Laporan Harian',url:'tahfizh-daily-report.html?v=20260929-quran5'},
+ {label:'Badal Tahfizh',url:'tahfizh-badal.html?v=20260929-quran5'},
+ {label:'Nilai PTS',url:'tahfizh-pts.html?v=20260929-quran5'},
+ {label:'UKJ',url:'tahfizh-ukj-score.html?v=20260929-quran5'},
+ {label:'Laporan Bulanan',url:'tahfizh-monthly.html?v=20260929-quran5'}
+];
+const sections=[
+ ['Monitoring Guru',tools.slice(0,2)],
+ ['Penilaian',tools.slice(2,4)],
+ ['Laporan',tools.slice(4)]
+];
+function css(){if(document.getElementById('cq-quran-final-css'))return;const s=document.createElement('style');s.id='cq-quran-final-css';s.textContent=`
+body.cq-quran-final #sidebar .cq-quran-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;margin-top:8px;font-size:13px;font-weight:900;color:#49666d;cursor:pointer;text-transform:uppercase;letter-spacing:.02em}
+body.cq-quran-final #sidebar .cq-quran-section{display:flex;align-items:center;justify-content:space-between;padding:11px 18px 11px 30px;font-size:12px;font-weight:850;color:#355b61;cursor:pointer}
+body.cq-quran-final #sidebar .cq-quran-leaf{padding:10px 18px 10px 44px;font-size:11.5px;font-weight:700;color:#577078;cursor:pointer;border-radius:9px;margin:2px 10px}
+body.cq-quran-final #sidebar .cq-quran-leaf:hover{background:#eef8f6;color:#087b75}
+body.cq-quran-final #sidebar .cq-quran-chevron{font-size:13px;transition:.18s}
+body.cq-quran-final #sidebar .cq-quran-section.open .cq-quran-chevron,body.cq-quran-final #sidebar .cq-quran-head.open .cq-quran-chevron{transform:rotate(180deg)}
+body.cq-quran-final #sidebar .cq-quran-sub{display:none}body.cq-quran-final #sidebar .cq-quran-sub.open{display:block}
+`;document.head.appendChild(s)}
+function go(url){location.href=url}
+function draw(){
+ if(!isQuran())return false;const sb=document.getElementById('sidebar');if(!sb)return false;
+ document.body.classList.add('cq-quran-final');css();
+ const state=window.__cqQuranFinalState||(window.__cqQuranFinalState={Tahfizh:true,'Monitoring Guru':false,'Penilaian':false,'Laporan':false});
+ sb.innerHTML='';
+ const d=document.createElement('div');d.className='nav-item active';d.dataset.cqQuranFinal='1';d.innerHTML='<span>Dashboard</span>';d.onclick=()=>{try{activeModule='dashboard'}catch(_){};window.renderKabidTahfizhDashboard?.(document.getElementById('content'));draw()};sb.appendChild(d);
+ const h=document.createElement('div');h.className='cq-quran-head '+(state.Tahfizh?'open':'');h.dataset.cqQuranFinal='1';h.innerHTML='<span>TAHFIZH</span><span class="cq-quran-chevron">⌄</span>';h.onclick=()=>{state.Tahfizh=!state.Tahfizh;draw()};sb.appendChild(h);
+ if(state.Tahfizh)sections.forEach(([name,items])=>{const sh=document.createElement('div');sh.className='cq-quran-section '+(state[name]?'open':'');sh.dataset.cqQuranFinal='1';sh.innerHTML='<span>'+name+'</span><span class="cq-quran-chevron">⌄</span>';sh.onclick=()=>{state[name]=!state[name];draw()};sb.appendChild(sh);const sub=document.createElement('div');sub.className='cq-quran-sub '+(state[name]?'open':'');sub.dataset.cqQuranFinal='1';items.forEach(x=>{const e=document.createElement('div');e.className='cq-quran-leaf';e.textContent=x.label;e.onclick=()=>go(x.url);sub.appendChild(e)});sb.appendChild(sub)});
+ return true;
+}
+function fixHeader(){if(!isQuran())return;const r=document.getElementById('user-role');if(r)r.textContent="KABID QUR'AN";}
+let busy=false;
+function enforce(){if(!isQuran())return;fixHeader();const sb=document.getElementById('sidebar');if(!sb)return;const ok=sb.querySelector('[data-cq-quran-final="1"]')&&/TAHFIZH/i.test(sb.textContent||'');if(!ok&&!busy){busy=true;draw();setTimeout(()=>busy=false,0)}}
+function start(){if(!isQuran())return;draw();fixHeader();const sb=document.getElementById('sidebar');if(sb&&!sb.__cqQuranFinalObserver){sb.__cqQuranFinalObserver=true;new MutationObserver(()=>queueMicrotask(enforce)).observe(sb,{childList:true,subtree:true})}setInterval(enforce,1200)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0),{once:true});else setTimeout(start,0);
+window.addEventListener('load',()=>setTimeout(start,50),{once:true});
+if(typeof enterApp==='function'&&!enterApp.__cqQuranFinalV1){const old=enterApp;enterApp=function(){const out=old.apply(this,arguments);if(isQuran())setTimeout(start,0);return out};enterApp.__cqQuranFinalV1=true}
+window.cqQuranFinalUI=start;
+})();
