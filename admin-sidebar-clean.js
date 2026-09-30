@@ -41,6 +41,7 @@ function draw(active){
     ${button('roles','Kelola Role',I.roles,'openCleanAdminRoles()')}
     ${button('academic-period','Tahun Ajaran & Hari Efektif',I.period,'openCleanAdminAcademicPeriod()')}
     ${button('report-period','Pengaturan Rapor',I.report,'openCleanAdminReportPeriod()')}
+    ${button('rapor-readiness','Laporan Nilai Rapor',I.report,'openCleanAdminRaporReadiness()')}
     ${button('input-access','Periode & Kunci Input',I.lock,'openCleanAdminInputAccess()')}
     ${button('students','Siswa & Kelas',I.students,'openCleanAdminStudents()')}
     ${button('uks','Jadwal UKS',I.uks,'openCleanAdminUks()')}
@@ -49,7 +50,7 @@ function draw(active){
   </div>`;
   return true
 }
-function set(id){window.__cqAdminActive=id;const s=document.getElementById('sidebar');if(!s||!s.querySelector('.cq-admin-side')){draw(id);return}const map={dashboard:'openCleanAdminDashboard', 'data-master':'openCleanAdminMaster', 'master-tp':'openCleanAdminMasterTP',halaqah:'openCleanAdminHalaqahRoute','edit-jadwal':'openCleanAdminSchedule',users:'openCleanAdminUsers',roles:'openCleanAdminRoles','academic-period':'openCleanAdminAcademicPeriod','report-period':'openCleanAdminReportPeriod','input-access':'openCleanAdminInputAccess',students:'openCleanAdminStudents',uks:'openCleanAdminUks','kegiatan-khusus':'openCleanAdminSpecialActivity'};s.querySelectorAll('.cq-admin-nav').forEach(function(b){b.classList.toggle('active',String(b.getAttribute('onclick')||'').includes(map[id]||'__none__'))})}
+function set(id){window.__cqAdminActive=id;const s=document.getElementById('sidebar');if(!s||!s.querySelector('.cq-admin-side')){draw(id);return}const map={dashboard:'openCleanAdminDashboard', 'data-master':'openCleanAdminMaster', 'master-tp':'openCleanAdminMasterTP',halaqah:'openCleanAdminHalaqahRoute','edit-jadwal':'openCleanAdminSchedule',users:'openCleanAdminUsers',roles:'openCleanAdminRoles','academic-period':'openCleanAdminAcademicPeriod','report-period':'openCleanAdminReportPeriod','rapor-readiness':'openCleanAdminRaporReadiness','input-access':'openCleanAdminInputAccess',students:'openCleanAdminStudents',uks:'openCleanAdminUks','kegiatan-khusus':'openCleanAdminSpecialActivity'};s.querySelectorAll('.cq-admin-nav').forEach(function(b){b.classList.toggle('active',String(b.getAttribute('onclick')||'').includes(map[id]||'__none__'))})}
 window.openCleanAdminDashboard=function(){if(!isAdmin())return;set('dashboard');try{if(typeof setActiveModule==='function')return setActiveModule('dashboard')}catch(_){};window.renderAdminDashboard?.(document.getElementById('content'))};
 window.openCleanAdminMaster=function(){if(!isAdmin())return;set('data-master');window.renderAdminMasterData?.(document.getElementById('content'))};
 window.openAdminDataMaster=window.openCleanAdminMaster;
@@ -88,6 +89,7 @@ window.openCleanAdminReportPeriod=function(){
   }
   let n=0;const t=setInterval(()=>{n++;if(open()!==false||n>=20){clearInterval(t);if(n>=20&&c)c.innerHTML='<div class="card">Pengaturan Rapor belum dapat dimuat. Silakan muat ulang halaman.</div>'}},100)
 };
+window.openCleanAdminRaporReadiness=function(){if(!isAdmin())return;set('rapor-readiness');const c=document.getElementById('content');if(typeof window.renderAdminRaporReadiness==='function')return window.renderAdminRaporReadiness(c);if(c)c.innerHTML='<div class="card">Memuat Laporan Nilai Rapor...</div>';setTimeout(()=>window.renderAdminRaporReadiness?.(c),200)};
 window.openCleanAdminInputAccess=function(){if(!isAdmin())return;set('input-access');const c=document.getElementById('content');if(typeof window.renderInputAccessControlAdmin==='function')return window.renderInputAccessControlAdmin(c);if(c)c.innerHTML='<div class="card">Memuat Periode & Kunci Penginputan...</div>';setTimeout(()=>window.renderInputAccessControlAdmin?.(c),250)};
 window.openCleanAdminStudents=function(){if(!isAdmin())return;set('students');location.href='master-data.html'};
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
