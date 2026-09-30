@@ -14,8 +14,8 @@ const J = (body: unknown, status = 200) =>
 const T = (v: unknown) => String(v ?? "").trim();
 const L = (v: unknown) => T(v).toLowerCase();
 const NUM = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null; };
-const KEPUTUSAN = new Set(["lulus","mengulang","tidak_lulus"]);
-const PREDIKAT = new Set(["mumtaz","jayyid_jiddan","jayyid","ahsan","maqbul","rasib"]);
+const KEPUTUSAN = new Set(["lulus","lulus_lanjut","mengulang","tidak_lulus"]);
+const PREDIKAT = new Set(["mumtaz","jayyid_jiddan","jayyid","ahsan","maqbul","rasib","ممتاز","جيّد جدّا","جيّد","أحسن","مقبول","راسب"]);
 const nilaiAspek = (poinAwal:number,bantuan:number) => Math.max(0, Math.round((poinAwal - bantuan) * 100) / 100);
 
 function serviceKey() {
