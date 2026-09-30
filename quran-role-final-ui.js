@@ -11,7 +11,7 @@ const defs=[
  ['quran_badal','Monitoring Guru','Badal Tahfizh','tahfizh-badal.html?v=20260930-badal-clean7'],
  ['quran_badal_recap','Monitoring Guru','Rekapan Badal','tahfizh-badal-recap.html?v=20260930-recap-edit2'],
  ['quran_pts','Penilaian','Nilai PTS','tahfizh-pts.html?v=20260929-quran11'],
- ['quran_ukj','Penilaian','UKJ','tahfizh-ukj-score.html?v=20260930-ukj-pdf3'],
+ ['quran_ukj','Penilaian','UKJ','tahfizh-ukj-score.html?v=20260930-ukj-a4full4'],
  ['quran_monthly','Laporan','Laporan Bulanan','tahfizh-monthly.html?v=20260929-quran11']
 ];
 function injectCss(){
