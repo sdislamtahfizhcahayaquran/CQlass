@@ -82,22 +82,29 @@ async function roster(s: any, ctx: any, classId: string) {
 }
 
 async function save(s: any, accountId: string, body: any) {
-  const studentId = T(body.student_id), classId = T(body.class_id), juz = T(body.juz);
-  const tanggal = T(body.tanggal) || new Date().toISOString().slice(0, 10);
-  const catatan = T(body.catatan);
-  if (!studentId || !classId) return J({ success: false, error: "student_and_class_required" }, 400);
-  if (!juz) return J({ success: false, error: "juz_required" }, 400);
-  const kelancaran = NUM(body.nilai_kelancaran), makhraj = NUM(body.nilai_makhraj), mad = NUM(body.nilai_mad), ghunnah = NUM(body.nilai_ghunnah);
-  if ([kelancaran, makhraj, mad, ghunnah].some((v) => v === null)) return J({ success: false, error: "nilai_harus_0_sampai_100" }, 400);
-  if (catatan.length > 500) return J({ success: false, error: "catatan_terlalu_panjang" }, 400);
-
-  const { data, error } = await s.from("tahfizh_ukj_scores").insert({
-    student_id: studentId, class_id: classId, juz,
-    nilai_kelancaran: kelancaran, nilai_makhraj: makhraj, nilai_mad: mad, nilai_ghunnah: ghunnah,
-    catatan: catatan || null, tanggal, created_by_account_id: accountId,
-  }).select("*").single();
-  if (error) throw error;
-  return J({ success: true, message: "Nilai UKJ tersimpan.", data });
+  const studentId=T(body.student_id),classId=T(body.class_id),examType=T(body.exam_type)||'ukj';
+  const tanggal=T(body.tanggal)||new Date().toISOString().slice(0,10),catatan=T(body.catatan),keputusan=T(body.keputusan_penguji),keputusanDetail=T(body.keputusan_detail),predikat=T(body.predikat);
+  if(!studentId||!classId)return J({success:false,error:'student_and_class_required'},400);
+  if(!['ukj','komprehensif'].includes(examType))return J({success:false,error:'exam_type_invalid'},400);
+  if(!KEPUTUSAN.has(keputusan))return J({success:false,error:'keputusan_penguji_invalid'},400);
+  if(!predikat||!PREDIKAT.has(predikat))return J({success:false,error:'predikat_invalid'},400);
+  if(catatan.length>500)return J({success:false,error:'catatan_terlalu_panjang'},400);
+  let row:any={student_id:studentId,class_id:classId,tanggal,catatan:catatan||null,predikat,keputusan_penguji:keputusan,keputusan_detail:keputusanDetail||null,created_by_account_id:accountId,exam_type:examType};
+  if(examType==='ukj'){
+    const juz=T(body.juz),surat=T(body.surat_diujikan);if(!juz)return J({success:false,error:'juz_required'},400);
+    const kelT=NUM(body.kelancaran_tanbih),kelB=NUM(body.kelancaran_bantuan),gunT=NUM(body.gunnah_tanbih),gunB=NUM(body.gunnah_bantuan),madT=NUM(body.mad_tanbih),madB=NUM(body.mad_bantuan),makT=NUM(body.makhroj_tanbih),makB=NUM(body.makhroj_bantuan);
+    if([kelT,kelB,gunT,gunB,madT,madB,makT,makB].some(v=>v===null))return J({success:false,error:'poin_tidak_valid'},400);
+    const nKel=nilaiAspek(40,kelB!),nGun=nilaiAspek(20,gunB!),nMad=nilaiAspek(20,madB!),nMak=nilaiAspek(20,makB!),total=Math.round((nKel+nGun+nMad+nMak)*100)/100;
+    row={...row,juz,surat_diujikan:surat||null,kelancaran_tanbih:kelT,kelancaran_bantuan:kelB,kelancaran_nilai:nKel,gunnah_tanbih:gunT,gunnah_bantuan:gunB,gunnah_nilai:nGun,mad_tanbih:madT,mad_bantuan:madB,mad_nilai:nMad,makhroj_tanbih:makT,makhroj_bantuan:makB,makhroj_nilai:nMak,total_nilai:total,comprehensive_data:null};
+  }else{
+    const d=body.comprehensive_data;if(!d||!Array.isArray(d.juz)||!d.juz.length)return J({success:false,error:'comprehensive_data_required'},400);
+    const scores=d.juz.map((j:any)=>Math.max(0,100-['kelancaran','gunnah','mad','makhroj'].reduce((n,k)=>n+(NUM(j?.[k]?.bantuan)||0),0)));
+    const total=Math.round((scores.reduce((a:number,b:number)=>a+b,0)/scores.length)*100)/100;
+    row={...row,juz:'KOMPREHENSIF',surat_diujikan:'Juz 30-25',kelancaran_tanbih:0,kelancaran_bantuan:0,kelancaran_nilai:null,gunnah_tanbih:0,gunnah_bantuan:0,gunnah_nilai:null,mad_tanbih:0,mad_bantuan:0,mad_nilai:null,makhroj_tanbih:0,makhroj_bantuan:0,makhroj_nilai:null,total_nilai:total,comprehensive_data:{...d,nilai_perjuz:scores}};
+  }
+  const existing=await s.from('tahfizh_ukj_scores').select('id').eq('student_id',studentId).eq('class_id',classId).eq('tanggal',tanggal).eq('exam_type',examType).eq('juz',row.juz).order('created_at',{ascending:false}).limit(1).maybeSingle();if(existing.error)throw existing.error;
+  const q=existing.data?await s.from('tahfizh_ukj_scores').update({...row,updated_at:new Date().toISOString()}).eq('id',existing.data.id).select('*').single():await s.from('tahfizh_ukj_scores').insert(row).select('*').single();if(q.error)throw q.error;
+  return J({success:true,message:examType==='ukj'?'Nilai UKJ tersimpan.':'Nilai Komprehensif tersimpan.',data:q.data});
 }
 
 async function recent(s: any, classId: string) {
