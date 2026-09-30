@@ -30,7 +30,7 @@
     <div id="tablewrap" class="tablewrap" style="display:none">
       <table><thead><tr><th>No</th><th>Nama</th><th>LP</th><th>Target Bulan (sedang proses)</th><th>Pencapaian Akhir Bulan</th><th>Juz</th><th>Tilawah/BBQ</th></tr></thead><tbody id="tbody"></tbody></table>
     </div>
-    <div class="savebar"><div class="muted">Nama siswa otomatis dari database CQlass. Periode yang sama akan memperbarui data, bukan membuat duplikat.</div><div class="actions"><button class="btn secondary" id="export">Unduh Rekap Excel</button><button class="btn secondary" id="print" style="display:none">Cetak A4</button><button class="btn" id="save" style="display:none">Simpan Laporan</button></div></div>
+    <div class="savebar"><div class="muted">Nama siswa otomatis dari database CQlass. Periode yang sama akan memperbarui data, bukan membuat duplikat.</div><div class="actions"><button class="btn secondary" id="exportAll">Unduh Semua Kelas</button><button class="btn secondary" id="export">Unduh Per Kelas</button><button class="btn secondary" id="print" style="display:none">Cetak A4</button><button class="btn" id="save" style="display:none">Simpan Laporan</button></div></div>
   </div>
 </div>
 </div>
@@ -44,6 +44,24 @@ async function init(){try{boot=await api({action:'bootstrap'});el('kelas').inner
 async function loadRoster(){const cid=el('kelas').value,ps=el('mulai').value,pe=el('selesai').value;if(!cid)return setStatus('Pilih kelas terlebih dahulu.',true);if(!ps||!pe)return setStatus('Isi tanggal mulai dan tanggal selesai.',true);if(pe<ps)return setStatus('Tanggal selesai tidak boleh sebelum tanggal mulai.',true);try{setStatus('Memuat data siswa...');const j=await api({action:'roster',class_id:cid,period_start:ps,period_end:pe});current=j.rows||[];el('tbody').innerHTML=current.map((s,i)=>`<tr data-id="${s.student_id}"><td>${i+1}</td><td class="nm">${esc(s.name)}</td><td><input class="cell lp" data-k="lp" value="${esc(s.lp)}" placeholder="LP"></td><td><input class="cell" data-k="target_bulan" value="${esc(s.target_bulan)}"></td><td><input class="cell" data-k="pencapaian_akhir" value="${esc(s.pencapaian_akhir)}"></td><td><input class="cell" data-k="juz" value="${esc(s.juz)}"></td><td><input class="cell" data-k="tilawah_bbq" value="${esc(s.tilawah_bbq)}"></td></tr>`).join('');const has=current.length>0;el('empty').style.display=has?'none':'block';el('tablewrap').style.display=has?'block':'none';el('save').style.display=has?'block':'none';el('print').style.display=has?'block':'none';const c=boot.classes.find(x=>x.id===cid);setStatus(`${c?.name||''}: ${current.length} siswa · periode ${ps} s/d ${pe}`);loadHistory()}catch(e){setStatus(e.message,true)}}
 function collectRows(){return [...el('tbody').querySelectorAll('tr')].map(tr=>{const o={student_id:tr.dataset.id,name:tr.querySelector('.nm')?.textContent?.trim()||''};tr.querySelectorAll('[data-k]').forEach(x=>o[x.dataset.k]=x.value.trim());return o})}
 async function save(){const cid=el('kelas').value,ps=el('mulai').value,pe=el('selesai').value,rows=collectRows();if(!rows.length)return;const b=el('save');try{b.disabled=true;b.textContent='Menyimpan...';const j=await api({action:'save',class_id:cid,period_start:ps,period_end:pe,rows});setStatus(j.message);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Laporan',1600);loadHistory()}catch(e){setStatus(e.message,true);b.textContent='Simpan Laporan'}finally{b.disabled=false}}
+async function exportAllClasses(){
+ const ps=el('mulai').value,pe=el('selesai').value;if(!ps||!pe)return setStatus('Isi periode laporan yang akan diunduh.',true);
+ const b=el('exportAll');try{b.disabled=true;b.textContent='Menyiapkan Excel...';setStatus('Menggabungkan laporan seluruh kelas...');
+ const j=await api({action:'export',period_start:ps,period_end:pe}),wb=new ExcelJS.Workbook();wb.creator='CQlass · SD Islam Tahfizh Cahaya Qur\'an';wb.created=new Date();
+ const ws=wb.addWorksheet('Semua Kelas',{views:[{state:'frozen',ySplit:6,showGridLines:false}]});
+ ws.columns=[{width:6},{width:18},{width:30},{width:16},{width:28},{width:30},{width:12},{width:24},{width:16}];
+ ws.mergeCells('A1:I1');ws.getCell('A1').value='REKAP LAPORAN TAHFIZH BULANAN · SEMUA KELAS';ws.getCell('A1').font={bold:true,size:16};ws.getCell('A1').alignment={horizontal:'center'};
+ ws.mergeCells('A2:I2');ws.getCell('A2').value='SD Islam Tahfizh Cahaya Qur\'an · '+j.academic_year+' · Semester '+j.semester_no;ws.getCell('A2').alignment={horizontal:'center'};
+ ws.mergeCells('A3:I3');ws.getCell('A3').value='Periode '+ps+' s/d '+pe;ws.getCell('A3').alignment={horizontal:'center'};
+ const all=[];(j.classes||[]).forEach(cl=>(cl.rows||[]).forEach(r=>all.push({kelas:cl.class_name,...r})));
+ const complete=r=>!!(String(r.target_bulan||'').trim()&&String(r.pencapaian_akhir||'').trim()&&String(r.juz||'').trim()),done=all.filter(complete).length;
+ ws.mergeCells('A4:I4');ws.getCell('A4').value='Ringkasan: '+(j.classes||[]).length+' kelas · '+all.length+' siswa · '+done+' lengkap · '+(all.length-done)+' belum lengkap · '+(all.length?Math.round(done/all.length*100):0)+'%';ws.getCell('A4').font={bold:true};ws.getCell('A4').alignment={horizontal:'center'};
+ const heads=['No','Kelas','Nama Siswa','LP','Target Bulan','Pencapaian Akhir Bulan','Juz','Tilawah/BBQ','Status'];heads.forEach((v,i)=>{const x=ws.getCell(6,i+1);x.value=v;x.font={bold:true,color:{argb:'FFFFFFFF'}};x.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF173F63'}};x.alignment={horizontal:'center',vertical:'middle'}});
+ all.forEach((r,i)=>{const rr=7+i,vals=[i+1,r.kelas,r.name,r.lp||'',r.target_bulan||'',r.pencapaian_akhir||'',r.juz||'',r.tilawah_bbq||'',complete(r)?'Lengkap':'Belum Lengkap'];vals.forEach((v,k)=>{const x=ws.getCell(rr,k+1);x.value=v;x.alignment={vertical:'top',wrapText:true};x.border={bottom:{style:'hair',color:{argb:'FFDDE6EB'}}};if(k===8)x.fill={type:'pattern',pattern:'solid',fgColor:{argb:complete(r)?'FFE8F5EC':'FFFFF1E6'}}})});
+ ws.autoFilter={from:'A6',to:'I'+Math.max(6,6+all.length)};ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.25,right:.25,top:.4,bottom:.4,header:.15,footer:.15}};
+ const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Rekap_Tahfizh_Semua_Kelas_'+ps+'_sd_'+pe+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);setStatus('Rekap gabungan '+all.length+' siswa dari '+(j.classes||[]).length+' kelas berhasil dibuat.');
+ }catch(e){setStatus(e.message,true)}finally{b.disabled=false;b.textContent='Unduh Semua Kelas'}}
+
 async function exportWorkbook(){
  const ps=el('mulai').value,pe=el('selesai').value;if(!ps||!pe)return setStatus('Isi periode laporan yang akan diunduh.',true);
  const b=el('export');try{b.disabled=true;b.textContent='Menyiapkan Excel...';setStatus('Mengumpulkan laporan semua kelas...');
@@ -70,7 +88,7 @@ async function exportWorkbook(){
  }catch(e){setStatus(e.message,true)}finally{b.disabled=false;b.textContent='Unduh Rekap Excel'}}
 
 function printMonthly(){const rows=collectRows();if(!rows.length)return setStatus('Belum ada data untuk dicetak.',true);const c=boot?.classes?.find(x=>x.id===el('kelas').value);el('printArea').innerHTML=`<div class="print-head"><h1>SD Islam Tahfizh Cahaya Qur'an</h1><p><b>LAPORAN TAHFIZH BULANAN</b></p><p>Kelas: ${esc(c?.name||'—')} · Tahun Ajaran ${esc(boot?.academic_year||'—')} · Semester ${esc(boot?.semester_no||'—')}</p><p>Periode: ${esc(el('mulai').value)} s/d ${esc(el('selesai').value)}</p></div><table class="print-table"><thead><tr><th>No</th><th>Nama</th><th>LP</th><th>Target Bulan</th><th>Pencapaian Akhir Bulan</th><th>Juz</th><th>Tilawah/BBQ</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.lp||'—')}</td><td>${esc(r.target_bulan||'—')}</td><td>${esc(r.pencapaian_akhir||'—')}</td><td>${esc(r.juz||'—')}</td><td>${esc(r.tilawah_bbq||'—')}</td></tr>`).join('')}</tbody></table><div class="print-foot">Dicetak dari CQlass</div>`;window.print()}
-el('export').onclick=exportWorkbook;el('load').onclick=loadRoster;el('save').onclick=save;el('print').onclick=printMonthly;el('kelas').onchange=loadHistory;init();
+el('exportAll').onclick=exportAllClasses;el('export').onclick=exportWorkbook;el('load').onclick=loadRoster;el('save').onclick=save;el('print').onclick=printMonthly;el('kelas').onchange=loadHistory;init();
 </script>
 </body>
 </html>
