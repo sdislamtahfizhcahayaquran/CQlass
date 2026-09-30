@@ -139,6 +139,18 @@ async function save(s: any, ctx:any, a:any, classId: string, periodStart: string
   return J({ success: true, message: `Laporan tersimpan untuk ${payload.length} siswa.` });
 }
 
+async function exportAll(s:any,ctx:any,a:any,periodStart:string,periodEnd:string){
+  if(!isManager(a)) return null;
+  if(!periodStart||!periodEnd) throw new Error("period_required");
+  const cls=await classes(s,ctx,a);
+  const out:any[]=[];
+  for(const cl of cls){
+    const rows=await roster(s,ctx,cl.id,periodStart,periodEnd,a);
+    out.push({class_id:cl.id,class_name:cl.name,grade_level:cl.grade_level,rows});
+  }
+  return out;
+}
+
 async function history(s: any, classId: string) {
   const { data, error } = await s.from("tahfizh_monthly_reports").select("period_start,period_end")
     .eq("class_id", classId).order("period_start", { ascending: false });
@@ -169,6 +181,13 @@ Deno.serve(async (req: Request) => {
       const classId = T(body.class_id), ps = T(body.period_start), pe = T(body.period_end);
       if (!classId || !ps || !pe) return J({ success: false, error: "class_and_period_required" }, 400);
       return J({ success: true, rows: await roster(s, ctx, classId, ps, pe, a) });
+    }
+    if (action === "export") {
+      if (!isManager(a)) return J({success:false,error:"forbidden"},403);
+      const ps=T(body.period_start),pe=T(body.period_end);
+      if(!ps||!pe) return J({success:false,error:"period_required"},400);
+      const data=await exportAll(s,ctx,a,ps,pe);
+      return J({success:true,academic_year:ctx.yearName,semester_no:ctx.semesterNo,period_start:ps,period_end:pe,classes:data});
     }
     if (action === "save") return await save(s,ctx,a,T(body.class_id),T(body.period_start),T(body.period_end),a.account.id,body.rows);
     if (action === "history") {
