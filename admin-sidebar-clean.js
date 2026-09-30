@@ -49,7 +49,7 @@ function draw(active){
   </div>`;
   return true
 }
-function set(id){window.__cqAdminActive=id;draw(id)}
+function set(id){window.__cqAdminActive=id;const s=document.getElementById('sidebar');if(!s?.querySelector('.cq-admin-side'))draw(id);else{s.querySelectorAll('.cq-admin-nav').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick')?.includes({dashboard:'Dashboard', 'data-master':'Master', 'master-tp':'MasterTP',halaqah:'HalaqahRoute','edit-jadwal':'Schedule',users:'Users',roles:'Roles','academic-period':'AcademicPeriod','report-period':'ReportPeriod','input-access':'InputAccess',students:'Students',uks:'Uks','kegiatan-khusus':'SpecialActivity'}[id]||'__none__')))}}
 window.openCleanAdminDashboard=function(){if(!isAdmin())return;set('dashboard');try{if(typeof setActiveModule==='function')return setActiveModule('dashboard')}catch(_){};window.renderAdminDashboard?.(document.getElementById('content'))};
 window.openCleanAdminMaster=function(){if(!isAdmin())return;set('data-master');window.renderAdminMasterData?.(document.getElementById('content'))};
 window.openAdminDataMaster=window.openCleanAdminMaster;
@@ -94,7 +94,7 @@ window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.rende
 window.openCleanAdminSpecialActivity=function(){if(!isAdmin())return;set('kegiatan-khusus');const c=document.getElementById('content');if(typeof window.renderAdminSpecialActivity==='function')return window.renderAdminSpecialActivity(c);if(c)c.innerHTML='<div class="card">Memuat Kegiatan Khusus...</div>';setTimeout(()=>window.renderAdminSpecialActivity?.(c),250)};
 window.openCleanAdminHalaqahRoute=function(){if(!isAdmin())return;set('halaqah');if(window.openCleanAdminHalaqah)return window.openCleanAdminHalaqah();const c=document.getElementById('content');if(c)c.innerHTML='<div class="card">Memuat Pembagian Halaqah...</div>'};
 window.__cqRenderAdminSidebar=function(){return isAdmin()?draw():false}
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>isAdmin()&&draw(),120)});
+
 window.__cqAdminSidebarClean=true
 })();
 [['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20260916-schedule2','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20260921-layout1','cq-input-access-layout-fix'],['report-period-control.js?v=20260923-reportperiod2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});
