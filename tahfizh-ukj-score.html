@@ -1,224 +1,33 @@
-<!doctype html>
-<html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Nilai UKJ — CQlass</title>
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UKJ Qur'an - CQlass</title>
 <style>
-#cqUkjRoot{all:initial;display:block;font-family:Inter,Arial,sans-serif;color:#17343a;background:#f5f8f8}
-#cqUkjRoot *{box-sizing:border-box;font-family:inherit}
-#cqUkjRoot .top{background:#08746f;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
-#cqUkjRoot .top h1{margin:0;font-size:20px;color:#fff}
-#cqUkjRoot .top p{margin:5px 0 0;opacity:.86;font-size:12px;color:#fff}
-#cqUkjRoot .back{background:#ffffff1c;color:#fff;border:1px solid #ffffff45;border-radius:8px;padding:9px 12px;text-decoration:none;font-weight:700;font-size:12px;display:inline-block}
-#cqUkjRoot .wrap{max-width:1200px;margin:auto;padding:18px}
-#cqUkjRoot .panel{background:#fff;border:1px solid #dceae6;border-radius:14px;padding:16px;box-shadow:0 2px 10px #0000000b;margin-bottom:16px}
-#cqUkjRoot .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-#cqUkjRoot .field label{display:block;font-size:11px;font-weight:700;margin-bottom:6px;color:#527078}
-#cqUkjRoot .field select,#cqUkjRoot .field input,#cqUkjRoot .field textarea{width:100%;height:40px;border:1px solid #cbd9d6;border-radius:8px;padding:7px 9px;background:#fff;font-size:13px;line-height:1.3}
-#cqUkjRoot .field textarea{height:64px;resize:vertical}
-#cqUkjRoot .aspek{border:1px solid #dceae6;border-radius:12px;padding:12px;margin-top:10px}
-#cqUkjRoot .aspek-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-#cqUkjRoot .aspek-head b{font-size:13px}
-#cqUkjRoot .aspek-head .poin{font-size:11px;color:#527078;background:#eef6f5;border-radius:20px;padding:3px 9px}
-#cqUkjRoot .aspek-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;align-items:end}
-#cqUkjRoot .aspek-nilai{text-align:center;font-weight:800;font-size:18px;color:#08746f;background:#eef6f5;border-radius:8px;padding:8px 4px}
-#cqUkjRoot .hint{font-size:9px;color:#8aa0a4;margin-top:4px}
-#cqUkjRoot .total-bar{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:14px;background:#0b3f3c;color:#fff;border-radius:12px}
-#cqUkjRoot .total-bar span{color:#fff;font-size:13px}
-#cqUkjRoot .total-bar b{font-size:26px;color:#fff}
-#cqUkjRoot .radio-group{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-#cqUkjRoot .radio-group label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;cursor:pointer}
-#cqUkjRoot .radio-group input[type=radio]{width:16px;height:16px;flex:none}
-#cqUkjRoot .radio-group input[type=text]{height:30px;width:200px;margin-left:6px;display:inline-block}
-#cqUkjRoot button.btn{all:unset;box-sizing:border-box;display:inline-block;height:40px;line-height:40px;border-radius:8px;background:#08746f;color:#fff !important;font-weight:700;font-size:13px;padding:0 18px;cursor:pointer;margin-top:14px;text-align:center}
-#cqUkjRoot button.btn:disabled{opacity:.6;cursor:default}
-#cqUkjRoot .status{font-size:13px;margin-top:10px;padding:10px 12px;border-radius:8px;background:#eef6f5}
-#cqUkjRoot .status.err{background:#fff0f0;color:#a12b2b}
-#cqUkjRoot table{border-collapse:collapse;width:100%;font-size:11px}
-#cqUkjRoot th,#cqUkjRoot td{padding:7px;border-bottom:1px solid #edf2f0;text-align:left}
-#cqUkjRoot th{background:#f8fbfa;color:#527078;font-size:9px;text-transform:uppercase}
-@media(max-width:760px){#cqUkjRoot .grid{grid-template-columns:1fr}#cqUkjRoot .aspek-grid{grid-template-columns:1fr 1fr}}
-</style>
-</head>
-<body>
-<div id="cqUkjRoot">
-<div class="top">
-  <div><h1>Nilai UKJ</h1><p>Lembar Ujian Kenaikan Juz — Kabid Tahfizh.</p></div>
-  <a class="back" href="./">← Kembali ke CQlass</a>
+*{box-sizing:border-box}body{margin:0;background:#f5f8f8;color:#17343a;font-family:Inter,Arial,sans-serif}.top{background:#08746f;color:#fff;padding:16px 22px}.top h1{margin:0;font-size:20px}.wrap{max-width:1200px;margin:auto;padding:16px}.panel{background:#fff;border:1px solid #dceae6;border-radius:14px;padding:15px;margin-bottom:14px}.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{border:1px solid #bfd8d4;background:#fff;color:#17565a;border-radius:9px;padding:9px 14px;font-weight:800;cursor:pointer}.tab.on{background:#08746f;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;font-size:11px;font-weight:800;margin-bottom:5px;color:#527078}.field input,.field select,.field textarea{width:100%;height:38px;border:1px solid #cbd9d6;border-radius:8px;padding:7px 9px;background:#fff;font:inherit;font-size:12px}.field textarea{height:68px}.aspek{border:1px solid #dceae6;border-radius:11px;padding:11px;margin-top:9px}.aspek-head{display:flex;justify-content:space-between;margin-bottom:7px}.poin{font-size:11px;background:#eef6f5;padding:3px 8px;border-radius:16px}.aspek-grid{display:grid;grid-template-columns:1fr 1fr 140px;gap:9px;align-items:end}.akhir{height:38px;border-radius:8px;background:#eef6f5;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#08746f}.hint{font-size:9px;color:#8aa0a4;margin-top:3px}.total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;background:#0b3f3c;color:#fff;border-radius:10px}.total b{font-size:24px}.matrix{overflow:auto}.matrix table{border-collapse:collapse;width:100%;min-width:820px}.matrix th,.matrix td{border:1px solid #dce5e3;padding:7px;text-align:center;font-size:11px}.matrix th{background:#f0f6f5}.matrix input{width:62px;height:32px;border:1px solid #cbd9d6;border-radius:6px;text-align:center}.score{font-weight:900;color:#08746f}.radio{display:flex;flex-direction:column;gap:7px}.radio label{font-size:12px;font-weight:600}.btn{height:40px;border:0;border-radius:8px;background:#08746f;color:#fff;padding:0 16px;font-weight:800;cursor:pointer}.btn.alt{background:#173f63}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.status{margin-top:10px;padding:9px 11px;border-radius:8px;background:#eef6f5;font-size:12px}.hide{display:none!important}.recent{width:100%;border-collapse:collapse;font-size:11px}.recent th,.recent td{padding:7px;border-bottom:1px solid #edf2f0;text-align:left}.recent th{background:#f8fbfa}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.aspek-grid{grid-template-columns:1fr 1fr 90px}.wrap{padding:10px}}
+</style></head><body><div class="top"><h1>Penilaian UKJ Qur'an</h1></div><div class="wrap">
+<div class="panel"><div class="tabs"><button class="tab on" data-mode="ukj">UKJ</button><button class="tab" data-mode="komprehensif">Ujian Komprehensif</button></div>
+<div class="grid"><div class="field"><label>Kelas</label><select id="kelas"></select></div><div class="field"><label>Nama Santri</label><select id="siswa"></select></div><div class="field"><label>Tanggal</label><input id="tanggal" type="date"></div><div class="field ukjOnly"><label>Juz yang Diujikan</label><input id="juz"></div><div class="field ukjOnly"><label>Surat yang Diujikan</label><input id="surat"></div></div>
+<div id="ukjForm">
+<div class="aspek" data-aspek="kelancaran" data-poin="40"><div class="aspek-head"><b>Kelancaran</b><span class="poin">Poin awal 40</span></div><div class="aspek-grid"><div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div><div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div><div class="field"><label>Nilai Akhir</label><div class="akhir">40</div></div></div></div><div class="aspek" data-aspek="gunnah" data-poin="20"><div class="aspek-head"><b>Gunnah</b><span class="poin">Poin awal 20</span></div><div class="aspek-grid"><div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div><div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div><div class="field"><label>Nilai Akhir</label><div class="akhir">20</div></div></div></div><div class="aspek" data-aspek="mad" data-poin="20"><div class="aspek-head"><b>Mad</b><span class="poin">Poin awal 20</span></div><div class="aspek-grid"><div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div><div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div><div class="field"><label>Nilai Akhir</label><div class="akhir">20</div></div></div></div><div class="aspek" data-aspek="makhroj" data-poin="20"><div class="aspek-head"><b>Makhroj</b><span class="poin">Poin awal 20</span></div><div class="aspek-grid"><div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div><div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div><div class="field"><label>Nilai Akhir</label><div class="akhir">20</div></div></div></div>
 </div>
-<div class="wrap">
-  <div class="panel">
-    <div class="grid">
-      <div class="field"><label>Kelas</label><select id="kelas"><option value="">Memuat kelas...</option></select></div>
-      <div class="field"><label>Nama Santri</label><select id="siswa"><option value="">— Pilih kelas dulu —</option></select></div>
-      <div class="field"><label>Juz yang Diujikan</label><input id="juz" placeholder="mis. 25"></div>
-      <div class="field"><label>Surat yang Diujikan</label><input id="surat" placeholder="mis. Asy-Syura' - Al Jatsiyah"></div>
-    </div>
-
-    <div class="aspek" data-aspek="kelancaran" data-poin="40">
-      <div class="aspek-head"><b>Kelancaran</b><span class="poin">Poin awal 40</span></div>
-      <div class="aspek-grid">
-        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div>
-        <div class="field"><label>Nilai</label><input type="number" min="0" max="40" class="nilai-diketik" value="40"></div>
-        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
-        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">40</div></div>
-      </div>
-    </div>
-    <div class="aspek" data-aspek="gunnah" data-poin="20">
-      <div class="aspek-head"><b>Gunnah</b><span class="poin">Poin awal 20</span></div>
-      <div class="aspek-grid">
-        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div>
-        <div class="field"><label>Nilai</label><input type="number" min="0" max="20" class="nilai-diketik" value="20"></div>
-        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
-        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">20</div></div>
-      </div>
-    </div>
-    <div class="aspek" data-aspek="mad" data-poin="20">
-      <div class="aspek-head"><b>Mad</b><span class="poin">Poin awal 20</span></div>
-      <div class="aspek-grid">
-        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div>
-        <div class="field"><label>Nilai</label><input type="number" min="0" max="20" class="nilai-diketik" value="20"></div>
-        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
-        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">20</div></div>
-      </div>
-    </div>
-    <div class="aspek" data-aspek="makhroj" data-poin="20">
-      <div class="aspek-head"><b>Makhroj</b><span class="poin">Poin awal 20</span></div>
-      <div class="aspek-grid">
-        <div class="field"><label>Tanbih</label><input type="number" min="0" class="tanbih" value="0"><div class="hint">catatan, tidak mengurangi</div></div>
-        <div class="field"><label>Nilai</label><input type="number" min="0" max="20" class="nilai-diketik" value="20"></div>
-        <div class="field"><label>Bantuan</label><input type="number" min="0" class="bantuan" value="0"></div>
-        <div class="field"><label>Nilai Akhir</label><div class="aspek-nilai">20</div></div>
-      </div>
-    </div>
-
-    <div class="total-bar"><span>TOTAL NILAI</span><b id="totalNilai">100</b></div>
-
-    <div class="grid" style="margin-top:14px">
-      <div class="field"><label>Predikat</label><select id="predikat">
-        <option value="ممتاز">ممتاز (Mumtaz)</option>
-        <option value="جيّد جدّا">جيّد جدّا (Jayyid Jiddan)</option>
-        <option value="جيّد">جيّد (Jayyid)</option>
-        <option value="أحسن">أحسن (Ahsan)</option>
-        <option value="مقبول">مقبول (Maqbul)</option>
-        <option value="راسب">راسب (Rasib)</option>
-      </select></div>
-      <div class="field"><label>Tanggal</label><input type="date" id="tanggal"></div>
-    </div>
-
-    <div class="field" style="margin-top:12px">
-      <label>Keputusan Penguji</label>
-      <div class="radio-group">
-        <label><input type="radio" name="keputusan" value="lulus_lanjut" checked> Lulus, lanjut juz / surat berikutnya</label>
-        <label><input type="radio" name="keputusan" value="mengulang"> Mengulang pada surat: <input type="text" id="mengulangSurat" placeholder="nama surat"></label>
-        <label><input type="radio" name="keputusan" value="tidak_lulus"> Tidak lulus / ujian ulang</label>
-      </div>
-    </div>
-    <div class="field" style="margin-top:12px"><label>Catatan Penguji</label><textarea id="catatan" placeholder="mis. Barakallahu fiikum..."></textarea></div>
-
-    <button class="btn" id="save">Simpan Nilai UKJ</button>
-    <div id="meta" class="status">Memeriksa sesi CQlass...</div>
-  </div>
-  <div class="panel">
-    <div style="font-weight:800;margin-bottom:8px">Riwayat Nilai UKJ Terbaru</div>
-    <div style="overflow:auto"><table id="recentTable"><thead><tr><th>Tanggal</th><th>Siswa</th><th>Juz</th><th>Total</th><th>Predikat</th><th>Keputusan</th></tr></thead><tbody id="recentBody"><tr><td colspan="6">Memuat...</td></tr></tbody></table></div>
-  </div>
-</div>
-</div>
-<script>
-const API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/tahfizh-ukj-score',
-      KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93',
-      TOKEN=localStorage.getItem('cqlass_session_token')||'';
-const KEPUTUSAN_LABEL={lulus_lanjut:'Lulus lanjut',mengulang:'Mengulang',tidak_lulus:'Tidak lulus'};
-let boot=null;
-const el=id=>document.getElementById(id);
-const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-async function api(body){
-  if(!TOKEN)throw Error('Sesi CQlass tidak ditemukan. Silakan login dari halaman utama.');
-  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(body)});
-  const j=await r.json().catch(()=>({}));
-  if(r.status===401)throw Error('Sesi login berakhir. Silakan login ulang di CQlass.');
-  if(r.status===403)throw Error('Akun ini tidak memiliki akses ke Nilai UKJ.');
-  if(!r.ok||j.success===false)throw Error(j.error||'Gagal memproses data');
-  return j;
-}
-function setStatus(t,e=false){el('meta').textContent=t;el('meta').className='status'+(e?' err':'')}
-function recalc(){
-  let total=0;
-  document.querySelectorAll('#cqUkjRoot .aspek').forEach(box=>{
-    const poin=Number(box.dataset.poin);
-    const nilai=Math.max(0,Math.min(poin,Number(box.querySelector('.nilai-diketik').value)||0));
-    const bantuan=Math.max(0,Number(box.querySelector('.bantuan').value)||0);
-    const akhir=Math.max(0,Math.min(poin,nilai-bantuan));
-    box.querySelector('.aspek-nilai').textContent=akhir;
-    total+=akhir;
-  });
-  el('totalNilai').textContent=Math.round(total*100)/100;
-}
-document.querySelectorAll('#cqUkjRoot .nilai-diketik,#cqUkjRoot .bantuan').forEach(inp=>inp.addEventListener('input',recalc));
-document.querySelectorAll('#cqUkjRoot input[name="keputusan"]').forEach(r=>r.addEventListener('change',()=>{
-  el('mengulangSurat').disabled=document.querySelector('#cqUkjRoot input[name="keputusan"]:checked').value!=='mengulang';
-}));
-el('mengulangSurat').disabled=true;
-async function loadStudents(){
-  const cid=el('kelas').value;
-  if(!cid){el('siswa').innerHTML='<option value="">— Pilih kelas dulu —</option>';return}
-  try{
-    const j=await api({action:'roster',class_id:cid});
-    el('siswa').innerHTML='<option value="">— Pilih siswa —</option>'+(j.students||[]).map(s=>`<option value="${s.student_id}">${esc(s.name)}</option>`).join('');
-  }catch(e){setStatus(e.message,true)}
-}
-function fmtNum(v){return v===null||v===undefined?'—':v}
-async function loadRecent(){
-  try{
-    const j=await api({action:'recent',class_id:el('kelas').value||''});
-    const rows=j.rows||[];
-    el('recentBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.tanggal)}</td><td>${esc(r.student_name)}</td><td>${esc(r.juz)}</td><td>${fmtNum(r.total_nilai)}</td><td>${esc(r.predikat||'—')}</td><td>${esc(KEPUTUSAN_LABEL[r.keputusan_penguji]||'—')}</td></tr>`).join(''):'<tr><td colspan="6">Belum ada nilai UKJ tercatat.</td></tr>';
-  }catch(e){el('recentBody').innerHTML=`<tr><td colspan="6">${esc(e.message)}</td></tr>`}
-}
-async function init(){
-  try{
-    boot=await api({action:'bootstrap'});
-    el('kelas').innerHTML='<option value="">— Pilih kelas —</option>'+boot.classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
-    el('tanggal').value=new Date().toISOString().slice(0,10);
-    setStatus(`Tahun Ajaran ${boot.academic_year} · Semester ${boot.semester_no}`);
-    loadRecent();recalc();
-  }catch(e){setStatus(e.message,true);el('kelas').innerHTML='<option value="">Tidak dapat memuat kelas</option>'}
-}
-async function save(){
-  const keputusan=document.querySelector('#cqUkjRoot input[name="keputusan"]:checked').value;
-  const body={action:'save',class_id:el('kelas').value,student_id:el('siswa').value,juz:el('juz').value.trim(),
-    surat_diujikan:el('surat').value.trim(),tanggal:el('tanggal').value,catatan:el('catatan').value.trim(),
-    predikat:el('predikat').value,keputusan_penguji:keputusan,keputusan_detail:keputusan==='mengulang'?el('mengulangSurat').value.trim():''};
-  document.querySelectorAll('#cqUkjRoot .aspek').forEach(box=>{
-    const aspek=box.dataset.aspek;
-    body[aspek+'_tanbih']=box.querySelector('.tanbih').value||0;
-    body[aspek+'_nilai']=box.querySelector('.nilai-diketik').value||0;
-    body[aspek+'_bantuan']=box.querySelector('.bantuan').value||0;
-  });
-  if(!body.class_id||!body.student_id)return setStatus('Pilih kelas dan siswa terlebih dahulu.',true);
-  if(!body.juz)return setStatus('Isi Juz yang diujikan.',true);
-  if(keputusan==='mengulang'&&!body.keputusan_detail)return setStatus('Isi nama surat yang harus diulang.',true);
-  const b=el('save');
-  try{
-    b.disabled=true;b.textContent='Menyimpan...';
-    const j=await api(body);
-    setStatus(j.message);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Nilai UKJ',1600);
-    el('juz').value='';el('surat').value='';el('catatan').value='';el('mengulangSurat').value='';
-    document.querySelectorAll('#cqUkjRoot .aspek').forEach(box=>{
-      const poin=box.dataset.poin;
-      box.querySelector('.tanbih').value=0;
-      box.querySelector('.nilai-diketik').value=poin;
-      box.querySelector('.bantuan').value=0;
-    });
-    recalc();
-    loadRecent();
-  }catch(e){setStatus(e.message,true);b.textContent='Simpan Nilai UKJ'}finally{b.disabled=false}
-}
-el('kelas').onchange=()=>{loadStudents();loadRecent()};
-el('save').onclick=save;
-init();
-</script>
-</body>
-</html>
+<div id="kompForm" class="hide"><div class="matrix"><table><thead><tr><th>Aspek / Juz</th><th>30</th><th>29</th><th>28</th><th>27</th><th>26</th><th>25</th></tr></thead><tbody>
+<tr><th>Kelancaran<br><small>Bantuan</small></th><td><input type="number" min="0" value="0" data-juz="30" data-aspek="kelancaran"></td><td><input type="number" min="0" value="0" data-juz="29" data-aspek="kelancaran"></td><td><input type="number" min="0" value="0" data-juz="28" data-aspek="kelancaran"></td><td><input type="number" min="0" value="0" data-juz="27" data-aspek="kelancaran"></td><td><input type="number" min="0" value="0" data-juz="26" data-aspek="kelancaran"></td><td><input type="number" min="0" value="0" data-juz="25" data-aspek="kelancaran"></td></tr><tr><th>Gunnah<br><small>Bantuan</small></th><td><input type="number" min="0" value="0" data-juz="30" data-aspek="gunnah"></td><td><input type="number" min="0" value="0" data-juz="29" data-aspek="gunnah"></td><td><input type="number" min="0" value="0" data-juz="28" data-aspek="gunnah"></td><td><input type="number" min="0" value="0" data-juz="27" data-aspek="gunnah"></td><td><input type="number" min="0" value="0" data-juz="26" data-aspek="gunnah"></td><td><input type="number" min="0" value="0" data-juz="25" data-aspek="gunnah"></td></tr><tr><th>Mad<br><small>Bantuan</small></th><td><input type="number" min="0" value="0" data-juz="30" data-aspek="mad"></td><td><input type="number" min="0" value="0" data-juz="29" data-aspek="mad"></td><td><input type="number" min="0" value="0" data-juz="28" data-aspek="mad"></td><td><input type="number" min="0" value="0" data-juz="27" data-aspek="mad"></td><td><input type="number" min="0" value="0" data-juz="26" data-aspek="mad"></td><td><input type="number" min="0" value="0" data-juz="25" data-aspek="mad"></td></tr><tr><th>Makhroj<br><small>Bantuan</small></th><td><input type="number" min="0" value="0" data-juz="30" data-aspek="makhroj"></td><td><input type="number" min="0" value="0" data-juz="29" data-aspek="makhroj"></td><td><input type="number" min="0" value="0" data-juz="28" data-aspek="makhroj"></td><td><input type="number" min="0" value="0" data-juz="27" data-aspek="makhroj"></td><td><input type="number" min="0" value="0" data-juz="26" data-aspek="makhroj"></td><td><input type="number" min="0" value="0" data-juz="25" data-aspek="makhroj"></td></tr>
+<tr><th>Nilai Perjuz</th><td class="score" id="score30">100</td><td class="score" id="score29">100</td><td class="score" id="score28">100</td><td class="score" id="score27">100</td><td class="score" id="score26">100</td><td class="score" id="score25">100</td></tr></tbody></table></div>
+<div style="margin-top:10px;font-size:11px;line-height:1.7"><b>Surat yang diujikan:</b> 30 An Naba - An Naas · 29 Al Mulk - Al Mursalat · 28 Al Mujadalah - At Tahrim · 27 Az Zariyat - Al Hadid · 26 Al Ahqaf - Qaf · 25 Asy Syura' - Al Jatsiyah</div></div>
+<div class="total"><span>TOTAL NILAI</span><b id="totalNilai">100</b></div>
+<div class="grid" style="margin-top:12px"><div class="field"><label>Predikat</label><select id="predikat"><option>ممتاز</option><option>جيّد جدّا</option><option>جيّد</option><option>أحسن</option><option>مقبول</option><option>راسب</option></select></div><div class="field"><label>Catatan Penguji</label><textarea id="catatan"></textarea></div></div>
+<div class="field" style="margin-top:10px"><label>Keputusan Penguji</label><div class="radio"><label><input type="radio" name="keputusan" value="lulus_lanjut" checked> Lulus lanjut juz / surat berikutnya</label><label><input type="radio" name="keputusan" value="mengulang"> Mengulang pada surat <input id="mengulang" style="width:220px;height:30px"></label><label><input type="radio" name="keputusan" value="tidak_lulus"> Tidak lulus / ujian ulang</label></div></div>
+<div class="actions"><button class="btn" id="save">Simpan</button><button class="btn alt" id="print">Cetak / Simpan PDF</button></div><div id="meta" class="status">Memuat...</div></div>
+<div class="panel"><b>Riwayat Penilaian Terbaru</b><div style="overflow:auto;margin-top:8px"><table class="recent"><thead><tr><th>Tanggal</th><th>Siswa</th><th>Jenis</th><th>Juz</th><th>Total</th><th>Predikat</th></tr></thead><tbody id="recent"></tbody></table></div></div>
+</div><script>
+const API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/tahfizh-ukj-score',KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93',TOKEN=localStorage.getItem('cqlass_session_token')||'',E=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));let mode='ukj',boot=null,lastSaved=null;
+async function api(b){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':TOKEN},body:JSON.stringify(b)}),j=await r.json();if(!r.ok||j.success===false)throw Error(j.error||'Gagal');return j}
+function recalc(){if(mode==='ukj'){let t=0;document.querySelectorAll('.aspek').forEach(b=>{const p=+b.dataset.poin,v=Math.max(0,p-(+b.querySelector('.bantuan').value||0));b.querySelector('.akhir').textContent=v;t+=v});E('totalNilai').textContent=t}else{let sum=0;[30,29,28,27,26,25].forEach(j=>{let d=0;document.querySelectorAll('[data-juz="'+j+'"]').forEach(x=>d+=+x.value||0);const s=Math.max(0,100-d);E('score'+j).textContent=s;sum+=s});E('totalNilai').textContent=Math.round(sum/6*100)/100}}
+document.addEventListener('input',e=>{if(e.target.matches('.bantuan,[data-juz]'))recalc()});
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));E('ukjForm').classList.toggle('hide',mode!=='ukj');E('kompForm').classList.toggle('hide',mode!=='komprehensif');document.querySelectorAll('.ukjOnly').forEach(x=>x.classList.toggle('hide',mode!=='ukj'));recalc()});
+async function roster(){if(!E('kelas').value)return;const j=await api({action:'roster',class_id:E('kelas').value});E('siswa').innerHTML='<option value="">— Pilih siswa —</option>'+j.students.map(s=>'<option value="'+s.student_id+'">'+esc(s.name)+'</option>').join('')}
+async function recent(){const j=await api({action:'recent',class_id:E('kelas').value||''});E('recent').innerHTML=(j.rows||[]).map(r=>'<tr><td>'+esc(r.tanggal)+'</td><td>'+esc(r.student_name)+'</td><td>'+esc(r.exam_type==='komprehensif'?'Komprehensif':'UKJ')+'</td><td>'+esc(r.juz)+'</td><td>'+esc(r.total_nilai)+'</td><td>'+esc(r.predikat||'—')+'</td></tr>').join('')}
+async function init(){try{boot=await api({action:'bootstrap'});E('kelas').innerHTML='<option value="">— Pilih kelas —</option>'+boot.classes.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');E('siswa').innerHTML='<option value="">— Pilih kelas dulu —</option>';E('tanggal').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta'}).format(new Date());E('meta').textContent='Tahun Ajaran '+boot.academic_year+' · Semester '+boot.semester_no;recent();recalc()}catch(e){E('meta').textContent=e.message}}
+function compData(){return{juz:[30,29,28,27,26,25].map(j=>{const o={juz:j};['kelancaran','gunnah','mad','makhroj'].forEach(a=>o[a]={bantuan:+document.querySelector('[data-juz="'+j+'"][data-aspek="'+a+'"]').value||0});return o})}}
+async function save(){const k=document.querySelector('input[name="keputusan"]:checked').value,b={action:'save',exam_type:mode,class_id:E('kelas').value,student_id:E('siswa').value,tanggal:E('tanggal').value,predikat:E('predikat').value,catatan:E('catatan').value.trim(),keputusan_penguji:k,keputusan_detail:k==='mengulang'?E('mengulang').value.trim():''};if(!b.class_id||!b.student_id)return alert('Pilih kelas dan siswa');if(mode==='ukj'){b.juz=E('juz').value.trim();b.surat_diujikan=E('surat').value.trim();document.querySelectorAll('.aspek').forEach(x=>{const a=x.dataset.aspek;b[a+'_tanbih']=x.querySelector('.tanbih').value||0;b[a+'_bantuan']=x.querySelector('.bantuan').value||0})}else b.comprehensive_data=compData();try{E('save').disabled=true;const j=await api(b);lastSaved=j.data;E('meta').textContent=j.message;recent()}catch(e){alert(e.message)}finally{E('save').disabled=false}}
+function printDoc(){const name=E('siswa').selectedOptions[0]?.text||'',kelas=E('kelas').selectedOptions[0]?.text||'',tanggal=E('tanggal').value,cat=esc(E('catatan').value),pred=esc(E('predikat').value),total=E('totalNilai').textContent;let body='';if(mode==='ukj'){body='<table><tr><th>NILAI AWAL</th><th colspan="2">PENGURANGAN POIN</th><th>NILAI AKHIR</th><th>TOTAL NILAI</th></tr>'+[...document.querySelectorAll('.aspek')].map(x=>'<tr><td><b>'+x.dataset.aspek.toUpperCase()+'</b><br>Poin awal '+x.dataset.poin+'</td><td>Tanbih<br><b>'+x.querySelector('.tanbih').value+'</b></td><td>Bantuan<br><b>'+x.querySelector('.bantuan').value+'</b></td><td><b>'+x.querySelector('.akhir').textContent+'</b></td><td></td></tr>').join('')+'</table><h3>UJIAN JUZ &nbsp; '+esc(E('juz').value)+' &nbsp; SURAT YANG DIUJIKAN</h3><div class="box">'+esc(E('surat').value)+'</div>'}else{body='<table><tr><th>Urutan Juz</th>'+[30,29,28,27,26,25].map(j=>'<th>'+j+'</th>').join('')+'<th rowspan="6">TOTAL NILAI<br><b class="big">'+total+'</b><br>PREDIKAT<br>'+pred+'</th></tr>'+['Kelancaran','Gunnah','Mad','Makhroj'].map(a=>'<tr><th>'+a+'<br><small>Bantuan</small></th>'+[30,29,28,27,26,25].map(j=>'<td>'+document.querySelector('[data-juz="'+j+'"][data-aspek="'+a.toLowerCase()+'"]').value+'</td>').join('')+'</tr>').join('')+'<tr><th>Nilai Perjuz</th>'+[30,29,28,27,26,25].map(j=>'<td><b>'+E('score'+j).textContent+'</b></td>').join('')+'</tr></table><h3>UJIAN KOMPREHENSIF &nbsp; SURAT YANG DIUJIKAN</h3><table>'+[[30,'An Naba - An Naas'],[29,'Al Mulk - Al Mursalat'],[28,'Al Mujadalah - At Tahrim'],[27,'Az Zariyat - Al Hadid'],[26,'Al Ahqaf - Qaf'],[25,"Asy Syura' - Al Jatsiyah"]].map(x=>'<tr><th>'+x[0]+'</th><td>'+x[1]+'</td></tr>').join('')+'</table>'}const w=open('','_blank');w.document.write('<!doctype html><title>Form Ujian</title><style>@page{size:A4;margin:9mm}body{font:10px Arial;color:#111}header{display:flex;justify-content:space-between;margin-bottom:22px}.brand{font-weight:bold;font-size:12px}.meta{border-collapse:collapse;width:48%;margin-bottom:14px}.meta td{border:1px solid #111;padding:5px}table{border-collapse:collapse;width:100%;margin:10px 0}th,td{border:1px solid #111;padding:6px;text-align:center}h2,h3{text-align:center;font-size:11px}.box{border:1px solid #111;min-height:80px;padding:8px}.decision{display:grid;grid-template-columns:1fr 1.7fr;border:1px solid #111;margin-top:16px}.decision>div{padding:8px;min-height:100px}.decision>div+div{border-left:1px solid #111}.sign{display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;margin-top:24px}.big{font-size:20px}</style><header><div><div class="brand">SD ISLAM TAHFIZH CAHAYA QUR\'AN</div><div>Mendidik dengan al-qur\'an lebih dini</div></div><div>F CQ 00/UKJ/00/00/2026</div></header><table class="meta"><tr><td>Nama Santri</td><td>'+esc(name)+'</td></tr><tr><td>Kelas/Rombel</td><td>'+esc(kelas)+'</td></tr></table><h2>LEMBAR UJIAN KENAIKAN JUZ</h2>'+body+'<div class="decision"><div><b>Keputusan penguji</b><br><br>Berdasarkan hasil ujian dan nilai akhir keseluruhan surat yang diuji maka dinyatakan:<br>1. Lulus lanjut juz / surat berikutnya<br>2. Mengulang pada surat '+esc(E('mengulang').value)+'<br>3. Tidak lulus / ujian ulang</div><div><b>Catatan penguji</b><br><br>'+cat+'</div></div><div style="text-align:center;margin-top:18px">Depok, '+esc(tanggal)+'</div><div class="sign"><div>Musyrif/ah halaqoh<br><br><br>_____________________</div><div>Penguji<br><br><br>Muchlissina Lahudin S.Pd</div><div>Kabid Qur\'an<br><br><br>Muchlissina Lahudin S.Pd</div></div><script>print()<\/script>');w.document.close()}
+E('kelas').onchange=()=>{roster();recent()};E('save').onclick=save;E('print').onclick=printDoc;init();
+</script></body></html>
