@@ -5,7 +5,7 @@ if(window.__cqHrdWorkspaceLoaded)return;
 window.__cqHrdWorkspaceLoaded=true;
 
 const jktDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false};
+const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false,grades:null,gradeSemester:1,gradeType:'STS',gradeClass:'all'};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const low=v=>String(v??'').trim().toLowerCase();
 const content=()=>document.getElementById('content');
@@ -72,7 +72,7 @@ function drawSidebar(active){
     <div class="cq-hrd-sub" ${state.reportOpen?'':'hidden'}>
       ${navButton('live','Aktivitas Harian 07.00–16.00','openHrdCleanLive()')}
       ${navButton('monthly','Laporan Bulanan','openHrdCleanMonthly()')}
-      ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}
+      ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}\n      ${navButton('report-grades','Laporan Nilai Rapor','openHrdReportGrades()')}
     </div>
     <button class="cq-hrd-group-label ${state.manageOpen?'open':''}" onclick="hrdToggleGroup('manage')">Pengelolaan</button>
     <div class="cq-hrd-sub" ${state.manageOpen?'':'hidden'}>
@@ -237,6 +237,33 @@ async function renderSaturdayManage(){
   setActive('saturday-manage');loading('Jadwal Kegiatan Sabtu');
   try{const d=await saturdayData(),c=content(),master=d.master||[];if(!c)return;c.innerHTML=`<div class="cq-hrd-clean">${head('Jadwal Kegiatan Sabtu','HRD menentukan kegiatan Sabtu. Jadwal yang disimpan otomatis terbaca di Timesheet guru.')}<div class="cq-hrd-panel"><h2>Atur Jadwal</h2><div class="cq-hrd-form"><div class="cq-hrd-field"><label>Tanggal Sabtu</label><input id="hrd-sat-date" type="date"></div><div class="cq-hrd-field"><label>Kegiatan</label><select id="hrd-sat-master"><option value="">Pilih kegiatan</option>${master.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></div><div class="cq-hrd-field"><label>Mulai</label><input id="hrd-sat-start" type="time" value="08:00"></div><div class="cq-hrd-field"><label>Selesai</label><input id="hrd-sat-end" type="time" value="10:00"></div><div class="cq-hrd-field"><label>Catatan</label><input id="hrd-sat-note" placeholder="Opsional"></div><button class="cq-hrd-btn" onclick="hrdSaveSaturday()">Simpan</button></div></div><div class="cq-hrd-panel"><h2>Jadwal Bulan Ini</h2>${saturdayCards(d,true)}</div></div>`}catch(e){errorView('Jadwal Kegiatan Sabtu',e)}
 }
+
+function gradeStatusLabel(v){return v==='complete'?'Tuntas':v==='incomplete'?'Belum Lengkap':'Belum Tuntas'}
+function gradeStatusChip(v){return '<span class="cq-hrd-chip '+(v==='complete'?'ok':v==='incomplete'?'warn':'bad')+'">'+gradeStatusLabel(v)+'</span>'}
+function gradeTypes(semester){return Number(semester)===1?['STS','SAS']:['STS','SAT']}
+function gradeRows(){const d=state.grades||{},cls=state.gradeClass;return (d.rows||[]).filter(x=>cls==='all'||String(x.class_id)===String(cls))}
+function drawGradeStudent(studentId){
+ const r=(state.grades?.rows||[]).find(x=>String(x.student_id)===String(studentId));if(!r)return;const c=content();if(!c)return;
+ const sub=(r.subjects||[]).map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.subject_name)+'</b></td><td>'+esc((x.teachers||[]).join(', ')||'—')+'</td><td><b>'+(x.score===null?'—':esc(x.score))+'</b></td><td>'+gradeStatusChip(x.score===null?'incomplete':Number(x.score)>=80?'complete':'not_complete')+'</td></tr>').join('');
+ c.innerHTML='<div class="cq-hrd-clean">'+head('Detail Nilai Siswa',r.student_name+' • '+r.class_name)+'<div class="cq-hrd-panel"><button class="cq-hrd-btn alt" onclick="drawHrdReportGrades()">← Kembali</button><div style="margin-top:15px"><h2 style="margin:0 0 5px">'+esc(r.student_name)+'</h2><span class="cq-hrd-chip">Ranking Kelas #'+esc(r.class_rank)+'</span> <span class="cq-hrd-chip">Rata-rata '+esc(r.average??'—')+'</span> '+gradeStatusChip(r.status)+'</div></div><div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Mapel</th><th>Guru Pengampu</th><th>Nilai</th><th>Status ≥80</th></tr></thead><tbody>'+sub+'</tbody></table></div></div></div>';
+}
+function drawHrdReportGrades(){
+ const d=state.grades,c=content();if(!c||!d)return;const classes=d.classes||[],rows=gradeRows(),tot=rows.length,complete=rows.filter(x=>x.status==='complete').length,notComplete=rows.filter(x=>x.status==='not_complete').length,incomplete=rows.filter(x=>x.status==='incomplete').length;
+ const opts=classes.map(x=>'<option value="'+esc(x.class_id)+'" '+(state.gradeClass===x.class_id?'selected':'')+'>'+esc(x.class_name)+'</option>').join('');
+ const classTable=classes.filter(x=>state.gradeClass==='all'||state.gradeClass===x.class_id).map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.class_name)+'</b></td><td>'+esc((x.teachers||[]).join(', ')||'—')+'</td><td>'+x.students+'</td><td>'+x.complete+'</td><td>'+x.not_complete+'</td><td>'+x.incomplete+'</td><td><b>'+x.percent+'%</b></td><td>'+gradeStatusChip(x.status)+'</td></tr>').join('');
+ const students=rows.slice().sort((a,b)=>a.class_name.localeCompare(b.class_name,'id')||a.class_rank-b.class_rank).map(r=>'<tr><td>'+esc(r.class_rank)+'</td><td>'+esc(r.class_name)+'</td><td><button style="border:0;background:none;padding:0;color:#0a6e6e;font:inherit;font-weight:850;cursor:pointer;text-align:left" onclick="openHrdGradeStudent(\''+esc(r.student_id)+'\')">'+esc(r.student_name)+'</button></td><td><b>'+esc(r.average??'—')+'</b></td><td>'+r.below_count+'</td><td>'+r.missing_count+'</td><td>'+gradeStatusChip(r.status)+'</td></tr>').join('');
+ c.innerHTML='<div class="cq-hrd-clean">'+head('Laporan Nilai Rapor','Monitoring ketuntasan nilai akademik. Tuntas jika seluruh mapel bernilai minimal 80.')+'<div class="cq-hrd-panel"><div class="cq-hrd-tools"><select onchange="hrdGradeSemester(this.value)"><option value="1" '+(state.gradeSemester===1?'selected':'')+'>Semester 1</option><option value="2" '+(state.gradeSemester===2?'selected':'')+'>Semester 2</option></select><select onchange="hrdGradeType(this.value)">'+gradeTypes(state.gradeSemester).map(x=>'<option '+(state.gradeType===x?'selected':'')+'>'+x+'</option>').join('')+'</select><select onchange="hrdGradeClass(this.value)"><option value="all">Semua Kelas</option>'+opts+'</select><button class="cq-hrd-btn alt" onclick="openHrdReportGrades(true)">Muat Ulang</button></div></div><div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Siswa Terpantau</span><b>'+tot+'</b></div><div class="cq-hrd-kpi"><span>Tuntas</span><b>'+complete+'</b><small>semua mapel ≥80</small></div><div class="cq-hrd-kpi"><span>Belum Tuntas</span><b>'+notComplete+'</b><small>ada nilai &lt;80</small></div><div class="cq-hrd-kpi"><span>Belum Lengkap</span><b>'+incomplete+'</b><small>ada mapel tanpa nilai</small></div></div><div class="cq-hrd-panel"><h2>Ringkasan per Kelas</h2><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Kelas</th><th>Guru Pengampu</th><th>Siswa</th><th>Tuntas</th><th>&lt;80</th><th>Belum Lengkap</th><th>% Tuntas</th><th>Status</th></tr></thead><tbody>'+classTable+'</tbody></table></div></div><div class="cq-hrd-panel"><h2>Ranking & Detail Siswa</h2><p style="margin:-5px 0 12px;color:#718582;font-size:10px">Klik nama siswa untuk melihat seluruh mapel, guru pengampu, nilai, dan status.</p><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>Rank</th><th>Kelas</th><th>Nama Siswa</th><th>Rata-rata</th><th>Mapel &lt;80</th><th>Nilai Kosong</th><th>Status</th></tr></thead><tbody>'+students+'</tbody></table></div></div></div>';
+}
+async function renderReportGrades(force=false){
+ setActive('report-grades');state.reportOpen=true;drawSidebar('report-grades');loading('Laporan Nilai Rapor');
+ try{if(force||!state.grades)state.grades=await api('hrd-live-report',{action:'report_grades',semester_no:state.gradeSemester,report_type:state.gradeType});drawHrdReportGrades()}catch(e){errorView('Laporan Nilai Rapor',e)}
+}
+window.drawHrdReportGrades=drawHrdReportGrades;
+window.openHrdGradeStudent=drawGradeStudent;
+window.hrdGradeSemester=v=>{state.gradeSemester=Number(v);state.gradeType=gradeTypes(state.gradeSemester)[0];state.gradeClass='all';state.grades=null;renderReportGrades(true)};
+window.hrdGradeType=v=>{state.gradeType=String(v);state.grades=null;renderReportGrades(true)};
+window.hrdGradeClass=v=>{state.gradeClass=String(v);drawHrdReportGrades()};
+window.openHrdReportGrades=(force=false)=>{state.reportOpen=true;renderReportGrades(force)};
 
 window.hrdCleanLiveQuery=v=>{state.liveQuery=v;drawLive()};
 window.hrdCleanLiveSort=v=>{state.liveSort=v;drawLive()};
