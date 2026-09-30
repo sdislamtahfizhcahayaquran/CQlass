@@ -208,7 +208,7 @@
     if(['akademik','pimpinan','admin'].includes(r)){
       add('./academic-teacher-report.js?v=20260924-rolelazy1','__cqAcademicTeacherReportRoleLazy',false);
     }
-    if(['admin','akademik','kegiatan'].includes(r)){
+    if(['akademik','kegiatan'].includes(r)){
       add('./kabid-role-scope-fix.js?v=20260927-clean8','__cqKabidRoleScopeRoleLazy',false);
     }
 
