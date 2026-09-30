@@ -250,12 +250,17 @@ function drawGradeStudent(studentId){
 function gradeTeacherGroups(){
  const d=state.grades||{},groups=new Map();
  for(const cl of d.classes||[])for(const r of (d.rows||[]).filter(z=>String(z.class_id)===String(cl.class_id)))for(const sub of r.subjects||[])for(const teacher of sub.teachers||[]){
-  if(!groups.has(teacher))groups.set(teacher,{teacher,classes:new Map(),students:new Set(),filled:0,empty:0});
+  if(!groups.has(teacher))groups.set(teacher,{teacher,classes:new Map(),students:new Set(),pairs:new Map()});
   const g=groups.get(teacher);g.students.add(r.student_id);
   if(!g.classes.has(cl.class_id))g.classes.set(cl.class_id,{class_id:cl.class_id,class_name:cl.class_name,subjects:new Set()});
   g.classes.get(cl.class_id).subjects.add(sub.subject_name);
-  if(sub.score===null)g.empty++;else g.filled++;
+  const key=String(cl.class_id)+'|'+String(sub.subject_id||sub.subject_name),p=g.pairs.get(key)||{class_id:cl.class_id,class_name:cl.class_name,subject_id:sub.subject_id||'',subject_name:sub.subject_name,students:0,complete:0,not_complete:0,process:0,tp_total:Number(sub.tp_total||0),tp_filled:0};
+  p.students++;p.tp_total=Math.max(p.tp_total,Number(sub.tp_total||0));p.tp_filled=Math.max(p.tp_filled,Number(sub.tp_filled||0));
+  if(sub.score!==null){if(Number(sub.score)<80)p.not_complete++;else p.complete++}
+  const proc=(sub.tps||[]).filter(tp=>tp.counts_for_completeness&&tp.score===null).length;if(proc)p.process++;
+  g.pairs.set(key,p);
  }
+ for(const g of groups.values()){g.complete=0;g.not_complete=0;g.process=0;for(const p of g.pairs.values()){g.complete+=p.complete;g.not_complete+=p.not_complete;g.process+=p.process}}
  return [...groups.values()].sort((a,b)=>a.teacher.localeCompare(b.teacher,'id'));
 }
 function drawHrdReportGrades(){
@@ -265,24 +270,29 @@ function drawHrdReportGrades(){
  if(view==='pengampu'){
   title='Ringkasan berdasarkan Guru Pengampu';
   const groups=gradeTeacherGroups().filter(g=>state.gradeClass==='all'||g.classes.has(state.gradeClass));
-  const trs=groups.map((g,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(g.teacher)+'</b></td><td>'+g.classes.size+' kelas</td><td>'+g.students.size+' siswa</td><td>'+g.filled+'</td><td>'+g.empty+'</td><td><button class="cq-hrd-btn alt" onclick="openHrdGradeTeacher(\''+encodeURIComponent(g.teacher)+'\')">Lihat Detail</button></td></tr>').join('');
-  body='<div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Guru Pengampu</th><th>Kelas Diampu</th><th>Siswa Terpantau</th><th>Nilai Terisi</th><th>Belum Ada Nilai</th><th>Detail</th></tr></thead><tbody>'+trs+'</tbody></table></div>';
+  const trs=groups.map((g,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(g.teacher)+'</b></td><td>'+g.classes.size+' kelas</td><td>'+g.pairs.size+' mapel/kelas</td><td>'+g.students.size+' siswa</td><td>'+g.complete+'</td><td>'+g.not_complete+'</td><td>'+g.process+'</td><td><button class="cq-hrd-btn alt" onclick="openHrdGradeTeacher(\''+encodeURIComponent(g.teacher)+'\')">Lihat Detail</button></td></tr>').join('');
+  body='<div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Guru Pengampu</th><th>Kelas</th><th>Mapel/Kelas</th><th>Siswa Terpantau</th><th>Tuntas</th><th>Belum Tuntas</th><th>Proses Input</th><th>Detail</th></tr></thead><tbody>'+trs+'</tbody></table></div>';
  }else{
   title='Ringkasan berdasarkan Wali Kelas';
   const trs=classes.filter(x=>state.gradeClass==='all'||state.gradeClass===x.class_id).map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.class_name)+'</b></td><td>'+esc((x.homeroom_teachers||[]).join(', ')||'—')+'</td><td>'+x.students+'</td><td>'+x.complete+'</td><td>'+x.not_complete+'</td><td>'+x.incomplete+'</td><td><b>'+x.percent+'%</b></td><td>'+gradeStatusChip(x.status)+'</td><td><button class="cq-hrd-btn alt" onclick="openHrdGradeClass(\''+esc(x.class_id)+'\')">Lihat Detail</button></td></tr>').join('');
   body='<div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Kelas</th><th>Wali Kelas</th><th>Siswa</th><th>Tuntas</th><th>Belum Tuntas</th><th>Belum Lengkap</th><th>% Tuntas</th><th>Status</th><th>Detail</th></tr></thead><tbody>'+trs+'</tbody></table></div>';
  }
- c.innerHTML='<div class="cq-hrd-clean">'+head('Laporan Nilai Rapor','Ketuntasan dihitung per mapel dari rata-rata TP yang sudah terisi. Proses input ditampilkan terpisah dan tidak dianggap Belum Tuntas.')+'<div class="cq-hrd-panel"><div class="cq-hrd-tools"><select onchange="hrdGradeView(this.value)"><option value="walas" '+(view==='walas'?'selected':'')+'>Berdasarkan Wali Kelas</option><option value="pengampu" '+(view==='pengampu'?'selected':'')+'>Berdasarkan Guru Pengampu</option></select><select onchange="hrdGradeSemester(this.value)"><option value="1" '+(state.gradeSemester===1?'selected':'')+'>Semester 1</option><option value="2" '+(state.gradeSemester===2?'selected':'')+'>Semester 2</option></select><select onchange="hrdGradeType(this.value)">'+gradeTypes(state.gradeSemester).map(x=>'<option '+(state.gradeType===x?'selected':'')+'>'+x+'</option>').join('')+'</select><select onchange="hrdGradeClass(this.value)"><option value="all">Semua Kelas</option>'+opts+'</select><button class="cq-hrd-btn alt" onclick="openHrdReportGrades(true)">Muat Ulang</button></div></div><div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Siswa Terpantau</span><b>'+tot+'</b></div><div class="cq-hrd-kpi"><span>Tuntas</span><b>'+complete+'</b></div><div class="cq-hrd-kpi"><span>Belum Tuntas</span><b>'+notComplete+'</b></div><div class="cq-hrd-kpi"><span>Belum Lengkap</span><b>'+incomplete+'</b></div></div><div class="cq-hrd-panel"><h2>'+title+'</h2>'+body+'</div></div>';
+ c.innerHTML='<div class="cq-hrd-clean">'+head('Laporan Nilai Rapor','Ketuntasan dihitung per mapel dari rata-rata TP yang sudah terisi. Proses input ditampilkan terpisah dan tidak dianggap Belum Tuntas.')+'<div class="cq-hrd-panel"><div class="cq-hrd-tools"><select onchange="hrdGradeView(this.value)"><option value="walas" '+(view==='walas'?'selected':'')+'>Berdasarkan Wali Kelas</option><option value="pengampu" '+(view==='pengampu'?'selected':'')+'>Berdasarkan Guru Pengampu</option></select><select onchange="hrdGradeSemester(this.value)"><option value="1" '+(state.gradeSemester===1?'selected':'')+'>Semester 1</option><option value="2" '+(state.gradeSemester===2?'selected':'')+'>Semester 2</option></select><select onchange="hrdGradeType(this.value)">'+gradeTypes(state.gradeSemester).map(x=>'<option '+(state.gradeType===x?'selected':'')+'>'+x+'</option>').join('')+'</select><select onchange="hrdGradeClass(this.value)"><option value="all">Semua Kelas</option>'+opts+'</select><button class="cq-hrd-btn alt" onclick="openHrdReportGrades(true)">Muat Ulang</button></div></div><div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Siswa Terpantau</span><b>'+tot+'</b></div><div class="cq-hrd-kpi"><span>Tuntas</span><b>'+complete+'</b></div><div class="cq-hrd-kpi"><span>Belum Tuntas</span><b>'+notComplete+'</b></div><div class="cq-hrd-kpi"><span>Proses Input</span><b>'+incomplete+'</b></div></div><div class="cq-hrd-panel"><h2>'+title+'</h2>'+body+'</div></div>';
 }
-function drawHrdGradeTeacher(encodedTeacher,classId){
+function drawHrdGradeTeacher(encodedTeacher,classId,subjectKey){
  const teacher=decodeURIComponent(String(encodedTeacher||'')),d=state.grades,c=content();if(!c||!d)return;
  const group=gradeTeacherGroups().find(g=>g.teacher===teacher);if(!group)return;
- const cls=[...group.classes.values()].sort((a,b)=>a.class_name.localeCompare(b.class_name,'id'));
- const selected=String(classId||state.gradeTeacherClass||cls[0]?.class_id||'');state.gradeTeacherClass=selected;
- const options=cls.map(x=>'<option value="'+esc(x.class_id)+'" '+(String(x.class_id)===selected?'selected':'')+'>'+esc(x.class_name)+'</option>').join('');
- const rows=(d.rows||[]).filter(r=>String(r.class_id)===selected).map(r=>{const subjects=(r.subjects||[]).filter(s=>(s.teachers||[]).includes(teacher));if(!subjects.length)return null;const filled=subjects.filter(s=>s.score!==null),avg=filled.length?Math.round(filled.reduce((n,s)=>n+Number(s.score),0)/filled.length*100)/100:null,progress=subjects.map(s=>esc(s.subject_name)+' '+Number(s.tp_filled||0)+'/'+Number(s.tp_total||0)+' TP').join('<br>'),below=filled.filter(s=>Number(s.score)<80).length;return{r,avg,progress,below}}).filter(Boolean);
- const trs=rows.map((x,i)=>'<tr><td>'+(x.r.class_no||i+1)+'</td><td><b>'+esc(x.r.student_name)+'</b></td><td>'+x.progress+'</td><td><b>'+(x.avg===null?'—':esc(x.avg))+'</b></td><td>'+x.below+'</td><td><button class="cq-hrd-btn alt" onclick="openHrdGradeStudent(\''+esc(x.r.student_id)+'\')">Nilai</button></td></tr>').join('');
- c.innerHTML='<div class="cq-hrd-clean">'+head('Detail Guru Pengampu',teacher)+'<div class="cq-hrd-panel"><div class="cq-hrd-tools"><button class="cq-hrd-btn alt" onclick="drawHrdReportGrades()">← Kembali</button><select onchange="hrdGradeTeacherClass(\''+encodeURIComponent(teacher)+'\',this.value)">'+options+'</select></div></div><div class="cq-hrd-panel"><h2>'+esc((cls.find(x=>String(x.class_id)===selected)||{}).class_name||'Kelas')+'</h2><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Nama Siswa</th><th>Progres TP</th><th>Rata-rata Mapel Diampu</th><th>Nilai &lt;80</th><th>Detail</th></tr></thead><tbody>'+trs+'</tbody></table></div></div></div>';
+ const pairs=[...group.pairs.values()].filter(p=>state.gradeClass==='all'||String(p.class_id)===String(state.gradeClass)).sort((a,b)=>a.class_name.localeCompare(b.class_name,'id')||a.subject_name.localeCompare(b.subject_name,'id'));
+ const selectedClass=String(classId||''),selectedSubject=String(subjectKey||'');
+ if(selectedClass&&selectedSubject){
+  const base=(d.rows||[]).filter(r=>String(r.class_id)===selectedClass),rows=[];
+  for(const r of base)for(const s of (r.subjects||[]).filter(s=>(s.teachers||[]).includes(teacher)&&String(s.subject_id||s.subject_name)===selectedSubject)){const process=(s.tps||[]).filter(tp=>tp.counts_for_completeness&&tp.score===null).length;rows.push({r,s,process})}
+  const trs=rows.map((x,i)=>'<tr><td>'+(x.r.class_no||i+1)+'</td><td><b>'+esc(x.r.student_name)+'</b></td><td>'+Number(x.s.tp_filled||0)+'/'+Number(x.s.tp_total||0)+' TP</td><td><b>'+(x.s.score===null?'—':esc(x.s.score))+'</b></td><td>'+(x.s.score===null?(x.process?'Proses Input':'Belum Ada Nilai'):(Number(x.s.score)<80?'<b>Belum Tuntas</b>':'Tuntas'))+'</td><td>'+(x.process?x.process+' TP':'—')+'</td><td><button class="cq-hrd-btn alt" onclick="openHrdGradeStudent(\''+esc(x.r.student_id)+'\')">Nilai</button></td></tr>').join('');
+  const p=pairs.find(x=>String(x.class_id)===selectedClass&&String(x.subject_id||x.subject_name)===selectedSubject);
+  c.innerHTML='<div class="cq-hrd-clean">'+head('Detail Guru Pengampu',teacher)+'<div class="cq-hrd-panel"><button class="cq-hrd-btn alt" onclick="openHrdGradeTeacher(\''+encodeURIComponent(teacher)+'\')">← Kembali ke Kelas & Mapel</button></div><div class="cq-hrd-panel"><h2>'+esc((p?.class_name||''))+' · '+esc((p?.subject_name||''))+'</h2><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Nama Siswa</th><th>Progres TP</th><th>Rata-rata Mapel</th><th>Ketuntasan</th><th>Proses Input</th><th>Detail</th></tr></thead><tbody>'+trs+'</tbody></table></div></div></div>';return;
+ }
+ const trs=pairs.map((p,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(p.class_name)+'</b></td><td>'+esc(p.subject_name)+'</td><td>'+p.students+'</td><td>'+p.complete+'</td><td>'+p.not_complete+'</td><td>'+p.process+'</td><td><button class="cq-hrd-btn alt" onclick="hrdGradeTeacherSubject(\''+encodeURIComponent(teacher)+'\',\''+esc(p.class_id)+'\',\''+encodeURIComponent(String(p.subject_id||p.subject_name))+'\')">Lihat Siswa</button></td></tr>').join('');
+ c.innerHTML='<div class="cq-hrd-clean">'+head('Detail Guru Pengampu',teacher+' · '+group.classes.size+' kelas · '+group.pairs.size+' mapel/kelas')+'<div class="cq-hrd-panel"><button class="cq-hrd-btn alt" onclick="drawHrdReportGrades()">← Kembali</button></div><div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Kelas</th><th>Mapel</th><th>Siswa</th><th>Tuntas</th><th>Belum Tuntas</th><th>Proses Input</th><th>Aksi</th></tr></thead><tbody>'+trs+'</tbody></table></div></div></div>';
 }
 function drawHrdGradeClass(classId){
  const d=state.grades,c=content();if(!c||!d)return;const cls=(d.classes||[]).find(x=>String(x.class_id)===String(classId));if(!cls)return;
@@ -298,7 +308,7 @@ window.drawHrdReportGrades=drawHrdReportGrades;
 window.openHrdGradeStudent=drawGradeStudent;
 window.openHrdGradeClass=drawHrdGradeClass;
 window.openHrdGradeTeacher=drawHrdGradeTeacher;
-window.hrdGradeTeacherClass=(teacher,classId)=>drawHrdGradeTeacher(teacher,classId);
+window.hrdGradeTeacherClass=(teacher,classId)=>drawHrdGradeTeacher(teacher,classId);window.hrdGradeTeacherSubject=(teacher,classId,subjectKey)=>drawHrdGradeTeacher(teacher,classId,decodeURIComponent(subjectKey));
 window.hrdGradeView=v=>{state.gradeView=String(v||'walas');state.gradeTeacherClass='';drawHrdReportGrades()};
 window.hrdGradeSemester=v=>{state.gradeSemester=Number(v);state.gradeType=gradeTypes(state.gradeSemester)[0];state.gradeClass='all';state.grades=null;renderReportGrades(true)};
 window.hrdGradeType=v=>{state.gradeType=String(v);state.grades=null;renderReportGrades(true)};
