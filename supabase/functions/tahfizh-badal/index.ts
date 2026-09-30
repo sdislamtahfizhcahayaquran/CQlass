@@ -129,6 +129,16 @@ async function assign(s:any,a:any,ctx:any,b:any){
   const q=existing.data?await s.from('tahfizh_substitution_assignments').update(row).eq('id',existing.data.id).select('*').single():await s.from('tahfizh_substitution_assignments').insert(row).select('*').single();if(q.error)throw q.error;return q.data;
 }
 
+async function edit(s:any,a:any,ctx:any,b:any){
+  const id=T(b.id),subTeacherId=T(b.substitute_teacher_id),reason=T(b.reason);if(!id||!subTeacherId)throw new Error('invalid_input');
+  const cur=await s.from('tahfizh_substitution_assignments').select('id,work_date,class_id,original_teacher_id,start_time,end_time,status').eq('id',id).eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).maybeSingle();if(cur.error)throw cur.error;if(!cur.data)throw new Error('badal_not_found');if(cur.data.status!=='active')throw new Error('badal_not_active');
+  if(String(cur.data.original_teacher_id)===subTeacherId)throw new Error('same_teacher');
+  const data=await baseData(s,ctx,cur.data.work_date),cand=data.candidates.find((x:any)=>String(x.id)===subTeacherId);if(!cand)throw new Error('substitute_not_allowed');
+  const conflict=await internalConflict(s,ctx,cur.data.work_date,String(cur.data.class_id),subTeacherId,cur.data.start_time,cur.data.end_time);
+  if(conflict){const same=(data.substitutions||[]).find((x:any)=>String(x.id)===id&&String(x.substitute_teacher_id)===subTeacherId);if(!same)throw new Error(conflict)}
+  const q=await s.from('tahfizh_substitution_assignments').update({substitute_teacher_id:subTeacherId,substitute_external_person_id:null,substitute_name:cand.name,substitute_type:'teacher',reason:reason||null,updated_at:new Date().toISOString()}).eq('id',id).select('*').single();if(q.error)throw q.error;return q.data;
+}
+
 async function cancel(s:any,a:any,b:any){const id=T(b.id);if(!id)throw new Error('invalid_input');const q=await s.from('tahfizh_substitution_assignments').update({status:'cancelled',cancelled_by_account_id:a.account.id,cancelled_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);if(q.error)throw q.error}
 
 async function recap(s:any,ctx:any,b:any){
@@ -149,7 +159,7 @@ Deno.serve(async(req:Request)=>{
     const s=db(),a=await auth(s,req,body);if(!a||!allowed(a))return J({success:false,error:'forbidden'},403);const ctx=await context(s),action=T(body.action)||'bootstrap';
     if(action==='bootstrap')return J({success:true,...await bootstrap(s,ctx,body.work_date)});
     if(action==='assign')return J({success:true,row:await assign(s,a,ctx,body)});
-    if(action==='cancel'){await cancel(s,a,body);return J({success:true})}
+    if(action==='edit')return J({success:true,row:await edit(s,a,ctx,body)});\n    if(action==='cancel'){await cancel(s,a,body);return J({success:true})}
     if(action==='recap')return J({success:true,...await recap(s,ctx,body)});
     return J({success:false,error:'action_invalid'},400);
   }catch(e){const msg=e instanceof Error?e.message:String(e);return J({success:false,error:msg},msg==='forbidden'?403:400)}
