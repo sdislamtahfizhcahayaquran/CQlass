@@ -1,4 +1,5 @@
 (function(){
+window.__cqAdminUsersV2=true;
 const URL=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/admin-users';
 let roles={};
 let st={users:[],q:'',sort:'az',edit:null,adding:false};
