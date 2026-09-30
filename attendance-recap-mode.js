@@ -130,7 +130,5 @@
     b.onclick=window.openCleanAdminRawEkskul;
     ref.insertAdjacentElement('afterend',b);
   }
-  var mo=new MutationObserver(function(){setTimeout(addAdminButton,0)});
-  document.addEventListener('DOMContentLoaded',function(){mo.observe(document.body,{childList:true,subtree:true});setTimeout(addAdminButton,400)});
-  setTimeout(addAdminButton,1200);
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(addAdminButton,400)});
 })();
