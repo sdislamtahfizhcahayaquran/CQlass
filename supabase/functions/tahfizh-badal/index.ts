@@ -159,7 +159,8 @@ Deno.serve(async(req:Request)=>{
     const s=db(),a=await auth(s,req,body);if(!a||!allowed(a))return J({success:false,error:'forbidden'},403);const ctx=await context(s),action=T(body.action)||'bootstrap';
     if(action==='bootstrap')return J({success:true,...await bootstrap(s,ctx,body.work_date)});
     if(action==='assign')return J({success:true,row:await assign(s,a,ctx,body)});
-    if(action==='edit')return J({success:true,row:await edit(s,a,ctx,body)});\n    if(action==='cancel'){await cancel(s,a,body);return J({success:true})}
+    if(action==='edit')return J({success:true,row:await edit(s,a,ctx,body)});
+    if(action==='cancel'){await cancel(s,a,body);return J({success:true})}
     if(action==='recap')return J({success:true,...await recap(s,ctx,body)});
     return J({success:false,error:'action_invalid'},400);
   }catch(e){const msg=e instanceof Error?e.message:String(e);return J({success:false,error:msg},msg==='forbidden'?403:400)}
