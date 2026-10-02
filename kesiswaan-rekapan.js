@@ -7,7 +7,9 @@
 
   const MODULE_ID='kesiswaan-rekapan';
   const GROUP_ID='kesiswaan-rekapan-group';
-  const API=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/student-affairs-center';
+  const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
+  const API=BASE+'/functions/v1/student-affairs-center';
+  const UKS_API=BASE+'/functions/v1/uks-duty';
   const WALAS={
     '03985f8c-bec2-4d14-b64f-da1452bd5857':'Adek Afrisilia, S.Hum.',
     '3227ac78-8c2f-4b41-a33e-8a9feadedb2f':'Muhammad Ilham, M.Pd.',
@@ -32,7 +34,7 @@
     '2272ba1a-9a4e-447a-9996-8a4232b4d792':'Dila Nur Azizah, S.Pd.',
     '4fa0f6ad-e5b2-4a13-bf64-fd798c8e4da5':'Abdurrokhman, M.Pd.'
   };
-  const S={from:'',to:'',data:null,selected:null};
+  const S={from:'',to:'',data:null,selected:null,uksSchedule:[]};
 
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const N=v=>String(v??'').trim().toLowerCase().replace(/[\s.,]/g,'');
@@ -43,13 +45,15 @@
   function isKesiswaan(){const r=role();return r==='kesiswaan'||r==='kabid_kesiswaan'}
   function token(){try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){return''}}
   function today(){try{return typeof jakartaTodayISO==='function'?jakartaTodayISO():new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}catch(_){return new Date().toISOString().slice(0,10)}}
-  async function post(body){
+  async function request(url,body){
     const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
-    const r=await fetch(API,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify(body)});
+    const r=await fetch(url,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify(body)});
     const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw Error('Respons server tidak valid.')}
     if(!r.ok||d.success===false)throw Error(d.message||d.error||'Gagal memuat data.');
     return d;
   }
+  const post=body=>request(API,body);
+  const postUks=body=>request(UKS_API,body);
   function css(){
     if(document.getElementById('cq-kesiswaan-rekapan-css-v2'))return;
     const s=document.createElement('style');s.id='cq-kesiswaan-rekapan-css-v2';s.textContent=`
@@ -69,7 +73,7 @@
       .krek-modal th:nth-child(3),.krek-modal td:nth-child(3),.krek-modal th:nth-child(4),.krek-modal td:nth-child(4),.krek-modal th:nth-child(5),.krek-modal td:nth-child(5){width:118px;text-align:center}
       .krek-modal td:nth-child(2) b{font-size:10.5px;font-weight:700}
       .krek-modal .krek-count{font-size:10px;line-height:1;font-weight:800;min-width:24px;text-align:center}
-      .krek-status{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:900;white-space:nowrap}.krek-status.done{background:#def4e8;color:#236d47}.krek-status.pending{background:#ffe6e8;color:#9b2f38}.krek-status.na{background:#edf1f4;color:#6b7782}
+      .krek-status{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:900;white-space:nowrap}.krek-status.done{background:#def4e8;color:#236d47}.krek-status.pending{background:#ffe6e8;color:#9b2f38}.krek-status.na{background:#edf1f4;color:#6b7782}\n      .krek-uks{min-width:145px}.krek-uks-main{font-size:9px;font-weight:900;color:#274c6c;white-space:nowrap}.krek-uks-time{font-size:8.5px;color:#718294;margin-top:2px}.krek-uks-state{margin-top:5px}
       .krek-detail{border:1px solid #cfdae6;background:#fff;border-radius:8px;padding:6px 9px;font-size:10px;font-weight:800;color:#24557f;cursor:pointer}
       .krek-count,.krek-modal .krek-count{border:0;background:transparent;color:#24557f;font-size:10px;font-weight:800;text-decoration:underline;text-underline-offset:2px;cursor:pointer;padding:2px 4px}
       .krek-empty,.krek-loading{padding:34px;text-align:center;color:#718294}.krek-error{padding:14px;color:#9b2730;background:#fff0f1;border:1px solid #f2c8cc;border-radius:12px}
@@ -81,13 +85,37 @@
     `;
     document.head.appendChild(s);
   }
-  function status(kind,count,grade,walas,uksRows){
-    if(kind==='uks'){
-      if(!(grade>=1&&grade<=3))return '<span class="krek-status na">—</span>';
-      const hit=(uksRows||[]).some(x=>N(x.teacher_name)===N(walas));
-      return hit?'<span class="krek-status done">Sudah</span>':'<span class="krek-status pending">Belum</span>';
-    }
+  function status(kind,count){
     return Number(count)>0?'<span class="krek-status done">Sudah</span>':'<span class="krek-status pending">Belum</span>';
+  }
+  const DAY={1:'Senin',2:'Selasa',3:'Rabu',4:'Kamis',5:'Jumat',6:'Sabtu',7:'Ahad'};
+  function isoDow(date){const x=new Date(date+'T12:00:00Z').getUTCDay();return x===0?7:x}
+  function dateSeq(start,end){
+    const out=[];let d=new Date(start+'T00:00:00Z'),z=new Date(end+'T00:00:00Z');
+    while(d<=z){out.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}
+    return out;
+  }
+  function uksCell(row){
+    if(!(Number(row.grade_level)>=1&&Number(row.grade_level)<=3))return '<span class="krek-status na">—</span>';
+    const slots=(S.uksSchedule||[]).filter(x=>N(x.teacher_name)===N(row.walas));
+    if(!slots.length)return '<span class="krek-status na">Tidak dijadwalkan</span>';
+    const t=today(),dueEnd=S.to<t?S.to:t,dates=S.from<=dueEnd?dateSeq(S.from,dueEnd):[];
+    let expected=0,submitted=0;
+    const reports=row.uks||[];
+    for(const slot of slots){
+      for(const d of dates){
+        if(isoDow(d)!==Number(slot.weekday))continue;
+        expected++;
+        if(reports.some(r=>String(r.teacher_id)===String(slot.teacher_id)&&String(r.duty_date||r.date).slice(0,10)===d&&Number(r.shift_no)===Number(slot.shift_no)))submitted++;
+      }
+    }
+    const schedule=slots.map(s=>(DAY[Number(s.weekday)]||'Hari')+' · S'+(Number(s.shift_no)||'-')).join(', ');
+    const time=slots.map(s=>String(s.start_time||'').slice(0,5).replace(':','.')+'–'+String(s.end_time||'').slice(0,5).replace(':','.')).join(', ');
+    let state='';
+    if(expected===0)state='<span class="krek-status na">Terjadwal</span>';
+    else if(submitted>=expected)state='<span class="krek-status done">Sudah '+submitted+'/'+expected+'</span>';
+    else state='<span class="krek-status pending">Belum '+submitted+'/'+expected+'</span>';
+    return '<div class="krek-uks"><div class="krek-uks-main">'+E(schedule)+'</div><div class="krek-uks-time">'+E(time)+'</div><div class="krek-uks-state">'+state+'</div></div>';
   }
   function classRows(){
     const d=S.data||{},classes=d.classes||[],roster=d.roster||[],att=d.attendance||[],rw=d.rewards||[],vi=d.violations||[],uks=d.uks||[];
@@ -99,7 +127,7 @@
   function renderTable(){
     const body=document.getElementById('krek-body');if(!body)return;
     const rows=classRows();
-    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${status('attendance',x.a.length,x.grade_level,x.walas,x.uks)}</td><td>${status('discipline',x.v.length,x.grade_level,x.walas,x.uks)}</td><td>${status('reward',x.r.length,x.grade_level,x.walas,x.uks)}</td><td>${status('uks',0,x.grade_level,x.walas,x.uks)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat Detail</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
+    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${status('attendance',x.a.length)}</td><td>${status('discipline',x.v.length)}</td><td>${status('reward',x.r.length)}</td><td>${uksCell(x)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat Detail</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
     body.querySelectorAll('.krek-detail').forEach(btn=>btn.addEventListener('click',()=>openDetail(btn.dataset.class||'')));
   }
   function countsBy(arr,key,labeler){
@@ -139,7 +167,7 @@
   async function load(){
     const body=document.getElementById('krek-body');if(!body)return;
     body.innerHTML='<div class="krek-loading">Memuat rekapan Kesiswaan…</div>';
-    try{S.data=await post({action:'report',start_date:S.from,end_date:S.to});renderTable()}
+    try{const [report,schedule]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'})]);S.data=report;S.uksSchedule=schedule.schedule||[];renderTable()}
     catch(e){body.innerHTML='<div class="krek-error"><b>Rekapan belum dapat dimuat.</b><br>'+E(e.message||'Gagal memuat data.')+'</div>'}
   }
   function render(content){
