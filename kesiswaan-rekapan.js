@@ -2,8 +2,8 @@
    Isolated/read-only. Does not alter any other role or input workflow. */
 (function(){
   'use strict';
-  if(window.__cqKesiswaanRekapanV8)return;
-  window.__cqKesiswaanRekapanV8=true;
+  if(window.__cqKesiswaanRekapanV9)return;
+  window.__cqKesiswaanRekapanV9=true;
 
   const MODULE_ID='kesiswaan-rekapan';
   const GROUP_ID='kesiswaan-rekapan-group';
@@ -83,10 +83,17 @@
       .krek-card{background:#fff;border:1px solid #dfe7ef;border-radius:14px;overflow:hidden}.krek-wrap,.krek-modal .krek-wrap{overflow:auto}
       .krek table,.krek-modal table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border:1px solid #d9e2ea}
       .krek table{min-width:1000px}.krek-modal table{min-width:720px}
+      .krek-card .krek-wrap{overflow-x:hidden}.krek-card table{width:100%!important;min-width:0!important;table-layout:fixed!important}
       .krek-card th:nth-child(1),.krek-card td:nth-child(1){width:46px;min-width:46px;max-width:46px;text-align:center;padding-left:4px;padding-right:4px}
       .krek-card th:nth-child(2),.krek-card td:nth-child(2){width:86px;min-width:86px;max-width:86px}
       .krek-card th:nth-child(3),.krek-card td:nth-child(3){width:172px}
       .krek-card tbody td{font-size:11px!important;line-height:1.3!important}.krek-card tbody td:nth-child(2) b{font-size:11px!important}.krek-card tbody td:nth-child(3){font-size:11px!important}
+      .krek-card th:nth-child(4),.krek-card td:nth-child(4){width:118px}
+      .krek-card th:nth-child(5),.krek-card td:nth-child(5){width:118px}
+      .krek-card th:nth-child(6),.krek-card td:nth-child(6){width:112px}
+      .krek-card th:nth-child(7),.krek-card td:nth-child(7){width:138px}
+      .krek-card th:nth-child(8),.krek-card td:nth-child(8){width:66px;text-align:center}
+      .krek-card .krek-uks{min-width:0;width:100%}.krek-card .krek-detail{padding:6px 8px;min-width:48px}
       .krek th,.krek td,.krek-modal th,.krek-modal td{border:1px solid #d9e2ea;padding:6px 8px;font-size:10px;line-height:1.35;vertical-align:middle}
       .krek th,.krek-modal th{background:#f5f7fa;color:#44576b;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:1}
       .krek td,.krek-modal td{color:#18334d}.krek tbody tr:nth-child(even),.krek-modal tbody tr:nth-child(even){background:#fbfcfd}.krek tbody tr:hover,.krek-modal tbody tr:hover{background:#f3f8fc}
@@ -214,7 +221,7 @@
   function renderTable(){
     const body=document.getElementById('krek-body');if(!body)return;
     const rows=classRows();
-    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${status('attendance',x.a.length)}</td><td>${status('discipline',x.v.length)}</td><td>${status('reward',x.r.length)}</td><td>${uksCell(x)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat Detail</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
+    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${status('attendance',x.a.length)}</td><td>${status('discipline',x.v.length)}</td><td>${status('reward',x.r.length)}</td><td>${uksCell(x)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
     body.querySelectorAll('.krek-detail').forEach(btn=>btn.addEventListener('click',()=>openDetail(btn.dataset.class||'')));
   }
   function countsBy(arr,key,labeler){
@@ -281,10 +288,10 @@
   }
   let sidebarPainted=false;
   function hook(){
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV8){
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV9){
       const base=renderSidebar;
       const wrapped=function(){install();return base.apply(this,arguments)};
-      wrapped.__cqKesiswaanRekapanV8=true;
+      wrapped.__cqKesiswaanRekapanV9=true;
       renderSidebar=wrapped;
     }
     const changed=install();
