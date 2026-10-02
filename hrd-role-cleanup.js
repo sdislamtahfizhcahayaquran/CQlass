@@ -250,8 +250,21 @@ function hrdIsWalas(t){
   const s=low(rolesText(t)+' '+(t?.position||'')+' '+(t?.role||''));
   return s.includes('walas')||s.includes('wali kelas')||s.includes('wali_kelas')||s.includes('homeroom');
 }
+function hrdIsManagement(t){
+  const s=low(rolesText(t)+' '+(t?.position||'')+' '+(t?.role||'')+' '+teacherName(t));
+  return s.includes('kepala sekolah')||s.includes('kepsek')||s.includes('pimpinan')||s.includes('kabid')||s.includes('admin')||s.includes('hrd');
+}
+function hrdIsTeachingStaff(t){
+  if(hrdIsManagement(t))return false;
+  if(hrdIsWalas(t)||hrdIsTahfizhPartner(t))return true;
+  if(Array.isArray(t?.classes)&&t.classes.length>0)return true;
+  return hrdAllCats(t).some(c=>{
+    const k=low(c?.key||c?.label).replace(/[\s-]+/g,'_');
+    return c?.applicable!==false&&['academic','nilai','scores','pjbl','pbl_market_day','tahfizh'].includes(k);
+  });
+}
 function hrdFixedSeptemberMark(t,keys,normalMarkup){
-  const isSep=state.month==='2026-09',fixed=isSep&&(hrdIsWalas(t)||hrdIsTahfizhPartner(t));
+  const isSep=state.month==='2026-09',fixed=isSep&&hrdIsTeachingStaff(t);
   if(!fixed)return normalMarkup;
   const realKeys=['promotion','promosi_sekolah','promo_socmed','badal','substitute','uks','uks_duty'];
   const norm=keys.map(x=>low(x).replace(/[\s-]+/g,'_'));
@@ -279,14 +292,21 @@ async function renderCompleteness(){
       const mark=(keys,force)=>hrdFixedSeptemberMark(t,keys,hrdMark(hrdCat(t,keys),force));
       return '<tr><td>'+(i+1)+'</td><td><b>'+esc(teacherName(t))+'</b></td><td>'+esc(rolesText(t))+'</td>'+
         '<td class="cq-hrd-center">'+mark(['timesheet'],true)+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['attendance','student_attendance','absensi_siswa']):(tah?'–':mark(['attendance','student_attendance','absensi_siswa'])))+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['academic','nilai','scores']):(tah?'–':mark(['academic','nilai','scores'])))+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['pjbl','pbl_market_day']):(tah?'–':mark(['pjbl','pbl_market_day'])))+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['student_affairs','kesiswaan','discipline_reward']):(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['attendance','student_attendance','absensi_siswa']):(tah?'–':mark(['attendance','student_attendance','absensi_siswa'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['academic','nilai','scores']):(tah?'–':mark(['academic','nilai','scores'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['pjbl','pbl_market_day']):(tah?'–':mark(['pjbl','pbl_market_day'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['student_affairs','kesiswaan','discipline_reward']):(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward'])))+'</td>'+
         '<td class="cq-hrd-center">'+mark(['uks','uks_duty'])+'</td>'+
         '<td class="cq-hrd-center">'+mark(['badal','substitute'])+'</td>'+
         '<td class="cq-hrd-center">'+mark(['promotion','promosi_sekolah','promo_socmed'],true)+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&(hrdIsWalas(t)||tah))?mark(['promotion','promosi_sekolah','promo_socmed'],true):hrdOverallMark(t,tah))+'</td></tr>';
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?(()=>{
+          const real=[
+            hrdMark(hrdCat(t,['uks','uks_duty'])),
+            hrdMark(hrdCat(t,['badal','substitute'])),
+            hrdMark(hrdCat(t,['promotion','promosi_sekolah','promo_socmed']),true)
+          ];
+          return real.some(x=>x.includes('cq-hrd-cross'))?'<b class="cq-hrd-cross">✕</b>':'<b class="cq-hrd-check">✓</b>';
+        })():hrdOverallMark(t,tah))+'</td></tr>';
     }).join('');
     c.innerHTML='<div class="cq-hrd-clean">'+head('Rekap Kelengkapan','Ceklis = sudah/lengkap, silang = belum, tanda – = tidak wajib atau sumber indikator belum tersedia untuk guru tersebut.')+
       '<div class="cq-hrd-panel"><div class="cq-hrd-tools"><input type="month" value="'+esc(state.month)+'" onchange="hrdCompletenessMonth(this.value)"><button class="cq-hrd-btn alt" onclick="hrdCompletenessReload()">Muat Ulang</button></div></div>'+
