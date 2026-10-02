@@ -52,7 +52,7 @@
     'rapor-achievement-stars.js?v=20260927-stars23',
     'kesiswaan-points-recap.js?v=20260915-3',
     'kesiswaan-super-report.js?v=20260928-kabid-full1',
-    'kesiswaan-rekapan.js?v=20261002-rekap6',
+    'kesiswaan-rekapan.js?v=20261002-rekap7',
     'kesiswaan-case-followup-ui.js?v=20260921-followup1',
     'kesiswaan-excel-xlsx.js?v=20260928-kabid-full2',
     'promotion-report-edit.js?v=20260922-edit1',
