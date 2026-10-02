@@ -2,8 +2,8 @@
    Isolated/read-only. Does not alter any other role or input workflow. */
 (function(){
   'use strict';
-  if(window.__cqKesiswaanRekapanV2)return;
-  window.__cqKesiswaanRekapanV2=true;
+  if(window.__cqKesiswaanRekapanV3)return;
+  window.__cqKesiswaanRekapanV3=true;
 
   const MODULE_ID='kesiswaan-rekapan';
   const GROUP_ID='kesiswaan-rekapan-group';
@@ -190,8 +190,8 @@
     return true;
   }
   function hook(){
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV2){
-      const base=renderSidebar;const wrapped=function(){install();return base.apply(this,arguments)};wrapped.__cqKesiswaanRekapanV2=true;renderSidebar=wrapped;
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV3){
+      const base=renderSidebar;const wrapped=function(){install();return base.apply(this,arguments)};wrapped.__cqKesiswaanRekapanV3=true;renderSidebar=wrapped;
     }
     if(install()&&typeof renderSidebar==='function')try{renderSidebar()}catch(_){}
   }
