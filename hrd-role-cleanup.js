@@ -253,9 +253,9 @@ function hrdIsWalas(t){
 function hrdFixedSeptemberMark(t,keys,normalMarkup){
   const isSep=state.month==='2026-09',fixed=isSep&&(hrdIsWalas(t)||hrdIsTahfizhPartner(t));
   if(!fixed)return normalMarkup;
-  const promoKeys=['promotion','promosi_sekolah','promo_socmed'];
+  const realKeys=['promotion','promosi_sekolah','promo_socmed','badal','substitute','uks','uks_duty'];
   const norm=keys.map(x=>low(x).replace(/[\s-]+/g,'_'));
-  if(norm.some(x=>promoKeys.includes(x)))return normalMarkup;
+  if(norm.some(x=>realKeys.includes(x)))return normalMarkup;
   return '<b class="cq-hrd-check" title="Rekap September 2026">✓</b>';
 }
 function hrdOverallMark(t,isTah){
@@ -279,12 +279,12 @@ async function renderCompleteness(){
       const mark=(keys,force)=>hrdFixedSeptemberMark(t,keys,hrdMark(hrdCat(t,keys),force));
       return '<tr><td>'+(i+1)+'</td><td><b>'+esc(teacherName(t))+'</b></td><td>'+esc(rolesText(t))+'</td>'+
         '<td class="cq-hrd-center">'+mark(['timesheet'],true)+'</td>'+
-        '<td class="cq-hrd-center">'+(tah?'–':mark(['attendance','student_attendance','absensi_siswa']))+'</td>'+
-        '<td class="cq-hrd-center">'+(tah?'–':mark(['academic','nilai','scores']))+'</td>'+
-        '<td class="cq-hrd-center">'+(tah?'–':mark(['pjbl','pbl_market_day']))+'</td>'+
-        '<td class="cq-hrd-center">'+(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward']))+'</td>'+
-        '<td class="cq-hrd-center">'+(tah?'–':mark(['uks','uks_duty']))+'</td>'+
-        '<td class="cq-hrd-center">'+(tah?'–':mark(['badal','substitute']))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['attendance','student_attendance','absensi_siswa']):(tah?'–':mark(['attendance','student_attendance','absensi_siswa'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['academic','nilai','scores']):(tah?'–':mark(['academic','nilai','scores'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['pjbl','pbl_market_day']):(tah?'–':mark(['pjbl','pbl_market_day'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&tah)?mark(['student_affairs','kesiswaan','discipline_reward']):(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward'])))+'</td>'+
+        '<td class="cq-hrd-center">'+mark(['uks','uks_duty'])+'</td>'+
+        '<td class="cq-hrd-center">'+mark(['badal','substitute'])+'</td>'+
         '<td class="cq-hrd-center">'+mark(['promotion','promosi_sekolah','promo_socmed'],true)+'</td>'+
         '<td class="cq-hrd-center">'+((state.month==='2026-09'&&(hrdIsWalas(t)||tah))?mark(['promotion','promosi_sekolah','promo_socmed'],true):hrdOverallMark(t,tah))+'</td></tr>';
     }).join('');
