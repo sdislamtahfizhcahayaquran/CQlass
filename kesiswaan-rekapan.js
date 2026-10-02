@@ -2,8 +2,8 @@
    Isolated/read-only. Does not alter any other role or input workflow. */
 (function(){
   'use strict';
-  if(window.__cqKesiswaanRekapanV6)return;
-  window.__cqKesiswaanRekapanV6=true;
+  if(window.__cqKesiswaanRekapanV7)return;
+  window.__cqKesiswaanRekapanV7=true;
 
   const MODULE_ID='kesiswaan-rekapan';
   const GROUP_ID='kesiswaan-rekapan-group';
@@ -84,7 +84,8 @@
       .krek table,.krek-modal table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border:1px solid #d9e2ea}
       .krek table{min-width:1000px}.krek-modal table{min-width:720px}
       .krek-card th:nth-child(1),.krek-card td:nth-child(1){width:46px;min-width:46px;max-width:46px;text-align:center;padding-left:4px;padding-right:4px}
-      .krek-card th:nth-child(2),.krek-card td:nth-child(2){width:150px}
+      .krek-card th:nth-child(2),.krek-card td:nth-child(2){width:105px;min-width:105px;max-width:105px}
+      .krek-card th:nth-child(3),.krek-card td:nth-child(3){width:205px}
       .krek th,.krek td,.krek-modal th,.krek-modal td{border:1px solid #d9e2ea;padding:6px 8px;font-size:10px;line-height:1.35;vertical-align:middle}
       .krek th,.krek-modal th{background:#f5f7fa;color:#44576b;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:1}
       .krek td,.krek-modal td{color:#18334d}.krek tbody tr:nth-child(even),.krek-modal tbody tr:nth-child(even){background:#fbfcfd}.krek tbody tr:hover,.krek-modal tbody tr:hover{background:#f3f8fc}
@@ -279,10 +280,10 @@
   }
   let sidebarPainted=false;
   function hook(){
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV6){
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV7){
       const base=renderSidebar;
       const wrapped=function(){install();return base.apply(this,arguments)};
-      wrapped.__cqKesiswaanRekapanV6=true;
+      wrapped.__cqKesiswaanRekapanV7=true;
       renderSidebar=wrapped;
     }
     const changed=install();
