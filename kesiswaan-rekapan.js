@@ -2,8 +2,8 @@
    Isolated/read-only. Does not alter any other role or input workflow. */
 (function(){
   'use strict';
-  if(window.__cqKesiswaanRekapanV3)return;
-  window.__cqKesiswaanRekapanV3=true;
+  if(window.__cqKesiswaanRekapanV4)return;
+  window.__cqKesiswaanRekapanV4=true;
 
   const MODULE_ID='kesiswaan-rekapan';
   const GROUP_ID='kesiswaan-rekapan-group';
@@ -34,7 +34,7 @@
     '2272ba1a-9a4e-447a-9996-8a4232b4d792':'Dila Nur Azizah, S.Pd.',
     '4fa0f6ad-e5b2-4a13-bf64-fd798c8e4da5':'Abdurrokhman, M.Pd.'
   };
-  const S={from:'',to:'',data:null,selected:null,uksSchedule:[]};
+  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],dailyMode:false};
 
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const N=v=>String(v??'').trim().toLowerCase().replace(/[\s.,]/g,'');
@@ -62,6 +62,16 @@
       .krek-filter{display:flex;align-items:end;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #dfe7ef;border-radius:14px;padding:12px;margin-bottom:12px}
       .krek-field{display:flex;flex-direction:column;gap:5px}.krek-field label{font-size:10px;font-weight:900;color:#607488;text-transform:uppercase}.krek-field input{border:1px solid #d8e3ed;border-radius:9px;padding:9px 10px;font:inherit}
       .krek-btn{border:0;border-radius:9px;padding:9px 13px;background:#173e69;color:#fff;font-weight:800;cursor:pointer}
+      .krek-actions{display:flex;gap:8px;align-items:center;margin-left:auto}.krek-btn.secondary{background:#eef4f8;color:#24557f;border:1px solid #d3e0ea}.krek-btn.report{background:#0b7d79}
+      .krek-report-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;background:#fff;border:1px solid #dfe7ef;border-radius:14px;padding:16px 18px;margin-bottom:10px}
+      .krek-report-title{font-size:19px;font-weight:950;letter-spacing:.02em;color:#163b5d}.krek-report-school{font-size:10px;font-weight:850;color:#5f7789;margin-top:3px;text-transform:uppercase}.krek-report-date{font-size:12px;font-weight:800;color:#38566d;margin-top:7px}.krek-report-stamp{font-size:9px;color:#718294;margin-top:3px}
+      .krek-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:10px}.krek-sum{background:#fff;border:1px solid #dfe7ef;border-radius:12px;padding:10px 12px}.krek-sum b{display:block;font-size:18px;color:#173e69;line-height:1}.krek-sum span{display:block;font-size:8.5px;font-weight:850;color:#6d7f8e;text-transform:uppercase;margin-top:5px}
+      .krek-daily-table{background:#fff;border:1px solid #dfe7ef;border-radius:12px;overflow:hidden}.krek-daily-table table{min-width:0!important;table-layout:fixed!important}.krek-daily-table th,.krek-daily-table td{padding:5px 6px!important;font-size:9px!important}.krek-daily-table th{font-size:8px!important}
+      .krek-daily-table th:nth-child(1),.krek-daily-table td:nth-child(1){width:34px!important;min-width:34px!important;max-width:34px!important}.krek-daily-table th:nth-child(2),.krek-daily-table td:nth-child(2){width:82px!important}.krek-daily-table th:nth-child(3),.krek-daily-table td:nth-child(3){width:190px!important}.krek-daily-table th:nth-child(n+4),.krek-daily-table td:nth-child(n+4){text-align:center}
+      .krek-mini{display:inline-flex;align-items:center;justify-content:center;min-width:48px;border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900}.krek-mini.ok{background:#dff4e8;color:#216b46}.krek-mini.no{background:#ffe4e5;color:#a3323b}.krek-mini.na{background:#edf1f4;color:#6b7782}
+      .krek-missing{margin-top:10px;background:#fff;border:1px solid #dfe7ef;border-radius:12px;padding:11px 13px}.krek-missing h3{font-size:10px;margin:0 0 7px;color:#38566d}.krek-missing-line{font-size:9px;line-height:1.55;color:#5e7180}.krek-missing-line b{color:#293f50}
+      body.krek-shot-mode #sidebar{display:none!important}body.krek-shot-mode #app-screen>.layout{display:block!important}body.krek-shot-mode #content{width:100%!important;max-width:none!important;padding:14px 18px!important}body.krek-shot-mode .krek{max-width:1500px!important}body.krek-shot-mode .krek-filter,body.krek-shot-mode .krek>h1,body.krek-shot-mode .krek>.krek-sub{display:none!important}
+      @media(max-width:900px){.krek-summary{grid-template-columns:repeat(2,1fr)}.krek-actions{margin-left:0;width:100%}.krek-daily-table table{min-width:760px!important}}
       .krek-card{background:#fff;border:1px solid #dfe7ef;border-radius:14px;overflow:hidden}.krek-wrap,.krek-modal .krek-wrap{overflow:auto}
       .krek table,.krek-modal table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border:1px solid #d9e2ea}
       .krek table{min-width:1000px}.krek-modal table{min-width:720px}
@@ -119,6 +129,71 @@
     else state='<span class="krek-status pending">Belum '+submitted+'/'+expected+'</span>';
     return '<div class="krek-uks"><div class="krek-uks-main">'+E(schedule)+'</div><div class="krek-uks-time">'+E(time)+'</div><div class="krek-uks-state">'+state+'</div></div>';
   }
+
+  function fmtDateID(v){
+    try{return new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(v+'T12:00:00Z'))}
+    catch(_){return v}
+  }
+  function fmtClock(){
+    try{return new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()).replace('.',':')+' WIB'}
+    catch(_){return ''}
+  }
+  function uksDailyState(row,date){
+    if(!(Number(row.grade_level)>=1&&Number(row.grade_level)<=3))return{applicable:false,label:'—',done:null};
+    const dow=isoDow(date);
+    const slots=(S.uksSchedule||[]).filter(x=>N(x.teacher_name)===N(row.walas)&&Number(x.weekday)===dow);
+    if(!slots.length)return{applicable:false,label:'—',done:null};
+    const reports=row.uks||[];
+    const submitted=slots.filter(slot=>reports.some(r=>String(r.teacher_id)===String(slot.teacher_id)&&String(r.duty_date||r.date).slice(0,10)===date&&Number(r.shift_no)===Number(slot.shift_no))).length;
+    return{applicable:true,label:submitted>=slots.length?'Sudah':'Belum',done:submitted>=slots.length,submitted,total:slots.length};
+  }
+  function mini(done,na=false,label=''){
+    if(na)return '<span class="krek-mini na">'+E(label||'—')+'</span>';
+    return '<span class="krek-mini '+(done?'ok':'no')+'">'+(done?'Sudah':'Belum')+'</span>';
+  }
+  function renderDailyReport(){
+    const body=document.getElementById('krek-body');if(!body)return;
+    const rows=classRows(),date=S.to||today();
+    const attDone=rows.filter(x=>x.a.length>0).length;
+    const disDone=rows.filter(x=>x.v.length>0).length;
+    const rewDone=rows.filter(x=>x.r.length>0).length;
+    const uksRows=rows.map(x=>({row:x,state:uksDailyState(x,date)})).filter(x=>x.state.applicable);
+    const uksDone=uksRows.filter(x=>x.state.done).length;
+    const missAtt=rows.filter(x=>!x.a.length).map(x=>x.name);
+    const missDis=rows.filter(x=>!x.v.length).map(x=>x.name);
+    const missRew=rows.filter(x=>!x.r.length).map(x=>x.name);
+    const missUks=uksRows.filter(x=>!x.state.done).map(x=>x.row.name);
+    body.innerHTML=`
+      <div class="krek-report-head">
+        <div><div class="krek-report-title">LAPORAN HARIAN KESISWAAN</div><div class="krek-report-school">SD Islam Tahfizh Cahaya Qur'an</div><div class="krek-report-date">${E(fmtDateID(date))}</div><div class="krek-report-stamp">Data CQlass · ${E(fmtClock())}</div></div>
+        <button type="button" class="krek-btn secondary" id="krek-exit-report">Kembali ke Rekapan</button>
+      </div>
+      <div class="krek-summary">
+        <div class="krek-sum"><b>${rows.length}</b><span>Kelas</span></div>
+        <div class="krek-sum"><b>${attDone}/${rows.length}</b><span>Kehadiran</span></div>
+        <div class="krek-sum"><b>${disDone}/${rows.length}</b><span>Kedisiplinan</span></div>
+        <div class="krek-sum"><b>${rewDone}/${rows.length}</b><span>Reward</span></div>
+        <div class="krek-sum"><b>${uksDone}/${uksRows.length||0}</b><span>UKS Hari Ini</span></div>
+      </div>
+      <div class="krek-daily-table"><div class="krek-wrap"><table><thead><tr><th>No</th><th>Kelas</th><th>Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th></tr></thead><tbody>
+        ${rows.map((x,i)=>{const u=uksDailyState(x,date);return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${mini(x.a.length>0)}</td><td>${mini(x.v.length>0)}</td><td>${mini(x.r.length>0)}</td><td>${u.applicable?mini(u.done):mini(null,true,'—')}</td></tr>`}).join('')}
+      </tbody></table></div></div>
+      <div class="krek-missing"><h3>Belum lengkap hari ini</h3>
+        <div class="krek-missing-line"><b>Kehadiran:</b> ${E(missAtt.length?missAtt.join(', '):'Semua kelas sudah terisi')}</div>
+        <div class="krek-missing-line"><b>Kedisiplinan:</b> ${E(missDis.length?missDis.join(', '):'Semua kelas sudah terisi')}</div>
+        <div class="krek-missing-line"><b>Reward:</b> ${E(missRew.length?missRew.join(', '):'Semua kelas sudah terisi')}</div>
+        <div class="krek-missing-line"><b>UKS:</b> ${E(missUks.length?missUks.join(', '):(uksRows.length?'Semua petugas terjadwal sudah melapor':'Tidak ada jadwal UKS hari ini'))}</div>
+      </div>`;
+    document.getElementById('krek-exit-report')?.addEventListener('click',exitDailyMode);
+  }
+  function enterDailyMode(){
+    const d=today();S.dailyMode=true;S.from=d;S.to=d;document.body.classList.add('krek-shot-mode');
+    const f=document.getElementById('krek-from'),t=document.getElementById('krek-to');if(f)f.value=d;if(t)t.value=d;
+    load();
+  }
+  function exitDailyMode(){
+    S.dailyMode=false;document.body.classList.remove('krek-shot-mode');renderTable();
+  }
   function classRows(){
     const d=S.data||{},classes=d.classes||[],roster=d.roster||[],att=d.attendance||[],rw=d.rewards||[],vi=d.violations||[],uks=d.uks||[];
     return classes.map(c=>{
@@ -169,34 +244,46 @@
   async function load(){
     const body=document.getElementById('krek-body');if(!body)return;
     body.innerHTML='<div class="krek-loading">Memuat rekapan Kesiswaan…</div>';
-    try{const [report,schedule]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'})]);S.data=report;S.uksSchedule=schedule.schedule||[];renderTable()}
+    try{const [report,schedule]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'})]);S.data=report;S.uksSchedule=schedule.schedule||[];if(S.dailyMode)renderDailyReport();else renderTable()}
     catch(e){body.innerHTML='<div class="krek-error"><b>Rekapan belum dapat dimuat.</b><br>'+E(e.message||'Gagal memuat data.')+'</div>'}
   }
   function render(content){
     if(!isKesiswaan()){content.innerHTML='<div class="krek-error">Menu ini khusus Kabid Kesiswaan.</div>';return}
     css();ensureModal();const t=today();if(!S.to){S.to=t;S.from=t.slice(0,8)+'01'}
-    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Monitoring input Kehadiran, Kedisiplinan, Reward, dan Jaga UKS. UKS ditampilkan untuk kelas 1–3.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button></div><div id="krek-body"></div></div>`;
-    document.getElementById('krek-apply').addEventListener('click',()=>{const f=document.getElementById('krek-from').value,t2=document.getElementById('krek-to').value;if(!f||!t2||f>t2){document.getElementById('krek-body').innerHTML='<div class="krek-error">Rentang tanggal tidak valid.</div>';return}S.from=f;S.to=t2;load()});
+    document.body.classList.toggle('krek-shot-mode',!!S.dailyMode);
+    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Monitoring input Kehadiran, Kedisiplinan, Reward, dan Jaga UKS. UKS ditampilkan untuk kelas 1–3.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button><div class="krek-actions"><button type="button" class="krek-btn report" id="krek-daily">Laporan Hari Ini</button></div></div><div id="krek-body"></div></div>`;
+    document.getElementById('krek-apply').addEventListener('click',()=>{const f=document.getElementById('krek-from').value,t2=document.getElementById('krek-to').value;if(!f||!t2||f>t2){document.getElementById('krek-body').innerHTML='<div class="krek-error">Rentang tanggal tidak valid.</div>';return}S.dailyMode=false;document.body.classList.remove('krek-shot-mode');S.from=f;S.to=t2;load()});
+    document.getElementById('krek-daily')?.addEventListener('click',enterDailyMode);
     load();
   }
   function install(){
     if(!isKesiswaan())return false;
     if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
+    let changed=false;
     let g=MODULE_GROUPS.find(x=>x&&x.id===GROUP_ID);
-    if(!g){g={id:GROUP_ID,label:'REKAPAN',roles:['kesiswaan'],items:[]};MODULE_GROUPS.push(g)}
-    g.roles=['kesiswaan'];
-    if(!Array.isArray(g.items))g.items=[];
+    if(!g){g={id:GROUP_ID,label:'REKAPAN',roles:['kesiswaan'],items:[]};MODULE_GROUPS.push(g);changed=true}
+    if(!Array.isArray(g.roles)||g.roles.length!==1||g.roles[0]!=='kesiswaan'){g.roles=['kesiswaan'];changed=true}
+    if(!Array.isArray(g.items)){g.items=[];changed=true}
     let it=g.items.find(x=>x&&x.id===MODULE_ID);
-    if(!it){g.items.push({id:MODULE_ID,label:'Rekapan',roles:['kesiswaan'],built:true,render})}
-    else Object.assign(it,{label:'Rekapan',roles:['kesiswaan'],built:true,render});
-    return true;
+    if(!it){g.items.push({id:MODULE_ID,label:'Rekapan',roles:['kesiswaan'],built:true,render});changed=true}
+    else if(it.label!=='Rekapan'||it.render!==render||it.built!==true){Object.assign(it,{label:'Rekapan',roles:['kesiswaan'],built:true,render});changed=true}
+    return changed;
   }
+  let sidebarPainted=false;
   function hook(){
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV3){
-      const base=renderSidebar;const wrapped=function(){install();return base.apply(this,arguments)};wrapped.__cqKesiswaanRekapanV3=true;renderSidebar=wrapped;
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV4){
+      const base=renderSidebar;
+      const wrapped=function(){install();return base.apply(this,arguments)};
+      wrapped.__cqKesiswaanRekapanV4=true;
+      renderSidebar=wrapped;
     }
-    if(install()&&typeof renderSidebar==='function')try{renderSidebar()}catch(_){}
+    const changed=install();
+    if(changed&&!sidebarPainted&&typeof renderSidebar==='function'){
+      sidebarPainted=true;
+      try{renderSidebar()}catch(_){}
+    }
+    return changed;
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
-  let tries=0;const timer=setInterval(()=>{tries++;hook();if(tries>20||!isKesiswaan())clearInterval(timer)},250);
+  let tries=0;const timer=setInterval(()=>{tries++;const changed=hook();if(changed||tries>20||!isKesiswaan())clearInterval(timer)},250);
 })();
