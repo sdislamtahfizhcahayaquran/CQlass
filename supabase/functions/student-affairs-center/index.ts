@@ -30,8 +30,21 @@ async function reportData(b:any){
   const sm:any=Object.fromEntries((students||[]).filter((x:any)=>activeStatus(x.status)).map((x:any)=>[x.id,x]));
   const scopedEnroll=(enroll||[]).filter((x:any)=>!classId||x.class_id===classId);
   const addClass=(q:any)=>classId?q.eq("class_id",classId):q;
-  const[atR,rwR,viR,csR,afR,acR,ukR,lateR]=await Promise.all([
-    addClass(sb.from("morning_talk_attendance_history").select("id,student_id,class_id,attendance_date,status,source_name,source_class_name").gte("attendance_date",start).lte("attendance_date",end)).limit(3000),
+
+  let sessionQ=sb.from("morning_talk_sessions").select("id,class_id,attendance_date").gte("attendance_date",start).lte("attendance_date",end).limit(2000);
+  if(classId)sessionQ=sessionQ.eq("class_id",classId);
+  const{data:liveSessions,error:sessionError}=await sessionQ;
+  if(sessionError)throw sessionError;
+  const sessionIds=(liveSessions||[]).map((x:any)=>x.id);
+  let liveAttendanceRows:any[]=[];
+  if(sessionIds.length){
+    const{data,error}=await sb.from("morning_talk_attendance").select("id,session_id,student_id,status,note").in("session_id",sessionIds).limit(10000);
+    if(error)throw error;
+    liveAttendanceRows=data||[];
+  }
+
+  const[histR,rwR,viR,csR,afR,acR,ukR,lateR]=await Promise.all([
+    addClass(sb.from("morning_talk_attendance_history").select("id,student_id,class_id,attendance_date,status,source_name,source_class_name").gte("attendance_date",start).lte("attendance_date",end)).limit(10000),
     addClass(sb.from("student_rewards").select("id,student_id,class_id,reward_date,category,reward_name,points,note,verified_by_account_id,is_verified").eq("is_deleted",false).eq("is_verified",true).gte("reward_date",start).lte("reward_date",end)).limit(2000),
     addClass(sb.from("discipline_incidents").select("id,student_id,class_id,incident_date,category,violation_name,points,note,created_by_account_id,recorded_by_name").eq("is_deleted",false).gte("incident_date",start).lte("incident_date",end)).limit(2000),
     addClass(sb.from("student_case_notes").select("id,student_id,class_id,incident_date,category,attention_level,main_problem,summary,final_suggestion,urgent,needs_parent,needs_student_affairs,needs_uks,evaluation_date,status").eq("is_deleted",false).gte("incident_date",start).lte("incident_date",end)).limit(1000),
@@ -40,10 +53,19 @@ async function reportData(b:any){
     sb.from("uks_duty_reports").select("id,teacher_id,duty_date,weekday,shift_no,scheduled_start,scheduled_end,captured_at,created_at").gte("duty_date",start).lte("duty_date",end).order("duty_date",{ascending:false}).limit(1000),
     addClass(sb.from("attendance_report_finalization").select("class_id,period_start,period_end,present_count,late_count,sick_count,excused_count,unexcused_count").gte("period_start",start).lte("period_end",end)).limit(3000)
   ]);
-  for(const x of[atR,rwR,viR,csR,afR,acR,ukR,lateR])if(x.error)throw x.error;
+  for(const x of[histR,rwR,viR,csR,afR,acR,ukR,lateR])if(x.error)throw x.error;
   const tids=[...new Set((ukR.data||[]).map((x:any)=>x.teacher_id).filter(Boolean))],tm:any={};
   if(tids.length){const{data:ts,error}=await sb.from("teachers").select("id,full_name").in("id",tids);if(error)throw error;for(const t of ts||[])tm[t.id]=t.full_name}
-  const attendance=enrich(atR.data||[],sm,cm,"attendance_date").map((x:any)=>({...x,note:null}));
+  const sessionMap:any=Object.fromEntries((liveSessions||[]).map((x:any)=>[x.id,x]));
+  const historicalAttendance=enrich(histR.data||[],sm,cm,"attendance_date").map((x:any)=>({...x,note:null,source:"history"}));
+  const liveAttendance=(liveAttendanceRows||[]).map((x:any)=>{
+    const s=sessionMap[x.session_id]||{};
+    return{...x,class_id:s.class_id||null,attendance_date:s.attendance_date||null,date:s.attendance_date||null,student_name:sm[x.student_id]?.full_name||"-",class_name:classLabel(cm[s.class_id]),source:"live"};
+  }).filter((x:any)=>x.class_id&&x.attendance_date);
+  const attendanceMap=new Map<string,any>();
+  for(const x of historicalAttendance)attendanceMap.set([x.class_id,x.attendance_date,x.student_id].join("|"),x);
+  for(const x of liveAttendance)attendanceMap.set([x.class_id,x.attendance_date,x.student_id].join("|"),x);
+  const attendance=[...attendanceMap.values()];
   const rewards=enrich(rwR.data||[],sm,cm,"reward_date"),violations=enrich(viR.data||[],sm,cm,"incident_date"),cases=enrich(csR.data||[],sm,cm,"incident_date"),affairs=enrich(afR.data||[],sm,cm,"record_date"),achievements=enrich(acR.data||[],sm,cm,"achievement_date");
   const uks=(ukR.data||[]).map((x:any)=>({...x,date:x.duty_date,teacher_name:tm[x.teacher_id]||"Guru"}));
   const counts:any={hadir:0,sakit:0,izin:0,alpha:0,lainnya:0};
