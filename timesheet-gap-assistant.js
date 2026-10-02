@@ -1,0 +1,111 @@
+/* CQlass — Timesheet gap assistant: show only unrecorded work slots */
+(function(){
+'use strict';
+if(window.__cqTimesheetGapAssistant20261003V1)return;
+window.__cqTimesheetGapAssistant20261003V1=true;
+const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
+const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
+const EP={
+  core:BASE+'/functions/v1/teacher-timesheet',
+  work:BASE+'/functions/v1/teacher-work-schedule',
+  recurring:BASE+'/functions/v1/teacher-recurring-schedule',
+  special:BASE+'/functions/v1/teacher-timesheet-special-overlay'
+};
+const token=()=>typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'');
+const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const mins=v=>{const s=String(v||'');if(!/^\d{2}:\d{2}/.test(s))return null;const a=s.slice(0,5).split(':').map(Number);return a[0]*60+a[1]};
+const tm=n=>String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+const fd=v=>{try{return new Intl.DateTimeFormat('id-ID',{weekday:'short',day:'2-digit',month:'short'}).format(new Date(v+'T00:00:00'))}catch{return v}};
+let G={key:'',loading:false,data:null,showAll:false};
+
+function style(){
+  if(document.getElementById('cq-ts-gap-css'))return;
+  const s=document.createElement('style');s.id='cq-ts-gap-css';s.textContent=`
+  .tsgap-card{border-left:3px solid #0b7e78!important}
+  .tsgap-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .tsgap-title{font-size:15px;font-weight:900;color:#173d3b}
+  .tsgap-count{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:999px;background:#fff3d9;color:#93610d;font-size:9px;font-weight:900}
+  .tsgap-ok{background:#e9f6f4;color:#12645f}
+  .tsgap-list{display:grid;gap:6px;margin-top:10px}
+  .tsgap-row{display:grid;grid-template-columns:120px 110px 1fr auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid #e5eeec;border-radius:10px;background:#fbfdfd}
+  .tsgap-date{font-size:10px;font-weight:900;color:#173d3b}.tsgap-time{font-size:10px;font-weight:900;color:#08746f}
+  .tsgap-note{font-size:9px;color:#718481}.tsgap-btn{min-height:32px!important;height:32px!important;padding:0 10px!important;font-size:9px!important}
+  .tsgap-more{margin-top:8px}
+  @media(max-width:700px){.tsgap-row{grid-template-columns:1fr 1fr}.tsgap-note{grid-column:1/-1}.tsgap-row .tsv2-btn{grid-column:1/-1}}
+  `;document.head.appendChild(s);
+}
+function ctx(){
+  const root=document.querySelector('.tsv2');if(!root)return null;
+  const month=root.querySelector('.tsv2-tools input[type="month"]')?.value||'';
+  if(!/^\d{4}-\d{2}$/.test(month))return null;
+  const teacherId=root.querySelector('.tsv2-tools select')?.value||'';
+  return{root,month,teacherId,key:month+'|'+teacherId};
+}
+async function call(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':token()},body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw new Error(d.error||'timesheet_gap_failed');return d;
+}
+function dates(month){const[y,m]=month.split('-').map(Number),last=new Date(y,m,0).getDate(),out=[];for(let d=1;d<=last;d++)out.push(month+'-'+String(d).padStart(2,'0'));return out}
+function merge(rows){
+  const a=rows.map(x=>[mins(x.start_time),mins(x.end_time)]).filter(x=>x[0]!=null&&x[1]!=null&&x[1]>x[0]).sort((x,y)=>x[0]-y[0]),out=[];
+  for(const x of a){const p=out[out.length-1];if(!p||x[0]>p[1])out.push([x[0],x[1]]);else p[1]=Math.max(p[1],x[1])}return out
+}
+function gaps(start,end,busy){
+  const b=merge(busy),out=[];let cur=start;
+  for(const[s,e]of b){if(e<=start||s>=end)continue;const a=Math.max(start,s),z=Math.min(end,e);if(a>cur&&a-cur>=15)out.push([cur,a]);cur=Math.max(cur,z)}
+  if(end>cur&&end-cur>=15)out.push([cur,end]);return out
+}
+function specialDates(items){
+  const set=new Set();(items||[]).forEach(x=>set.add(String(x.work_date||'')));return set
+}
+async function load(){
+  const c=ctx();if(!c||G.loading)return;
+  G.loading=true;G.key=c.key;
+  try{
+    const base={month:c.month,teacher_id:c.teacherId||undefined};
+    const [core,work,rec,special]=await Promise.all([
+      call(EP.core,{action:'bootstrap',...base}),
+      call(EP.work,base),
+      call(EP.recurring,{action:'bootstrap',...base}),
+      call(EP.special,base)
+    ]);
+    const spSet=specialDates(special.items);
+    const all=[];
+    for(const date of dates(c.month)){
+      const day=new Date(date+'T12:00:00Z').getUTCDay();if(day===0)continue;
+      const busy=[];
+      const isSpecial=spSet.has(date);
+      if(isSpecial){
+        (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
+      }else{
+        (work.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
+        (core.teaching||[]).filter(x=>x.work_date===date&&x.source!=='digantikan').forEach(x=>busy.push(x));
+        if(day===6)(core.saturdays||[]).filter(x=>x.event_date===date&&x.configured!==false).forEach(x=>busy.push({start_time:x.start_time,end_time:x.end_time}));
+      }
+      (core.activities||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
+      (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
+      const ws=day===6?450:420,we=day===6?720:960;
+      for(const g of gaps(ws,we,busy))all.push({work_date:date,start_time:tm(g[0]),end_time:tm(g[1]),minutes:g[1]-g[0],special:isSpecial});
+    }
+    G.data={items:all,profile:work.profile||null};render();
+  }catch(e){console.warn('Timesheet gap assistant',e);G.data={items:[],error:true};render()}
+  finally{G.loading=false}
+}
+function pick(d,s,e){
+  const a=document.getElementById('tsv2-date'),b=document.getElementById('tsv2-start'),c=document.getElementById('tsv2-end');
+  if(a)a.value=d;if(b)b.value=s;if(c)c.value=e;
+  const card=a?.closest('.tsv2-card');card?.scrollIntoView({behavior:'smooth',block:'center'});a?.focus();
+}
+function render(){
+  const c=ctx();if(!c||!G.data)return;style();
+  let card=c.root.querySelector('.tsgap-card');if(!card){card=document.createElement('div');card.className='tsv2-card tsgap-card';const entry=[...c.root.querySelectorAll('.tsv2-card')].find(x=>x.querySelector('#tsv2-date'));if(entry)entry.before(card);else c.root.querySelector('#tsv2-body')?.prepend(card)}
+  const xs=G.data.items||[],show=G.showAll?xs:xs.slice(0,18);
+  card.innerHTML=`<div class="tsgap-head"><div><div class="tsgap-title">Slot yang Perlu Diisi</div><div class="tsv2-help">Rutinitas sekolah, mengajar, break/snack, Ishoma, Jumat, UKS, jadwal Sabtu, dan pola berulang sudah diperhitungkan. Isi hanya waktu yang benar-benar belum tercatat.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot belum tercatat':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${x.special?'Hari/kegiatan khusus · ':''}${x.minutes} menit belum tercatat</div><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi slot</button></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
+}
+window.cqTsGapPick=pick;
+window.cqTsGapToggle=()=>{G.showAll=!G.showAll;render()};
+function ensure(){const c=ctx();if(!c)return;if(G.key!==c.key||!G.data){load();return}if(!c.root.querySelector('.tsgap-card'))render()}
+let t=0;const mo=new MutationObserver(()=>{clearTimeout(t);t=setTimeout(ensure,350)});
+function start(){style();mo.observe(document.body,{childList:true,subtree:true});setTimeout(ensure,700)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
