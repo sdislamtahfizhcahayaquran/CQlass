@@ -51,8 +51,8 @@
     return d;
   }
   function css(){
-    if(document.getElementById('cq-kesiswaan-rekapan-css-v2-v2'))return;
-    const s=document.createElement('style');s.id='cq-kesiswaan-rekapan-css';s.textContent=`
+    if(document.getElementById('cq-kesiswaan-rekapan-css-v2'))return;
+    const s=document.createElement('style');s.id='cq-kesiswaan-rekapan-css-v2';s.textContent=`
       .krek{max-width:1380px;margin:0 auto;color:#18334d}.krek *{box-sizing:border-box}
       .krek h1{font-size:24px;margin:0}.krek-sub{font-size:12px;color:#6b7f91;margin:5px 0 14px}
       .krek-filter{display:flex;align-items:end;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #dfe7ef;border-radius:14px;padding:12px;margin-bottom:12px}
