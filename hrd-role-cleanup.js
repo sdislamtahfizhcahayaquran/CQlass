@@ -52,7 +52,7 @@ function installCss(){
   .cq-hrd-clean{display:grid;gap:14px}.cq-hrd-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-end;padding:19px 20px;border-radius:18px;background:linear-gradient(135deg,#073f43,#0a6e6e);color:#fff}.cq-hrd-head h1{font-size:22px;margin:3px 0 5px}.cq-hrd-head p{margin:0;color:#d9eeee;font-size:11px;line-height:1.55}.cq-hrd-eyebrow{font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:#aee2de}.cq-hrd-page-title{display:flex;align-items:end;justify-content:space-between;gap:12px;padding:0 2px 2px}.cq-hrd-page-title h1{margin:0 0 3px;color:#173f3d;font-size:18px;line-height:1.2}.cq-hrd-page-title p{margin:0;color:#718582;font-size:9.5px;line-height:1.4}
   .cq-hrd-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.cq-hrd-tools input,.cq-hrd-tools select{height:39px;border:1px solid #d6e5e3;border-radius:11px;background:#fff;padding:0 11px;color:#294846}.cq-hrd-btn{height:39px;border:0;border-radius:11px;background:#0a6e6e;color:#fff;padding:0 13px;font-weight:850;cursor:pointer}.cq-hrd-btn.alt{background:#e9f4f2;color:#0a6763}.cq-hrd-btn.danger{background:#fff0ee;color:#a13d35}
   .cq-hrd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.cq-hrd-kpi,.cq-hrd-panel{background:#fff;border:1px solid #dce9e7;border-radius:16px;padding:15px;box-shadow:0 5px 18px rgba(20,70,70,.04)}.cq-hrd-kpi span{display:block;font-size:10px;color:#748986;font-weight:750}.cq-hrd-kpi b{display:block;font-size:24px;color:#183f3d;margin-top:7px}.cq-hrd-kpi small{display:block;font-size:9px;color:#91a19e;margin-top:3px}.cq-hrd-panel h2{margin:0 0 12px;font-size:15px;color:#214441}
-  .cq-hrd-table-wrap{overflow:auto;border:1px solid #e0eae8;border-radius:14px}.cq-hrd-table{width:100%;border-collapse:collapse;min-width:760px}.cq-hrd-table th{padding:10px 11px;text-align:left;background:#f1f7f6;color:#607773;font-size:9px;text-transform:uppercase;letter-spacing:.05em}.cq-hrd-table td{padding:11px;border-top:1px solid #edf2f1;color:#355451;font-size:11px;vertical-align:top}.cq-hrd-table td b{color:#193f3d}
+  .cq-hrd-table-wrap{overflow:auto;border:1px solid #e0eae8;border-radius:14px}.cq-hrd-table{width:100%;border-collapse:collapse;min-width:760px}.cq-hrd-table th{padding:10px 11px;text-align:left;background:#f1f7f6;color:#607773;font-size:9px;text-transform:uppercase;letter-spacing:.05em}.cq-hrd-table td{padding:11px;border-top:1px solid #edf2f1;color:#355451;font-size:11px;vertical-align:top}.cq-hrd-table td b{color:#193f3d}.cq-hrd-center{text-align:center!important;vertical-align:middle!important}.cq-hrd-check{color:#17834f!important;font-size:17px}.cq-hrd-cross{color:#b23a36!important;font-size:17px}.cq-hrd-check-table{min-width:1080px}.cq-hrd-check-table th:not(:nth-child(2)):not(:nth-child(3)),.cq-hrd-check-table td:not(:nth-child(2)):not(:nth-child(3)){text-align:center}
   .cq-hrd-chip{display:inline-block;border-radius:999px;background:#edf6f4;color:#356d67;padding:5px 8px;font-size:9px;font-weight:850;margin:2px 3px 2px 0}.cq-hrd-promo-tools{display:grid;grid-template-columns:minmax(180px,1fr) 170px 170px auto;gap:8px;margin-bottom:12px}.cq-hrd-promo-evidence{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cq-hrd-promo-view{border:0;cursor:pointer}.cq-hrd-modal{position:fixed;inset:0;z-index:99999;background:rgba(8,35,35,.72);display:flex;align-items:center;justify-content:center;padding:18px}.cq-hrd-modal-card{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:14px;box-shadow:0 24px 70px rgba(0,0,0,.25)}.cq-hrd-modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.cq-hrd-modal-head b{font-size:14px;color:#193f3d}.cq-hrd-modal-close{border:0;background:#edf6f4;color:#285f5a;border-radius:10px;padding:8px 11px;font-weight:900;cursor:pointer}.cq-hrd-modal-img{width:100%;max-height:68vh;object-fit:contain;background:#f4f8f7;border-radius:13px;display:block}.cq-hrd-modal-meta{margin-top:10px;padding:10px 12px;background:#f4f8f7;border-radius:12px;color:#355451;font-size:11px;line-height:1.65}@media(max-width:620px){.cq-hrd-promo-tools{grid-template-columns:1fr 1fr}.cq-hrd-promo-tools input{grid-column:1/-1}}.cq-hrd-chip.bad{background:#fff0ee;color:#a13d35}.cq-hrd-chip.warn{background:#fff8e7;color:#8b6816}.cq-hrd-chip.ok{background:#eaf7ef;color:#24714b}.cq-hrd-empty{padding:28px;text-align:center;color:#708783;font-size:11px}
   .cq-hrd-timeline{display:grid;gap:8px}.cq-hrd-time-row{display:grid;grid-template-columns:105px 125px minmax(180px,1.1fr) minmax(220px,1.5fr) 110px;gap:10px;align-items:start;padding:11px 12px;border:1px solid #e3ecea;border-radius:12px;background:#fff}.cq-hrd-time-row.gap{background:#fff8e7;border-color:#f0dfad}.cq-hrd-time-row.off{background:#f6f8f8;color:#738582}.cq-hrd-time{font-weight:900;color:#1f4d49}.cq-hrd-time-title{font-weight:850;color:#244a47}.cq-hrd-time-note{font-size:10px;line-height:1.5;color:#657a77}.cq-hrd-day-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.cq-hrd-day-summary>div{border:1px solid #dce9e7;border-radius:13px;padding:12px;background:#f9fbfb}.cq-hrd-day-summary b{display:block;font-size:20px;color:#183f3d}.cq-hrd-day-summary span{font-size:9px;color:#748986;font-weight:800;text-transform:uppercase}@media(max-width:850px){.cq-hrd-time-row{grid-template-columns:90px 1fr}.cq-hrd-time-row>*:nth-child(n+3){grid-column:2}.cq-hrd-day-summary{grid-template-columns:1fr 1fr}}
   .cq-hrd-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.cq-hrd-quick button{border:1px solid #dbe8e6;background:#f8fbfb;border-radius:13px;padding:13px;text-align:left;color:#284946;font-weight:850;cursor:pointer}.cq-hrd-quick small{display:block;color:#7a8e8b;font-weight:500;margin-top:5px}
@@ -71,6 +71,7 @@ function drawSidebar(active){
     <button class="cq-hrd-group-label ${state.reportOpen?'open':''}" onclick="hrdToggleGroup('report')">Laporan</button>
     <div class="cq-hrd-sub" ${state.reportOpen?'':'hidden'}>
       ${navButton('live','Aktivitas Harian','openHrdCleanLive()')}
+      ${navButton('completeness','Rekap Kelengkapan','openHrdCompleteness()')}
       ${navButton('monthly','Laporan Bulanan','openHrdCleanMonthly()')}
       ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}\n      ${navButton('report-grades','Laporan Nilai Rapor','openHrdReportGrades()')}
     </div>
@@ -226,6 +227,61 @@ function drawMonthlyRows(){
 }
 window.filterHrdMonthly=()=>{state.monthlyQuery=document.getElementById('hrd-monthly-q')?.value||'';state.monthlyRole=document.getElementById('hrd-monthly-role')?.value||'all';state.monthlyStatus=document.getElementById('hrd-monthly-status')?.value||'all';state.monthlySort=document.getElementById('hrd-monthly-sort')?.value||'az';drawMonthlyRows()};
 window.resetHrdMonthly=()=>{state.monthlyQuery='';state.monthlyRole='all';state.monthlyStatus='all';state.monthlySort='az';renderMonthly()};
+
+function hrdAllCats(t){return [...(Array.isArray(t?.categories)?t.categories:[]),...(Array.isArray(t?.context_categories)?t.context_categories:[])]}
+function hrdCat(t,keys){
+  const want=keys.map(x=>low(x).replace(/[\s-]+/g,'_'));
+  return hrdAllCats(t).find(c=>want.includes(low(c?.key||c?.label).replace(/[\s-]+/g,'_')));
+}
+function hrdMark(cat,forcedApplicable){
+  if(forcedApplicable===false)return '<span title="Tidak menjadi kewajiban">–</span>';
+  if(!cat)return '<span title="Belum ada sumber data CQlass untuk indikator ini">–</span>';
+  if(cat.applicable===false)return '<span title="Tidak menjadi kewajiban">–</span>';
+  const s=low(cat.status);
+  if(['present','complete','completed','done','ok'].includes(s))return '<b class="cq-hrd-check" title="Sudah/lengkap">✓</b>';
+  if(['missing','partial','incomplete','not_complete','separate'].includes(s))return '<b class="cq-hrd-cross" title="Belum/tidak lengkap">✕</b>';
+  return Number(cat.item_count||0)>0?'<b class="cq-hrd-check" title="Sudah/lengkap">✓</b>':'<b class="cq-hrd-cross" title="Belum/tidak lengkap">✕</b>';
+}
+function hrdIsTahfizhPartner(t){
+  const s=low(rolesText(t)+' '+(t?.position||'')+' '+(t?.role||''));
+  return s.includes('tahfizh')||s.includes('qur')||s.includes('partner');
+}
+function hrdOverallMark(t,isTah){
+  const required=isTah
+    ? [[['timesheet'],true],[['promotion','promosi_sekolah','promo_socmed'],true]]
+    : [[['timesheet'],true],[['attendance','student_attendance','absensi_siswa'],null],[['academic','nilai','scores'],null],[['pjbl','pbl_market_day'],null],[['student_affairs','kesiswaan','discipline_reward'],null],[['uks','uks_duty'],null],[['badal','substitute'],null],[['promotion','promosi_sekolah','promo_socmed'],true]];
+  let any=false,bad=false;
+  for(const [keys,force] of required){
+    const cat=hrdCat(t,keys);
+    if(force===true||cat?.applicable!==false){if(cat||force===true)any=true;if((force===true&&!cat)||['missing','partial','incomplete','not_complete','separate'].includes(low(cat?.status)))bad=true}
+  }
+  if(!any)return '–';
+  return bad?'<b class="cq-hrd-cross">✕</b>':'<b class="cq-hrd-check">✓</b>';
+}
+async function renderCompleteness(){
+  setActive('completeness');state.reportOpen=true;drawSidebar('completeness');loading('Rekap Kelengkapan');
+  try{
+    const d=await getAdmin(),rows=[...(d?.teachers||[])].sort((a,b)=>teacherName(a).localeCompare(teacherName(b),'id')),c=content();if(!c)return;
+    const body=rows.map((t,i)=>{
+      const tah=hrdIsTahfizhPartner(t);
+      const mark=(keys,force)=>hrdMark(hrdCat(t,keys),force);
+      return '<tr><td>'+(i+1)+'</td><td><b>'+esc(teacherName(t))+'</b></td><td>'+esc(rolesText(t))+'</td>'+
+        '<td class="cq-hrd-center">'+mark(['timesheet'],true)+'</td>'+
+        '<td class="cq-hrd-center">'+(tah?'–':mark(['attendance','student_attendance','absensi_siswa']))+'</td>'+
+        '<td class="cq-hrd-center">'+(tah?'–':mark(['academic','nilai','scores']))+'</td>'+
+        '<td class="cq-hrd-center">'+(tah?'–':mark(['pjbl','pbl_market_day']))+'</td>'+
+        '<td class="cq-hrd-center">'+(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward']))+'</td>'+
+        '<td class="cq-hrd-center">'+(tah?'–':mark(['uks','uks_duty']))+'</td>'+
+        '<td class="cq-hrd-center">'+(tah?'–':mark(['badal','substitute']))+'</td>'+
+        '<td class="cq-hrd-center">'+mark(['promotion','promosi_sekolah','promo_socmed'],true)+'</td>'+
+        '<td class="cq-hrd-center">'+hrdOverallMark(t,tah)+'</td></tr>';
+    }).join('');
+    c.innerHTML='<div class="cq-hrd-clean">'+head('Rekap Kelengkapan','Ceklis = sudah/lengkap, silang = belum, tanda – = tidak wajib atau sumber indikator belum tersedia untuk guru tersebut.')+
+      '<div class="cq-hrd-panel"><div class="cq-hrd-tools"><input type="month" value="'+esc(state.month)+'" onchange="state.month=this.value;state.admin=null;openHrdCompleteness()"><button class="cq-hrd-btn alt" onclick="state.admin=null;openHrdCompleteness()">Muat Ulang</button></div></div>'+
+      '<div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table cq-hrd-check-table"><thead><tr><th>No</th><th>Guru</th><th>Role</th><th>Timesheet</th><th>Absensi Siswa</th><th>Nilai</th><th>PjBL</th><th>Kesiswaan</th><th>UKS</th><th>Badal</th><th>Promo Socmed</th><th>Status</th></tr></thead><tbody>'+body+'</tbody></table></div></div></div>';
+  }catch(e){errorView('Rekap Kelengkapan',e)}
+}
+
 async function renderMonthly(){
  setActive('monthly');loading('Laporan Bulanan');
  try{const d=await getAdmin(),s=summary(d),c=content();if(!c)return;c.innerHTML=`<div class="cq-hrd-clean">${head('Laporan Bulanan','Klik nama guru untuk membuka detail laporan seperti lembar laporan Excel.')}<div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Total Guru</span><b>${s.total}</b></div><div class="cq-hrd-kpi"><span>Lengkap</span><b>${s.clean}</b></div><div class="cq-hrd-kpi"><span>Belum Lengkap</span><b>${s.issues}</b></div><div class="cq-hrd-kpi"><span>Promosi Belum</span><b>${s.promoMissing}</b></div></div><div class="cq-hrd-panel"><div class="cq-hrd-tools" style="margin-bottom:12px"><input id="hrd-monthly-q" placeholder="Cari nama guru..." value="${esc(state.monthlyQuery)}" oninput="filterHrdMonthly()"><select id="hrd-monthly-role" onchange="filterHrdMonthly()"><option value="all">Semua Role</option><option value="walas">Walas</option><option value="mapel">Guru Mapel</option><option value="tahfizh">Partner / Tahfizh</option><option value="leadership">Pimpinan / Kabid</option><option value="other">Role Lain</option></select><select id="hrd-monthly-status" onchange="filterHrdMonthly()"><option value="all">Semua Status</option><option value="complete">Selesai</option><option value="partial">Sebagian</option><option value="missing">Belum Selesai</option></select><select id="hrd-monthly-sort" onchange="filterHrdMonthly()"><option value="az">Nama A–Z</option><option value="za">Nama Z–A</option><option value="missing">Paling Banyak Belum</option><option value="complete">Paling Banyak Selesai</option></select><button class="cq-hrd-btn alt" onclick="resetHrdMonthly()">Reset</button></div><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Guru</th><th>Role</th><th>Selesai</th><th>Belum</th><th>Sebagian</th><th>Indeks</th></tr></thead><tbody id="hrd-monthly-body"></tbody></table></div></div></div>`;
@@ -329,6 +385,7 @@ window.hrdToggleGroup=g=>{if(g==='report'){state.reportOpen=!state.reportOpen;if
 window.__cqRenderHrdSidebar=()=>drawSidebar();
 window.openHrdCleanDashboard=renderDashboard;
 window.openHrdCleanLive=()=>{state.reportOpen=true;renderLive()};
+window.openHrdCompleteness=renderCompleteness;
 window.openHrdCleanTimesheet=renderTimesheet;
 window.openHrdCleanAdministration=renderAdministration;
 window.openHrdCleanAttendance=renderAttendance;
