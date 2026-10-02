@@ -2,8 +2,8 @@
    Isolated/read-only. Does not alter any other role or input workflow. */
 (function(){
   'use strict';
-  if(window.__cqKesiswaanRekapanV1)return;
-  window.__cqKesiswaanRekapanV1=true;
+  if(window.__cqKesiswaanRekapanV2)return;
+  window.__cqKesiswaanRekapanV2=true;
 
   const MODULE_ID='kesiswaan-rekapan';
   const GROUP_ID='kesiswaan-rekapan-group';
@@ -45,13 +45,13 @@
   function today(){try{return typeof jakartaTodayISO==='function'?jakartaTodayISO():new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}catch(_){return new Date().toISOString().slice(0,10)}}
   async function post(body){
     const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
-    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify(body)});
+    const r=await fetch(API,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()},body:JSON.stringify(body)});
     const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){throw Error('Respons server tidak valid.')}
     if(!r.ok||d.success===false)throw Error(d.message||d.error||'Gagal memuat data.');
     return d;
   }
   function css(){
-    if(document.getElementById('cq-kesiswaan-rekapan-css'))return;
+    if(document.getElementById('cq-kesiswaan-rekapan-css-v2-v2'))return;
     const s=document.createElement('style');s.id='cq-kesiswaan-rekapan-css';s.textContent=`
       .krek{max-width:1380px;margin:0 auto;color:#18334d}.krek *{box-sizing:border-box}
       .krek h1{font-size:24px;margin:0}.krek-sub{font-size:12px;color:#6b7f91;margin:5px 0 14px}
@@ -162,8 +162,8 @@
     return true;
   }
   function hook(){
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV1){
-      const base=renderSidebar;const wrapped=function(){install();return base.apply(this,arguments)};wrapped.__cqKesiswaanRekapanV1=true;renderSidebar=wrapped;
+    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV2){
+      const base=renderSidebar;const wrapped=function(){install();return base.apply(this,arguments)};wrapped.__cqKesiswaanRekapanV2=true;renderSidebar=wrapped;
     }
     if(install()&&typeof renderSidebar==='function')try{renderSidebar()}catch(_){}
   }
