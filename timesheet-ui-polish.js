@@ -20,7 +20,7 @@ function addStyle(){
 .tsv2-teacher-chip{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px;border:1px solid #dce8e6;border-radius:999px;background:#fff;color:#173d3b;font-size:10.5px;font-weight:800;box-shadow:0 1px 4px rgba(23,61,59,.04)}
 .tsv2-teacher-chip:before{content:'';width:7px;height:7px;border-radius:50%;background:#0b7e78;box-shadow:0 0 0 3px #e2f4f1}
 .tsv2-in,.tsv2-sel{height:40px!important;border:1px solid #d5e3e1!important;background:#fff!important;border-radius:10px!important;padding:0 11px!important;font:inherit!important;font-size:11px!important;color:#173d3b!important;outline:none!important;box-shadow:none!important}
-.tsv2-in:focus,.tsv2-sel:focus{border-color:#0b7e78!important;box-shadow:0 0 0 3px rgba(11,126,120,.08)!important}
+.tsv2-in:focus,.tsv2-sel:focus{border-color:#0b7e78!important;box-shadow:0 0 0 3px rgba(11,126,120,.08)!important}.tsv2-in[readonly],.cqrec-in[readonly]{background:#f3f7f6!important;color:#526c68!important;cursor:not-allowed!important}
 .tsv2-btn{min-height:40px!important;border:0!important;border-radius:10px!important;background:#08746f!important;color:#fff!important;padding:0 15px!important;font-size:10.5px!important;font-weight:900!important;cursor:pointer!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;box-shadow:none!important}
 .tsv2-btn:hover{filter:brightness(.97)}
 .tsv2-btn.alt{background:#edf6f5!important;color:#12645f!important}
@@ -38,7 +38,7 @@ function addStyle(){
 /* ===== One-time activity form ===== */
 .tsv2-entry-card{padding:15px 16px!important}
 .tsv2-entry-card>.tsv2-help{display:block!important;max-width:1080px!important;margin-top:2px!important}
-.tsv2-form{display:grid!important;grid-template-columns:160px 106px 106px minmax(210px,1fr) minmax(210px,1fr) minmax(185px,.8fr) 104px!important;grid-template-areas:'date start end activity note photo save'!important;gap:8px!important;align-items:end!important;margin-top:11px!important}
+.tsv2-form{display:grid!important;grid-template-columns:minmax(145px,.85fr) 100px 100px minmax(190px,1.25fr) minmax(190px,1.15fr) minmax(92px,.55fr)!important;grid-template-areas:'date start end activity note save' 'photo photo photo photo photo photo'!important;gap:8px!important;align-items:end!important;margin-top:11px!important;max-width:100%!important;overflow:hidden!important}
 .tsv2-field{min-width:0!important}
 .tsv2-field label{display:block!important;font-size:9.5px!important;line-height:1.2!important;font-weight:800!important;color:#526c68!important;margin:0 0 5px!important}
 .tsv2-field .tsv2-in,.tsv2-field .tsv2-sel{width:100%!important;min-width:0!important}
@@ -48,7 +48,7 @@ function addStyle(){
 .tsv2-form>.tsv2-field:nth-child(4){grid-area:activity!important}
 .tsv2-form>.tsv2-field:nth-child(5){grid-area:note!important}
 .tsv2-form>.ts-photo-field{grid-area:photo!important}
-.tsv2-form>.tsv2-btn:last-child{grid-area:save!important;width:100%!important;min-width:0!important}
+.tsv2-form>.tsv2-btn:last-child{grid-area:save!important;width:100%!important;min-width:0!important;max-width:100%!important}
 .ts-photo-field input{width:100%!important;height:40px!important;padding:7px 8px!important;border:1px dashed #cadbd8!important;border-radius:10px!important;background:#fbfdfd!important;font-size:9px!important;color:#5c7470!important}
 .ts-photo-note{display:none!important}
 .ts-photo-required input{border-color:#e2a29a!important;background:#fff9f8!important}
@@ -82,6 +82,7 @@ function addStyle(){
 
 /* ===== Timeline ===== */
 .tsv2-timeline-card{padding:15px 16px!important}
+.tsv2-timeline-head{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:10px!important;flex-wrap:wrap!important;margin-bottom:8px!important}.tsv2-timeline-head>b,.tsv2-timeline-head>div>b{font-size:15px!important;color:#173d3b!important}.tsv2-view-toggle{min-height:34px!important;height:34px!important;padding:0 11px!important}
 .tsv2-tablewrap{overflow:auto!important;border:1px solid #dfeae8!important;border-radius:11px!important;background:#fff!important}
 .tsv2-table{width:100%!important;min-width:800px!important;border-collapse:separate!important;border-spacing:0!important;table-layout:auto!important}
 .tsv2-table th,.tsv2-table td{padding:8px 9px!important;border-bottom:1px solid #edf2f1!important;text-align:left!important;font-size:9.5px!important;line-height:1.35!important;vertical-align:middle!important}
