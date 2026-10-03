@@ -26,7 +26,7 @@
   }
   function renderRecap(c){
     if(!c)return;
-    c.innerHTML='<div class="cq-academic-badal-recap-host" style="width:100%;min-height:calc(100vh - 110px);overflow:hidden"><iframe title="Rekapan Badal Guru Mapel" style="display:block;width:100%;height:calc(100vh - 118px);min-height:720px;border:0;background:transparent" src="academic-badal-recap.html?v=20261003-recap1"></iframe></div>';
+    c.innerHTML='<div class="cq-academic-badal-recap-host" style="width:100%;min-height:calc(100vh - 110px);overflow:hidden"><iframe title="Rekapan Badal Guru Mapel" style="display:block;width:100%;height:calc(100vh - 118px);min-height:720px;border:0;background:transparent" src="academic-badal-recap.html?v=20261003-filter2"></iframe></div>';
     var frame=c.querySelector('iframe');
     if(frame)frame.onload=function(){try{
       var d=frame.contentDocument;if(!d)return;
