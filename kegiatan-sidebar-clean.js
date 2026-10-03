@@ -66,7 +66,7 @@
     [...sb.querySelectorAll('button,a,.nav-item,.menu-item,.sidebar-item')].forEach(el=>{
       const moduleId=String(el.dataset?.module||el.getAttribute?.('data-module')||'').toLowerCase();
       const label=text(el).toLowerCase();
-      if(BLOCKED_IDS.has(moduleId)||label==='kedisiplinan'||label==='reward siswa'||label==='reward'||/\brapor\b/i.test(label)){
+      if(BLOCKED_IDS.has(moduleId)||label==='kedisiplinan'||label==='reward siswa'||label==='reward'){
         el.style.setProperty('display','none','important');
       }
     });
