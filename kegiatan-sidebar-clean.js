@@ -7,7 +7,7 @@
   if(window.__cqKegiatanSidebarCleanV2) return;
   window.__cqKegiatanSidebarCleanV2=true;
 
-  const BLOCKED_IDS=new Set(['kedisiplinan','reward']);
+  const BLOCKED_IDS=new Set(['kedisiplinan','reward','rapor','rapor-readiness','report-period']);
 
   function role(){
     try{return String(currentUser?.role||'').toLowerCase()}catch(_){return ''}
@@ -66,7 +66,7 @@
     [...sb.querySelectorAll('button,a,.nav-item,.menu-item,.sidebar-item')].forEach(el=>{
       const moduleId=String(el.dataset?.module||el.getAttribute?.('data-module')||'').toLowerCase();
       const label=text(el).toLowerCase();
-      if(BLOCKED_IDS.has(moduleId)||label==='kedisiplinan'||label==='reward siswa'||label==='reward'){
+      if(BLOCKED_IDS.has(moduleId)||label==='kedisiplinan'||label==='reward siswa'||label==='reward'||/\brapor\b/i.test(label)){
         el.style.setProperty('display','none','important');
       }
     });
