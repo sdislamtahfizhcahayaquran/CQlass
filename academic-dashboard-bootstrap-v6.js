@@ -185,3 +185,13 @@
   s.dataset.cqAkMasterTp='1';
   document.head.appendChild(s);
 })();
+
+
+/* Kabid Akademik — Arsip RPP Kurikulum (read-only). */
+(function(){
+  if(document.querySelector('script[data-cq-ak-rpp-archive]')) return;
+  const s=document.createElement('script');
+  s.src='academic-rpp-archive.js?v=20261003-1';
+  s.dataset.cqAkRppArchive='1';
+  document.head.appendChild(s);
+})();
