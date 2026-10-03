@@ -142,6 +142,10 @@
     }catch(_){return false}
   }
   function install(){
+    // Register the renderer first. The previous bootstrap waited for this
+    // function to exist before install(), creating a circular wait when the
+    // module was loaded normally from the Kabid Akademik route.
+    window.renderAcademicBadal=render;
     patch();
     if(typeof renderSidebar==='function'&&!renderSidebar.__cqBadalV2){
       const old=renderSidebar;
@@ -150,5 +154,12 @@
     }
     window.__CQ_BADAL_V2__=true;
   }
-  let tries=0;(function wait(){if(typeof MODULE_GROUPS!=='undefined'&&typeof window.renderAcademicBadal==='function'){install();return}if(++tries<100)setTimeout(wait,150)})();
+  let tries=0;(function wait(){
+    // MODULE_GROUPS may arrive after this deferred script, but the renderer
+    // itself does not depend on it. Install as soon as the app module registry
+    // is available; do not wait on our own renderer registration.
+    if(typeof MODULE_GROUPS!=='undefined'){install();return}
+    window.renderAcademicBadal=render;
+    if(++tries<100)setTimeout(wait,150);
+  })();
 })();
