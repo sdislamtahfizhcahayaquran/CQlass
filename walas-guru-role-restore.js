@@ -3,8 +3,8 @@
    pre-incident teacher/walas menu authority and removes legacy Request Laporan. */
 (function(){
   'use strict';
-  if(window.__cqWalasGuruRoleRestoreV2)return;
-  window.__cqWalasGuruRoleRestoreV2=true;
+  if(window.__cqWalasGuruRoleRestoreV3)return;
+  window.__cqWalasGuruRoleRestoreV3=true;
 
   function role(){
     try{
@@ -56,11 +56,17 @@
       if(String(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase()==='request laporan')el.remove();
     });
   }
+  let rerenderTimer=0;
   function rerender(){
+    // Banyak modul Walas selesai dimuat hampir bersamaan. Satukan semua permintaan
+    // render menjadi satu repaint agar sidebar tidak berkedip tanpa mengubah struktur/menu.
     stripLegacyRequestFromModel();
-    try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){ }
-    setTimeout(stripLegacyRequestFromDom,0);
-    setTimeout(stripLegacyRequestFromDom,80);
+    clearTimeout(rerenderTimer);
+    rerenderTimer=setTimeout(()=>{
+      try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){ }
+      requestAnimationFrame(stripLegacyRequestFromDom);
+      setTimeout(stripLegacyRequestFromDom,80);
+    },90);
   }
   function ensureTeacherWalasStack(){
     if(!isTeacher())return false;
@@ -72,7 +78,7 @@
   }
 
   ensureTeacherWalasStack();
-  if(typeof enterApp==='function'&&!enterApp.__cqWalasGuruRoleRestoreV2){
+  if(typeof enterApp==='function'&&!enterApp.__cqWalasGuruRoleRestoreV3){
     const old=enterApp;
     const wrapped=function(){
       const out=old.apply(this,arguments);
@@ -80,7 +86,7 @@
       setTimeout(rerender,150);
       return out;
     };
-    wrapped.__cqWalasGuruRoleRestoreV2=true;
+    wrapped.__cqWalasGuruRoleRestoreV3=true;
     enterApp=wrapped;
   }
 
