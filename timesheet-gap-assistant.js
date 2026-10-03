@@ -105,7 +105,7 @@ function pick(d,s,e){
 function patternPick(d,s,e){
   const rs=document.getElementById('cqrec-start'),re=document.getElementById('cqrec-end');
   if(!rs||!re){const rec=document.querySelector('.cqrec-card');rec?.scrollIntoView({behavior:'smooth',block:'center'});return}
-  rs.value=s;re.value=e;const day=new Date(d+'T12:00:00Z').getUTCDay();document.querySelectorAll('input[name="cqrec-day"]').forEach(x=>x.checked=Number(x.value)===day);
+  rs.value=s;re.value=e;const rec=document.querySelector('.cqrec-card');if(rec)rec.dataset.gapPatternSelected='1';const day=new Date(d+'T12:00:00Z').getUTCDay();document.querySelectorAll('input[name="cqrec-day"]').forEach(x=>x.checked=Number(x.value)===day);
   lockInputs();document.querySelector('.cqrec-card')?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('cqrec-name')?.focus();
 }
 function render(){
