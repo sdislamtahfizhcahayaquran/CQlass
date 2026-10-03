@@ -47,9 +47,11 @@
     await add('teacher-timesheet-v2.js?v=20261003-role4','cq-ts-v2');
     await add('timesheet-recurring.js?v=20261003-role4','cq-ts-recurring');
     await add('timesheet-gap-assistant.js?v=20261003-role6','cq-ts-gap-assistant');
-    await add('admin-timesheet-master.js?v=20260922-layout3','cq-ts-admin-master');
-    await add('timesheet-saturday-manual.js?v=20260922-layout3','cq-ts-saturday-manual');
-    await add('timesheet-ui-polish.js?v=20261003-role5','cq-ts-ui-polish');
+    try{
+      var r=String((typeof currentUser!=='undefined'&&currentUser?.role)||'').toLowerCase();
+      if(r==='hrd') await add('admin-timesheet-master.js?v=20260922-layout3','cq-ts-admin-master');
+    }catch(_){}
+    await add('timesheet-ui-polish.js?v=20261003-front7','cq-ts-ui-polish');
     await add('timesheet-ui-order-fix.js?v=20260922-order2','cq-ts-ui-order-fix');
     enablePengabdianTimesheet();
     try{
