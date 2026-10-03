@@ -134,6 +134,51 @@ function addStyle(){
   .cqrec-day span{padding:0 3px!important;font-size:8.5px!important}
   .tsv2-table{min-width:720px!important}
 }
+
+/* ===== Hard containment fix: Timesheet entry form ===== */
+.tsv2-entry-card{overflow:hidden!important}
+.tsv2-entry-card .tsv2-form{
+  display:grid!important;
+  grid-template-columns:minmax(150px,.9fr) 105px 105px minmax(220px,1.4fr)!important;
+  grid-template-areas:
+    'date start end activity'
+    'note note note save'
+    'photo photo photo photo'!important;
+  gap:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.tsv2-entry-card .tsv2-form>.tsv2-field:nth-child(1){grid-area:date!important}
+.tsv2-entry-card .tsv2-form>.tsv2-field:nth-child(2){grid-area:start!important}
+.tsv2-entry-card .tsv2-form>.tsv2-field:nth-child(3){grid-area:end!important}
+.tsv2-entry-card .tsv2-form>.tsv2-field:nth-child(4){grid-area:activity!important}
+.tsv2-entry-card .tsv2-form>.tsv2-field:nth-child(5){grid-area:note!important}
+.tsv2-entry-card .tsv2-form>.ts-photo-field{grid-area:photo!important}
+.tsv2-entry-card .tsv2-form>.tsv2-btn:last-child{
+  grid-area:save!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  justify-self:stretch!important;
+  align-self:end!important;
+}
+.tsv2-entry-card .tsv2-field,
+.tsv2-entry-card .tsv2-in,
+.tsv2-entry-card .tsv2-sel{min-width:0!important;max-width:100%!important}
+@media(max-width:1100px){
+  .tsv2-entry-card .tsv2-form{
+    grid-template-columns:1fr 1fr!important;
+    grid-template-areas:
+      'date date'
+      'start end'
+      'activity activity'
+      'note note'
+      'photo photo'
+      'save save'!important;
+  }
+}
 `;
   document.head.appendChild(s);
 }
