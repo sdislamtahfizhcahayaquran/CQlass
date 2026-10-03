@@ -5,7 +5,7 @@ const CORS={
   "Access-Control-Allow-Headers":"authorization,apikey,content-type,x-session-token",
   "Access-Control-Allow-Methods":"POST,OPTIONS"
 };
-const UNIT='SD';
+const AY='2026/2027', SEM=1, UNIT='SD';
 const J=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...CORS,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 const T=(v:unknown)=>String(v??'').trim();
 const L=(v:unknown)=>T(v).toLowerCase();
@@ -42,11 +42,9 @@ function canUse(a:any){return a?.roles?.some((r:string)=>['admin','akademik','ka
 async function context(s:any){
   const {data:unit}=await s.from('school_units').select('id').eq('code',UNIT).maybeSingle();
   if(!unit)throw new Error('school_unit_not_found');
-  const {data:year}=await s.from('academic_years').select('id,name').eq('school_unit_id',unit.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1).maybeSingle();
+  const {data:year}=await s.from('academic_years').select('id,name').eq('school_unit_id',unit.id).eq('name',AY).maybeSingle();
   if(!year)throw new Error('academic_year_not_found');
-  const {data:sem}=await s.from('semesters').select('semester_no').eq('academic_year_id',year.id).eq('is_active',true).limit(1).maybeSingle();
-  const semesterNo=Number(sem?.semester_no||0);if(![1,2].includes(semesterNo))throw new Error('active_semester_not_found');
-  return {unitId:unit.id,yearId:year.id,yearName:year.name,semesterNo};
+  return {unitId:unit.id,yearId:year.id};
 }
 function todayJakarta(){const f=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'});const p=Object.fromEntries(f.formatToParts(new Date()).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`}
 function isoDow(date:string){const x=new Date(date+'T12:00:00Z').getUTCDay();return x===0?7:x}
@@ -65,11 +63,11 @@ async function bootstrap(s:any,ctx:any,dateRaw:unknown){
   const date=/^\d{4}-\d{2}-\d{2}$/.test(T(dateRaw))?T(dateRaw):todayJakarta();
   const dow=isoDow(date);
   const [slotsQ,teachersQ,classesQ,subjectsQ,subsQ,rolesQ]=await Promise.all([
-    s.from('class_schedule_entries').select('id,class_id,subject_id,subject_name_raw,teacher_id,teacher_name_raw,start_time,end_time,slot_label').eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).eq('day_of_week',dow).eq('activity_type','teaching').eq('is_active',true).order('start_time'),
+    s.from('class_schedule_entries').select('id,class_id,subject_id,subject_name_raw,teacher_id,teacher_name_raw,start_time,end_time,slot_label').eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('day_of_week',dow).eq('activity_type','teaching').eq('is_active',true).order('start_time'),
     s.from('teachers').select('id,full_name,status,position').order('full_name'),
     s.from('classes').select('id,name'),
     s.from('subjects').select('id,name'),
-    s.from('teacher_substitution_assignments').select('id,work_date,schedule_entry_id,class_id,subject_id,original_teacher_id,substitute_teacher_id,start_time,end_time,reason,status').eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).eq('work_date',date).eq('status','active'),
+    s.from('teacher_substitution_assignments').select('id,work_date,schedule_entry_id,class_id,subject_id,original_teacher_id,substitute_teacher_id,start_time,end_time,reason,status').eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('work_date',date).eq('status','active'),
     s.from('user_roles').select('teacher_id,role_code,is_active').eq('is_active',true)
   ]);
   for(const q of [slotsQ,teachersQ,classesQ,subjectsQ,subsQ,rolesQ])if(q.error)throw q.error;
@@ -102,7 +100,7 @@ async function bootstrap(s:any,ctx:any,dateRaw:unknown){
 async function assign(s:any,a:any,ctx:any,b:any){
   const date=T(b.work_date)||todayJakarta(),slotId=T(b.schedule_entry_id),subId=T(b.substitute_teacher_id),reason=T(b.reason);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!slotId||!subId)throw new Error('invalid_input');
-  const {data:slot,error:slotErr}=await s.from('class_schedule_entries').select('id,class_id,subject_id,teacher_id,start_time,end_time').eq('id',slotId).eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).maybeSingle();
+  const {data:slot,error:slotErr}=await s.from('class_schedule_entries').select('id,class_id,subject_id,teacher_id,start_time,end_time').eq('id',slotId).eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).maybeSingle();
   if(slotErr)throw slotErr;
   if(!slot||!slot.teacher_id)throw new Error('schedule_not_found');
   if(slot.teacher_id===subId)throw new Error('same_teacher');
@@ -110,20 +108,96 @@ async function assign(s:any,a:any,ctx:any,b:any){
   if(!(boot.teachers||[]).some((t:any)=>String(t.id)===subId))throw new Error('substitute_not_allowed');
   const dow=isoDow(date);
   const [ownQ,subsQ,tahSubsQ]=await Promise.all([
-    s.from('class_schedule_entries').select('id,start_time,end_time').eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).eq('day_of_week',dow).eq('teacher_id',subId).eq('activity_type','teaching').eq('is_active',true),
-    s.from('teacher_substitution_assignments').select('id,start_time,end_time,schedule_entry_id').eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).eq('work_date',date).eq('substitute_teacher_id',subId).eq('status','active'),
-    s.from('tahfizh_substitution_assignments').select('id,start_time,end_time').eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).eq('work_date',date).eq('substitute_teacher_id',subId).eq('status','active')
+    s.from('class_schedule_entries').select('id,start_time,end_time').eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('day_of_week',dow).eq('teacher_id',subId).eq('activity_type','teaching').eq('is_active',true),
+    s.from('teacher_substitution_assignments').select('id,start_time,end_time,schedule_entry_id').eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('work_date',date).eq('substitute_teacher_id',subId).eq('status','active'),
+    s.from('tahfizh_substitution_assignments').select('id,start_time,end_time').eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('work_date',date).eq('substitute_teacher_id',subId).eq('status','active')
   ]);
   if(ownQ.error)throw ownQ.error;if(subsQ.error)throw subsQ.error;if(tahSubsQ.error)throw tahSubsQ.error;
   if((ownQ.data||[]).some((x:any)=>overlap(slot.start_time,slot.end_time,x.start_time,x.end_time)))throw new Error('teacher_conflict_schedule');
   if((subsQ.data||[]).some((x:any)=>overlap(slot.start_time,slot.end_time,x.start_time,x.end_time)&&x.schedule_entry_id!==slotId))throw new Error('teacher_conflict_badal');
   if((tahSubsQ.data||[]).some((x:any)=>overlap(slot.start_time,slot.end_time,x.start_time,x.end_time)))throw new Error('teacher_conflict_tahfizh_badal');
-  const {data:existing,error:existingErr}=await s.from('teacher_substitution_assignments').select('id').eq('academic_year_id',ctx.yearId).eq('semester_no',ctx.semesterNo).eq('work_date',date).eq('schedule_entry_id',slotId).eq('status','active').maybeSingle();
+  const {data:existing,error:existingErr}=await s.from('teacher_substitution_assignments').select('id').eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('work_date',date).eq('schedule_entry_id',slotId).eq('status','active').maybeSingle();
   if(existingErr)throw existingErr;
-  const row={school_unit_id:ctx.unitId,academic_year_id:ctx.yearId,semester_no:ctx.semesterNo,work_date:date,schedule_entry_id:slot.id,class_id:slot.class_id,subject_id:slot.subject_id,original_teacher_id:slot.teacher_id,substitute_teacher_id:subId,start_time:slot.start_time,end_time:slot.end_time,reason:reason||null,status:'active',created_by_account_id:a.account.id,updated_at:new Date().toISOString()};
+  const row={school_unit_id:ctx.unitId,academic_year_id:ctx.yearId,semester_no:SEM,work_date:date,schedule_entry_id:slot.id,class_id:slot.class_id,subject_id:slot.subject_id,original_teacher_id:slot.teacher_id,substitute_teacher_id:subId,start_time:slot.start_time,end_time:slot.end_time,reason:reason||null,status:'active',created_by_account_id:a.account.id,updated_at:new Date().toISOString()};
   const q=existing?s.from('teacher_substitution_assignments').update(row).eq('id',existing.id):s.from('teacher_substitution_assignments').insert(row);
   const {data,error}=await q.select('*').single();if(error)throw error;return data;
 }
+
+async function edit(s:any,ctx:any,b:any){
+  const id=T(b.id),subId=T(b.substitute_teacher_id),reason=T(b.reason);
+  if(!id||!subId)throw new Error('invalid_input');
+  const curQ=await s.from('teacher_substitution_assignments')
+    .select('id,work_date,schedule_entry_id,class_id,subject_id,original_teacher_id,start_time,end_time,status,substitute_teacher_id')
+    .eq('id',id).eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).maybeSingle();
+  if(curQ.error)throw curQ.error;
+  const cur=curQ.data;
+  if(!cur)throw new Error('badal_not_found');
+  if(cur.status!=='active')throw new Error('badal_not_active');
+  if(String(cur.original_teacher_id)===subId)throw new Error('same_teacher');
+
+  const boot=await bootstrap(s,ctx,cur.work_date);
+  if(!(boot.teachers||[]).some((t:any)=>String(t.id)===subId))throw new Error('substitute_not_allowed');
+
+  const dow=isoDow(cur.work_date);
+  const [ownQ,subsQ,tahSubsQ]=await Promise.all([
+    s.from('class_schedule_entries').select('id,start_time,end_time')
+      .eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('day_of_week',dow)
+      .eq('teacher_id',subId).eq('activity_type','teaching').eq('is_active',true),
+    s.from('teacher_substitution_assignments').select('id,start_time,end_time')
+      .eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('work_date',cur.work_date)
+      .eq('substitute_teacher_id',subId).eq('status','active'),
+    s.from('tahfizh_substitution_assignments').select('id,start_time,end_time')
+      .eq('academic_year_id',ctx.yearId).eq('semester_no',SEM).eq('work_date',cur.work_date)
+      .eq('substitute_teacher_id',subId).eq('status','active')
+  ]);
+  for(const q of [ownQ,subsQ,tahSubsQ])if(q.error)throw q.error;
+  if((ownQ.data||[]).some((x:any)=>overlap(cur.start_time,cur.end_time,x.start_time,x.end_time)))throw new Error('teacher_conflict_schedule');
+  if((subsQ.data||[]).some((x:any)=>String(x.id)!==id&&overlap(cur.start_time,cur.end_time,x.start_time,x.end_time)))throw new Error('teacher_conflict_badal');
+  if((tahSubsQ.data||[]).some((x:any)=>overlap(cur.start_time,cur.end_time,x.start_time,x.end_time)))throw new Error('teacher_conflict_tahfizh_badal');
+
+  const q=await s.from('teacher_substitution_assignments')
+    .update({substitute_teacher_id:subId,reason:reason||null,updated_at:new Date().toISOString()})
+    .eq('id',id).select('*').single();
+  if(q.error)throw q.error;
+  return q.data;
+}
+
+async function recap(s:any,ctx:any,b:any){
+  const to=/^\d{4}-\d{2}-\d{2}$/.test(T(b.to))?T(b.to):todayJakarta();
+  const from=/^\d{4}-\d{2}-\d{2}$/.test(T(b.from))?T(b.from):new Date(new Date(to+'T12:00:00Z').getTime()-30*86400000).toISOString().slice(0,10);
+  const [q,teachersQ,classesQ,subjectsQ,rolesQ]=await Promise.all([
+    s.from('teacher_substitution_assignments')
+      .select('id,work_date,schedule_entry_id,class_id,subject_id,original_teacher_id,substitute_teacher_id,start_time,end_time,reason,status,created_at,updated_at')
+      .eq('academic_year_id',ctx.yearId).eq('semester_no',SEM)
+      .gte('work_date',from).lte('work_date',to)
+      .order('work_date',{ascending:false}).order('start_time'),
+    s.from('teachers').select('id,full_name'),
+    s.from('classes').select('id,name'),
+    s.from('subjects').select('id,name'),
+    s.from('user_roles').select('teacher_id,role_code,is_active').eq('is_active',true)
+  ]);
+  for(const x of [q,teachersQ,classesQ,subjectsQ,rolesQ])if(x.error)throw x.error;
+  const tm=new Map((teachersQ.data||[]).map((x:any)=>[String(x.id),x.full_name]));
+  const cm=new Map((classesQ.data||[]).map((x:any)=>[String(x.id),x.name]));
+  const sm=new Map((subjectsQ.data||[]).map((x:any)=>[String(x.id),x.name]));
+  const roleMap=new Map<string,string[]>();
+  for(const r of rolesQ.data||[]){
+    const tid=String(r.teacher_id||''); if(!tid)continue;
+    if(!roleMap.has(tid))roleMap.set(tid,[]);
+    roleMap.get(tid)!.push(normalizeRole(r.role_code));
+  }
+  return {from,to,items:(q.data||[]).map((x:any)=>{
+    const rr=roleMap.get(String(x.substitute_teacher_id))||[];
+    return {...x,
+      class_name:cm.get(String(x.class_id))||'',
+      subject_name:sm.get(String(x.subject_id))||'',
+      original_teacher_name:tm.get(String(x.original_teacher_id))||'',
+      substitute_name:tm.get(String(x.substitute_teacher_id))||'',
+      substitute_type:roleLabel(rr)
+    };
+  })};
+}
+
 async function cancel(s:any,b:any){const id=T(b.id);if(!id)throw new Error('invalid_input');const {error}=await s.from('teacher_substitution_assignments').update({status:'cancelled',updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error}
 
 Deno.serve(async(req:Request)=>{
