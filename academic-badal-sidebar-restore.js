@@ -17,12 +17,23 @@
     if(typeof window.renderAcademicBadal==='function')return window.renderAcademicBadal(c);
     if(!document.querySelector('script[data-cq-academic-badal-restore-module]')){
       var s=document.createElement('script');
-      s.src='academic-badal-v2.js?v=20260929-restore2';
+      s.src='academic-badal-v2.js?v=20261003-tahfizhflow2';
       s.async=false;s.dataset.cqAcademicBadalRestoreModule='1';
       s.onload=function(){if(typeof window.renderAcademicBadal==='function')window.renderAcademicBadal(c)};
       (document.body||document.head).appendChild(s);
     }
     if(c)c.innerHTML='<div class="card">Memuat Badal Guru Mapel...</div>';
+  }
+  function renderRecap(c){
+    if(!c)return;
+    c.innerHTML='<div class="cq-academic-badal-recap-host" style="width:100%;min-height:calc(100vh - 110px);overflow:hidden"><iframe title="Rekapan Badal Guru Mapel" style="display:block;width:100%;height:calc(100vh - 118px);min-height:720px;border:0;background:transparent" src="academic-badal-recap.html?v=20261003-recap1"></iframe></div>';
+    var frame=c.querySelector('iframe');
+    if(frame)frame.onload=function(){try{
+      var d=frame.contentDocument;if(!d)return;
+      var st=d.createElement('style');
+      st.textContent='.top{display:none!important}.wrap{padding:8px 4px 28px!important}body{background:transparent!important}';
+      d.head.appendChild(st);
+    }catch(_){}};
   }
   function ensure(){
     if(!isAcademic())return false;
@@ -43,6 +54,17 @@
         item.roles=['akademik','kabid_akademik'];
         item.built=true;
         item.render=renderBadal;
+      }
+      var recap=g.items.find(function(x){return x&&x.id==='akd-badal-recap'});
+      if(!recap){
+        recap={id:'akd-badal-recap',label:'Rekapan Badal',roles:['akademik','kabid_akademik'],built:true,render:renderRecap};
+        var badalPos=g.items.findIndex(function(x){return x&&x.id==='akd-badal'});
+        if(badalPos<0)g.items.push(recap);else g.items.splice(badalPos+1,0,recap);
+      }else{
+        recap.label='Rekapan Badal';
+        recap.roles=['akademik','kabid_akademik'];
+        recap.built=true;
+        recap.render=renderRecap;
       }
       return true;
     }catch(e){console.warn('Badal Guru Mapel restore:',e);return false}
