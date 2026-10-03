@@ -1,8 +1,8 @@
 /* CQlass — Timesheet gap assistant: show only unrecorded work slots */
 (function(){
 'use strict';
-if(window.__cqTimesheetGapAssistant20261003V2)return;
-window.__cqTimesheetGapAssistant20261003V1=true;
+if(window.__cqTimesheetGapAssistant20261003V3)return;
+window.__cqTimesheetGapAssistant20261003V3=true;
 const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
 const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
 const EP={
@@ -115,9 +115,9 @@ function lockInputs(){
   const rs=document.getElementById('cqrec-start'),re=document.getElementById('cqrec-end');if(rs){rs.readOnly=true;rs.setAttribute('aria-readonly','true')}if(re){re.readOnly=true;re.setAttribute('aria-readonly','true')}
 }
 function pick(d,s,e){
-  const a=document.getElementById('tsv2-date'),b=document.getElementById('tsv2-start'),c=document.getElementById('tsv2-end'),form=document.querySelector('.tsv2-form');
-  if(a)a.value=d;if(b)b.value=s;if(c)c.value=e;if(form)form.dataset.gapSelected='1';lockInputs();
-  const card=a?.closest('.tsv2-card');card?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('tsv2-act')?.focus();
+  const a=document.getElementById('tsv2-date'),b=document.getElementById('tsv2-start'),c=document.getElementById('tsv2-end'),form=document.querySelector('.tsv2-form'),card=document.querySelector('.tsv2-slot-editor');
+  if(a)a.value=d;if(b)b.value=s;if(c)c.value=e;if(form)form.dataset.gapSelected='1';if(card)card.hidden=false;lockInputs();
+  card?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('tsv2-act')?.focus();
 }
 function patternPick(d,s,e){
   const rs=document.getElementById('cqrec-start'),re=document.getElementById('cqrec-end');
@@ -127,13 +127,15 @@ function patternPick(d,s,e){
 }
 function render(){
   const c=ctx();if(!c||!G.data)return;style();
-  let card=c.root.querySelector('.tsgap-card');if(!card){card=document.createElement('div');card.className='tsv2-card tsgap-card';const entry=[...c.root.querySelectorAll('.tsv2-card')].find(x=>x.querySelector('#tsv2-date'));if(entry)entry.before(card);else c.root.querySelector('#tsv2-body')?.prepend(card)}
+  const host=c.root.querySelector('#tsv2-gap-host')||c.root.querySelector('#tsv2-body');if(!host)return;
+  let card=c.root.querySelector('.tsgap-card');if(!card){card=document.createElement('div');card.className='tsv2-card tsgap-card';host.appendChild(card)}
   const xs=G.data.items||[],show=G.showAll?xs:xs.slice(0,18);
   card.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar waktu belum tercatat belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot yang Perlu Diisi</div><div class="tsv2-help">Yang tampil hanya waktu kerja yang benar-benar belum punya kegiatan. Mengajar, briefing, penyambutan, istirahat, Ishoma, kegiatan Jumat, UKS, agenda Sabtu HRD, dan pola berulang tidak ditampilkan sebagai slot kosong.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot belum tercatat':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${x.special?'Hari/kegiatan khusus':'Pilih aktivitas untuk waktu ini'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Sekali</button><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPatternPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Jadikan Pola</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
 }
 window.cqTsGapPick=pick;
 window.cqTsGapPatternPick=patternPick;
 window.cqTsGapToggle=()=>{G.showAll=!G.showAll;render()};
+window.cqTsGapRefresh=()=>{G.key='';G.data=null;load()};
 function ensure(){const c=ctx();if(!c)return;lockInputs();if(G.key!==c.key||!G.data){load();return}if(!c.root.querySelector('.tsgap-card'))render()}
 let t=0;const mo=new MutationObserver(()=>{clearTimeout(t);t=setTimeout(ensure,350)});
 function start(){style();mo.observe(document.body,{childList:true,subtree:true});setTimeout(ensure,700)}
