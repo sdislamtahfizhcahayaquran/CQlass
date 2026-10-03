@@ -36,7 +36,7 @@ function addStyle(){
 .tsv2-kpi span{font-size:8.5px!important;line-height:1.25!important;color:#718481!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.025em!important}
 
 /* ===== One-time activity form ===== */
-.tsv2-entry-card{padding:15px 16px!important}
+.tsv2-entry-card{padding:15px 16px!important}.tsv2-slot-editor[hidden],.cqrec-editor[hidden]{display:none!important}
 .tsv2-entry-card>.tsv2-help{display:block!important;max-width:1080px!important;margin-top:2px!important}
 .tsv2-form{display:grid!important;grid-template-columns:minmax(145px,.85fr) 100px 100px minmax(190px,1.25fr) minmax(190px,1.15fr) minmax(92px,.55fr)!important;grid-template-areas:'date start end activity note save' 'photo photo photo photo photo photo'!important;gap:8px!important;align-items:end!important;margin-top:11px!important;max-width:100%!important;overflow:hidden!important}
 .tsv2-field{min-width:0!important}
