@@ -118,7 +118,7 @@
     m.classList.add('show');renderDetailTable();
   }
 
-  function ensureBox(){if(!allowed())return null;const root=document.getElementById('kv2-root');if(!root)return null;let box=document.getElementById('kegiatan-live-report');if(!box){box=document.createElement('section');box.id='kegiatan-live-report';box.innerHTML='<div class="kglr-title">Live Report Kabid Kegiatan</div><div class="kglr-sub">Memuat data terbaru...</div>';const anchor=root.querySelector('.kv2-kpis');if(anchor)anchor.insertAdjacentElement('afterend',box);else root.prepend(box)}return box}
+  function ensureBox(){if(!allowed())return null;try{if(typeof activeModule!=='undefined'&&activeModule!=='kegiatan-rapor')return null}catch(_){return null}const root=document.getElementById('kv2-root');if(!root)return null;let box=document.getElementById('kegiatan-live-report');if(!box){box=document.createElement('section');box.id='kegiatan-live-report';box.innerHTML='<div class="kglr-title">Live Report Kabid Kegiatan</div><div class="kglr-sub">Memuat data terbaru...</div>';const anchor=root.querySelector('.kv2-kpis');if(anchor)anchor.insertAdjacentElement('afterend',box);else root.prepend(box)}return box}
   function renderTable(){
     const tb=document.getElementById('kglr-body');if(!tb)return;const rows=filtered();
     tb.innerHTML=rows.length?rows.map(r=>{
