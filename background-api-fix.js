@@ -227,6 +227,7 @@
       add('./kegiatan-sidebar-clean.js?v=20260916-kegiatan-sidebar2','__cqKegiatanSidebarCleanLoaderInstalled',true);
       add('./kegiatan-live-report.js?v=20260921-live3','__cqKegiatanLiveReportLoaderV3Installed',false);
       add('./kegiatan-live-report-coaches-only.js?v=20260921-coaches1','__cqKegiatanLiveReportCoachesOnlyLoaderInstalled',false);
+      add('./kegiatan-exkul-attendance-live.js?v=20261003-liveatt1','__cqKegiatanEkskulAttendanceLiveLoaderInstalled',false);
       add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
     }
     if(r==='partner'){
