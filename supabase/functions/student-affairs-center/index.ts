@@ -81,8 +81,20 @@ Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});
   if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);
   try{
-    const a=await me(req);if(!a)return J({success:false,error:"unauthorized"},401);
     const b=await req.json().catch(()=>({})),action=L(b.action);
+    if(action==="public_roster"){
+      const className=T(b.class_name);
+      const[{data:year},{data:sem}]=await Promise.all([sb.from("academic_years").select("id").eq("is_active",true).order("created_at",{ascending:false}).limit(1).maybeSingle(),sb.from("semesters").select("academic_year_id,semester_no").eq("is_active",true).limit(1).maybeSingle()]);
+      if(!year||!sem||T(sem.academic_year_id)!==T(year.id))throw Error("active_period_missing");
+      const{data:classes,error:ce}=await sb.from("classes").select("id,name,grade_level").eq("academic_year_id",year.id).eq("is_active",true).order("grade_level").order("name");if(ce)throw ce;
+      if(!className)return J({success:true,classes:(classes||[]).map((x:any)=>({name:T(x.name)}))});
+      const cl=(classes||[]).find((x:any)=>L(x.name)===L(className));if(!cl)return J({success:false,error:"class_not_found"},404);
+      const{data:en,error:ee}=await sb.from("student_enrollments").select("student_id").eq("class_id",cl.id).eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true);if(ee)throw ee;
+      const ids=(en||[]).map((x:any)=>x.student_id).filter(Boolean);if(!ids.length)return J({success:true,class_name:cl.name,students:[]});
+      const{data:stud,error:se}=await sb.from("students").select("id,full_name,status").in("id",ids).order("full_name");if(se)throw se;
+      return J({success:true,class_name:cl.name,students:(stud||[]).filter((x:any)=>["aktif","active"].includes(L(x.status))).map((x:any)=>({id:x.id,name:T(x.full_name)}))});
+    }
+    const a=await me(req);if(!a)return J({success:false,error:"unauthorized"},401);
     const canView=has(a,"kesiswaan","kegiatan","pimpinan","admin"),canAffairs=has(a,"kesiswaan","admin"),canAchievement=has(a,"kesiswaan","kegiatan","admin");
     if(!canView)return J({success:false,error:"forbidden"},403);
     if(action==="bootstrap"){
