@@ -274,7 +274,5 @@
     load();
   }
   window.renderKesiswaanRekapan=render;
-  function install(){return true}\n  function hook(){return true}\n
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
-  let tries=0;const timer=setInterval(()=>{tries++;const changed=hook();if(changed||tries>20||!isKesiswaan())clearInterval(timer)},250);
-})();
+  })();
