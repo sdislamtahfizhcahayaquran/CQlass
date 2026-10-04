@@ -49,7 +49,7 @@
     'report-period-control.js?v=20260923-reportperiod1',
     'rapor-identity-fix.js?v=20260917-nisnisn1',
     'academic-report-class-picker.js?v=20260921-classpicker1',
-    'rapor-achievement-stars.js?v=20260927-stars23',    'kesiswaan-super-report.js?v=20261004-renderonly1',
+    'rapor-achievement-stars.js?v=20260927-stars23',    'kesiswaan-super-report.js?v=20261004-noexport2',
     'kesiswaan-rekapan.js?v=20261004-renderonly15',
     'kesiswaan-salam-rekap.js?v=20261004-renderonly2',
     'kesiswaan-case-followup-ui.js?v=20260921-followup1',    'promotion-report-edit.js?v=20260922-edit1',
@@ -75,7 +75,7 @@
 
     Promise.allSettled(common.map(load)).then(()=>{
       const now=role();
-      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20261004-clean16');
+      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20261004-clean17');
     });
     return true;
   }
