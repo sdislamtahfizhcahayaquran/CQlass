@@ -78,9 +78,7 @@
           'kesiswaan-point-input-audit.js?v=20261004-renderonly1',
           'kesiswaan-super-report.js?v=20261004-noexport2',
           'kesiswaan-rekapan.js?v=20261004-renderonly15',
-          'kesiswaan-salam-rekap.js?v=20261004-renderonly2',
-          'kesiswaan-case-followup-ui.js?v=20260921-followup1',
-          'uks-duty-kesiswaan.js?v=20261004-kesroot1'
+          'kesiswaan-salam-rekap.js?v=20261004-renderonly2',          'uks-duty-kesiswaan.js?v=20261004-kesroot1'
         ];
         for(const src of kes)await load(src);
         await load('kesiswaan-final-cleanup.js?v=20261004-root19');
