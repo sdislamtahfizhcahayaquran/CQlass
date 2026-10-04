@@ -73,21 +73,7 @@ Filter utama:
 Output:
 - tampilan live;
 - Cetak/PDF melalui print view;
-- XLSX native multi-sheet.
 
-Workbook XLSX berisi sheet:
-- Ringkasan;
-- Kehadiran;
-- Reward;
-- Pelanggaran;
-- Kasus;
-- Layanan Kesiswaan;
-- Prestasi;
-- Jaga UKS;
-- Monitoring Input;
-- Profil Siswa.
-
----
 
 ## 4. Sumber Data Laporan
 
@@ -275,8 +261,7 @@ Wali kelas tidak perlu membuat record prestasi kedua hanya untuk kebutuhan lapor
 
 Menu lama `Laporan > Unduh Rekap` pernah masih `built:false`.
 
-Karena Laporan Kesiswaan baru sudah memiliki output PDF dan XLSX, placeholder lama tersebut dihapus pada runtime sidebar melalui:
-`kesiswaan-final-cleanup.js`
+Navigasi Kesiswaan dimiliki langsung oleh renderer Kesiswaan; tidak memakai placeholder atau cleanup sidebar legacy.
 
 Commit terkait:
 - `a1cc11e778429e1d0172cc67e33dcde850c3e7da`
@@ -284,20 +269,6 @@ Commit terkait:
 
 ---
 
-## 13. XLSX Native
-
-Tombol `Unduh Excel` sebelumnya hanya membuat CSV dengan ekstensi `.csv`.
-
-Sekarang tersedia patch:
-`kesiswaan-excel-xlsx.js`
-
-yang menghasilkan workbook `.xlsx` asli memakai SheetJS dan mengambil data report langsung dari Edge Function aktif.
-
-Commit:
-- `8598ad0f990fe8dd0e7e78363bc1f55333c418f3`
-- loader: `7c3fc7cd2f61c80a1cef8523fd0ba870278dafe0`
-
----
 
 ## 14. Keamanan Kesiswaan yang Sudah Diperbaiki
 
@@ -327,16 +298,6 @@ Catatan: masih terdapat security advisor findings lain pada project CQlass secar
 
 ---
 
-## 15. Request Laporan / Saran & Masukan
-
-Keputusan final:
-- Request/Laporan Kesiswaan tidak diberikan sebagai beban input Walas/Guru;
-- logic sidebar yang ada membersihkan Request Laporan dari Walas;
-- jalur Saran & Masukan tetap dipakai untuk kebutuhan laporan internal sesuai kategori.
-
-SAPRAS dan non-SAPRAS tetap mengikuti routing role yang telah dirancang pada modul internal report center.
-
----
 
 ## 16. Checklist Saat Melanjutkan Project
 
@@ -357,7 +318,6 @@ Sebelum perubahan baru:
 File utama yang harus diperiksa bila ada bug Kesiswaan:
 - `student-affairs-center.js` — UI input operasional Kesiswaan;
 - `kesiswaan-super-report.js` — UI laporan super;
-- `kesiswaan-excel-xlsx.js` — XLSX native;
 - `kesiswaan-point-input-audit.js` — UI monitoring input;
 - `uks-duty.js` — kamera/laporan guru piket;
 - `uks-duty-kesiswaan.js` — inbox Kesiswaan;
@@ -379,7 +339,7 @@ Project Kesiswaan dianggap sehat jika:
 - monitoring hanya membebankan Walas/Guru Tahfizh yang relevan;
 - UKS kamera-only tetap berjalan;
 - jaga UKS muncul otomatis di Timesheet dari jadwal;
-- output PDF dan XLSX dapat digunakan;
+- ekspor Excel sementara dinonaktifkan selama audit page Kesiswaan;
 - role tidak bocor ke pihak yang tidak berwenang;
 - source backend live tersimpan di repo agar tidak ada drift deploy-vs-code.
 
