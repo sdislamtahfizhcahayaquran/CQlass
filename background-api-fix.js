@@ -241,10 +241,8 @@
       add('./tahfizh-kabid-input-live.js?v=20260929-quran4','__cqTahfizhKabidInputLiveLoaderV2Installed',false);
     }
     if(r==='tahfizh'){
-      add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-rolelazy1','__cqTahfizhKesiswaanSidebarRoleLazy',false);
     }
     if(r==='kesiswaan'){
-      add('./uks-duty-kesiswaan.js?v=20260924-rolelazy1','__cqUksDutyKesiswaanRoleLazy',false);
     }
   }
 
