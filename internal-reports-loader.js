@@ -78,7 +78,7 @@
           'kesiswaan-point-input-audit.js?v=20261004-clean2',
           'kesiswaan-super-report.js?v=20261004-clean3',
           'kesiswaan-rekapan.js?v=20261004-clean16',
-          'kesiswaan-salam-rekap.js?v=20261004-clean3',          'uks-duty-kesiswaan.js?v=20261004-clean3'
+          'uks-duty-kesiswaan.js?v=20261004-clean3'
         ];
         for(const src of kes)await load(src);
         await load('kesiswaan-navigation.js?v=20261004-canonical2');
