@@ -128,6 +128,19 @@
     }
   }
 
+  function ensureKesiswaanSubmenuRoutes(){
+    if(role()!=='kesiswaan'||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return;
+    let g=MODULE_GROUPS.find(x=>x&&x.id==='kesiswaan-route-aliases');
+    if(!g){g={id:'kesiswaan-route-aliases',label:'Kesiswaan Routes',roles:[],items:[]};MODULE_GROUPS.push(g)}
+    const add=(id,render)=>{let x=g.items.find(i=>i.id===id);const obj={id,label:id,roles:[],built:true,render};x?Object.assign(x,obj):g.items.push(obj)};
+    add('kes-laporan-masuk',c=>window.renderStudentAffairsCases?.(c));
+    add('kes-pendampingan',c=>window.renderStudentAffairsCases?.(c));
+    add('kes-muhadhoroh',c=>window.renderStudentAffairsType?.(c,'muhadhoroh'));
+    add('kes-prestasi',c=>window.renderStudentAffairsType?.(c,'prestasi'));
+    add('kes-kebutuhan',c=>window.renderStudentAffairsType?.(c,'dukungan'));
+    add('kes-program',c=>window.renderStudentAffairsType?.(c,'kegiatan'));
+  }
+
   function enforceKesiswaanFourMenuModel(){
     if(role()!=='kesiswaan'||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
     const find=(id)=>{for(const g of MODULE_GROUPS){const x=(g?.items||[]).find(it=>it&&it.id===id);if(x)return x}return null};
@@ -191,22 +204,22 @@
     const groups=[
       {id:'kes-layanan',label:'Layanan',items:[
         ['kesiswaan-input','Layanan Kesiswaan'],
-        ['masalah','Laporan Masuk'],
-        ['sac-kasus','Pendampingan Siswa'],
+        ['kes-laporan-masuk','Laporan Masuk'],
+        ['kes-pendampingan','Pendampingan Siswa'],
         ['salam-cq-rekap','Salam CQ'],
-        ['sac-muhadhoroh','Muhadhoroh'],
-        ['sac-prestasi','Prestasi Siswa'],
-        ['sac-dukungan','Kebutuhan Siswa'],
-        ['sac-kegiatan','Program Kesiswaan / SPARQ'],
+        ['kes-muhadhoroh','Muhadhoroh'],
+        ['kes-prestasi','Prestasi Siswa'],
+        ['kes-kebutuhan','Kebutuhan Siswa'],
+        ['kes-program','Program Kesiswaan / SPARQ'],
         ['uks-duty-inbox','Monitoring UKS'],
         ['rekap-input-poin','Monitoring Input']
       ]},
       {id:'kes-laporan',label:'Laporan',items:[
         ['laporan-kesiswaan-super','Laporan Pendampingan Siswa'],
         ['salam-cq-rekap','Laporan Salam CQ'],
-        ['sac-muhadhoroh','Laporan Muhadhoroh'],
-        ['sac-prestasi','Laporan Prestasi'],
-        ['sac-kegiatan','Laporan Program Kesiswaan / SPARQ'],
+        ['kes-muhadhoroh','Laporan Muhadhoroh'],
+        ['kes-prestasi','Laporan Prestasi'],
+        ['kes-program','Laporan Program Kesiswaan / SPARQ'],
         ['uks-duty-inbox','Laporan UKS'],
         ['laporan-kesiswaan-super','Laporan Kedisiplinan & Apresiasi'],
         ['laporan-promosi','Promosi Socmed']
@@ -272,7 +285,7 @@
   }
 
   function apply(){
-    const ok=consolidateModel();enforceKesiswaanFourMenuModel();patchSidebar();patchRoute();
+    const ok=consolidateModel();ensureKesiswaanSubmenuRoutes();enforceKesiswaanFourMenuModel();patchSidebar();patchRoute();
     if(role()==='kesiswaan')renderKesiswaanSidebarOnly(); else if(ok&&typeof renderSidebar==='function')renderSidebar();
     try{
       const r=role(),key=norm(typeof activeModule!=='undefined'?activeModule:'');
