@@ -49,10 +49,7 @@
     'report-period-control.js?v=20260923-reportperiod1',
     'rapor-identity-fix.js?v=20260917-nisnisn1',
     'academic-report-class-picker.js?v=20260921-classpicker1',
-    'rapor-achievement-stars.js?v=20260927-stars23',    'kesiswaan-super-report.js?v=20261004-noexport2',
-    'kesiswaan-rekapan.js?v=20261004-renderonly15',
-    'kesiswaan-salam-rekap.js?v=20261004-renderonly2',
-    'kesiswaan-case-followup-ui.js?v=20260921-followup1',    'promotion-report-edit.js?v=20260922-edit1',
+    'rapor-achievement-stars.js?v=20260927-stars23',    'promotion-report-edit.js?v=20260922-edit1',
     'extracurricular-raw-ui.js?v=20260916-raw2',
     'kegiatan-exkul-report-grades.js?v=20260921-reportgrades2',
     'kegiatan-exkul-external-admin.js?v=20260921-extadmin1',
@@ -73,9 +70,21 @@
     if(isHrd()) return true; // HRD V8 dimuat satu kali dari index.html; jangan inject ulang.
     if(r==='kabid_quran')return true;
 
-    Promise.allSettled(common.map(load)).then(()=>{
+    Promise.allSettled(common.map(load)).then(async()=>{
       const now=role();
-      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20261004-stable18');
+      if(now==='kesiswaan'){
+        const kes=[
+          'student-affairs-center.js?v=20261004-kesroot1',
+          'kesiswaan-point-input-audit.js?v=20261004-renderonly1',
+          'kesiswaan-super-report.js?v=20261004-noexport2',
+          'kesiswaan-rekapan.js?v=20261004-renderonly15',
+          'kesiswaan-salam-rekap.js?v=20261004-renderonly2',
+          'kesiswaan-case-followup-ui.js?v=20260921-followup1',
+          'uks-duty-kesiswaan.js?v=20261004-kesroot1'
+        ];
+        for(const src of kes)await load(src);
+        await load('kesiswaan-final-cleanup.js?v=20261004-root19');
+      }
     });
     return true;
   }
