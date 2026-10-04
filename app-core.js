@@ -4025,6 +4025,7 @@ function rdPointBars(v=0,r=0){
 function renderRoleDashboard(d){
   const root=document.getElementById('rd-root');if(!root)return;
   const role=d.role||currentUser.role||'guru', name=currentUser?.nama||currentUser?.username||'Pengguna';
+  if(role==='kesiswaan'&&typeof window.renderKesiswaanDashboardV1==='function'){window.renderKesiswaanDashboardV1(d);return;}
   const s=d.summary||{},scope=d.scope_label||'',tasks=d.tasks||[];
 
   if(role==='admin'){
