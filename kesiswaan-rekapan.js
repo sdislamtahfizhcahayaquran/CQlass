@@ -273,6 +273,7 @@
     document.getElementById('krek-daily')?.addEventListener('click',enterDailyMode);
     load();
   }
+  window.renderKesiswaanRekapan=render;
   function install(){
     if(!isKesiswaan())return false;
     if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
