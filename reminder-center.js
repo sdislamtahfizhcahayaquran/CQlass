@@ -66,7 +66,7 @@
   }
   function ensureIndicator(wrap){
     if(!wrap) return;
-    wrap.classList.toggle('cq-kesiswaan-bell',role()==='kesiswaan');
+    wrap.classList.toggle('cq-kesiswaan-bell',['kesiswaan','kabid_kesiswaan'].includes(role()));
     wrap.style.position=wrap.style.position||'relative';
     let dot=wrap.querySelector('.cq-reminder-dot');
     if(!dot){
