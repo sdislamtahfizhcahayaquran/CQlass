@@ -213,7 +213,7 @@
     injectCss(); if(!content)return; content.innerHTML=reporterShell(); bindReporter(content); loadMine(content);
   }
 
-  function inboxType(){return role()==='sapras'?'SAPRAS':role()==='kesiswaan'?'SARAN_MASUKAN':''}
+  function inboxType(){return role()==='sapras'?'SAPRAS':['kesiswaan','kabid_kesiswaan'].includes(role())?'SARAN_MASUKAN':''}
   function inboxStats(){
     const all=state.inbox||[];
     const waiting=all.filter(r=>['TERKIRIM','DILAPORKAN'].includes(statusKey(r.status))).length;
@@ -319,7 +319,7 @@
   function install(){
     /* Kabid Kesiswaan sidebar is exclusively owned by kesiswaan-navigation.js.
        Keep inbox/report renderers available, but never patch or rerender its sidebar here. */
-    if(role()==='kesiswaan') return;
+    if(['kesiswaan','kabid_kesiswaan'].includes(role())) return;
     ensureMenus();
     patchDashboard();
     if(typeof renderSidebar==='function'&&!renderSidebar.__cqInternalReports){
