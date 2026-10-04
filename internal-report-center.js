@@ -317,6 +317,9 @@
   }
 
   function install(){
+    /* Kabid Kesiswaan sidebar is exclusively owned by kesiswaan-navigation.js.
+       Keep inbox/report renderers available, but never patch or rerender its sidebar here. */
+    if(role()==='kesiswaan') return;
     ensureMenus();
     patchDashboard();
     if(typeof renderSidebar==='function'&&!renderSidebar.__cqInternalReports){
