@@ -134,6 +134,20 @@
   }
 
 
+  const previousEnterApp=typeof enterApp==='function'?enterApp:null;
+  if(previousEnterApp&&!previousEnterApp.__cqKesiswaanCanonicalEntry){
+    const wrappedEnterApp=function(){
+      const out=previousEnterApp.apply(this,arguments);
+      if(['kesiswaan','kabid_kesiswaan'].includes(role())){
+        installCanonicalNavigation();
+        renderKesiswaanSidebarOnly();
+        setActiveModule('dashboard');
+      }
+      return out;
+    };
+    wrappedEnterApp.__cqKesiswaanCanonicalEntry=true;
+    enterApp=wrappedEnterApp;
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
 
 })();
