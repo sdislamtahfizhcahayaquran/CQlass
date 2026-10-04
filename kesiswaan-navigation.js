@@ -54,26 +54,13 @@
         ['kes-prestasi','Prestasi Siswa']
       ]},
       {id:'kes-laporan',label:'Laporan',items:[
-        ['kes-laporan-masuk','Laporan Masuk'],
-        ['laporan-kesiswaan-super','Laporan Pendampingan Siswa'],
-        ['kes-muhadhoroh','Laporan Muhadhoroh'],
-        ['kes-prestasi','Laporan Prestasi'],
-        ['kes-program','Laporan Program Kesiswaan / SPARQ'],
-        ['uks-duty-inbox','Laporan UKS'],
-        ['laporan-kesiswaan-super','Laporan Kedisiplinan & Apresiasi'],
+        ['laporan-kesiswaan-super','Laporan Kesiswaan'],
         ['rekap-input-poin','Monitoring Input'],
         ['kes-controlling-mt','Controlling MT'],
         ['laporan-promosi','Promosi Socmed']
       ]},
       {id:'kes-rekap',label:'Rekap',items:[
-        ['kesiswaan-rekapan','Rekap Per Kelas'],
-        ['kesiswaan-rekapan','Rekap Per Siswa'],
-        ['kesiswaan-rekapan','Rekap Kehadiran'],
-        ['kesiswaan-rekapan','Rekap Kedisiplinan'],
-        ['kesiswaan-rekapan','Rekap Apresiasi'],
-        ['laporan-kesiswaan-super','Rekap Pendampingan'],
-        ['laporan-kesiswaan-super','Rekap Prestasi'],
-        ['kesiswaan-rekapan','Rekap UKS']
+        ['kesiswaan-rekapan','Rekap Kesiswaan']
       ]}
     ];
     groups.forEach(g=>{
