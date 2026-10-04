@@ -81,7 +81,7 @@
           'uks-duty-kesiswaan.js?v=20261004-clean3'
         ];
         for(const src of kes)await load(src);
-        await load('kesiswaan-navigation.js?v=20261004-canonical3');
+        await load('kesiswaan-navigation.js?v=20261004-canonical4');
       }
     });
     return true;
