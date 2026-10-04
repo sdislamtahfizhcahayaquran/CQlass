@@ -12,7 +12,7 @@
   const POINT_LABELS=new Set(['kedisiplinan','reward','reward siswa']);
   const CENTER_ID='kesiswaan-center';
   const CENTER_GROUP_ID='kesiswaan-input-center';
-  const CENTER_ROLES=[]; // Walas/Guru sidebar is authoritative in teacher-walas-sidebar-clean.js
+  const CENTER_ROLES=['kesiswaan']; // Cleanup ini khusus Kabid Kesiswaan; Walas/Guru tetap memakai sidebar mereka sendiri.
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
   function role(){
@@ -88,12 +88,12 @@
       // Laporan Walas/Guru: satu daftar baku, termasuk Ranking.
       const report=MODULE_GROUPS.find(g=>g&&norm(g.id)==='laporan');
       if(report&&Array.isArray(report.items)){
-        const keep=new Set(['timesheet','laporan-promosi','internal-feedback','academic-ranking-report']);
+        const keep=new Set(['laporan-kesiswaan-super','uks-duty-inbox','rekap-input-poin']);
         for(const it of report.items){
           if(!it||!Array.isArray(it.roles))continue;
           if(!keep.has(String(it.id||'')))it.roles=it.roles.filter(x=>!CENTER_ROLES.includes(norm(x)));
         }
-        const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
+        const order=['laporan-kesiswaan-super','uks-duty-inbox','rekap-input-poin'];
         report.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
       }
       return true;
