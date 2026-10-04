@@ -97,7 +97,7 @@
       let g=MODULE_GROUPS.find(x=>x&&x.id==='laporan');
       if(!g){g={id:'laporan',label:'Laporan',roles:[],items:[]};MODULE_GROUPS.push(g)}
       if(!Array.isArray(g.roles))g.roles=[]; if(!Array.isArray(g.items))g.items=[];
-      ['walas','sapras','kesiswaan'].forEach(r=>{if(!g.roles.includes(r))g.roles.push(r)});
+      ['walas','sapras'].forEach(r=>{if(!g.roles.includes(r))g.roles.push(r)});
 
       for(const it of g.items){
         if(!it||!Array.isArray(it.roles))continue;
@@ -108,8 +108,8 @@
       else Object.assign(feedback,{label:'Saran & Masukan',roles:['walas'],built:true,render:renderReporter});
 
       let inbox=g.items.find(x=>x&&x.id==='internal-report-inbox');
-      if(!inbox){inbox={id:'internal-report-inbox',label:'Laporan Masuk',roles:['sapras','kesiswaan'],built:true,render:renderInbox};g.items.push(inbox)}
-      else Object.assign(inbox,{label:'Laporan Masuk',roles:['sapras','kesiswaan'],built:true,render:renderInbox});
+      if(!inbox){inbox={id:'internal-report-inbox',label:'Laporan Masuk',roles:['sapras'],built:true,render:renderInbox};g.items.push(inbox)}
+      else Object.assign(inbox,{label:'Laporan Masuk',roles:['sapras'],built:true,render:renderInbox});
 
       const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
       g.items.sort((a,b)=>{
