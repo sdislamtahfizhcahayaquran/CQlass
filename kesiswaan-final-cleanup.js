@@ -176,15 +176,36 @@
     cleanKesiswaanQuickAccess();
   }
 
+  function renderKesiswaanSidebarOnly(){
+    if(role()!=='kesiswaan')return false;
+    const sidebar=document.getElementById('sidebar');if(!sidebar)return true;
+    sidebar.innerHTML='';
+    const rows=[
+      ['dashboard','Dashboard'],
+      ['kesiswaan-input','Layanan'],
+      ['laporan-kesiswaan-super','Laporan'],
+      ['kesiswaan-rekapan','Rekap']
+    ];
+    rows.forEach(([id,label])=>{
+      const el=document.createElement('div');
+      el.className='nav-item'+((typeof activeModule!=='undefined'&&activeModule===id)?' active':'');
+      el.innerHTML='<span>'+label+'</span>';
+      el.onclick=()=>{if(typeof setActiveModule==='function')setActiveModule(id)};
+      sidebar.appendChild(el);
+    });
+    return true;
+  }
+
   function patchSidebar(){
     if(typeof renderSidebar!=='function'||renderSidebar.__cqKesiswaanSingleNavV5)return;
     const original=renderSidebar;
     const wrapped=function(){
-      consolidateModel();
-      enforceKesiswaanFourMenuModel();
-      const out=original.apply(this,arguments);
-      requestAnimationFrame(cleanSidebarDom);
-      return out;
+      if(role()==='kesiswaan'){
+        consolidateModel();
+        enforceKesiswaanFourMenuModel();
+        return renderKesiswaanSidebarOnly();
+      }
+      return original.apply(this,arguments);
     };
     wrapped.__cqKesiswaanSingleNavV5=true;
     renderSidebar=wrapped;
@@ -204,7 +225,7 @@
 
   function apply(){
     const ok=consolidateModel();enforceKesiswaanFourMenuModel();patchSidebar();patchRoute();
-    if(ok&&typeof renderSidebar==='function')renderSidebar();
+    if(role()==='kesiswaan')renderKesiswaanSidebarOnly(); else if(ok&&typeof renderSidebar==='function')renderSidebar();
     try{
       const r=role(),key=norm(typeof activeModule!=='undefined'?activeModule:'');
       if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&key===CENTER_ID&&typeof setActiveModule==='function')setActiveModule('kedisiplinan');
