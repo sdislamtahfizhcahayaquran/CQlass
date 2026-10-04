@@ -15,6 +15,7 @@
     'kes-controlling-mt':c=>renderControllingMt(c),
     'kes-prestasi':c=>window.renderStudentAffairsType?.(c,'prestasi'),
     'kes-kebutuhan':c=>window.renderStudentAffairsType?.(c,'dukungan'),
+    'kes-perizinan':c=>window.renderStudentAffairsType?.(c,'perizinan'),
     'kes-program':c=>window.renderStudentAffairsType?.(c,'kegiatan'),
     'uks-duty-inbox':c=>window.renderUksKesiswaanInbox?.(c),
     'rekap-input-poin':c=>window.renderPointInputAudit?.(c),
@@ -41,23 +42,27 @@
     direct('dashboard','Dashboard');
     const groups=[
       {id:'kes-layanan',label:'Layanan',items:[
-        ['kes-laporan-masuk','Laporan Masuk'],
         ['kes-pendampingan','Pendampingan Siswa'],
-        ['kes-muhadhoroh','Muhadhoroh'],
-        ['kes-controlling-mt','Controlling MT'],
-        ['kes-prestasi','Prestasi Siswa'],
-        ['kes-kebutuhan','Kebutuhan Siswa'],
+        ['kes-kebutuhan','Kebutuhan Siswa']
+      ]},
+      {id:'kes-administrasi',label:'Administrasi',items:[
+        ['kes-perizinan','Perizinan & Kepulangan']
+      ]},
+      {id:'kes-kegiatan',label:'Kegiatan Siswa',items:[
+        ['kes-muhadhoroh','Petugas Muhadhoroh'],
         ['kes-program','Program Kesiswaan / SPARQ'],
-        ['uks-duty-inbox','Monitoring UKS'],
-        ['rekap-input-poin','Monitoring Input']
+        ['kes-prestasi','Prestasi Siswa']
       ]},
       {id:'kes-laporan',label:'Laporan',items:[
+        ['kes-laporan-masuk','Laporan Masuk'],
         ['laporan-kesiswaan-super','Laporan Pendampingan Siswa'],
         ['kes-muhadhoroh','Laporan Muhadhoroh'],
         ['kes-prestasi','Laporan Prestasi'],
         ['kes-program','Laporan Program Kesiswaan / SPARQ'],
         ['uks-duty-inbox','Laporan UKS'],
         ['laporan-kesiswaan-super','Laporan Kedisiplinan & Apresiasi'],
+        ['rekap-input-poin','Monitoring Input'],
+        ['kes-controlling-mt','Controlling MT'],
         ['laporan-promosi','Promosi Socmed']
       ]},
       {id:'kes-rekap',label:'Rekap',items:[
