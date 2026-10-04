@@ -133,6 +133,5 @@
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,40),{once:true});else setTimeout(apply,40);
   window.addEventListener('load',()=>setTimeout(apply,0),{once:true});
-  setTimeout(apply,500);
 
 })();
