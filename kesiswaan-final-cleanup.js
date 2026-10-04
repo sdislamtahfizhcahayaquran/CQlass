@@ -180,18 +180,66 @@
     if(role()!=='kesiswaan')return false;
     const sidebar=document.getElementById('sidebar');if(!sidebar)return true;
     sidebar.innerHTML='';
-    const rows=[
-      ['dashboard','Dashboard'],
-      ['kesiswaan-input','Layanan'],
-      ['laporan-kesiswaan-super','Laporan'],
-      ['kesiswaan-rekapan','Rekap']
-    ];
-    rows.forEach(([id,label])=>{
+    const direct=(id,label)=>{
       const el=document.createElement('div');
       el.className='nav-item'+((typeof activeModule!=='undefined'&&activeModule===id)?' active':'');
       el.innerHTML='<span>'+label+'</span>';
       el.onclick=()=>{if(typeof setActiveModule==='function')setActiveModule(id)};
       sidebar.appendChild(el);
+    };
+    direct('dashboard','Dashboard');
+    const groups=[
+      {id:'kes-layanan',label:'Layanan',items:[
+        ['kesiswaan-input','Layanan Kesiswaan'],
+        ['masalah','Laporan Masuk'],
+        ['sac-kasus','Pendampingan Siswa'],
+        ['salam-cq-rekap','Salam CQ'],
+        ['sac-muhadhoroh','Muhadhoroh'],
+        ['sac-prestasi','Prestasi Siswa'],
+        ['sac-dukungan','Kebutuhan Siswa'],
+        ['sac-kegiatan','Program Kesiswaan / SPARQ'],
+        ['uks-duty-inbox','Monitoring UKS'],
+        ['rekap-input-poin','Monitoring Input']
+      ]},
+      {id:'kes-laporan',label:'Laporan',items:[
+        ['laporan-kesiswaan-super','Laporan Pendampingan Siswa'],
+        ['salam-cq-rekap','Laporan Salam CQ'],
+        ['sac-muhadhoroh','Laporan Muhadhoroh'],
+        ['sac-prestasi','Laporan Prestasi'],
+        ['sac-kegiatan','Laporan Program Kesiswaan / SPARQ'],
+        ['uks-duty-inbox','Laporan UKS'],
+        ['laporan-kesiswaan-super','Laporan Kedisiplinan & Apresiasi'],
+        ['laporan-promosi','Promosi Socmed']
+      ]},
+      {id:'kes-rekap',label:'Rekap',items:[
+        ['kesiswaan-rekapan','Rekap Per Kelas'],
+        ['kesiswaan-rekapan','Rekap Per Siswa'],
+        ['kesiswaan-rekapan','Rekap Kehadiran'],
+        ['kesiswaan-rekapan','Rekap Kedisiplinan'],
+        ['kesiswaan-rekapan','Rekap Apresiasi'],
+        ['laporan-kesiswaan-super','Rekap Pendampingan'],
+        ['laporan-kesiswaan-super','Rekap Prestasi'],
+        ['kesiswaan-rekapan','Rekap UKS']
+      ]}
+    ];
+    groups.forEach(g=>{
+      const active=g.items.some(x=>x[0]===activeModule);
+      const isOpen=openGroupId===g.id||active;
+      const head=document.createElement('div');
+      head.className='nav-group-head'+(isOpen?' open':'');
+      head.innerHTML='<span>'+g.label+'</span><svg class="nav-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+      head.onclick=()=>{openGroupId=openGroupId===g.id?null:g.id;renderKesiswaanSidebarOnly()};
+      sidebar.appendChild(head);
+      if(!isOpen)return;
+      const sub=document.createElement('div');sub.className='nav-group-items';
+      g.items.forEach(([id,label])=>{
+        const el=document.createElement('div');
+        el.className='nav-item nav-item-sub'+(activeModule===id?' active':'');
+        el.innerHTML='<span>'+label+'</span>';
+        el.onclick=()=>{openGroupId=g.id;if(typeof setActiveModule==='function')setActiveModule(id)};
+        sub.appendChild(el);
+      });
+      sidebar.appendChild(sub);
     });
     return true;
   }
