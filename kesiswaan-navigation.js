@@ -16,7 +16,6 @@
     'kes-prestasi':c=>window.renderStudentAffairsType?.(c,'prestasi'),
     'kes-kebutuhan':c=>window.renderStudentAffairsType?.(c,'dukungan'),
     'kes-program':c=>window.renderStudentAffairsType?.(c,'kegiatan'),
-    'salam-cq-rekap':c=>window.renderKesiswaanSalamRekap?.(c),
     'uks-duty-inbox':c=>window.renderUksKesiswaanInbox?.(c),
     'rekap-input-poin':c=>window.renderPointInputAudit?.(c),
     'laporan-kesiswaan-super':c=>window.renderKesiswaanSuperReport?.(c),
@@ -44,7 +43,6 @@
       {id:'kes-layanan',label:'Layanan',items:[
         ['kes-laporan-masuk','Laporan Masuk'],
         ['kes-pendampingan','Pendampingan Siswa'],
-        ['salam-cq-rekap','Salam CQ'],
         ['kes-muhadhoroh','Muhadhoroh'],
         ['kes-controlling-mt','Controlling MT'],
         ['kes-prestasi','Prestasi Siswa'],
@@ -55,7 +53,6 @@
       ]},
       {id:'kes-laporan',label:'Laporan',items:[
         ['laporan-kesiswaan-super','Laporan Pendampingan Siswa'],
-        ['salam-cq-rekap','Laporan Salam CQ'],
         ['kes-muhadhoroh','Laporan Muhadhoroh'],
         ['kes-prestasi','Laporan Prestasi'],
         ['kes-program','Laporan Program Kesiswaan / SPARQ'],
