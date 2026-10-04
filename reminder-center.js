@@ -66,6 +66,7 @@
   }
   function ensureIndicator(wrap){
     if(!wrap) return;
+    wrap.classList.toggle('cq-kesiswaan-bell',role()==='kesiswaan');
     wrap.style.position=wrap.style.position||'relative';
     let dot=wrap.querySelector('.cq-reminder-dot');
     if(!dot){
@@ -223,8 +224,8 @@
     css.textContent=`
       #bell-wrap,.bell-wrap,[data-cq-bell-wrap]{position:relative}
       .cq-reminder-dot{position:absolute;right:0;top:1px;width:5px;height:5px;border-radius:50%;background:#e65045;box-shadow:0 0 0 1px #fff;z-index:6;pointer-events:none}
-      body[data-role="kesiswaan"] .bell-badge{min-width:16px!important;height:16px!important;padding:0 4px!important;font-size:9px!important;line-height:16px!important;border-radius:999px!important;top:-5px!important;right:-5px!important;box-shadow:0 0 0 2px #0f7b78!important}
-      body[data-role="kesiswaan"] .cq-reminder-dot{display:none!important}
+      .cq-kesiswaan-bell .bell-badge{min-width:16px!important;width:auto!important;height:16px!important;padding:0 4px!important;font-size:9px!important;line-height:16px!important;border-radius:999px!important;top:-5px!important;right:-5px!important;box-shadow:0 0 0 2px #0f7b78!important}
+      .cq-kesiswaan-bell .cq-reminder-dot{display:none!important}
       .cq-reminder-section{border-top:1px solid rgba(18,105,101,.12);margin-top:7px;padding-top:7px;max-height:360px;overflow:auto}
       .cq-reminder-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 11px;color:#244a49;position:sticky;top:0;background:#fff;z-index:1}
       .cq-reminder-head strong{font-size:12px}.cq-reminder-head span{font-size:10px;color:#78908e}
