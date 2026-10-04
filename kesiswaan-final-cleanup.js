@@ -128,6 +128,31 @@
     }
   }
 
+  function enforceKesiswaanFourMenuModel(){
+    if(role()!=='kesiswaan'||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
+    const find=(id)=>{for(const g of MODULE_GROUPS){const x=(g?.items||[]).find(it=>it&&it.id===id);if(x)return x}return null};
+    const item=(id,label,render)=>({id,label,roles:['kesiswaan'],built:true,render});
+    const layanan=find('kesiswaan-input')||item('kesiswaan-input','Layanan Kesiswaan',c=>window.renderStudentAffairsHub?window.renderStudentAffairsHub(c):window.renderKesiswaanCenter?.(c));
+    layanan.label='Layanan Kesiswaan';layanan.roles=['kesiswaan'];
+    const laporan=find('laporan-kesiswaan-super')||item('laporan-kesiswaan-super','Laporan Kesiswaan',c=>window.renderKesiswaanSuperReport?.(c));
+    laporan.label='Laporan Kesiswaan';laporan.roles=['kesiswaan'];
+    const rekap=find('kesiswaan-rekapan')||find('rekapan')||item('kesiswaan-rekapan','Rekap Kesiswaan',c=>window.renderKesiswaanRekapan?.(c));
+    rekap.label='Rekap Kesiswaan';rekap.roles=['kesiswaan'];
+    const promo=find('laporan-promosi'); if(promo)promo.roles=['kesiswaan'];
+    MODULE_GROUPS.forEach(g=>{
+      if(!g)return;
+      g.roles=(g.roles||[]).filter(x=>x!=='kesiswaan');
+      (g.items||[]).forEach(x=>{if(x?.roles)x.roles=x.roles.filter(r=>r!=='kesiswaan')});
+    });
+    const groups=[
+      {id:'kesiswaan-layanan-final',label:'Layanan',roles:['kesiswaan'],items:[layanan]},
+      {id:'kesiswaan-laporan-final',label:'Laporan',roles:['kesiswaan'],items:[laporan,...(promo?[promo]:[])]},
+      {id:'kesiswaan-rekap-final',label:'Rekap',roles:['kesiswaan'],items:[rekap]}
+    ];
+    for(const g of groups)MODULE_GROUPS.push(g);
+    return true;
+  }
+
   function cleanSidebarDom(){
     const r=role();
     if(usesDedicatedKesiswaan(r)||!CENTER_ROLES.includes(r))return;
@@ -156,6 +181,7 @@
     const original=renderSidebar;
     const wrapped=function(){
       consolidateModel();
+      enforceKesiswaanFourMenuModel();
       const out=original.apply(this,arguments);
       requestAnimationFrame(cleanSidebarDom);
       return out;
@@ -177,7 +203,7 @@
   }
 
   function apply(){
-    const ok=consolidateModel();patchSidebar();patchRoute();
+    const ok=consolidateModel();enforceKesiswaanFourMenuModel();patchSidebar();patchRoute();
     if(ok&&typeof renderSidebar==='function')renderSidebar();
     try{
       const r=role(),key=norm(typeof activeModule!=='undefined'?activeModule:'');
