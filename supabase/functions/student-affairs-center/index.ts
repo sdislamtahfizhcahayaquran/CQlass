@@ -47,8 +47,8 @@ async function reportData(b:any){
     addClass(sb.from("morning_talk_attendance_history").select("id,student_id,class_id,attendance_date,status,source_name,source_class_name").gte("attendance_date",start).lte("attendance_date",end)).limit(10000),
     addClass(sb.from("student_rewards").select("id,student_id,class_id,reward_date,category,reward_name,points,note,verified_by_account_id,is_verified").eq("is_deleted",false).eq("is_verified",true).gte("reward_date",start).lte("reward_date",end)).limit(2000),
     addClass(sb.from("discipline_incidents").select("id,student_id,class_id,incident_date,category,violation_name,points,note,created_by_account_id,recorded_by_name").eq("is_deleted",false).gte("incident_date",start).lte("incident_date",end)).limit(2000),
-    addClass(sb.from("student_case_notes").select("id,student_id,class_id,incident_date,category,attention_level,main_problem,summary,final_suggestion,urgent,needs_parent,needs_student_affairs,needs_uks,evaluation_date,status").eq("is_deleted",false).gte("incident_date",start).lte("incident_date",end)).limit(1000),
-    addClass(sb.from("student_affairs_records").select("id,record_type,student_id,class_id,record_date,title,description,follow_up,status,priority,evidence_url,created_by_account_id,updated_at").eq("is_deleted",false).gte("record_date",start).lte("record_date",end)).limit(2000),
+    addClass(sb.from("student_case_notes").select("id,student_id,class_id,incident_date,category,attention_level,main_problem,summary,final_suggestion,urgent,needs_parent,needs_student_affairs,needs_uks,evaluation_date,status,student_affairs_follow_up,student_affairs_status,escalation_to,escalated_at").eq("is_deleted",false).gte("incident_date",start).lte("incident_date",end)).limit(1000),
+    addClass(sb.from("student_affairs_records").select("id,record_type,student_id,class_id,record_date,title,description,follow_up,status,priority,evidence_url,escalation_to,escalated_at,created_by_account_id,updated_at").eq("is_deleted",false).gte("record_date",start).lte("record_date",end)).limit(2000),
     addClass(sb.from("student_achievements").select("id,student_id,class_id,achievement_date,achievement_name,competition_name,level,rank_title,category,organizer,coach_name,certificate_url,photo_url,notes,status").eq("is_deleted",false).gte("achievement_date",start).lte("achievement_date",end)).limit(1000),
     sb.from("uks_duty_reports").select("id,teacher_id,duty_date,weekday,shift_no,scheduled_start,scheduled_end,captured_at,created_at").gte("duty_date",start).lte("duty_date",end).order("duty_date",{ascending:false}).limit(1000),
     addClass(sb.from("attendance_report_finalization").select("class_id,period_start,period_end,present_count,late_count,sick_count,excused_count,unexcused_count").gte("period_start",start).lte("period_end",end)).limit(3000)
@@ -138,6 +138,20 @@ Deno.serve(async(req:Request)=>{
         let q=sb.from("student_achievements").select("*,students(full_name,nis,nisn),classes(name,code,grade_level,rombel,gender_group)").eq("is_deleted",false).order("achievement_date",{ascending:false}).limit(500);if(from)q=q.gte("achievement_date",from);if(to)q=q.lte("achievement_date",to);const{data,error}=await q;if(error)throw error;return J({success:true,rows:data||[]})
       }
       let q=sb.from("student_affairs_records").select("*,students(full_name,nis,nisn),classes(name,code,grade_level,rombel,gender_group)").eq("is_deleted",false).order("record_date",{ascending:false}).limit(500);if(T(b.record_type))q=q.eq("record_type",L(b.record_type));if(from)q=q.gte("record_date",from);if(to)q=q.lte("record_date",to);const{data,error}=await q;if(error)throw error;return J({success:true,rows:data||[]})
+    }
+    if(action==="case_followup"){
+      if(!canAffairs)return J({success:false,error:"forbidden"},403);
+      const id=T(b.id),source=L(b.source),status=L(b.status),follow=T(b.follow_up),escalation=T(b.escalation_to);
+      if(!id||!["walas","kesiswaan"].includes(source))return J({success:false,error:"invalid_case_source"},400);
+      if(!["belum_ditangani","dalam_penanganan","eskalasi","selesai"].includes(status))return J({success:false,error:"invalid_case_status"},400);
+      if(status==="eskalasi"&&!["kepala sekolah","konselor"].includes(L(escalation)))return J({success:false,error:"invalid_escalation_target"},400);
+      const esc=status==="eskalasi"?escalation:null,escAt=status==="eskalasi"?new Date().toISOString():null;
+      if(source==="walas"){
+        const row={student_affairs_status:status,student_affairs_follow_up:follow||null,escalation_to:esc,escalated_at:escAt,updated_by_account_id:a.id,updated_at:new Date().toISOString()};
+        const{data,error}=await sb.from("student_case_notes").update(row).eq("id",id).eq("is_deleted",false).select().single();if(error)throw error;return J({success:true,row:data});
+      }
+      const row={status,follow_up:follow||null,escalation_to:esc,escalated_at:escAt,updated_by_account_id:a.id,updated_at:new Date().toISOString()};
+      const{data,error}=await sb.from("student_affairs_records").update(row).eq("id",id).eq("record_type","kasus").eq("is_deleted",false).select().single();if(error)throw error;return J({success:true,row:data});
     }
     if(action==="save_affairs"){
       if(!canAffairs)return J({success:false,error:"forbidden"},403);
