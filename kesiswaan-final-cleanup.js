@@ -128,25 +128,8 @@
     patchSidebar();
     patchRoute();
     renderKesiswaanSidebarOnly();
-    guardKesiswaanSidebar();
   }
 
-  function guardKesiswaanSidebar(){
-    if(role()!=='kesiswaan')return;
-    const sb=document.getElementById('sidebar');if(!sb||sb.__cqKesiswaanStableGuard)return;
-    sb.__cqKesiswaanStableGuard=true;
-    let busy=false;
-    const expected=()=>[...sb.children].some(x=>String(x.textContent||'').trim()==='Dashboard')&&[...sb.children].some(x=>String(x.textContent||'').trim().startsWith('Layanan'));
-    new MutationObserver(()=>{
-      if(busy||role()!=='kesiswaan')return;
-      const txt=String(sb.textContent||'');
-      const legacy=/AKSES CEPAT|REQUEST LAPORAN|Laporan\s*&\s*Foto\s*MT/i.test(txt);
-      if(legacy||!expected()){
-        busy=true;
-        requestAnimationFrame(()=>{renderKesiswaanSidebarOnly();busy=false});
-      }
-    }).observe(sb,{childList:true,subtree:true});
-  }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,40),{once:true});else setTimeout(apply,40);
   window.addEventListener('load',()=>setTimeout(apply,0),{once:true});
