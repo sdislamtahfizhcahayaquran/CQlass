@@ -108,8 +108,10 @@
       if(['kesiswaan','kabid_kesiswaan'].includes(r)){
         if(key==='dashboard'){
           activeModule='dashboard';renderKesiswaanSidebarOnly();
+          const content=document.getElementById('content');
+          if(content)content.innerHTML='<div class="rd-shell" id="rd-root"><div class="rd-card"><span class="spinner"></span> Memuat dashboard...</div></div>';
           if(typeof window.renderKesiswaanDashboardV1==='function')return window.renderKesiswaanDashboardV1({role:'kesiswaan'});
-          const content=document.getElementById('content');if(content)content.innerHTML='<div id="rd-root"></div>';
+          if(content)content.innerHTML='<div class="empty-state">Dashboard Kesiswaan belum dapat dimuat.</div>';
           return;
         }
         if(KESISWAAN_ROUTE_RENDERERS[key]){
@@ -128,6 +130,7 @@
     if(!['kesiswaan','kabid_kesiswaan'].includes(role()))return;
     installCanonicalNavigation();
     renderKesiswaanSidebarOnly();
+    if((typeof activeModule==='undefined'||!activeModule||activeModule==='dashboard')&&typeof setActiveModule==='function')setActiveModule('dashboard');
   }
 
 
