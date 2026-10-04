@@ -29,11 +29,3 @@
   window.renderUksKesiswaanInbox=renderInbox;
   })();
 
-/* Rekap kelengkapan input Reward/Pelanggaran — Kesiswaan */
-(function(){
-  if(document.querySelector('script[data-cq-point-input-audit]'))return;
-  const s=document.createElement('script');
-  s.src='kesiswaan-point-input-audit.js?v=20260921-audit2';
-  s.dataset.cqPointInputAudit='1';
-  document.head.appendChild(s);
-})();
