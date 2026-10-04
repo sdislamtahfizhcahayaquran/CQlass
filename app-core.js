@@ -780,25 +780,25 @@ const MODULE_GROUPS = [
     ]
   },
   {
-    id: 'kesiswaan', label: 'Kesiswaan', roles: ['guru','walas','kesiswaan','pimpinan'],
+    id: 'kesiswaan', label: 'Kesiswaan', roles: ['guru','walas','pimpinan'],
     items: [
-      { id: 'absensi',      label: 'Absensi (Morning Talk)', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderAbsensi },
-      { id: 'kedisiplinan', label: 'Kedisiplinan',           roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderKedisiplinan },
-      { id: 'reward',       label: 'Reward Siswa',           roles: ['guru','walas','kesiswaan','pimpinan'], built: true, render: renderReward },
-      { id: 'masalah',      label: 'Masalah Siswa',          roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderMasalahSiswa }
+      { id: 'absensi',      label: 'Absensi (Morning Talk)', roles: ['walas','pimpinan'], built: true, render: renderAbsensi },
+      { id: 'kedisiplinan', label: 'Kedisiplinan',           roles: ['guru','walas','pimpinan'], built: true, render: renderKedisiplinan },
+      { id: 'reward',       label: 'Reward Siswa',           roles: ['guru','walas','pimpinan'], built: true, render: renderReward },
+      { id: 'masalah',      label: 'Masalah Siswa',          roles: ['walas','pimpinan'], built: true, render: renderMasalahSiswa }
     ]
   },
   {
-    id: 'info', label: 'Info', roles: ['walas','kesiswaan','kegiatan','pimpinan'],
+    id: 'info', label: 'Info', roles: ['walas','kegiatan','pimpinan'],
     items: [
       { id: 'ekskul', label: 'Ekskul', roles: ['walas','kesiswaan','kegiatan','pimpinan'], built: true, render: renderEkskulRekap }
     ]
   },
   {
-    id: 'laporan', label: 'Laporan', roles: ['walas','kesiswaan','pimpinan'],
+    id: 'laporan', label: 'Laporan', roles: ['walas','pimpinan'],
     items: [
-      { id: 'laporan-guru',   label: 'Laporan Guru Bulanan', roles: ['walas','kesiswaan','pimpinan'], built: true,  render: renderLaporanGuru },
-      { id: 'laporan-unduh',  label: 'Unduh Rekap',          roles: ['kesiswaan','pimpinan'],         built: false }
+      { id: 'laporan-guru',   label: 'Laporan Guru Bulanan', roles: ['walas','pimpinan'], built: true,  render: renderLaporanGuru },
+      { id: 'laporan-unduh',  label: 'Unduh Rekap',          roles: ['pimpinan'],         built: false }
     ]
   }
 ];
@@ -815,7 +815,7 @@ MODULE_GROUPS.push({
 });
 
 // Dashboard utama untuk Walas, Kesiswaan, dan Pimpinan.
-const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas','kesiswaan','pimpinan'], built: true, render: renderDashboard };
+const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas','pimpinan'], built: true, render: renderDashboard };
 
 function findModuleByIdV2(id) {
   if (id === 'dashboard') return DASHBOARD_MODULE;
