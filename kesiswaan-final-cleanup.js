@@ -111,10 +111,20 @@
       root.querySelectorAll('*').forEach(el=>{
         const txt=norm(el.textContent);
         if((txt==='aksi cepat'||txt==='akses cepat')&&el.children.length===0){
-          const box=el.closest('.rd-card,.card,.sidebar-card,.quick-access,.akses-cepat');
-          if(box)box.remove();
+          let box=el.closest('.rd-card,.card,.sidebar-card,.quick-access,.akses-cepat');
+          if(!box&&root.id==='sidebar'){
+            box=el.parentElement;
+            const next=box?.nextElementSibling;
+            if(next&&/laporan\s*&\s*foto\s*mt/i.test(String(next.textContent||'')))next.remove();
+          }
+          if(box)box.remove(); else el.remove();
         }
       });
+      if(root.id==='sidebar'){
+        root.querySelectorAll('button,a,.nav-item').forEach(el=>{
+          if(/laporan\s*&\s*foto\s*mt/i.test(String(el.textContent||'')))el.remove();
+        });
+      }
     }
   }
 
