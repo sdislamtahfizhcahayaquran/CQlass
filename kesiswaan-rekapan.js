@@ -274,34 +274,7 @@
     load();
   }
   window.renderKesiswaanRekapan=render;
-  function install(){
-    if(!isKesiswaan())return false;
-    if(typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
-    let changed=false;
-    let g=MODULE_GROUPS.find(x=>x&&x.id===GROUP_ID);
-    if(!g){g={id:GROUP_ID,label:'REKAPAN',roles:['kesiswaan'],items:[]};MODULE_GROUPS.push(g);changed=true}
-    if(!Array.isArray(g.roles)||g.roles.length!==1||g.roles[0]!=='kesiswaan'){g.roles=['kesiswaan'];changed=true}
-    if(!Array.isArray(g.items)){g.items=[];changed=true}
-    let it=g.items.find(x=>x&&x.id===MODULE_ID);
-    if(!it){g.items.push({id:MODULE_ID,label:'Rekapan',roles:['kesiswaan'],built:true,render});changed=true}
-    else if(it.label!=='Rekapan'||it.render!==render||it.built!==true){Object.assign(it,{label:'Rekapan',roles:['kesiswaan'],built:true,render});changed=true}
-    return changed;
-  }
-  let sidebarPainted=false;
-  function hook(){
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqKesiswaanRekapanV10){
-      const base=renderSidebar;
-      const wrapped=function(){install();return base.apply(this,arguments)};
-      wrapped.__cqKesiswaanRekapanV10=true;
-      renderSidebar=wrapped;
-    }
-    const changed=install();
-    if(changed&&!sidebarPainted&&typeof renderSidebar==='function'){
-      sidebarPainted=true;
-      try{renderSidebar()}catch(_){}
-    }
-    return changed;
-  }
+  function install(){return true}\n  function hook(){return true}\n
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
   let tries=0;const timer=setInterval(()=>{tries++;const changed=hook();if(changed||tries>20||!isKesiswaan())clearInterval(timer)},250);
 })();
