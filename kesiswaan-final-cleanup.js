@@ -100,6 +100,24 @@
     }catch(e){console.warn('Kesiswaan final cleanup:',e);return false}
   }
 
+  function cleanKesiswaanQuickAccess(){
+    if(role()!=='kesiswaan')return;
+    const roots=[document.getElementById('content'),document.getElementById('sidebar')].filter(Boolean);
+    for(const root of roots){
+      root.querySelectorAll('.rd-card,.card,.sidebar-card,.quick-access,.akses-cepat').forEach(el=>{
+        const title=norm(el.querySelector('.rd-card-title,.card-title,.title,h1,h2,h3,h4')?.textContent||'');
+        if(title==='aksi cepat'||title==='akses cepat')el.remove();
+      });
+      root.querySelectorAll('*').forEach(el=>{
+        const txt=norm(el.textContent);
+        if((txt==='aksi cepat'||txt==='akses cepat')&&el.children.length===0){
+          const box=el.closest('.rd-card,.card,.sidebar-card,.quick-access,.akses-cepat');
+          if(box)box.remove();
+        }
+      });
+    }
+  }
+
   function cleanSidebarDom(){
     const r=role();
     if(usesDedicatedKesiswaan(r)||!CENTER_ROLES.includes(r))return;
@@ -120,6 +138,7 @@
         });
       }
     }
+    cleanKesiswaanQuickAccess();
   }
 
   function patchSidebar(){
@@ -155,6 +174,7 @@
       if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&key===CENTER_ID&&typeof setActiveModule==='function')setActiveModule('kedisiplinan');
     }catch(_){ }
     cleanSidebarDom();
+    cleanKesiswaanQuickAccess();
   }
 
   window.renderKesiswaanCenter=renderCenter;
@@ -166,7 +186,7 @@
   const attachObserver=()=>{
     const sb=document.getElementById('sidebar');if(!sb||sb.__cqKesiswaanFinalObserverV5)return;
     sb.__cqKesiswaanFinalObserverV5=true;
-    new MutationObserver(()=>cleanSidebarDom()).observe(sb,{childList:true,subtree:true});
+    new MutationObserver(()=>{cleanSidebarDom();cleanKesiswaanQuickAccess()}).observe(sb,{childList:true,subtree:true});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attachObserver,{once:true});else attachObserver();
 })();
