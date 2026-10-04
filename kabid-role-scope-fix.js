@@ -255,10 +255,3 @@
   s.dataset.cqAkMasterTp='1';
   document.head.appendChild(s);
 })();
-(function(){
-  if(document.querySelector('script[data-cq-uks-kesiswaan]')) return;
-  const s=document.createElement('script');
-  s.src='uks-duty-kesiswaan.js?v=20260914-uks-kes1';
-  s.dataset.cqUksKesiswaan='1';
-  document.head.appendChild(s);
-})();
