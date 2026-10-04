@@ -1,6 +1,4 @@
-/* CQlass testing — core lama + PjBL Supabase + Ekskul recap + Dashboard Analytics V10 */
-document.write('<script src="app-core.js?v=20260903-dash10"><\/script>');
-document.write('<script src="pjbl-supabase.js?v=20260903-pjbl5"><\/script>');
+/* CQlass — feature integrations loaded after app-core and pjbl-supabase from index.html. */
 
 (function(){
   try{
