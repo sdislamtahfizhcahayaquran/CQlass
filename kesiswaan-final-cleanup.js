@@ -88,12 +88,12 @@
       // Laporan Walas/Guru: satu daftar baku, termasuk Ranking.
       const report=MODULE_GROUPS.find(g=>g&&norm(g.id)==='laporan');
       if(report&&Array.isArray(report.items)){
-        const keep=new Set(['laporan-kesiswaan-super','uks-duty-inbox','rekap-input-poin']);
+        const keep=new Set(['laporan-kesiswaan-super','uks-duty-inbox','rekap-input-poin','laporan-promosi']);
         for(const it of report.items){
           if(!it||!Array.isArray(it.roles))continue;
           if(!keep.has(String(it.id||'')))it.roles=it.roles.filter(x=>!CENTER_ROLES.includes(norm(x)));
         }
-        const order=['laporan-kesiswaan-super','uks-duty-inbox','rekap-input-poin'];
+        const order=['laporan-promosi','laporan-kesiswaan-super','uks-duty-inbox','rekap-input-poin'];
         report.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
       }
       return true;
