@@ -12,6 +12,7 @@
     'kes-laporan-masuk':c=>window.renderStudentAffairsCases?.(c),
     'kes-pendampingan':c=>window.renderStudentAffairsCases?.(c),
     'kes-muhadhoroh':c=>window.renderStudentAffairsType?.(c,'muhadhoroh'),
+    'kes-controlling-mt':c=>renderControllingMt(c),
     'kes-prestasi':c=>window.renderStudentAffairsType?.(c,'prestasi'),
     'kes-kebutuhan':c=>window.renderStudentAffairsType?.(c,'dukungan'),
     'kes-program':c=>window.renderStudentAffairsType?.(c,'kegiatan'),
@@ -21,6 +22,11 @@
     'laporan-kesiswaan-super':c=>window.renderKesiswaanSuperReport?.(c),
     'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c)
   };
+
+  function renderControllingMt(content){
+    if(!content)return;
+    content.innerHTML='<div class="card" style="max-width:1100px;margin:auto"><div style="font-size:12px;font-weight:800;color:#58718a;margin-bottom:6px">LAYANAN KESISWAAN</div><h1 style="margin:0 0 8px;font-size:24px">Controlling MT</h1><p style="margin:0 0 16px;color:#687b8e">Monitoring pelaksanaan Morning Talk oleh Kabid Kesiswaan. Target minimal 1 kali setiap pekan.</p><div style="padding:14px;border:1px solid #dce6f0;border-radius:12px;background:#f8fbfd"><strong>Standar controlling</strong><div style="margin-top:7px;color:#58718a;font-size:13px;line-height:1.6">Tanggal pelaksanaan · kelas · wali kelas/guru · status pelaksanaan MT · catatan/temuan · tindak lanjut · foto opsional.</div></div></div>';
+  }
 
   function renderKesiswaanSidebarOnly(){
     if(role()!=='kesiswaan')return false;
@@ -40,6 +46,7 @@
         ['kes-pendampingan','Pendampingan Siswa'],
         ['salam-cq-rekap','Salam CQ'],
         ['kes-muhadhoroh','Muhadhoroh'],
+        ['kes-controlling-mt','Controlling MT'],
         ['kes-prestasi','Prestasi Siswa'],
         ['kes-kebutuhan','Kebutuhan Siswa'],
         ['kes-program','Program Kesiswaan / SPARQ'],
