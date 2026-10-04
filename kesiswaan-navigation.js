@@ -28,7 +28,7 @@
   }
 
   function renderKesiswaanSidebarOnly(){
-    if(role()!=='kesiswaan')return false;
+    if(!['kesiswaan','kabid_kesiswaan'].includes(role()))return false;
     const sidebar=document.getElementById('sidebar');if(!sidebar)return true;
     sidebar.innerHTML='';
     const direct=(id,label)=>{
@@ -97,7 +97,7 @@
     if(typeof renderSidebar!=='function'||renderSidebar.__cqKesiswaanSingleNavV5)return;
     const original=renderSidebar;
     const wrapped=function(){
-      if(role()==='kesiswaan')return renderKesiswaanSidebarOnly();
+      if(['kesiswaan','kabid_kesiswaan'].includes(role()))return renderKesiswaanSidebarOnly();
       return original.apply(this,arguments);
     };
     wrapped.__cqKesiswaanSingleNavV5=true;
@@ -109,7 +109,7 @@
     const original=setActiveModule;
     const wrapped=function(id){
       const r=role(),key=String(id||'');
-      if(r==='kesiswaan'&&KESISWAAN_ROUTE_RENDERERS[key]){
+      if(['kesiswaan','kabid_kesiswaan'].includes(r)&&KESISWAAN_ROUTE_RENDERERS[key]){
         activeModule=key;
         renderKesiswaanSidebarOnly();
         const content=document.getElementById('content');
@@ -127,7 +127,7 @@
   }
 
   function apply(){
-    if(role()!=='kesiswaan')return;
+    if(!['kesiswaan','kabid_kesiswaan'].includes(role()))return;
     patchSidebar();
     patchRoute();
     renderKesiswaanSidebarOnly();
