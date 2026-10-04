@@ -851,7 +851,8 @@ function enterApp(){
       setTimeout(()=>{try{renderSidebar()}catch(_){};window.openHrdCleanDashboard?.()},0);
     }
   }else{
-    activeModule = DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi';
+    const entryRole=String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+    activeModule = ['kesiswaan','kabid_kesiswaan'].includes(entryRole) ? 'dashboard' : (DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi');
     renderSidebar();
     setActiveModule(activeModule);
   }
