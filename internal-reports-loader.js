@@ -51,9 +51,9 @@
     'academic-report-class-picker.js?v=20260921-classpicker1',
     'rapor-achievement-stars.js?v=20260927-stars23',
     'kesiswaan-points-recap.js?v=20260915-3',
-    'kesiswaan-super-report.js?v=20260928-kabid-full1',
-    'kesiswaan-rekapan.js?v=20261004-rekaproute14',
-    'kesiswaan-salam-rekap.js?v=20261004-salam1',
+    'kesiswaan-super-report.js?v=20261004-renderonly1',
+    'kesiswaan-rekapan.js?v=20261004-renderonly15',
+    'kesiswaan-salam-rekap.js?v=20261004-renderonly2',
     'kesiswaan-case-followup-ui.js?v=20260921-followup1',
     'kesiswaan-excel-xlsx.js?v=20260928-kabid-full2',
     'promotion-report-edit.js?v=20260922-edit1',
@@ -79,7 +79,7 @@
 
     Promise.allSettled(common.map(load)).then(()=>{
       const now=role();
-      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20261004-audit14');
+      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20261004-kesstrict15');
     });
     return true;
   }
