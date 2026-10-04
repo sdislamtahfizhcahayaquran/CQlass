@@ -75,7 +75,7 @@
 
     Promise.allSettled(common.map(load)).then(()=>{
       const now=role();
-      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20261004-clean17');
+      if(now&&now!=='kabid_quran'&&!isHrd())load('kesiswaan-final-cleanup.js?v=20261004-stable18');
     });
     return true;
   }
