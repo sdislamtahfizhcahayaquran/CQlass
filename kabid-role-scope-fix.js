@@ -226,6 +226,9 @@
   }
   const observer=new MutationObserver(function(){cleanDashboard();injectAdminQuickAccess()});
   document.addEventListener('DOMContentLoaded',function(){
+    /* Kabid Kesiswaan owns its sidebar/navigation in kesiswaan-navigation.js.
+       Do not run this legacy global DOM observer for that role. */
+    if(role()==='kesiswaan') return;
     enforceModuleRoles();
     const target=document.getElementById('content')||document.body;
     if(target) observer.observe(document.body,{childList:true,subtree:true});
