@@ -243,7 +243,7 @@
     if(r==='tahfizh'){
       add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-rolelazy1','__cqTahfizhKesiswaanSidebarRoleLazy',false);
     }
-    if(r==='kesiswaan'){
+    if(['kesiswaan','kabid_kesiswaan'].includes(r)){
     }
   }
 
