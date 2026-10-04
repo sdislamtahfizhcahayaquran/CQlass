@@ -94,9 +94,35 @@ Deno.serve(async(req:Request)=>{
       const{data:stud,error:se}=await sb.from("students").select("id,full_name,status").in("id",ids).order("full_name");if(se)throw se;
       return J({success:true,class_name:cl.name,students:(stud||[]).filter((x:any)=>["aktif","active"].includes(L(x.status))).map((x:any)=>({id:x.id,name:T(x.full_name)}))});
     }
+    if(action==="public_salam_submit"){
+      const studentId=T(b.student_id),className=T(b.class_name),studentName=T(b.student_name),wa=T(b.parent_whatsapp).replace(/\D/g,""),topic=T(b.topic),message=T(b.message),messageType=T(b.message_type);
+      if(!studentId||!className||!studentName||wa.length<9||!topic||message.length<5||!["Saran & Masukan","Keluhan & Kendala","Apresiasi"].includes(messageType))return J({success:false,error:"invalid_submission"},400);
+      const{data:student,error:sv}=await sb.from("students").select("id,full_name,status").eq("id",studentId).maybeSingle();if(sv)throw sv;
+      if(!student||T(student.full_name)!==studentName||!["aktif","active"].includes(L(student.status)))return J({success:false,error:"student_not_valid"},400);
+      const ticket="SALAM-"+Date.now().toString(36).toUpperCase()+"-"+crypto.randomUUID().slice(0,4).toUpperCase();
+      const{data,error}=await sb.from("salam_cq_messages").insert({ticket_code:ticket,message_type:messageType,student_id:studentId,class_name:className,student_name:studentName,parent_whatsapp:wa,topic,message,attachment_name:T(b.attachment_name)||null,status:"diterima"}).select("ticket_code,status,created_at").single();if(error)throw error;
+      return J({success:true,ticket:data.ticket_code,status:data.status,created_at:data.created_at});
+    }
+    if(action==="public_salam_status"){
+      const wa=T(b.parent_whatsapp).replace(/\D/g,"");if(wa.length<9)return J({success:false,error:"invalid_whatsapp"},400);
+      const{data,error}=await sb.from("salam_cq_messages").select("ticket_code,message_type,class_name,topic,status,created_at").eq("parent_whatsapp",wa).order("created_at",{ascending:false}).limit(20);if(error)throw error;
+      return J({success:true,rows:data||[]});
+    }
     const a=await me(req);if(!a)return J({success:false,error:"unauthorized"},401);
     const canView=has(a,"kesiswaan","kegiatan","pimpinan","admin"),canAffairs=has(a,"kesiswaan","admin"),canAchievement=has(a,"kesiswaan","kegiatan","admin");
     if(!canView)return J({success:false,error:"forbidden"},403);
+    if(action==="salam_list"){
+      if(!has(a,"kesiswaan","admin"))return J({success:false,error:"forbidden"},403);
+      let q=sb.from("salam_cq_messages").select("*").order("created_at",{ascending:false}).limit(500);
+      if(T(b.status))q=q.eq("status",L(b.status));if(T(b.start_date))q=q.gte("created_at",T(b.start_date)+"T00:00:00+07:00");if(T(b.end_date))q=q.lte("created_at",T(b.end_date)+"T23:59:59+07:00");
+      const{data,error}=await q;if(error)throw error;return J({success:true,rows:data||[]});
+    }
+    if(action==="salam_followup"){
+      if(!has(a,"kesiswaan","admin"))return J({success:false,error:"forbidden"},403);
+      const id=T(b.id),status=L(b.status);if(!id||!["diterima","diproses","butuh_koordinasi","selesai"].includes(status))return J({success:false,error:"invalid_followup"},400);
+      const row={status,pic:T(b.pic)||null,target_follow_up:T(b.target_follow_up)||null,follow_up_note:T(b.follow_up_note)||null,updated_at:new Date().toISOString(),updated_by_account_id:a.id};
+      const{data,error}=await sb.from("salam_cq_messages").update(row).eq("id",id).select().single();if(error)throw error;return J({success:true,row:data});
+    }
     if(action==="bootstrap"){
       const[{data:students,error:se},{data:classes,error:ce}]=await Promise.all([
         sb.from("students").select("id,full_name,nis,nisn,status").ilike("status","aktif").order("full_name"),
