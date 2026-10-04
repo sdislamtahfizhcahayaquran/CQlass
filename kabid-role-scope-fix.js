@@ -9,8 +9,8 @@
   if(window.__cqKabidRoleScopeFix) return;
 
   const NON_KESISWAAN_KABID = new Set(['akademik','tahfizh','kegiatan']);
-  const KABID_ALL = new Set(['akademik','tahfizh','kesiswaan','kegiatan']);
-  const POINT_ROLE_LIST = ['guru','walas','kesiswaan','pimpinan'];
+  const KABID_ALL = new Set(['akademik','tahfizh','kegiatan']);
+  const POINT_ROLE_LIST = ['guru','walas','pimpinan'];
   const POINT_IDS = new Set(['kedisiplinan','reward']);
   const ATTENDANCE_IDS = new Set(['absensi','attendance','morning-talk','morning_talk']);
   const ATTENDANCE_TEXT = /\b(absen|absensi|attendance|morning\s*talk|kehadiran)\b/i;
@@ -113,7 +113,7 @@
             continue;
           }
           if(isAttendance){
-            item.roles=['walas','kesiswaan','pimpinan'];
+            item.roles=['walas','pimpinan'];
             continue;
           }
           if(POINT_IDS.has(id)) item.roles=POINT_ROLE_LIST.slice();
