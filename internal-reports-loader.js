@@ -81,7 +81,7 @@
           'kesiswaan-salam-rekap.js?v=20261004-clean3',          'uks-duty-kesiswaan.js?v=20261004-clean2'
         ];
         for(const src of kes)await load(src);
-        await load('kesiswaan-final-cleanup.js?v=20261004-root19');
+        await load('kesiswaan-navigation.js?v=20261004-canonical1');
       }
     });
     return true;
