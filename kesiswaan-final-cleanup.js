@@ -128,6 +128,20 @@
     }
   }
 
+  const KESISWAAN_ROUTE_RENDERERS={
+    'kes-laporan-masuk':c=>window.renderStudentAffairsCases?.(c),
+    'kes-pendampingan':c=>window.renderStudentAffairsCases?.(c),
+    'kes-muhadhoroh':c=>window.renderStudentAffairsType?.(c,'muhadhoroh'),
+    'kes-prestasi':c=>window.renderStudentAffairsType?.(c,'prestasi'),
+    'kes-kebutuhan':c=>window.renderStudentAffairsType?.(c,'dukungan'),
+    'kes-program':c=>window.renderStudentAffairsType?.(c,'kegiatan'),
+    'salam-cq-rekap':c=>window.renderKesiswaanSalamRekap?.(c),
+    'uks-duty-inbox':c=>window.renderUksKesiswaanInbox?.(c),
+    'rekap-input-poin':c=>window.renderPointInputAudit?.(c),
+    'laporan-kesiswaan-super':c=>window.renderKesiswaanSuperReport?.(c),
+    'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c)
+  };
+
   function ensureKesiswaanSubmenuRoutes(){
     if(role()!=='kesiswaan'||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return;
     let g=MODULE_GROUPS.find(x=>x&&x.id==='kesiswaan-route-aliases');
@@ -273,14 +287,24 @@
   }
 
   function patchRoute(){
-    if(typeof setActiveModule!=='function'||setActiveModule.__cqKesiswaanSingleNavV5)return;
+    if(typeof setActiveModule!=='function'||setActiveModule.__cqKesiswaanSidebarRoutesV6)return;
     const original=setActiveModule;
     const wrapped=function(id){
-      const key=norm(id),r=role();
-      if(!usesDedicatedKesiswaan(r)&&CENTER_ROLES.includes(r)&&key===CENTER_ID)return original.call(this,'kedisiplinan');
+      const r=role(),key=String(id||'');
+      if(r==='kesiswaan'&&KESISWAAN_ROUTE_RENDERERS[key]){
+        activeModule=key;
+        renderKesiswaanSidebarOnly();
+        const content=document.getElementById('content');
+        const fn=KESISWAAN_ROUTE_RENDERERS[key];
+        if(content&&fn){
+          const out=fn(content);
+          if(out===undefined&&content.innerHTML.trim()==='')content.innerHTML='<div class="card">Modul Kesiswaan sedang dimuat. Silakan coba lagi.</div>';
+        }
+        return;
+      }
       return original.apply(this,arguments);
     };
-    wrapped.__cqKesiswaanSingleNavV5=true;
+    wrapped.__cqKesiswaanSidebarRoutesV6=true;
     setActiveModule=wrapped;
   }
 
