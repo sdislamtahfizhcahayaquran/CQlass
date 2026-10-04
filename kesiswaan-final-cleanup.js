@@ -94,11 +94,7 @@
     if(typeof renderSidebar!=='function'||renderSidebar.__cqKesiswaanSingleNavV5)return;
     const original=renderSidebar;
     const wrapped=function(){
-      if(role()==='kesiswaan'){
-        consolidateModel();
-        enforceKesiswaanFourMenuModel();
-        return renderKesiswaanSidebarOnly();
-      }
+      if(role()==='kesiswaan')return renderKesiswaanSidebarOnly();
       return original.apply(this,arguments);
     };
     wrapped.__cqKesiswaanSingleNavV5=true;
@@ -138,10 +134,4 @@
   window.addEventListener('load',()=>setTimeout(apply,0),{once:true});
   setTimeout(apply,500);
 
-  const attachObserver=()=>{
-    const sb=document.getElementById('sidebar');if(!sb||sb.__cqKesiswaanFinalObserverV5)return;
-    sb.__cqKesiswaanFinalObserverV5=true;
-    new MutationObserver(()=>{cleanSidebarDom();cleanKesiswaanQuickAccess()}).observe(sb,{childList:true,subtree:true});
-  };
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attachObserver,{once:true});else attachObserver();
 })();
