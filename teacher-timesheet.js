@@ -47,6 +47,7 @@
     await add('teacher-timesheet-v2.js?v=20261003-front8','cq-ts-v2');
     await add('timesheet-recurring.js?v=20261003-front8','cq-ts-recurring');
     await add('timesheet-gap-assistant.js?v=20261003-front8','cq-ts-gap-assistant');
+    await add('timesheet-frisat-flex.js?v=20261005-frisat1','cq-ts-frisat-flex');
     try{
       var r=String((typeof currentUser!=='undefined'&&currentUser?.role)||'').toLowerCase();
       if(r==='hrd') await add('admin-timesheet-master.js?v=20260922-layout3','cq-ts-admin-master');
