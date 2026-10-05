@@ -118,6 +118,12 @@ function lockPatternInputs(){
   if(rs){rs.readOnly=true;rs.setAttribute('aria-readonly','true')}
   if(re){re.readOnly=true;re.setAttribute('aria-readonly','true')}
 }
+function fixedPick(d,s,e){
+  window.tsv2OpenCard?.(1);
+  const a=document.getElementById('tsv2-fixed-date'),b=document.getElementById('tsv2-fixed-start'),z=document.getElementById('tsv2-fixed-end'),form=document.querySelector('#tsv2-card1 .tsv2-form'),card=document.querySelector('#tsv2-card1 .tsv2-fixed-slot-editor');
+  if(a)a.value=d;if(b)b.value=s;if(z)z.value=e;if(form)form.dataset.fixedSelected='1';if(card)card.hidden=false;
+  card?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('tsv2-fixed-act')?.focus();
+}
 function pick(d,s,e){
   window.tsv2OpenCard?.(2);
   const a=document.getElementById('tsv2-date'),b=document.getElementById('tsv2-start'),z=document.getElementById('tsv2-end'),form=document.querySelector('#tsv2-card2 .tsv2-form'),card=document.querySelector('#tsv2-card2 .tsv2-slot-editor');
@@ -137,11 +143,18 @@ function patternPick(d,s,e){
 }
 function render(){
   const c=ctx();if(!c||!G.data)return;style();
-  const host=c.root.querySelector('#tsv2-gap-host')||c.root.querySelector('#tsv2-body');if(!host)return;
-  let card=c.root.querySelector('.tsgap-card');if(!card){card=document.createElement('div');card.className='tsv2-card tsgap-card';host.appendChild(card)}
+  const fixedHost=c.root.querySelector('#tsv2-fixed-gap-host');
+  const manualHost=c.root.querySelector('#tsv2-gap-host');
   const xs=G.data.items||[],show=G.showAll?xs:xs.slice(0,18);
-  card.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar waktu belum tercatat belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Isi Jam Kosong <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 2</span></div><div class="tsv2-help">Hanya waktu kerja yang benar-benar kosong yang tampil. Pilih slot, lalu jam mulai–selesai boleh disesuaikan selama masih berada di dalam rentang kosong. Agenda otomatis tidak dapat ditimpa.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot belum tercatat':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${x.special?'Hari/kegiatan khusus':'Pilih aktivitas untuk waktu ini'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Sekali</button><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPatternPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Jadikan Pola</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
-}
+  if(fixedHost){
+    let fixed=fixedHost.querySelector('.tsgap-fixed-card');if(!fixed){fixed=document.createElement('div');fixed.className='tsv2-card tsgap-card tsgap-fixed-card';fixedHost.appendChild(fixed)}
+    fixed.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar slot belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot Kosong Terjadwal <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 1</span></div><div class="tsv2-help">Tanggal dan jam sudah ditentukan sistem. Guru tinggal memilih kegiatan untuk seluruh slot tersebut.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot kosong':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">Jam dikunci sistem</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsFixedPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Slot</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
+  }
+  if(manualHost){
+    let card=manualHost.querySelector('.tsgap-manual-card');if(!card){card=document.createElement('div');card.className='tsv2-card tsgap-card tsgap-manual-card';manualHost.appendChild(card)}
+    card.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar jam kosong belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Isi Manual Jam Kosong <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 2</span></div><div class="tsv2-help">Pilih rentang kosong lalu tentukan sendiri jam mulai–selesai di dalam rentang tersebut.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' rentang tersedia':'Tidak ada jam kosong ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">Boleh isi sebagian dari rentang ini</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Manual</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
+  }
+}window.cqTsFixedPick=fixedPick;
 window.cqTsGapPick=pick;
 window.cqTsGapPatternPick=patternPick;
 window.cqTsGapToggle=()=>{G.showAll=!G.showAll;render()};
