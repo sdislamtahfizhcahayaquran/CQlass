@@ -79,8 +79,6 @@ async function load(){
       const isSpecial=spSet.has(date);
       let workEnd=day===6?720:960;
       const grades=(work.grades||[]).map(Number).filter(Boolean);
-      const hasUpper=grades.some(g=>g>=4);
-      const hasLower=grades.some(g=>g<=3);
       // Fallback rutinitas inti sekolah. Ini sengaja hanya menjadi blocker,
       // tidak tampil sebagai baris Timesheet dan mencegah jeda palsu.
       if(day>=1&&day<=4){
@@ -96,10 +94,14 @@ async function load(){
         const fridayBlock=(work.items||[]).find(x=>x.work_date===date&&x.activity_code==='friday_activity'&&x.start_time&&x.end_time);
         // Backend sudah menentukan kelompok Jumat utama guru (1–3 atau 4–6).
         // Gunakan batas eksplisit itu agar mapel tambahan di kelas atas tidak mengubah kelompok Jumat.
-        const fridayRequiredEnd=fridayBlock?.end_time||(hasUpper?'12:30:00':'10:40:00');
-        workEnd=mins(fridayRequiredEnd)??workEnd;
-        if(fridayBlock)busy.push({...fridayBlock,start_time:'08:00:00',end_time:fridayRequiredEnd});
-        else busy.push({start_time:'08:00:00',end_time:fridayRequiredEnd,_fallback:'friday-routine'});
+        // Batas Jumat HARUS berasal dari pemetaan guru kelas di backend.
+        // Jangan gunakan grade mapel yang diajar sebagai fallback karena guru kelas 1–3
+        // bisa sekaligus mengajar mapel di kelas 4–6.
+        if(fridayBlock){
+          const fridayRequiredEnd=fridayBlock.end_time;
+          workEnd=mins(fridayRequiredEnd)??workEnd;
+          busy.push({...fridayBlock,start_time:'08:00:00',end_time:fridayRequiredEnd});
+        }
       }
       if(isSpecial){
         (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
