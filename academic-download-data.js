@@ -54,7 +54,18 @@ async function exportBilingual(btn){
   saveBook(wb,'Rekap_Bilingual_SDCQ.xlsx');toast('Bilingual berhasil diunduh.');
  }catch(e){toast(e.message||'Gagal membuat Excel Bilingual.',true)}finally{btn.disabled=false;btn.textContent=old}
 }
-function exportNilai(btn){if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}toast('Download Nilai sedang dikunci ke template Legger resmi; tidak dibuat dengan format generik.',true)}
+async function exportNilai(btn){
+ if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}
+ const old=btn.textContent;btn.disabled=true;btn.textContent='Sinkronisasi Nilai...';
+ try{
+  if(window.CQlassLeggerGoogleSync?.drain)await window.CQlassLeggerGoogleSync.drain();
+  btn.textContent='Mengunduh Legger...';
+  const url='https://docs.google.com/spreadsheets/d/1g5WfGQtS35kYaK8jU60pFkvFm4B_gy6bO_yg0ivKvRI/export?format=xlsx';
+  const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.download='A. Legger Nilai Semester 1 TA 2026_2027.xlsx';document.body.appendChild(a);a.click();a.remove();
+  toast('Legger resmi dibuka untuk diunduh sebagai Excel.');
+ }catch(e){toast(e.message||'Gagal menyiapkan Download Nilai.',true)}
+ finally{btn.disabled=false;btn.textContent=old}
+}
 function runDownload(kind,btn){if(kind==='RPP & LP')return exportRppLp(btn);if(kind==='Bilingual')return exportBilingual(btn);return exportNilai(btn)}
 
 window.renderAcademicDownloadData=function(c){if(!isAcademic()){c.innerHTML='<div class="card">Menu ini khusus Kabid Akademik.</div>';return}css();c.innerHTML=`
