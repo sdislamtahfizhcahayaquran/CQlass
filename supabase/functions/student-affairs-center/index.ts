@@ -14,6 +14,9 @@ const ymd=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"num
 const classLabel=(c:any)=>T(c?.name)||[c?.grade_level,c?.rombel,c?.gender_group].filter(Boolean).join(" ")||"-";
 const activeStatus=(s:any)=>!["nonaktif","inactive","disabled","keluar"].includes(L(s));
 function enrich(rows:any[],sm:any,cm:any,dateKey:string){return(rows||[]).map((x:any)=>({...x,date:x[dateKey]||null,student_name:sm[x.student_id]?.full_name||"-",class_name:classLabel(cm[x.class_id])}))}
+const minOf=(v:any)=>{const s=T(v);if(!/^\d{2}:\d{2}/.test(s))return null;const[h,m]=s.slice(0,5).split(":").map(Number);return h*60+m};
+function fullCovered(start:number,end:number,rows:any[]){const segs=(rows||[]).map(x=>[minOf(x.start_time),minOf(x.end_time)]).filter(x=>x[0]!==null&&x[1]!==null&&Number(x[1])>Number(x[0])).map(x=>[Math.max(start,Number(x[0])),Math.min(end,Number(x[1]))]).filter(x=>x[1]>x[0]).sort((a,b)=>a[0]-b[0]);let cur=start;for(const[s,e]of segs){if(s>cur)return false;if(e>cur)cur=e;if(cur>=end)return true}return cur>=end}
+function seqDates(start:string,end:string){const out:string[]=[];let d=new Date(start+"T12:00:00Z"),z=new Date(end+"T12:00:00Z");while(d<=z){out.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}return out}
 
 async function reportData(b:any){
   const end=T(b.end_date)||ymd(),start=T(b.start_date)||end.slice(0,8)+"01",classId=T(b.class_id);
@@ -145,18 +148,58 @@ Deno.serve(async(req:Request)=>{
         sb.from("semesters").select("academic_year_id,semester_no").eq("is_active",true).limit(1).maybeSingle()
       ]);
       if(!year||!sem||T(sem.academic_year_id)!==T(year.id))throw Error("active_period_missing");
+
       const{data:asg,error:ae}=await sb.from("report_class_assignments").select("class_id,homeroom_teacher_id").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no);
       if(ae)throw ae;
-      const tids=[...new Set((asg||[]).map((x:any)=>x.homeroom_teacher_id).filter(Boolean))];
-      const[{data:teachers,error:te},{data:acts,error:xe}]=await Promise.all([
+      const tids=[...new Set((asg||[]).map((x:any)=>x.homeroom_teacher_id).filter(Boolean))],classIds=[...new Set((asg||[]).map((x:any)=>x.class_id).filter(Boolean))];
+      const[
+        {data:teachers,error:te},{data:classes,error:ce},{data:acts,error:xe},{data:patterns,error:pe},
+        {data:own,error:oe},{data:routines,error:re},{data:templates,error:tpe},{data:uks,error:ue},
+        {data:sat,error:se}
+      ]=await Promise.all([
         tids.length?sb.from("teachers").select("id,full_name").in("id",tids):Promise.resolve({data:[],error:null}),
-        tids.length?sb.from("teacher_timesheet_activities").select("id,teacher_id,work_date,start_time,end_time,activity,source").in("teacher_id",tids).gte("work_date",start).lte("work_date",end):Promise.resolve({data:[],error:null})
+        classIds.length?sb.from("classes").select("id,grade_level").in("id",classIds):Promise.resolve({data:[],error:null}),
+        tids.length?sb.from("teacher_timesheet_activities").select("id,teacher_id,work_date,start_time,end_time,activity,source").in("teacher_id",tids).gte("work_date",start).lte("work_date",end):Promise.resolve({data:[],error:null}),
+        tids.length?sb.from("teacher_recurring_activities").select("id,teacher_id,days_of_week,start_time,end_time,activity_name").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true).in("teacher_id",tids):Promise.resolve({data:[],error:null}),
+        tids.length?sb.from("class_schedule_entries").select("teacher_id,class_id,day_of_week,start_time,end_time,activity_type").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true).in("teacher_id",tids).not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null}),
+        classIds.length?sb.from("class_schedule_entries").select("class_id,day_of_week,start_time,end_time,activity_type").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true).in("class_id",classIds).in("activity_type",["break","school_routine"]).not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null}),
+        sb.from("teacher_work_schedule_templates").select("teacher_id,applies_to_all,day_of_week,start_time,end_time,activity_code").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true).not("start_time","is",null).not("end_time","is",null),
+        tids.length?sb.from("uks_duty_schedule").select("teacher_id,weekday,start_time,end_time").eq("is_active",true).in("teacher_id",tids):Promise.resolve({data:[],error:null}),
+        sb.from("teacher_saturday_schedule").select("id,event_date,start_time,end_time,is_active,audience_mode").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true).gte("event_date",start).lte("event_date",end)
       ]);
-      if(te)throw te;if(xe)throw xe;
+      for(const e of[te,ce,xe,pe,oe,re,tpe,ue,se])if(e)throw e;
+
       const tm:any=Object.fromEntries((teachers||[]).map((x:any)=>[x.id,x.full_name]));
+      const cm:any=Object.fromEntries((classes||[]).map((x:any)=>[x.id,x]));
+      const teacherClasses:any={};for(const x of asg||[]){if(!x.homeroom_teacher_id)continue;(teacherClasses[x.homeroom_teacher_id]??=[]).push(x.class_id)}
+      const dates=seqDates(start,end).filter(d=>new Date(d+"T12:00:00Z").getUTCDay()!==0);
+      const completeByTeacher:any={};
+
+      for(const tid of tids){
+        const cids=teacherClasses[tid]||[],grades=cids.map((id:string)=>Number(cm[id]?.grade_level)).filter(Boolean),fridayEnd=grades.some((g:number)=>g>=4)?750:640;
+        const complete:string[]=[];
+        for(const date of dates){
+          const dow=new Date(date+"T12:00:00Z").getUTCDay(),ws=dow===6?450:420,we=dow===6?720:960,busy:any[]=[];
+          if(dow>=1&&dow<=4){
+            busy.push({start_time:"07:00",end_time:"08:00"},{start_time:"09:40",end_time:"10:10"},{start_time:"11:50",end_time:"13:10"});
+          }
+          if(dow===5)busy.push({start_time:"08:00",end_time:`${String(Math.floor(fridayEnd/60)).padStart(2,"0")}:${String(fridayEnd%60).padStart(2,"0")}`});
+          for(const x of own||[])if(T(x.teacher_id)===T(tid)&&Number(x.day_of_week)===dow)busy.push(x);
+          for(const x of routines||[])if(cids.includes(x.class_id)&&Number(x.day_of_week)===dow)busy.push(x);
+          for(const x of templates||[])if(Number(x.day_of_week)===dow&&(x.applies_to_all||T(x.teacher_id)===T(tid)))busy.push(x);
+          for(const x of uks||[])if(T(x.teacher_id)===T(tid)&&Number(x.weekday)===dow)busy.push(x);
+          for(const x of acts||[])if(T(x.teacher_id)===T(tid)&&T(x.work_date)===date)busy.push(x);
+          for(const x of patterns||[])if(T(x.teacher_id)===T(tid)&&(x.days_of_week||[]).map(Number).includes(dow))busy.push(x);
+          if(dow===6)for(const x of sat||[])if(T(x.event_date)===date)busy.push(x);
+          if(fullCovered(ws,we,busy))complete.push(date);
+        }
+        completeByTeacher[tid]=complete;
+      }
+
       const rows=(asg||[]).map((x:any)=>{
         const items=(acts||[]).filter((z:any)=>T(z.teacher_id)===T(x.homeroom_teacher_id));
-        return{class_id:x.class_id,teacher_id:x.homeroom_teacher_id,teacher_name:tm[x.homeroom_teacher_id]||"Wali Kelas",entry_count:items.length,days_filled:new Set(items.map((z:any)=>z.work_date)).size,last_entry:items.map((z:any)=>z.work_date).sort().at(-1)||null};
+        const complete=completeByTeacher[x.homeroom_teacher_id]||[];
+        return{class_id:x.class_id,teacher_id:x.homeroom_teacher_id,teacher_name:tm[x.homeroom_teacher_id]||"Wali Kelas",entry_count:items.length,days_filled:complete.length,complete_days:complete,last_entry:complete.at(-1)||null,is_complete:complete.length>0};
       });
       return J({success:true,period:{start_date:start,end_date:end},rows});
     }
