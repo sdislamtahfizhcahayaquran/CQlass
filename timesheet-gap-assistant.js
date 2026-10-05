@@ -102,13 +102,13 @@ async function load(){
           busy.push({...fridayBlock,start_time:'08:00:00',end_time:fridayRequiredEnd});
         }
       }
-      if(isSpecial){
-        (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
-      }else{
-        (work.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
-        (core.teaching||[]).filter(x=>x.work_date===date&&x.source!=='digantikan').forEach(x=>busy.push(x));
-        if(day===6)(core.saturdays||[]).filter(x=>x.event_date===date&&x.configured!==false).forEach(x=>busy.push({start_time:x.start_time,end_time:x.end_time}));
-      }
+      // Jadwal kerja/KBM selalu menjadi blocker. Kegiatan khusus hanya MENAMBAH,
+      // bukan menggantikan jadwal reguler. Ini penting untuk guru/partner Tahfizh:
+      // KBM Tahfizh tidak boleh berubah menjadi slot kosong saat ada overlay kegiatan khusus.
+      (work.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
+      (core.teaching||[]).filter(x=>x.work_date===date&&x.source!=='digantikan').forEach(x=>busy.push(x));
+      if(day===6)(core.saturdays||[]).filter(x=>x.event_date===date&&x.configured!==false).forEach(x=>busy.push({start_time:x.start_time,end_time:x.end_time}));
+      if(isSpecial)(special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       (core.activities||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       // Sabtu selalu dihitung dalam jam kerja 07.30–12.00.
