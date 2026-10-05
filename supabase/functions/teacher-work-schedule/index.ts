@@ -45,7 +45,12 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
     : [...new Set([...(asgRes.data||[]),...(homRes.data||[])].map((x:any)=>txt(x.class_id)).filter(Boolean))];
   const{data:classes,error:classErr}=classIds.length?await sb.from("classes").select("id,name,grade_level").in("id",classIds):{data:[],error:null};if(classErr)throw classErr;
   const grades=[...new Set((classes||[]).map((x:any)=>Number(x.grade_level)).filter(Boolean))];
-  const fridayClassIds=isTahfizh?tahfizhClassIds:homeroomClassIds;
+  // Penentu aturan Jumat untuk guru kelas wajib berasal dari kelas wali/partner,
+  // termasuk partner yang ditetapkan melalui class_partner_assignments.
+  // Jangan memakai teacher_subject_assignments untuk klasifikasi Jumat.
+  const fridayClassIds=isTahfizh
+    ? tahfizhClassIds
+    : [...new Set([...homeroomClassIds,...partnerClassIds])];
   const fridayGrades=[...new Set((classes||[]).filter((x:any)=>fridayClassIds.includes(txt(x.id))).map((x:any)=>Number(x.grade_level)).filter(Boolean))];
   const fridayUpper=fridayGrades.some((g:number)=>g>=4);
   const fridayLower=fridayGrades.some((g:number)=>g>=1&&g<=3);
