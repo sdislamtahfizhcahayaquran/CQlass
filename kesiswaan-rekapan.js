@@ -2,8 +2,8 @@
    Isolated/read-only. Does not alter any other role or input workflow. */
 (function(){
   'use strict';
-  if(window.__cqKesiswaanRekapanV10)return;
-  window.__cqKesiswaanRekapanV10=true;
+  if(window.__cqKesiswaanRekapanV11)return;
+  window.__cqKesiswaanRekapanV11=true;
 
   const MODULE_ID='kesiswaan-rekapan';
   const GROUP_ID='kesiswaan-rekapan-group';
@@ -34,7 +34,7 @@
     '2272ba1a-9a4e-447a-9996-8a4232b4d792':'Dila Nur Azizah, S.Pd.',
     '4fa0f6ad-e5b2-4a13-bf64-fd798c8e4da5':'Abdurrokhman, M.Pd.'
   };
-  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],dailyMode:false};
+  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],timesheet:[],dailyMode:false};
 
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const N=v=>String(v??'').trim().toLowerCase().replace(/[\s.,]/g,'');
@@ -92,7 +92,7 @@
       .krek-card th:nth-child(5),.krek-card td:nth-child(5){width:118px}
       .krek-card th:nth-child(6),.krek-card td:nth-child(6){width:112px}
       .krek-card th:nth-child(7),.krek-card td:nth-child(7){width:138px}
-      .krek-card th:nth-child(8),.krek-card td:nth-child(8){width:66px;text-align:center}
+      .krek-card th:nth-child(8),.krek-card td:nth-child(8){width:104px;text-align:center}.krek-card th:nth-child(9),.krek-card td:nth-child(9){width:66px;text-align:center}
       .krek-card .krek-uks{min-width:0;width:100%}.krek-card .krek-detail{padding:6px 8px;min-width:48px}
       .krek th,.krek td,.krek-modal th,.krek-modal td{border:1px solid #d9e2ea;padding:6px 8px;font-size:10px;line-height:1.35;vertical-align:middle}
       .krek th,.krek-modal th{background:#f5f7fa;color:#44576b;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:1}
@@ -218,10 +218,16 @@
       return{...c,walas:WALAS[cid]||'Belum ditetapkan',students,a,r,v,uks};
     }).sort((a,b)=>Number(a.grade_level)-Number(b.grade_level)||String(a.name).localeCompare(String(b.name),'id',{numeric:true}));
   }
+  function timesheetCell(classId){
+    const x=(S.timesheet||[]).find(r=>String(r.class_id)===String(classId));
+    if(!x)return '<span class="krek-status na">—</span>';
+    if(Number(x.entry_count)>0)return '<span class="krek-status done">Terisi '+Number(x.days_filled||0)+' hari</span>';
+    return '<span class="krek-status pending">Belum</span>';
+  }
   function renderTable(){
     const body=document.getElementById('krek-body');if(!body)return;
     const rows=classRows();
-    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${status('attendance',x.a.length)}</td><td>${status('discipline',x.v.length)}</td><td>${status('reward',x.r.length)}</td><td>${uksCell(x)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
+    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${status('attendance',x.a.length)}</td><td>${status('discipline',x.v.length)}</td><td>${status('reward',x.r.length)}</td><td>${uksCell(x)}</td><td>${timesheetCell(x.id)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
     body.querySelectorAll('.krek-detail').forEach(btn=>btn.addEventListener('click',()=>openDetail(btn.dataset.class||'')));
   }
   function countsBy(arr,key,labeler){
@@ -261,14 +267,14 @@
   async function load(){
     const body=document.getElementById('krek-body');if(!body)return;
     body.innerHTML='<div class="krek-loading">Memuat rekapan Kesiswaan…</div>';
-    try{const [report,schedule]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'})]);S.data=report;S.uksSchedule=schedule.schedule||[];if(S.dailyMode)renderDailyReport();else renderTable()}
+    try{const [report,schedule,timesheet]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'}),post({action:'timesheet_recap',start_date:S.from,end_date:S.to})]);S.data=report;S.uksSchedule=schedule.schedule||[];S.timesheet=timesheet.rows||[];if(S.dailyMode)renderDailyReport();else renderTable()}
     catch(e){body.innerHTML='<div class="krek-error"><b>Rekapan belum dapat dimuat.</b><br>'+E(e.message||'Gagal memuat data.')+'</div>'}
   }
   function render(content){
     if(!isKesiswaan()){content.innerHTML='<div class="krek-error">Menu ini khusus Kabid Kesiswaan.</div>';return}
     css();ensureModal();const t=today();if(!S.to){S.to=t;S.from=t.slice(0,8)+'01'}
     document.body.classList.toggle('krek-shot-mode',!!S.dailyMode);
-    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Monitoring input Kehadiran, Kedisiplinan, Reward, dan Jaga UKS. UKS ditampilkan untuk kelas 1–3.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button><div class="krek-actions"><button type="button" class="krek-btn report" id="krek-daily">Laporan Hari Ini</button></div></div><div id="krek-body"></div></div>`;
+    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Monitoring input Kehadiran, Kedisiplinan, Reward, Jaga UKS, dan Timesheet Walas. UKS ditampilkan untuk kelas 1–3.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button><div class="krek-actions"><button type="button" class="krek-btn report" id="krek-daily">Laporan Hari Ini</button></div></div><div id="krek-body"></div></div>`;
     document.getElementById('krek-apply').addEventListener('click',()=>{const f=document.getElementById('krek-from').value,t2=document.getElementById('krek-to').value;if(!f||!t2||f>t2){document.getElementById('krek-body').innerHTML='<div class="krek-error">Rentang tanggal tidak valid.</div>';return}S.dailyMode=false;document.body.classList.remove('krek-shot-mode');S.from=f;S.to=t2;load()});
     document.getElementById('krek-daily')?.addEventListener('click',enterDailyMode);
     load();
