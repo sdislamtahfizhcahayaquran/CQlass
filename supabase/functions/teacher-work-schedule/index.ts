@@ -26,17 +26,18 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const yearQuery=sb.from("academic_years").select("id,start_date,end_date").eq("is_active",true).lte("start_date",monthEnd).gte("end_date",monthStart);if(teacher?.school_unit_id)yearQuery.eq("school_unit_id",teacher.school_unit_id);const{data:years,error:yearError}=await yearQuery.limit(1);if(yearError)throw yearError;const year=years?.[0];if(!year)return reply({success:true,items:[],unresolved:[],profile:null});
   const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||0);if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");
 
-  const[asgRes,homRes,tahRes,classPartnerRes]=await Promise.all([
+  const[asgRes,homRes,tahRes,tahPartnerRes,classPartnerRes]=await Promise.all([
     sb.from("teacher_subject_assignments").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true),
     sb.from("report_class_assignments").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).or(`homeroom_teacher_id.eq.${teacherId},partner_teacher_id.eq.${teacherId}`),
     sb.from("tahfizh_teacher_assignments").select("class_id,team_name").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true),
+    sb.from("partner_tahfizh_halaqah_roster").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("partner_teacher_id",teacherId).eq("is_active",true),
     sb.from("class_partner_assignments").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true)
   ]);
-  for(const r of[asgRes,homRes,tahRes,classPartnerRes])if(r.error)throw r.error;
-  const isTahfizh=(tahRes.data||[]).length>0;
+  for(const r of[asgRes,homRes,tahRes,tahPartnerRes,classPartnerRes])if(r.error)throw r.error;
+  const isTahfizh=(tahRes.data||[]).length>0||(tahPartnerRes.data||[]).length>0;
   const partnerClassIds=[...new Set((classPartnerRes.data||[]).map((x:any)=>txt(x.class_id)).filter(Boolean))];
   const homeroomClassIds=[...new Set((homRes.data||[]).map((x:any)=>txt(x.class_id)).filter(Boolean))];
-  const tahfizhClassIds=[...new Set((tahRes.data||[]).map((x:any)=>txt(x.class_id)).filter(Boolean))];
+  const tahfizhClassIds=[...new Set([...(tahRes.data||[]),...(tahPartnerRes.data||[])].map((x:any)=>txt(x.class_id)).filter(Boolean))];
   // Guru Tahfizh/Partner bisa mengampu beberapa kelas lintas level.
   // Jangan batasi perhitungan rutinitas/Jumat hanya ke kelas partner walas,
   // karena itu membuat kelas 4–6 terbaca seperti level 1–3.
