@@ -45,12 +45,44 @@ function ensureSynthetic(target,id,label,renderer){
   else it={id,label,built:true,render:renderer};
   onlyAcademic(it,label);it.built=true;if(renderer)it.render=renderer;target.items.push(it);return it;
 }
+function dedupeAcademicItems(){
+  // Satu canonical object per id. Patch legacy dapat meninggalkan object lama di grup lain.
+  const seen=new Map();
+  for(const g of MODULE_GROUPS){
+    if(!Array.isArray(g?.items))continue;
+    const next=[];
+    for(const it of g.items){
+      if(!it||!it.id){next.push(it);continue}
+      const key=String(it.id);
+      if(!seen.has(key)){seen.set(key,it);next.push(it);continue}
+      const canonical=seen.get(key);
+      // Pertahankan renderer/metadata terbaru bila duplikat lebih lengkap.
+      if(typeof it.render==='function')canonical.render=it.render;
+      if(it.built!==undefined)canonical.built=it.built;
+      if(it.label)canonical.label=it.label;
+      const roles=[...(canonical.roles||[]),...(it.roles||[])];
+      canonical.roles=[...new Set(roles)];
+    }
+    g.items=next;
+  }
+}
+function stripAcademicFromUnmanagedGroups(allowedGroupIds){
+  for(const g of MODULE_GROUPS){
+    if(!g||allowedGroupIds.has(String(g.id)))continue;
+    if(Array.isArray(g.roles))g.roles=g.roles.filter(r=>!['akademik','kabid_akademik','academic'].includes(N(r)));
+    if(Array.isArray(g.items))for(const it of g.items){
+      if(Array.isArray(it?.roles))it.roles=it.roles.filter(r=>!['akademik','kabid_akademik','academic'].includes(N(r)));
+    }
+  }
+}
 function apply(){
   if(!isAcademic()||typeof MODULE_GROUPS==='undefined'||!Array.isArray(MODULE_GROUPS))return false;
+  dedupeAcademicItems();
 
   const academic=ensureGroup('akademik','Akademik');
   const monitoring=ensureGroup('academic-monitoring','Monitoring');
   const reports=ensureGroup('laporan','Laporan');
+  stripAcademicFromUnmanagedGroups(new Set(['akademik','academic-monitoring','laporan']));
 
   // Ambil modul nyata yang sudah terdaftar. Tidak membuat menu tanpa renderer.
   const wanted=['leger','master-tp-akademik','rpp-lp','rpp-lp-akademik','bilingual','pjbl','akd-badal',
