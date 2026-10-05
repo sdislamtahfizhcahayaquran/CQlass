@@ -77,7 +77,7 @@ async function load(){
       const day=new Date(date+'T12:00:00Z').getUTCDay();if(day===0)continue;
       const busy=[];
       const isSpecial=spSet.has(date);
-      let workEnd=day===6?720:960;
+      const workEnd=day===6?720:960;
       const grades=(work.grades||[]).map(Number).filter(Boolean);
       // Fallback rutinitas inti sekolah. Ini sengaja hanya menjadi blocker,
       // tidak tampil sebagai baris Timesheet dan mencegah jeda palsu.
@@ -88,9 +88,9 @@ async function load(){
         busy.push({start_time:'11:50:00',end_time:'13:10:00',_fallback:'ishoma-literasi'});
       }
       if(day===5){
-        // Gunakan blocker Jumat resmi dari backend bila tersedia agar level 4–6
-        // tidak pernah salah terbaca kosong mulai 10.40.
-        busy.push({start_time:'07:00:00',end_time:'08:00:00',_fallback:'friday-morning'});
+        // Jumat jam kerja 08.00–16.00. Kegiatan wajib kelas menjadi blocker
+        // sampai 10.40 (kelas 1–3) atau 12.30 (kelas 4–6), lalu sisa waktu
+        // kembali menjadi slot kerja yang dapat diisi guru.
         const fridayBlock=(work.items||[]).find(x=>x.work_date===date&&x.activity_code==='friday_activity'&&x.start_time&&x.end_time);
         // Backend sudah menentukan kelompok Jumat utama guru (1–3 atau 4–6).
         // Gunakan batas eksplisit itu agar mapel tambahan di kelas atas tidak mengubah kelompok Jumat.
@@ -99,7 +99,6 @@ async function load(){
         // bisa sekaligus mengajar mapel di kelas 4–6.
         if(fridayBlock){
           const fridayRequiredEnd=fridayBlock.end_time;
-          workEnd=mins(fridayRequiredEnd)??workEnd;
           busy.push({...fridayBlock,start_time:'08:00:00',end_time:fridayRequiredEnd});
         }
       }
@@ -114,7 +113,7 @@ async function load(){
       (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       // Sabtu selalu dihitung dalam jam kerja 07.30–12.00.
       // Agenda HRD menjadi blocker; jika tidak ada agenda, seluruh rentang tetap muncul sebagai jam kosong.
-      const ws=day===6?450:420,we=workEnd;
+      const ws=day===6?450:(day===5?480:420),we=workEnd;
       for(const g of gaps(ws,we,busy))all.push({work_date:date,start_time:tm(g[0]),end_time:tm(g[1]),minutes:g[1]-g[0],special:isSpecial});
     }
     G.data={items:all,profile:work.profile||null};render();
@@ -168,7 +167,7 @@ function render(){
   const xs=G.data.items||[],show=G.showAll?xs:xs.slice(0,18);
   if(fixedHost){
     let fixed=fixedHost.querySelector('.tsgap-fixed-card');if(!fixed){fixed=document.createElement('div');fixed.className='tsv2-card tsgap-card tsgap-fixed-card';fixedHost.appendChild(fixed)}
-    fixed.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar slot belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot Kosong Terjadwal <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 1</span></div><div class="tsv2-help">Pilih isi sekali atau jadikan pola mingguan. Jumat–Sabtu satu rentang kosong dapat dibagi menjadi beberapa kegiatan. Untuk guru kelas 4–6, kegiatan Jumat wajib sampai 12.30.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot kosong':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Rentang fleksibel — bisa dibagi beberapa kegiatan':'Jam dikunci sistem'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsFixedPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Bagi Kegiatan':'Isi Slot'}</button>${new Date(x.work_date+'T12:00:00Z').getUTCDay()>=1&&new Date(x.work_date+'T12:00:00Z').getUTCDay()<=5?`<button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPatternPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Jadikan Pola</button>`:''}</div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
+    fixed.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar slot belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot Kosong Terjadwal <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 1</span></div><div class="tsv2-help">Pilih isi sekali atau jadikan pola mingguan. Jumat jam kerja 08.00–16.00; kegiatan wajib kelas 1–3 sampai 10.40 dan kelas 4–6 sampai 12.30, lalu sisa waktunya menjadi slot kerja. Sabtu mengikuti agenda HRD.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot kosong':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Rentang fleksibel — bisa dibagi beberapa kegiatan':'Jam dikunci sistem'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsFixedPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Bagi Kegiatan':'Isi Slot'}</button>${new Date(x.work_date+'T12:00:00Z').getUTCDay()>=1&&new Date(x.work_date+'T12:00:00Z').getUTCDay()<=5?`<button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPatternPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Jadikan Pola</button>`:''}</div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
   }
 }window.cqTsFixedPick=fixedPick;
 window.cqTsGapPick=pick;
