@@ -117,6 +117,11 @@ Deno.serve(async(req:Request)=>{
       if(T(b.status))q=q.eq("status",L(b.status));if(T(b.start_date))q=q.gte("created_at",T(b.start_date)+"T00:00:00+07:00");if(T(b.end_date))q=q.lte("created_at",T(b.end_date)+"T23:59:59+07:00");
       const{data,error}=await q;if(error)throw error;return J({success:true,rows:data||[]});
     }
+    if(action==="salam_delete"){
+      if(!has(a,"kesiswaan","admin"))return J({success:false,error:"forbidden"},403);
+      const id=T(b.id);if(!id)return J({success:false,error:"invalid_id"},400);
+      const{error}=await sb.from("salam_cq_messages").delete().eq("id",id);if(error)throw error;return J({success:true});
+    }
     if(action==="salam_followup"){
       if(!has(a,"kesiswaan","admin"))return J({success:false,error:"forbidden"},403);
       const id=T(b.id),status=L(b.status);if(!id||!["diterima","diproses","butuh_koordinasi","selesai"].includes(status))return J({success:false,error:"invalid_followup"},400);
