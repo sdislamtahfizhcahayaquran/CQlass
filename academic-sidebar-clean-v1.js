@@ -35,9 +35,26 @@ function ensureGroup(id,label){
   return g;
 }
 function move(id,target,label){
-  let it=findItem(id);if(!it)return null;
-  for(const g of MODULE_GROUPS){if(Array.isArray(g.items))g.items=g.items.filter(x=>x!==it)}
-  onlyAcademic(it,label);target.items.push(it);return it;
+  let canonical=null;
+  for(const g of MODULE_GROUPS){
+    if(!Array.isArray(g?.items))continue;
+    for(const it of g.items){
+      if(it&&String(it.id)===String(id)){
+        if(!canonical)canonical=it;
+        else{
+          if(typeof it.render==='function')canonical.render=it.render;
+          if(it.built!==undefined)canonical.built=it.built;
+        }
+      }
+    }
+  }
+  if(!canonical)return null;
+  for(const g of MODULE_GROUPS){
+    if(Array.isArray(g?.items))g.items=g.items.filter(x=>!(x&&String(x.id)===String(id)));
+  }
+  onlyAcademic(canonical,label);
+  target.items.push(canonical);
+  return canonical;
 }
 function ensureSynthetic(target,id,label,renderer){
   let it=findItem(id);
