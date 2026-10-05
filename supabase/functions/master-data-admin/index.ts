@@ -75,6 +75,38 @@ if(action==="partner_save"){
   if(legacy.error)throw legacy.error;
   return J({success:true,class_id:classId,teacher_ids:teacherIds,primary_teacher_id:primaryId})
 }
+if(action==="assignment_bootstrap"){
+  const [teachersQ,classesQ,subjectsQ,assignQ]=await Promise.all([
+    s.from("teachers").select("id,full_name,status").eq("status","AKTIF").order("full_name"),
+    s.from("classes").select("id,name,grade_level").eq("academic_year_id",c.year.id).eq("is_active",true).order("grade_level").order("name"),
+    s.from("subjects").select("id,name,grade_level").eq("school_unit_id",c.unit.id).eq("is_active",true).order("grade_level").order("name"),
+    s.from("admin_teacher_assignments").select("id,teacher_id,assignment_type,class_id,subject_id,title,notes,is_active,created_at,updated_at").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true).order("created_at",{ascending:false})
+  ]);
+  for(const q of [teachersQ,classesQ,subjectsQ,assignQ])if(q.error)throw q.error;
+  return J({success:true,academic_year:c.year.name,semester_no:c.semesterNo,teachers:teachersQ.data||[],classes:classesQ.data||[],subjects:subjectsQ.data||[],assignments:assignQ.data||[]})
+}
+if(action==="assignment_save"){
+  const id=T(b.id),teacherId=T(b.teacher_id),type=T(b.assignment_type),classId=T(b.class_id)||null,subjectId=T(b.subject_id)||null,title=T(b.title).slice(0,160)||null,notes=T(b.notes).slice(0,1000)||null;
+  const allowed=new Set(["wali_kelas","guru_partner","guru_mapel","tugas_tambahan"]);
+  if(!teacherId||!allowed.has(type))return J({success:false,error:"assignment_invalid"},400);
+  if(type!=="tugas_tambahan"&&!classId)return J({success:false,error:"class_required"},400);
+  if(type==="guru_mapel"&&!subjectId)return J({success:false,error:"subject_required"},400);
+  const teacher=await s.from("teachers").select("id,status").eq("id",teacherId).maybeSingle();
+  if(teacher.error)throw teacher.error;
+  if(!teacher.data||L(teacher.data.status)!=="aktif")return J({success:false,error:"teacher_not_active"},400);
+  if(classId){const cl=await s.from("classes").select("id").eq("id",classId).eq("academic_year_id",c.year.id).eq("is_active",true).maybeSingle();if(cl.error)throw cl.error;if(!cl.data)return J({success:false,error:"class_invalid"},400)}
+  if(subjectId){const su=await s.from("subjects").select("id").eq("id",subjectId).eq("school_unit_id",c.unit.id).eq("is_active",true).maybeSingle();if(su.error)throw su.error;if(!su.data)return J({success:false,error:"subject_invalid"},400)}
+  const p={school_unit_id:c.unit.id,academic_year_id:c.year.id,semester_no:c.semesterNo,teacher_id:teacherId,assignment_type:type,class_id:classId,subject_id:type==="guru_mapel"?subjectId:null,title:type==="tugas_tambahan"?title:null,notes,is_active:true,updated_at:now()};
+  const q=id?await s.from("admin_teacher_assignments").update(p).eq("id",id).eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo):await s.from("admin_teacher_assignments").insert({...p,created_by:a.id});
+  if(q.error)throw q.error;
+  return J({success:true})
+}
+if(action==="assignment_deactivate"){
+  const id=T(b.id);if(!id)return J({success:false,error:"id_required"},400);
+  const q=await s.from("admin_teacher_assignments").update({is_active:false,updated_at:now()}).eq("id",id).eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo);
+  if(q.error)throw q.error;
+  return J({success:true})
+}
 if(action==="upload_file"){const q=await saveRaw(s,c,a,b);return J(q,(q as any).status||200)}
 if(action==="list_schedule"){let q=s.from("class_schedule_entries").select("id,class_id,day_of_week,start_time,end_time,subject_name_raw,activity_type,teacher_id,teacher_name_raw,slot_label,classes(name),teachers(full_name)").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true).order("day_of_week").order("start_time",{ascending:true,nullsFirst:false});if(T(b.class_id))q=q.eq("class_id",T(b.class_id));const r=await q.limit(1200);if(r.error)throw r.error;return J({success:true,items:r.data||[]})}
 if(action==="list_calendar"){let q=s.from("school_calendar_days").select("id,calendar_date,is_school_day,day_type,title,notes,is_manual_override").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).order("calendar_date");if(T(b.from))q=q.gte("calendar_date",T(b.from));if(T(b.to))q=q.lte("calendar_date",T(b.to));const [d,e]=await Promise.all([q.limit(400),s.from("school_calendar_events").select("id,start_date,end_date,title,category,affects_school_day,school_day_override,notes").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true).order("start_date")]);if(d.error)throw d.error;if(e.error)throw e.error;return J({success:true,days:d.data||[],events:e.data||[]})}
