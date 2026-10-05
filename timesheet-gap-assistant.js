@@ -84,8 +84,9 @@ async function load(){
       // tidak tampil sebagai baris Timesheet dan mencegah jeda palsu.
       if(day>=1&&day<=4){
         busy.push({start_time:'07:00:00',end_time:'08:00:00',_fallback:'morning-routine'});
+        // 09.40–10.10 selalu Snack Time. Jangan pernah tampil sebagai jam kosong.
+        busy.push({start_time:'09:40:00',end_time:'10:10:00',_fallback:'snack-time'});
         busy.push({start_time:'11:50:00',end_time:'13:10:00',_fallback:'ishoma-literasi'});
-        // Snack 09.40–10.10 sekarang dibaca dari backend berdasarkan kelas: seluruh Banin + seluruh kelas 1.
       }
       if(day===5){
         // Gunakan blocker Jumat resmi dari backend bila tersedia agar level 4–6
