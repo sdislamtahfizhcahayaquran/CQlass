@@ -93,7 +93,7 @@ async function load(){
         busy.push({start_time:'07:00:00',end_time:'08:00:00',_fallback:'friday-morning'});
         const fridayBlock=(work.items||[]).find(x=>x.work_date===date&&x.activity_code==='friday_activity'&&x.start_time&&x.end_time);
         if(fridayBlock)busy.push(fridayBlock);
-        else busy.push({start_time:'08:00:00',end_time:hasUpper?'12:30:00':'10:40:00',_fallback:'friday-routine'});
+        else busy.push({start_time:'08:00:00',end_time:hasUpper?'12:00:00':'10:40:00',_fallback:'friday-routine'});
       }
       if(isSpecial){
         (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
@@ -144,19 +144,18 @@ function patternPick(d,s,e){
 function render(){
   const c=ctx();if(!c||!G.data)return;style();
   const fixedHost=c.root.querySelector('#tsv2-fixed-gap-host');
-  const manualHost=c.root.querySelector('#tsv2-gap-host');
   const xs=G.data.items||[],show=G.showAll?xs:xs.slice(0,18);
   if(fixedHost){
     let fixed=fixedHost.querySelector('.tsgap-fixed-card');if(!fixed){fixed=document.createElement('div');fixed.className='tsv2-card tsgap-card tsgap-fixed-card';fixedHost.appendChild(fixed)}
     fixed.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar slot belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot Kosong Terjadwal <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 1</span></div><div class="tsv2-help">Tanggal dan jam sudah ditentukan sistem. Guru tinggal memilih kegiatan untuk seluruh slot tersebut.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot kosong':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">Jam dikunci sistem</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsFixedPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Slot</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
   }
-  if(manualHost){
-    let card=manualHost.querySelector('.tsgap-manual-card');if(!card){card=document.createElement('div');card.className='tsv2-card tsgap-card tsgap-manual-card';manualHost.appendChild(card)}
-    card.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar jam kosong belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Isi Manual Jam Kosong <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 2</span></div><div class="tsv2-help">Pilih rentang kosong lalu tentukan sendiri jam mulai–selesai di dalam rentang tersebut.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' rentang tersedia':'Tidak ada jam kosong ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">Boleh isi sebagian dari rentang ini</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Manual</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
-  }
 }window.cqTsFixedPick=fixedPick;
 window.cqTsGapPick=pick;
 window.cqTsGapPatternPick=patternPick;
+window.cqTsRangeIsGap=(date,start,end)=>{
+  const s=mins(start),e=mins(end);if(!date||s==null||e==null||e<=s)return false;
+  return (G.data?.items||[]).some(x=>String(x.work_date)===String(date)&&s>=mins(x.start_time)&&e<=mins(x.end_time));
+};
 window.cqTsGapToggle=()=>{G.showAll=!G.showAll;render()};
 window.cqTsGapRefresh=()=>{G.key='';G.data=null;load()};
 window.cqTsGapItems=()=>Array.isArray(G.data?.items)?G.data.items.slice():[];
