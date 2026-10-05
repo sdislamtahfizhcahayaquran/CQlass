@@ -80,31 +80,101 @@ if(action==="assignment_bootstrap"){
     s.from("teachers").select("id,full_name,status").eq("status","AKTIF").order("full_name"),
     s.from("classes").select("id,name,grade_level").eq("academic_year_id",c.year.id).eq("is_active",true).order("grade_level").order("name"),
     s.from("subjects").select("id,name,grade_level").eq("school_unit_id",c.unit.id).eq("is_active",true).order("grade_level").order("name"),
-    s.from("admin_teacher_assignments").select("id,teacher_id,assignment_type,class_id,subject_id,title,notes,is_active,created_at,updated_at").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true).order("created_at",{ascending:false})
+    s.from("admin_teacher_assignments").select("id,teacher_id,assignment_type,class_id,subject_id,title,notes,team_name,is_active,operational_table,operational_id,created_at,updated_at").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true).order("created_at",{ascending:false})
   ]);
   for(const q of [teachersQ,classesQ,subjectsQ,assignQ])if(q.error)throw q.error;
   return J({success:true,academic_year:c.year.name,semester_no:c.semesterNo,teachers:teachersQ.data||[],classes:classesQ.data||[],subjects:subjectsQ.data||[],assignments:assignQ.data||[]})
 }
-if(action==="assignment_save"){
-  const id=T(b.id),teacherId=T(b.teacher_id),type=T(b.assignment_type),classId=T(b.class_id)||null,subjectId=T(b.subject_id)||null,title=T(b.title).slice(0,160)||null,notes=T(b.notes).slice(0,1000)||null;
-  const allowed=new Set(["wali_kelas","guru_partner","guru_mapel","tugas_tambahan"]);
-  if(!teacherId||!allowed.has(type))return J({success:false,error:"assignment_invalid"},400);
-  if(type!=="tugas_tambahan"&&!classId)return J({success:false,error:"class_required"},400);
-  if(type==="guru_mapel"&&!subjectId)return J({success:false,error:"subject_required"},400);
+async function linkOperational(s:any,c:any,a:any,row:any){
+  const type=T(row.assignment_type),teacherId=T(row.teacher_id),classId=T(row.class_id)||null,subjectId=T(row.subject_id)||null,adminId=T(row.id),notes=T(row.notes)||null,teamName=T(row.team_name)||null;
+  if(type==="tugas_tambahan")return {table:null,id:null};
+  if(type==="guru_partner"){
+    const countQ=await s.from("class_partner_assignments").select("id,teacher_id").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("class_id",classId).eq("is_active",true);
+    if(countQ.error)throw countQ.error;
+    const existing=(countQ.data||[]).find((x:any)=>T(x.teacher_id)===teacherId);
+    if(!existing&&(countQ.data||[]).length>=3)throw Error("maksimal_tiga_partner");
+    let id=existing?.id||"";
+    if(existing){
+      const q=await s.from("class_partner_assignments").update({is_active:true,updated_at:now()}).eq("id",id);if(q.error)throw q.error;
+    }else{
+      const q=await s.from("class_partner_assignments").insert({school_unit_id:c.unit.id,academic_year_id:c.year.id,semester_no:c.semesterNo,class_id:classId,teacher_id:teacherId,is_primary:false,is_active:true,created_by:a.id,updated_at:now()}).select("id").single();if(q.error)throw q.error;id=q.data.id;
+    }
+    const legacy=await s.from("report_class_assignments").select("id,partner_teacher_id").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("class_id",classId).maybeSingle();
+    if(legacy.error)throw legacy.error;
+    if(legacy.data&&!legacy.data.partner_teacher_id){const q=await s.from("report_class_assignments").update({partner_teacher_id:teacherId,updated_at:now()}).eq("id",legacy.data.id);if(q.error)throw q.error}
+    return {table:"class_partner_assignments",id};
+  }
+  if(type==="guru_mapel"){
+    const old=await s.from("teacher_subject_assignments").select("id,is_active").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("teacher_id",teacherId).eq("class_id",classId).eq("subject_id",subjectId).limit(1).maybeSingle();
+    if(old.error)throw old.error;
+    let id=old.data?.id||"";
+    if(old.data){const q=await s.from("teacher_subject_assignments").update({is_active:true,source_system:"CQlass Admin",notes,updated_at:now()}).eq("id",id);if(q.error)throw q.error}
+    else{const q=await s.from("teacher_subject_assignments").insert({teacher_id:teacherId,class_id:classId,subject_id:subjectId,academic_year_id:c.year.id,semester_no:c.semesterNo,is_active:true,source_system:"CQlass Admin",source_ref:"admin_assignment:"+adminId,notes,updated_at:now()}).select("id").single();if(q.error)throw q.error;id=q.data.id}
+    return {table:"teacher_subject_assignments",id};
+  }
+  if(type==="guru_tahfizh"){
+    const old=await s.from("tahfizh_teacher_assignments").select("id,is_active").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("teacher_id",teacherId).eq("class_id",classId).limit(1).maybeSingle();
+    if(old.error)throw old.error;
+    let id=old.data?.id||"";
+    if(old.data){const q=await s.from("tahfizh_teacher_assignments").update({is_active:true,team_name:teamName||null,source_ref:"admin_assignment:"+adminId}).eq("id",id);if(q.error)throw q.error}
+    else{const q=await s.from("tahfizh_teacher_assignments").insert({teacher_id:teacherId,class_id:classId,academic_year_id:c.year.id,semester_no:c.semesterNo,team_name:teamName||null,is_active:true,source_ref:"admin_assignment:"+adminId}).select("id").single();if(q.error)throw q.error;id=q.data.id}
+    return {table:"tahfizh_teacher_assignments",id};
+  }
+  if(type==="wali_kelas"){
+    const old=await s.from("report_class_assignments").select("id,homeroom_teacher_id").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("class_id",classId).maybeSingle();
+    if(old.error)throw old.error;
+    let id=old.data?.id||"";
+    if(old.data){const q=await s.from("report_class_assignments").update({homeroom_teacher_id:teacherId,updated_at:now()}).eq("id",id);if(q.error)throw q.error}
+    else{const q=await s.from("report_class_assignments").insert({class_id:classId,academic_year_id:c.year.id,semester_no:c.semesterNo,homeroom_teacher_id:teacherId,updated_at:now()}).select("id").single();if(q.error)throw q.error;id=q.data.id}
+    return {table:"report_class_assignments",id};
+  }
+  throw Error("assignment_type_invalid")
+}
+if(action==="assignment_save_many"){
+  const teacherId=T(b.teacher_id),items=Array.isArray(b.items)?b.items:[];
+  if(!teacherId||!items.length)return J({success:false,error:"assignment_required"},400);
   const teacher=await s.from("teachers").select("id,status").eq("id",teacherId).maybeSingle();
   if(teacher.error)throw teacher.error;
   if(!teacher.data||L(teacher.data.status)!=="aktif")return J({success:false,error:"teacher_not_active"},400);
-  if(classId){const cl=await s.from("classes").select("id").eq("id",classId).eq("academic_year_id",c.year.id).eq("is_active",true).maybeSingle();if(cl.error)throw cl.error;if(!cl.data)return J({success:false,error:"class_invalid"},400)}
-  if(subjectId){const su=await s.from("subjects").select("id").eq("id",subjectId).eq("school_unit_id",c.unit.id).eq("is_active",true).maybeSingle();if(su.error)throw su.error;if(!su.data)return J({success:false,error:"subject_invalid"},400)}
-  const p={school_unit_id:c.unit.id,academic_year_id:c.year.id,semester_no:c.semesterNo,teacher_id:teacherId,assignment_type:type,class_id:classId,subject_id:type==="guru_mapel"?subjectId:null,title:type==="tugas_tambahan"?title:null,notes,is_active:true,updated_at:now()};
-  const q=id?await s.from("admin_teacher_assignments").update(p).eq("id",id).eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo):await s.from("admin_teacher_assignments").insert({...p,created_by:a.id});
-  if(q.error)throw q.error;
-  return J({success:true})
+  const allowed=new Set(["wali_kelas","guru_partner","guru_mapel","guru_tahfizh","tugas_tambahan"]);
+  const saved:any[]=[];
+  for(const raw of items){
+    const type=T(raw.assignment_type),classId=T(raw.class_id)||null,subjectId=T(raw.subject_id)||null,title=T(raw.title).slice(0,160)||null,notes=T(raw.notes).slice(0,1000)||null,teamName=T(raw.team_name).slice(0,120)||null;
+    if(!allowed.has(type))return J({success:false,error:"assignment_type_invalid"},400);
+    if(type!=="tugas_tambahan"&&!classId)return J({success:false,error:"class_required"},400);
+    if(type==="guru_mapel"&&!subjectId)return J({success:false,error:"subject_required"},400);
+    if(type==="tugas_tambahan"&&!title)return J({success:false,error:"title_required"},400);
+    if(classId){const cl=await s.from("classes").select("id").eq("id",classId).eq("academic_year_id",c.year.id).eq("is_active",true).maybeSingle();if(cl.error)throw cl.error;if(!cl.data)return J({success:false,error:"class_invalid"},400)}
+    if(subjectId){const su=await s.from("subjects").select("id").eq("id",subjectId).eq("school_unit_id",c.unit.id).eq("is_active",true).maybeSingle();if(su.error)throw su.error;if(!su.data)return J({success:false,error:"subject_invalid"},400)}
+    const id=crypto.randomUUID();
+    const p={id,school_unit_id:c.unit.id,academic_year_id:c.year.id,semester_no:c.semesterNo,teacher_id:teacherId,assignment_type:type,class_id:classId,subject_id:type==="guru_mapel"?subjectId:null,title:type==="tugas_tambahan"?title:null,notes,team_name:type==="guru_tahfizh"?teamName:null,is_active:true,created_by:a.id,updated_at:now()};
+    const ins=await s.from("admin_teacher_assignments").insert(p);if(ins.error)throw ins.error;
+    try{
+      const op=await linkOperational(s,c,a,p);
+      const u=await s.from("admin_teacher_assignments").update({operational_table:op.table,operational_id:op.id,updated_at:now()}).eq("id",id);if(u.error)throw u.error;
+      saved.push({id,type,operational_table:op.table,operational_id:op.id});
+    }catch(e){await s.from("admin_teacher_assignments").update({is_active:false,notes:[notes,"SYNC ERROR:"+String((e as any)?.message||e)].filter(Boolean).join(" | "),updated_at:now()}).eq("id",id);throw e}
+  }
+  return J({success:true,saved})
 }
 if(action==="assignment_deactivate"){
   const id=T(b.id);if(!id)return J({success:false,error:"id_required"},400);
-  const q=await s.from("admin_teacher_assignments").update({is_active:false,updated_at:now()}).eq("id",id).eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo);
-  if(q.error)throw q.error;
+  const row=await s.from("admin_teacher_assignments").select("*").eq("id",id).eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).maybeSingle();
+  if(row.error)throw row.error;if(!row.data)return J({success:false,error:"assignment_not_found"},404);
+  const x=row.data,table=T(x.operational_table),opId=T(x.operational_id),teacherId=T(x.teacher_id),classId=T(x.class_id);
+  if(table==="class_partner_assignments"&&opId){
+    const q=await s.from("class_partner_assignments").update({is_active:false,is_primary:false,updated_at:now()}).eq("id",opId).eq("teacher_id",teacherId);if(q.error)throw q.error;
+    const legacy=await s.from("report_class_assignments").select("id,partner_teacher_id").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("class_id",classId).maybeSingle();
+    if(legacy.error)throw legacy.error;if(legacy.data&&T(legacy.data.partner_teacher_id)===teacherId){const q2=await s.from("report_class_assignments").update({partner_teacher_id:null,updated_at:now()}).eq("id",legacy.data.id);if(q2.error)throw q2.error}
+  }else if(table==="teacher_subject_assignments"&&opId){
+    const q=await s.from("teacher_subject_assignments").update({is_active:false,updated_at:now()}).eq("id",opId).eq("teacher_id",teacherId);if(q.error)throw q.error;
+  }else if(table==="tahfizh_teacher_assignments"&&opId){
+    const q=await s.from("tahfizh_teacher_assignments").update({is_active:false}).eq("id",opId).eq("teacher_id",teacherId);if(q.error)throw q.error;
+  }else if(table==="report_class_assignments"&&opId){
+    const current=await s.from("report_class_assignments").select("homeroom_teacher_id").eq("id",opId).maybeSingle();if(current.error)throw current.error;
+    if(current.data&&T(current.data.homeroom_teacher_id)===teacherId){const q=await s.from("report_class_assignments").update({homeroom_teacher_id:null,updated_at:now()}).eq("id",opId);if(q.error)throw q.error}
+  }
+  const q=await s.from("admin_teacher_assignments").update({is_active:false,updated_at:now()}).eq("id",id);if(q.error)throw q.error;
   return J({success:true})
 }
 if(action==="upload_file"){const q=await saveRaw(s,c,a,b);return J(q,(q as any).status||200)}
