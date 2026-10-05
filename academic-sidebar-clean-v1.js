@@ -104,7 +104,7 @@ function apply(){
   // Ambil modul nyata yang sudah terdaftar. Tidak membuat menu tanpa renderer.
   const wanted=['leger','master-tp-akademik','rpp-lp','rpp-lp-akademik','bilingual','pjbl','akd-badal',
     'legger-live','academic-ranking-report','laporan-akademik-guru','akd-laporan-guru',
-    'academic-pjbl-report','akd-badal-recap','rapor','laporan-promosi'];
+    'academic-pjbl-report','akd-badal-recap','rapor','laporan-promosi','academic-download-data'];
   wanted.forEach(removeFromAcademic);
 
   // AKADEMIK — input/pengelolaan.
@@ -126,6 +126,7 @@ function apply(){
   const promo=findItem('laporan-promosi');
   if(promo)move('laporan-promosi',reports,'Promo Socmed');
   else if(typeof window.renderPromotionReport==='function')ensureSynthetic(reports,'laporan-promosi','Promo Socmed',window.renderPromotionReport);
+  if(typeof window.renderAcademicDownloadData==='function')ensureSynthetic(reports,'academic-download-data','Download Data',window.renderAcademicDownloadData);
 
   const order=(g,ids)=>{
     const rank=new Map(ids.map((id,i)=>[id,i]));
@@ -137,7 +138,7 @@ function apply(){
   };
   order(academic,['leger','master-tp-akademik','rpp-lp-akademik','rpp-lp','bilingual','pjbl','akd-badal']);
   order(monitoring,['legger-live','academic-ranking-report','akd-laporan-guru','laporan-akademik-guru']);
-  order(reports,['akd-badal-recap','academic-pjbl-report','rapor','laporan-promosi']);
+  order(reports,['akd-badal-recap','academic-pjbl-report','rapor','laporan-promosi','academic-download-data']);
   return true;
 }
 function install(){
