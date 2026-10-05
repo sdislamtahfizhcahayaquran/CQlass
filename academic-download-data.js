@@ -15,7 +15,12 @@ function go(id){if(typeof setActiveModule==='function')setActiveModule(id)}
 
 const CLASSES=['1A Banin','1B Banin','1A Banat','1B Banat','2A Banin','2B Banin','2A Banat','2B Banat','3A Banin','3B Banin','3A Banat','3B Banat','4A Banin','4B Banin','4A Banat','4B Banat','5A Banin','5B Banin','5A Banat','5B Banat','6 Banin','6 Banat'];
 function toast(m,e){if(typeof showToast==='function')showToast(m,!!e)}
-function isAcademic(){const r=String(window.currentUser?.role||'').toLowerCase().trim();return r==='akademik'||r==='kabid_akademik'||r==='academic'}
+function isAcademic(){
+ let u=null;
+ try{u=(typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{}}catch(_){u={}}
+ const norm=v=>String(v||'').trim().toLowerCase().replace(/[\\s-]+/g,'_');
+ return [u.role,u.role_code,u.primary_role].concat(Array.isArray(u.roles)?u.roles:[]).map(norm).some(r=>r==='akademik'||r==='kabid_akademik'||r==='academic');
+}
 let xlsxPromise=null;
 function loadXlsx(){if(window.XLSX)return Promise.resolve(window.XLSX);if(xlsxPromise)return xlsxPromise;xlsxPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.async=true;s.dataset.cqAcademicDownload='xlsx';s.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('Mesin Excel gagal dimuat.'));s.onerror=()=>reject(new Error('Mesin Excel gagal dimuat. Periksa koneksi internet.'));document.head.appendChild(s)});return xlsxPromise}
 function needXlsx(){if(!window.XLSX)throw new Error('Mesin Excel belum termuat.');return window.XLSX}
