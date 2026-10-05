@@ -93,13 +93,11 @@ async function load(){
         // tidak pernah salah terbaca kosong mulai 10.40.
         busy.push({start_time:'07:00:00',end_time:'08:00:00',_fallback:'friday-morning'});
         const fridayBlock=(work.items||[]).find(x=>x.work_date===date&&x.activity_code==='friday_activity'&&x.start_time&&x.end_time);
-        // Batas resmi Jumat wajib mengikuti level kelas, bukan mempercayai blocker pendek.
-        // Jika guru terkait kelas 4–6, Card 1 tidak boleh membuka jam kosong sebelum 12.30.
-        const fridayRequiredEnd=hasUpper?'12:30:00':'10:40:00';
-        if(fridayBlock){
-          const effectiveEnd=(String(fridayBlock.end_time||'')>fridayRequiredEnd)?fridayBlock.end_time:fridayRequiredEnd;
-          busy.push({...fridayBlock,start_time:'08:00:00',end_time:effectiveEnd});
-        }else busy.push({start_time:'08:00:00',end_time:fridayRequiredEnd,_fallback:'friday-routine'});
+        // Backend sudah menentukan kelompok Jumat utama guru (1–3 atau 4–6).
+        // Gunakan batas eksplisit itu agar mapel tambahan di kelas atas tidak mengubah kelompok Jumat.
+        const fridayRequiredEnd=fridayBlock?.end_time||(hasUpper?'12:30:00':'10:40:00');
+        if(fridayBlock)busy.push({...fridayBlock,start_time:'08:00:00',end_time:fridayRequiredEnd});
+        else busy.push({start_time:'08:00:00',end_time:fridayRequiredEnd,_fallback:'friday-routine'});
       }
       if(isSpecial){
         (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
@@ -126,14 +124,22 @@ function lockPatternInputs(){
 }
 function fixedPick(d,s,e){
   window.tsv2OpenCard?.(1);
-  const a=document.getElementById('tsv2-fixed-date'),b=document.getElementById('tsv2-fixed-start'),z=document.getElementById('tsv2-fixed-end'),form=document.querySelector('#tsv2-card1 .tsv2-form'),card=document.querySelector('#tsv2-card1 .tsv2-fixed-slot-editor');
   const day=new Date(d+'T12:00:00Z').getUTCDay(),flex=day===5||day===6;
+  const fixedCard=document.querySelector('#tsv2-card1 .tsv2-fixed-slot-editor');
+  const flexCard=document.querySelector('#tsv2-card1 .tsv2-flex-slot-editor');
+  if(flex){
+    if(fixedCard)fixedCard.hidden=true;
+    window.tsv2FlexStart?.(d,s,e);
+    return;
+  }
+  if(flexCard)flexCard.hidden=true;
+  const a=document.getElementById('tsv2-fixed-date'),b=document.getElementById('tsv2-fixed-start'),z=document.getElementById('tsv2-fixed-end'),form=document.querySelector('#tsv2-card1 .tsv2-form');
   if(a)a.value=d;
-  if(b){b.value=s;b.min=s;b.max=e;b.readOnly=!flex;flex?b.removeAttribute('aria-readonly'):b.setAttribute('aria-readonly','true')}
-  if(z){z.value=e;z.min=s;z.max=e;z.readOnly=!flex;flex?z.removeAttribute('aria-readonly'):z.setAttribute('aria-readonly','true')}
-  if(form){form.dataset.fixedSelected='1';form.dataset.flexible=flex?'1':'0';form.dataset.gapStart=s;form.dataset.gapEnd=e}
-  if(card)card.hidden=false;
-  card?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('tsv2-fixed-act')?.focus();
+  if(b){b.value=s;b.readOnly=true;b.setAttribute('aria-readonly','true')}
+  if(z){z.value=e;z.readOnly=true;z.setAttribute('aria-readonly','true')}
+  if(form){form.dataset.fixedSelected='1';form.dataset.flexible='0';form.dataset.gapStart=s;form.dataset.gapEnd=e}
+  if(fixedCard)fixedCard.hidden=false;
+  fixedCard?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('tsv2-fixed-act')?.focus();
 }
 function pick(d,s,e){
   window.tsv2OpenCard?.(2);
@@ -158,7 +164,7 @@ function render(){
   const xs=G.data.items||[],show=G.showAll?xs:xs.slice(0,18);
   if(fixedHost){
     let fixed=fixedHost.querySelector('.tsgap-fixed-card');if(!fixed){fixed=document.createElement('div');fixed.className='tsv2-card tsgap-card tsgap-fixed-card';fixedHost.appendChild(fixed)}
-    fixed.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar slot belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot Kosong Terjadwal <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 1</span></div><div class="tsv2-help">Tanggal dan jam sudah ditentukan sistem. Guru tinggal memilih kegiatan untuk seluruh slot tersebut.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot kosong':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Jam fleksibel — pilih waktu di dalam rentang':'Jam dikunci sistem'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsFixedPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Isi Fleksibel':'Isi Slot'}</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
+    fixed.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar slot belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot Kosong Terjadwal <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 1</span></div><div class="tsv2-help">Senin–Kamis jam dikunci sistem. Jumat–Sabtu satu rentang kosong dapat dibagi menjadi beberapa kegiatan.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot kosong':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Rentang fleksibel — bisa dibagi beberapa kegiatan':'Jam dikunci sistem'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsFixedPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">${[5,6].includes(new Date(x.work_date+'T12:00:00Z').getUTCDay())?'Bagi Kegiatan':'Isi Slot'}</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
   }
 }window.cqTsFixedPick=fixedPick;
 window.cqTsGapPick=pick;
