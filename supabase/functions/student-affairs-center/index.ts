@@ -155,7 +155,7 @@ Deno.serve(async(req:Request)=>{
     }
     if(action==="save_affairs"){
       if(!canAffairs)return J({success:false,error:"forbidden"},403);
-      const row={record_type:L(b.record_type),student_id:T(b.student_id)||null,class_id:T(b.class_id)||null,record_date:T(b.record_date)||ymd(),title:T(b.title),description:T(b.description)||null,follow_up:T(b.follow_up)||null,status:L(b.status)||"baru",priority:L(b.priority)||"normal",evidence_url:T(b.evidence_url)||null,updated_by_account_id:a.id};
+      const row={record_type:L(b.record_type),student_id:T(b.student_id)||null,class_id:T(b.class_id)||null,record_date:T(b.record_date)||ymd(),title:T(b.title),description:T(b.description)||null,follow_up:T(b.follow_up)||null,status:L(b.status)||"baru",priority:L(b.priority)||"normal",evidence_url:T(b.evidence_url)||null,support_category:L(b.record_type)==="dukungan"?(T(b.support_category)||null):null,support_type:L(b.record_type)==="dukungan"?(T(b.support_type)||null):null,support_form:L(b.record_type)==="dukungan"?(T(b.support_form)||null):null,support_pic:L(b.record_type)==="dukungan"?(T(b.support_pic)||null):null,updated_by_account_id:a.id};
       if(!row.title)return J({success:false,error:"title_required"},400);
       if(T(b.id)){const{data,error}=await sb.from("student_affairs_records").update({...row,updated_at:new Date().toISOString()}).eq("id",T(b.id)).eq("is_deleted",false).select().single();if(error)throw error;return J({success:true,row:data})}
       const{data,error}=await sb.from("student_affairs_records").insert({...row,created_by_account_id:a.id}).select().single();if(error)throw error;return J({success:true,row:data})
