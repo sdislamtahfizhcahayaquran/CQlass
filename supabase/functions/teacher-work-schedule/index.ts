@@ -45,7 +45,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
     : [...new Set([...(asgRes.data||[]),...(homRes.data||[])].map((x:any)=>txt(x.class_id)).filter(Boolean))];
   const{data:classes,error:classErr}=classIds.length?await sb.from("classes").select("id,name,grade_level").in("id",classIds):{data:[],error:null};if(classErr)throw classErr;
   const grades=[...new Set((classes||[]).map((x:any)=>Number(x.grade_level)).filter(Boolean))];
-  const fridayClassIds=isTahfizh?tahfizhClassIds:classIds;
+  const fridayClassIds=isTahfizh?tahfizhClassIds:homeroomClassIds;
   const fridayGrades=[...new Set((classes||[]).filter((x:any)=>fridayClassIds.includes(txt(x.id))).map((x:any)=>Number(x.grade_level)).filter(Boolean))];
   const fridayUpper=fridayGrades.some((g:number)=>g>=4);
   const fridayLower=fridayGrades.some((g:number)=>g>=1&&g<=3);
