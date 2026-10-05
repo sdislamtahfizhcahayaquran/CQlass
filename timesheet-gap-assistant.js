@@ -88,7 +88,12 @@ async function load(){
         if(hasLower&&!hasUpper)busy.push({start_time:'09:40:00',end_time:'10:10:00',_fallback:'break-lower'});
       }
       if(day===5){
-        busy.push({start_time:'07:00:00',end_time:hasUpper?'12:30:00':'10:40:00',_fallback:'friday-routine'});
+        // Gunakan blocker Jumat resmi dari backend bila tersedia agar level 4–6
+        // tidak pernah salah terbaca kosong mulai 10.40.
+        busy.push({start_time:'07:00:00',end_time:'08:00:00',_fallback:'friday-morning'});
+        const fridayBlock=(work.items||[]).find(x=>x.work_date===date&&x.activity_code==='friday_activity'&&x.start_time&&x.end_time);
+        if(fridayBlock)busy.push(fridayBlock);
+        else busy.push({start_time:'08:00:00',end_time:hasUpper?'12:30:00':'10:40:00',_fallback:'friday-routine'});
       }
       if(isSpecial){
         (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
