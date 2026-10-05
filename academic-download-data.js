@@ -59,9 +59,48 @@ async function exportBilingual(btn){
   saveBook(wb,'Rekap_Bilingual_SDCQ.xlsx');toast('Bilingual berhasil diunduh.');
  }catch(e){toast(e.message||'Gagal membuat Excel Bilingual.',true)}finally{btn.disabled=false;btn.textContent=old}
 }
+function lgKey(j,u){return String(j)+'_'+Number(u)}
+function lgVal(nilai,nis,j,u){const v=(nilai?.[String(nis)]||{})[lgKey(j,u)];if(v===''||v==null)return null;const n=Number(v);return Number.isFinite(n)?n:null}
+function lgComps(comps,j){return (comps||[]).filter(x=>String(x.jenisKomponen)===j).sort((a,b)=>Number(a.urutan)-Number(b.urutan)}
+function lgAvg(nilai,nis,comps,j){const a=lgComps(comps,j).map(x=>lgVal(nilai,nis,j,x.urutan)).filter(v=>v!==null);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null}
+function lgWeight(comps,j){const x=lgComps(comps,j)[0];return x?(Number(x.bobot)||0):0}
+function lgFinal(nilai,nis,comps){const gs=['Tugas','TP','WWP','ASAS'],v={};for(const g of gs){v[g]=lgAvg(nilai,nis,comps,g);if(v[g]===null)return null}const tw=gs.reduce((s,g)=>s+lgWeight(comps,g),0);if(!tw)return null;return gs.reduce((s,g)=>s+v[g]*lgWeight(comps,g)/100,0)}
+function lgPred(na,kkm){if(na===null)return '-';if(na>=89)return'A';if(na>=82)return'B';if(na>=Number(kkm||75))return'C';return'D'}
+function lgRound(v){return v===null?'':Math.round(Number(v)*100)/100}
+function lgSheetName(k,m,used){let n=(k+' '+m).replace(/[\\/?*:[\\]]/g,' ').replace(/\\s+/g,' ').trim().slice(0,31)||'Nilai';let b=n,i=2;while(used.has(n)){const s=' '+i++;n=b.slice(0,31-s.length)+s}used.add(n);return n}
 async function exportNilai(btn){
  if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}
- toast('Template Legger internal sedang disiapkan. Download Google sudah dinonaktifkan agar tidak menghasilkan file yang salah.',true)
+ const old=btn.textContent;btn.disabled=true;btn.textContent='Menyiapkan Legger...';
+ try{
+  await loadXlsx();const X=needXlsx(),wb=X.utils.book_new(),used=new Set(),summary=[],graph=[];let sheets=0,students=0;
+  for(let ci=0;ci<CLASSES.length;ci++){
+   const kelas=CLASSES[ci];btn.textContent='Kelas '+(ci+1)+'/22';
+   const setup=await callApi('getLeggerSetup',{kelas,tahunAjaran:'2026/2027',semester:1});
+   if(!setup||setup.success===false)continue;
+   const maps=Array.isArray(setup.mapel)?setup.mapel:[];
+   for(const meta of maps){
+    const mapel=meta.mapel||'';if(!mapel)continue;
+    const d=await callApi('getLeggerNilai',{kelas,tahunAjaran:'2026/2027',semester:1,mapel});
+    if(!d||d.success===false)continue;
+    const siswa=Array.isArray(d.siswa)?d.siswa:[],nilai=d.nilai||{},comps=Array.isArray(meta.komponen)?meta.komponen:[],kkm=meta.kkm==null||meta.kkm===''?null:Number(meta.kkm);
+    const tugas=lgComps(comps,'Tugas'),tp=lgComps(comps,'TP'),wwp=lgComps(comps,'WWP'),asas=lgComps(comps,'ASAS');
+    const head=['No','NIS','Nama Siswa',...tugas.map(x=>'T'+Number(x.urutan)),'RT',...tp.map(x=>'TP'+Number(x.urutan)),'RTP',...wwp.map((x,i)=>wwp.length>1?'WWP'+(i+1):'WWP'),...asas.map((x,i)=>asas.length>1?'ASAS'+(i+1):'ASAS'),'NA','Predikat','Status'];
+    const rows=siswa.map((s,i)=>{const rt=lgAvg(nilai,s.nis,comps,'Tugas'),rtp=lgAvg(nilai,s.nis,comps,'TP'),na=lgFinal(nilai,s.nis,comps),status=kkm===null||na===null?'':(na>=kkm?'Tuntas':'Belum');return[i+1,s.nis||'',s.nama||'',...tugas.map(x=>lgVal(nilai,s.nis,'Tugas',x.urutan)??''),lgRound(rt),...tp.map(x=>lgVal(nilai,s.nis,'TP',x.urutan)??''),lgRound(rtp),...wwp.map(x=>lgVal(nilai,s.nis,'WWP',x.urutan)??''),...asas.map(x=>lgVal(nilai,s.nis,'ASAS',x.urutan)??''),lgRound(na),lgPred(na,kkm),status]});
+    const valid=rows.map(r=>Number(r[r.length-3])).filter(Number.isFinite),avg=valid.length?valid.reduce((a,b)=>a+b,0)/valid.length:null,tuntas=rows.filter(r=>r[r.length-1]==='Tuntas').length;
+    summary.push([kelas,mapel,siswa.length,kkm??'',lgRound(avg),tuntas,rows.filter(r=>r[r.length-1]==='Belum').length]);
+    graph.push([kelas,mapel,lgRound(avg),siswa.length?tuntas/siswa.length*100:0]);
+    const title=[['LEGGER NILAI SDCQ'],['Kelas',kelas],['Mata Pelajaran',mapel],['Tahun Ajaran','2026/2027'],['Semester',1],['KKM',kkm??''],['Bobot','Tugas '+lgWeight(comps,'Tugas')+'% · TP '+lgWeight(comps,'TP')+'% · WWP '+lgWeight(comps,'WWP')+'% · ASAS '+lgWeight(comps,'ASAS')+'%'],[],head,...rows];
+    X.utils.book_append_sheet(wb,aoaSheet(title,[6,16,30,...head.slice(3).map(()=>11)]),lgSheetName(kelas,mapel,used));sheets++;students+=siswa.length;
+   }
+  }
+  const sr=[['RINGKASAN LEGGER NILAI SDCQ'],['Tahun Ajaran','2026/2027'],['Semester',1],['Jumlah kelas',CLASSES.length],['Sheet kelas-mapel',sheets],[],['Kelas','Mata Pelajaran','Siswa','KKM','Rata-rata NA','Tuntas','Belum Tuntas'],...summary];
+  X.utils.book_append_sheet(wb,aoaSheet(sr,[18,26,10,10,16,12,14]),'RINGKASAN');
+  X.utils.book_append_sheet(wb,aoaSheet([['GRAFIK CAPAIAN NILAI'],['Kelas','Mata Pelajaran','Rata-rata NA','Ketuntasan %'],...graph],[18,26,16,16]),'GRAFIK');
+  wb.SheetNames=['RINGKASAN','GRAFIK',...wb.SheetNames.filter(n=>n!=='RINGKASAN'&&n!=='GRAFIK')];
+  if(!sheets)throw new Error('Belum ada data Legger yang dapat diunduh.');
+  saveBook(wb,'Legger_Nilai_Semester_1_TA_2026_2027.xlsx');toast('Legger Nilai berhasil diunduh.');
+ }catch(e){toast(e.message||'Gagal membuat Legger Nilai.',true)}
+ finally{btn.disabled=false;btn.textContent=old}
 }
 function runDownload(kind,btn){if(kind==='RPP & LP')return exportRppLp(btn);if(kind==='Bilingual')return exportBilingual(btn);return exportNilai(btn)}
 
