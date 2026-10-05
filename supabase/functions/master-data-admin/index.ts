@@ -38,16 +38,13 @@ if(action==="list_students"){const [er,st,cl]=await Promise.all([s.from("student
 if(action==="save_students"){const xs=Array.isArray(b.items)?b.items:[];let inserted=0,updated=0,failed=0;const errors:any[]=[];const classes=await s.from("classes").select("id,name").eq("academic_year_id",c.year.id).eq("is_active",true);if(classes.error)throw classes.error;const byName=new Map((classes.data||[]).map((x:any)=>[L(x.name),x.id]));for(let i=0;i<xs.length;i++){try{const x=xs[i]||{},sid=T(x.student_id),nis=T(x.nis),name=T(x.full_name),classId=T(x.class_id)||byName.get(L(x.class_name))||"";if(!nis||!name||!classId)throw Error("NIS, nama, dan kelas wajib diisi");let id=sid;if(id){const dup=await s.from("students").select("id").eq("school_unit_id",c.unit.id).eq("nis",nis).neq("id",id).maybeSingle();if(dup.data)throw Error("NIS sudah dipakai siswa lain");const q=await s.from("students").update({nis,nisn:T(x.nisn)||null,full_name:name,gender:T(x.gender)||null,entry_date:T(x.entry_date)||null,notes:T(x.notes)||null,updated_at:now()}).eq("id",id).eq("school_unit_id",c.unit.id);if(q.error)throw q.error;updated++}else{const old=await s.from("students").select("id").eq("school_unit_id",c.unit.id).eq("nis",nis).maybeSingle();if(old.data?.id){id=old.data.id;const q=await s.from("students").update({nisn:T(x.nisn)||null,full_name:name,gender:T(x.gender)||null,entry_date:T(x.entry_date)||null,notes:T(x.notes)||null,updated_at:now()}).eq("id",id);if(q.error)throw q.error;updated++}else{const q=await s.from("students").insert({school_unit_id:c.unit.id,nis,nisn:T(x.nisn)||null,full_name:name,gender:T(x.gender)||null,status:"AKTIF",entry_date:T(x.entry_date)||null,notes:T(x.notes)||null,source_system:"CQlass",updated_at:now()}).select("id").single();if(q.error)throw q.error;id=q.data.id;inserted++}}const oldEn=await s.from("student_enrollments").select("id,class_id").eq("student_id",id).eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true);if(oldEn.error)throw oldEn.error;const same=(oldEn.data||[]).find((e:any)=>e.class_id===classId);if(!same){if((oldEn.data||[]).length){const q=await s.from("student_enrollments").update({is_active:false,end_date:new Date().toISOString().slice(0,10),updated_at:now()}).eq("student_id",id).eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true);if(q.error)throw q.error}const q=await s.from("student_enrollments").insert({student_id:id,class_id:classId,academic_year_id:c.year.id,semester_no:c.semesterNo,is_active:true,start_date:T(x.entry_date)||new Date().toISOString().slice(0,10),source_system:"CQlass",updated_at:now()});if(q.error)throw q.error}}catch(e){failed++;errors.push({row:i+1,error:String((e as any)?.message||e)})}}return J({success:failed===0||inserted+updated>0,partial:failed>0,inserted,updated,failed,errors})}
 
 if(action==="partner_bootstrap"){
-  const [classesQ,tahQ,partnerQ,legacyQ]=await Promise.all([
+  const [classesQ,teachersQ,partnerQ,legacyQ]=await Promise.all([
     s.from("classes").select("id,name,grade_level").eq("academic_year_id",c.year.id).eq("is_active",true).order("grade_level").order("name"),
-    s.from("tahfizh_teacher_assignments").select("teacher_id").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true),
+    s.from("teachers").select("id,full_name,status").eq("status","AKTIF").order("full_name"),
     s.from("class_partner_assignments").select("id,class_id,teacher_id,is_primary,is_active").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true),
     s.from("report_class_assignments").select("class_id,homeroom_teacher_id,partner_teacher_id").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo)
   ]);
-  for(const q of [classesQ,tahQ,partnerQ,legacyQ])if(q.error)throw q.error;
-  const tids=[...new Set((tahQ.data||[]).map((x:any)=>T(x.teacher_id)).filter(Boolean))];
-  const teachersQ=tids.length?await s.from("teachers").select("id,full_name,status").in("id",tids).order("full_name"):{data:[],error:null};
-  if((teachersQ as any).error)throw (teachersQ as any).error;
+  for(const q of [classesQ,teachersQ,partnerQ,legacyQ])if(q.error)throw q.error;
   const hids=[...new Set((legacyQ.data||[]).map((x:any)=>T(x.homeroom_teacher_id)).filter(Boolean))];
   const homQ=hids.length?await s.from("teachers").select("id,full_name").in("id",hids):{data:[],error:null};
   if((homQ as any).error)throw (homQ as any).error;
@@ -57,12 +54,13 @@ if(action==="partner_save"){
   const classId=T(b.class_id),teacherIds=[...new Set((Array.isArray(b.teacher_ids)?b.teacher_ids:[]).map(T).filter(Boolean))] as string[];
   if(!classId)return J({success:false,error:"class_required"},400);
   if(!teacherIds.length)return J({success:false,error:"minimal_satu_partner"},400);
+  if(teacherIds.length>3)return J({success:false,error:"maksimal_tiga_partner"},400);
   const klass=await s.from("classes").select("id,school_unit_id").eq("id",classId).eq("academic_year_id",c.year.id).eq("is_active",true).maybeSingle();
   if(klass.error)throw klass.error;if(!klass.data)return J({success:false,error:"class_invalid"},400);
-  const eligible=await s.from("tahfizh_teacher_assignments").select("teacher_id").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("is_active",true).in("teacher_id",teacherIds);
+  const eligible=await s.from("teachers").select("id,status").in("id",teacherIds);
   if(eligible.error)throw eligible.error;
-  const ok=new Set((eligible.data||[]).map((x:any)=>T(x.teacher_id)));
-  if(teacherIds.some(id=>!ok.has(id)))return J({success:false,error:"teacher_not_tahfizh_active"},400);
+  const ok=new Set((eligible.data||[]).filter((x:any)=>L(x.status)==="aktif").map((x:any)=>T(x.id)));
+  if(teacherIds.some(id=>!ok.has(id)))return J({success:false,error:"teacher_not_active"},400);
   const existing=await s.from("class_partner_assignments").select("id,teacher_id,is_primary,is_active").eq("academic_year_id",c.year.id).eq("semester_no",c.semesterNo).eq("class_id",classId);
   if(existing.error)throw existing.error;
   const oldPrimary=(existing.data||[]).find((x:any)=>x.is_primary&&teacherIds.includes(T(x.teacher_id)));
