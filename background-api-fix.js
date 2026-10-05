@@ -216,8 +216,6 @@
       // Kabid Akademik: pastikan renderer Badal Guru Mapel selalu tersedia.
       // Scope sengaja hanya loader UI; data/modul lain tidak diubah.
       add('./academic-badal-v2.js?v=20260929-restore1','__cqAcademicBadalV2RoleLazy',false);
-      add('./academic-kabid-cleanup.js?v=20260924-rolelazy1','__cqAcademicKabidCleanupRoleLazy',false);
-      add('./academic-kabid-ui-v2.js?v=20260924-rolelazy1','__cqAcademicKabidUiV2RoleLazy',false);
       add('./academic-teacher-report-v3.js?v=20260924-rolelazy1','__cqAcademicTeacherReportV3RoleLazy',false);
       add('./academic-sidebar-clean-v1.js?v=20261005-akclean1','__cqAcademicSidebarCleanV1RoleLazy',false);
       add('./academic-dashboard-standalone-v7.js?v=20260924-rolelazy1','__cqAcademicDashboardV7RoleLazy',false);
