@@ -97,7 +97,7 @@
         <div class="ak7-title">Selamat Bekerja,<br><span>${esc(userName())}</span></div>
         <div class="ak7-sub">Pantau guru mata pelajaran, kelengkapan nilai, siswa prioritas, dan kebutuhan badal dalam satu halaman.</div>
         <div class="ak7-chips"><span class="ak7-chip">Semester ${SEM}</span><span class="ak7-chip">TA ${AY}</span><span class="ak7-chip">${esc(today())}</span></div>
-        <div class="ak7-actions"><button class="ak7-btn" onclick="cqAk7Go('akd-monitoring-nilai')">Monitoring Mapel</button><button class="ak7-btn sec" onclick="cqAk7Go('akd-laporan-guru')">Laporan Guru</button></div>
+        <div class="ak7-actions"><button class="ak7-btn" onclick="cqAk7Go('legger-live')">Monitoring Mapel</button><button class="ak7-btn sec" onclick="cqAk7Go('laporan-akademik-guru')">Laporan Guru</button></div>
       </div></section>
       <div id="ak7-note" class="ak7-note"></div>
       <div class="ak7-kpis">
@@ -107,12 +107,12 @@
         <div class="ak7-kpi red"><b>Badal Hari Ini</b><strong id="ak7-badal-kpi">—</strong><small>penugasan guru pengganti</small></div>
       </div>
       <div class="ak7-main">
-        <section class="ak7-card"><div class="ak7-head"><div><b>Monitoring Guru Mapel</b><small>Prioritas penugasan dengan kelengkapan terendah.</small></div><button class="ak7-link" onclick="cqAk7Go('akd-monitoring-nilai')">Lihat Semua →</button></div><div class="ak7-wrap"><table class="ak7-table"><thead><tr><th>Guru</th><th>Mapel</th><th>Kelas</th><th>Kelengkapan</th><th>Terisi / Target</th><th>Rata-rata</th><th>Status</th></tr></thead><tbody id="ak7-monitor"><tr><td colspan="7"><div class="ak7-empty">Memuat data akademik...</div></td></tr></tbody></table></div></section>
-        <section class="ak7-card"><div class="ak7-head"><div><b>Perlu Perhatian</b><small>Temuan yang perlu dilihat lebih dahulu.</small></div><button class="ak7-link" onclick="cqAk7Go('akd-laporan-guru')">Laporan Guru →</button></div><div id="ak7-alerts" class="ak7-alerts"><div class="ak7-empty">Memuat prioritas...</div></div></section>
+        <section class="ak7-card"><div class="ak7-head"><div><b>Monitoring Guru Mapel</b><small>Prioritas penugasan dengan kelengkapan terendah.</small></div><button class="ak7-link" onclick="cqAk7Go('legger-live')">Lihat Semua →</button></div><div class="ak7-wrap"><table class="ak7-table"><thead><tr><th>Guru</th><th>Mapel</th><th>Kelas</th><th>Kelengkapan</th><th>Terisi / Target</th><th>Rata-rata</th><th>Status</th></tr></thead><tbody id="ak7-monitor"><tr><td colspan="7"><div class="ak7-empty">Memuat data akademik...</div></td></tr></tbody></table></div></section>
+        <section class="ak7-card"><div class="ak7-head"><div><b>Perlu Perhatian</b><small>Temuan yang perlu dilihat lebih dahulu.</small></div><button class="ak7-link" onclick="cqAk7Go('laporan-akademik-guru')">Laporan Guru →</button></div><div id="ak7-alerts" class="ak7-alerts"><div class="ak7-empty">Memuat prioritas...</div></div></section>
       </div>
       <div class="ak7-bottom">
         <section class="ak7-card"><div class="ak7-head"><div><b>Badal Guru Hari Ini</b><small>Guru pengganti yang sudah ditetapkan hari ini.</small></div><button class="ak7-link" onclick="cqAk7Go('akd-badal')">Kelola Badal →</button></div><div class="ak7-badal"><div class="ak7-badal-row header"><b>Jam</b><b>Kelas</b><b>Mapel</b><b>Guru Asal</b><b>Guru Badal</b></div><div id="ak7-badal-list"><div class="ak7-empty">Memuat data badal...</div></div></div></section>
-        <section class="ak7-card"><div class="ak7-head"><div><b>Kesiapan Nilai Rapor</b><small>Berdasarkan kelengkapan nilai mapel.</small></div></div><div class="ak7-ready"><div id="ak7-ring" class="ak7-ring" style="--p:0"><strong id="ak7-ready-pct">—</strong></div><div class="ak7-ready-row"><span>Lengkap</span><b id="ak7-complete">—</b></div><div class="ak7-ready-row"><span>Dalam Proses</span><b id="ak7-process">—</b></div><div class="ak7-ready-row"><span>Belum Mulai</span><b id="ak7-empty-count">—</b></div><button class="ak7-btn sec" style="width:100%;margin-top:7px" onclick="cqAk7Go('akd-rapor-ready')">Lihat Detail</button></div></section>
+        <section class="ak7-card"><div class="ak7-head"><div><b>Kesiapan Nilai Rapor</b><small>Berdasarkan kelengkapan nilai mapel.</small></div></div><div class="ak7-ready"><div id="ak7-ring" class="ak7-ring" style="--p:0"><strong id="ak7-ready-pct">—</strong></div><div class="ak7-ready-row"><span>Lengkap</span><b id="ak7-complete">—</b></div><div class="ak7-ready-row"><span>Dalam Proses</span><b id="ak7-process">—</b></div><div class="ak7-ready-row"><span>Belum Mulai</span><b id="ak7-empty-count">—</b></div><button class="ak7-btn sec" style="width:100%;margin-top:7px" onclick="cqAk7Go('rapor')">Lihat Detail</button></div></section>
       </div>
     </div>`;
   }
