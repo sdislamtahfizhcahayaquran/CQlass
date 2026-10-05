@@ -177,12 +177,12 @@
     const rewDone=rows.filter(x=>x.r.length>0).length;
     const uksRows=rows.map(x=>({row:x,state:uksDailyState(x,date)})).filter(x=>x.state.applicable);
     const uksDone=uksRows.filter(x=>x.state.done).length;
-    const tsDone=rows.filter(x=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t&&Number(t.entry_count)>0}).length;
+    const tsDone=rows.filter(x=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t&&Number(t.days_filled)>0}).length;
     const missAtt=rows.filter(x=>!x.a.length).map(x=>x.name);
     const missDis=rows.filter(x=>!x.v.length).map(x=>x.name);
     const missRew=rows.filter(x=>!x.r.length).map(x=>x.name);
     const missUks=uksRows.filter(x=>!x.state.done).map(x=>x.row.name);
-    const missTs=rows.filter(x=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return !t||Number(t.entry_count)<=0}).map(x=>x.name);
+    const missTs=rows.filter(x=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return !t||Number(t.days_filled)<=0}).map(x=>x.name);
     body.innerHTML=`
       <div class="krek-report-head">
         <div><div class="krek-report-title">LAPORAN HARIAN KESISWAAN</div><div class="krek-report-school">SD Islam Tahfizh Cahaya Qur'an</div><div class="krek-report-date">${E(fmtDateID(date))}</div><div class="krek-report-stamp">Data CQlass · ${E(fmtClock())}</div></div>
@@ -197,7 +197,7 @@
         <div class="krek-sum"><b>${tsDone}/${rows.length}</b><span>Timesheet Walas</span></div>
       </div>
       <div class="krek-daily-table"><div class="krek-wrap"><table><thead><tr><th>No</th><th>Kelas</th><th>Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th></tr></thead><tbody>
-        ${rows.map((x,i)=>{const u=uksDailyState(x,date);return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${mini(x.a.length>0)}</td><td>${mini(x.v.length>0)}</td><td>${mini(x.r.length>0)}</td><td>${u.applicable?mini(u.done):mini(null,true,'—')}</td><td>${(()=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t?mini(Number(t.entry_count)>0):mini(null,true,'—')})()}</td></tr>`}).join('')}
+        ${rows.map((x,i)=>{const u=uksDailyState(x,date);return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${mini(x.a.length>0)}</td><td>${mini(x.v.length>0)}</td><td>${mini(x.r.length>0)}</td><td>${u.applicable?mini(u.done):mini(null,true,'—')}</td><td>${(()=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t?mini(Number(t.days_filled)>0):mini(null,true,'—')})()}</td></tr>`}).join('')}
       </tbody></table></div></div>
       <div class="krek-missing"><h3>Belum lengkap hari ini</h3>
         <div class="krek-missing-line"><b>Kehadiran:</b> ${E(missAtt.length?missAtt.join(', '):'Semua kelas sudah terisi')}</div>
@@ -226,7 +226,7 @@
   function timesheetCell(classId){
     const x=(S.timesheet||[]).find(r=>String(r.class_id)===String(classId));
     if(!x)return '<span class="krek-status na">—</span>';
-    if(Number(x.entry_count)>0)return '<span class="krek-status done">Terisi '+Number(x.days_filled||0)+' hari</span>';
+    if(Number(x.days_filled)>0)return '<span class="krek-status done">Terisi '+Number(x.days_filled||0)+' hari</span>';
     return '<span class="krek-status pending">Belum</span>';
   }
   function renderTable(){
