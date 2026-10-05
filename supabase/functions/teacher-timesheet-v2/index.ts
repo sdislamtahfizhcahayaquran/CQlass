@@ -62,13 +62,16 @@ async function validateFreeSlot(req:Request,body:any){
     sb.from("partner_tahfizh_halaqah_roster").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("partner_teacher_id",teacherId).eq("is_active",true),
     sb.from("class_partner_assignments").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true)
   ]);
-  const isTahfizh=(tahAsg||[]).length>0||(partnerRows||[]).length>0||(classPartners||[]).length>0;
-  const partnerClassIds=[...new Set((classPartners||[]).map((x:any)=>T(x.class_id)).filter(Boolean))];
-  const classIds=partnerClassIds.length&&isTahfizh?partnerClassIds:[...new Set([
+  // Tahfizh hanya ditentukan dari assignment Tahfizh yang eksplisit.
+  // class_partner_assignments adalah partner kelas umum dan tidak boleh
+  // mengubah profil guru menjadi Tahfizh.
+  const isTahfizh=(tahAsg||[]).length>0||(partnerRows||[]).length>0;
+  const classIds=[...new Set([
     ...(asg||[]).map((x:any)=>T(x.class_id)),
     ...(hom||[]).map((x:any)=>T(x.class_id)),
     ...(tahAsg||[]).map((x:any)=>T(x.class_id)),
-    ...(partnerRows||[]).map((x:any)=>T(x.class_id))
+    ...(partnerRows||[]).map((x:any)=>T(x.class_id)),
+    ...(classPartners||[]).map((x:any)=>T(x.class_id))
   ].filter(Boolean))];
   const ownQ=Promise.resolve({data:[],error:null});
   const tahQ=Promise.resolve({data:[],error:null});
