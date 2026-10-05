@@ -113,7 +113,7 @@ async function load(){
       (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       // Sabtu selalu dihitung dalam jam kerja 07.30–12.00.
       // Agenda HRD menjadi blocker; jika tidak ada agenda, seluruh rentang tetap muncul sebagai jam kosong.
-      const ws=day===6?450:(day===5?480:420),we=workEnd;
+      const ws=day===6?450:420,we=workEnd;
       for(const g of gaps(ws,we,busy))all.push({work_date:date,start_time:tm(g[0]),end_time:tm(g[1]),minutes:g[1]-g[0],special:isSpecial});
     }
     G.data={items:all,profile:work.profile||null};render();
