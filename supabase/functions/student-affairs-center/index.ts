@@ -153,6 +153,32 @@ Deno.serve(async(req:Request)=>{
       const row={status,follow_up:follow||null,escalation_to:esc,escalated_at:escAt,updated_by_account_id:a.id,updated_at:new Date().toISOString()};
       const{data,error}=await sb.from("student_affairs_records").update(row).eq("id",id).eq("record_type","kasus").eq("is_deleted",false).select().single();if(error)throw error;return J({success:true,row:data});
     }
+    if(action==="bulk_support"){
+      if(!canAffairs)return J({success:false,error:"forbidden"},403);
+      const items=Array.isArray(b.items)?b.items:[];if(!items.length||items.length>100)return J({success:false,error:"invalid_items"},400);
+      const[{data:year},{data:sem},{data:students,error:se},{data:classes,error:ce}]=await Promise.all([
+        sb.from("academic_years").select("id").eq("is_active",true).limit(1).maybeSingle(),
+        sb.from("semesters").select("academic_year_id,semester_no").eq("is_active",true).limit(1).maybeSingle(),
+        sb.from("students").select("id,full_name,status"),
+        sb.from("classes").select("id,name,grade_level,rombel,gender_group").eq("is_active",true)
+      ]);if(se)throw se;if(ce)throw ce;if(!year||!sem||T(sem.academic_year_id)!==T(year.id))throw Error("active_period_missing");
+      const{data:en,error:ee}=await sb.from("student_enrollments").select("student_id,class_id").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true);if(ee)throw ee;
+      const norm=(v:any)=>L(v).replace(/[^a-z0-9]/g,""),cm:any=Object.fromEntries((classes||[]).map((x:any)=>[x.id,x])),em:any={};for(const x of en||[]){(em[x.student_id]??=[]).push(x.class_id)}
+      const rows:any[]=[],errors:any[]=[];
+      for(const it of items){
+        const name=T(it.name),grade=Number(it.grade),gender=L(it.gender),kind=L(it.type);
+        const matches=(students||[]).filter((s:any)=>activeStatus(s.status)&&norm(s.full_name)===norm(name));
+        if(matches.length!==1){errors.push({name,error:matches.length?"student_ambiguous":"student_not_found"});continue}
+        const s=matches[0],classIds=(em[s.id]||[]).filter((id:string)=>{const cl=cm[id];return cl&&Number(cl.grade_level)===grade&&L(cl.gender_group).includes(gender)});
+        if(classIds.length!==1){errors.push({name,error:classIds.length?"class_ambiguous":"class_not_found"});continue}
+        const category=kind==="yatim"?"Kondisi Keluarga":"Sosial/Ekonomi",type=kind==="yatim"?"Yatim":"Dhuafa";
+        const{data:dup,error:de}=await sb.from("student_affairs_records").select("id").eq("student_id",s.id).eq("record_type","dukungan").eq("support_type",type).eq("is_deleted",false).limit(1);if(de)throw de;
+        if((dup||[]).length){errors.push({name,error:"already_exists"});continue}
+        rows.push({record_type:"dukungan",student_id:s.id,class_id:classIds[0],record_date:T(b.record_date)||ymd(),title:type,status:"aktif",priority:"normal",support_category:category,support_type:type,support_form:"Monitoring berkala",support_pic:"Kesiswaan",created_by_account_id:a.id,updated_by_account_id:a.id});
+      }
+      if(errors.length)return J({success:false,error:"bulk_validation_failed",errors,ready:rows.length},400);
+      const{data,error}=await sb.from("student_affairs_records").insert(rows).select("id,student_id,class_id,support_type");if(error)throw error;return J({success:true,inserted:(data||[]).length,rows:data||[]});
+    }
     if(action==="save_affairs"){
       if(!canAffairs)return J({success:false,error:"forbidden"},403);
       const row={record_type:L(b.record_type),student_id:T(b.student_id)||null,class_id:T(b.class_id)||null,record_date:T(b.record_date)||ymd(),title:T(b.title),description:T(b.description)||null,follow_up:T(b.follow_up)||null,status:L(b.status)||"baru",priority:L(b.priority)||"normal",evidence_url:T(b.evidence_url)||null,support_category:L(b.record_type)==="dukungan"?(T(b.support_category)||null):null,support_type:L(b.record_type)==="dukungan"?(T(b.support_type)||null):null,support_form:L(b.record_type)==="dukungan"?(T(b.support_form)||null):null,support_pic:L(b.record_type)==="dukungan"?(T(b.support_pic)||null):null,updated_by_account_id:a.id};
