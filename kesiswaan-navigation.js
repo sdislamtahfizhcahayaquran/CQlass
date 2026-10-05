@@ -15,6 +15,8 @@
     'kes-controlling-mt':c=>renderControllingMt(c),
     'kes-prestasi':c=>window.renderStudentAffairsType?.(c,'prestasi'),
     'kes-kebutuhan':c=>window.renderStudentAffairsType?.(c,'dukungan'),
+    'kes-salam-cq':c=>window.renderSalamCQ?.(c),
+    'kes-salam-rekap':c=>window.renderSalamCQRecap?.(c),
     'kes-perizinan':c=>window.renderStudentAffairsType?.(c,'perizinan'),
     'kes-program':c=>window.renderStudentAffairsType?.(c,'kegiatan'),
     'uks-duty-inbox':c=>window.renderUksKesiswaanInbox?.(c),
@@ -43,7 +45,8 @@
     const groups=[
       {id:'kes-layanan',label:'Layanan',items:[
         ['kes-pendampingan','Pendampingan Siswa'],
-        ['kes-kebutuhan','Kebutuhan Siswa']
+        ['kes-kebutuhan','Kebutuhan Siswa'],
+        ['kes-salam-cq','SALAM CQ']
       ]},
       {id:'kes-administrasi',label:'Administrasi',items:[
         ['kes-perizinan','Perizinan & Kepulangan']
@@ -60,7 +63,8 @@
         ['laporan-promosi','Promosi Socmed']
       ]},
       {id:'kes-rekap',label:'Rekap',items:[
-        ['kesiswaan-rekapan','Rekap Kesiswaan']
+        ['kesiswaan-rekapan','Rekap Kesiswaan'],
+        ['kes-salam-rekap','Rekap SALAM CQ']
       ]}
     ];
     groups.forEach(g=>{
