@@ -226,7 +226,7 @@
   function timesheetCell(classId){
     const x=(S.timesheet||[]).find(r=>String(r.class_id)===String(classId));
     if(!x)return '<span class="krek-status na">—</span>';
-    if(Number(x.days_filled)>0)return '<span class="krek-status done">Terisi '+Number(x.days_filled||0)+' hari</span>';
+    if(Number(x.days_filled)>0)return '<span class="krek-status done">Lengkap '+Number(x.days_filled||0)+' hari</span>';
     return '<span class="krek-status pending">Belum</span>';
   }
   function renderTable(){
