@@ -63,9 +63,11 @@ function apply(){
   const rpp=findItem('rpp-lp-akademik')||findItem('rpp-lp');
   if(rpp)move(rpp.id,academic,'RPP & LP');
 
-  // Monitoring: ranking dilebur ke Monitoring Nilai (modul ranking tidak dihapus).
+  // Monitoring Akademik.
   const mon=findItem('legger-live');
   if(mon)move('legger-live',monitoring,'Monitoring Nilai');
+  const ranking=findItem('academic-ranking-report');
+  if(ranking)move('academic-ranking-report',monitoring,'Ranking');
   const teacher=findItem('akd-laporan-guru')||findItem('laporan-akademik-guru');
   if(teacher)move(teacher.id,monitoring,'Progres Guru');
   if(typeof window.renderAcademicPtsReadiness==='function'){
@@ -82,9 +84,6 @@ function apply(){
   if(promo)move('laporan-promosi',reports,'Promo Socmed');
   else if(typeof window.renderPromotionReport==='function')ensureSynthetic(reports,'laporan-promosi','Promo Socmed',window.renderPromotionReport);
 
-  // Ranking tidak tampil sebagai menu mandiri untuk Akademik.
-  removeFromAcademic('academic-ranking-report');
-
   // Urutan deterministik, tanpa mengubah item milik role lain.
   const order=(g,ids)=>{
     const rank=new Map(ids.map((id,i)=>[id,i]));
@@ -95,7 +94,7 @@ function apply(){
     });
   };
   order(academic,['leger','master-tp-akademik','rpp-lp-akademik','rpp-lp','bilingual','pjbl','akd-badal']);
-  order(monitoring,['legger-live','academic-pts-readiness','akd-laporan-guru','laporan-akademik-guru']);
+  order(monitoring,['legger-live','academic-ranking-report','academic-pts-readiness','akd-laporan-guru','laporan-akademik-guru']);
   order(reports,['akd-badal-recap','academic-pjbl-report','rapor','laporan-promosi']);
   return true;
 }
