@@ -52,7 +52,15 @@ function draw(active){
   return true
 }
 function set(id){window.__cqAdminActive=id;const s=document.getElementById('sidebar');if(!s||!s.querySelector('.cq-admin-side')){draw(id);return}const map={dashboard:'openCleanAdminDashboard', 'data-master':'openCleanAdminMaster', 'master-tp':'openCleanAdminMasterTP',halaqah:'openCleanAdminHalaqahRoute','partner-kelas':'openCleanAdminClassPartners',penugasan:'openCleanAdminAssignments','edit-jadwal':'openCleanAdminSchedule',users:'openCleanAdminUsers',roles:'openCleanAdminRoles','academic-period':'openCleanAdminAcademicPeriod','report-period':'openCleanAdminReportPeriod','rapor-readiness':'openCleanAdminRaporReadiness','input-access':'openCleanAdminInputAccess',students:'openCleanAdminStudents',uks:'openCleanAdminUks','kegiatan-khusus':'openCleanAdminSpecialActivity'};s.querySelectorAll('.cq-admin-nav').forEach(function(b){b.classList.toggle('active',String(b.getAttribute('onclick')||'').includes(map[id]||'__none__'))})}
-window.openCleanAdminDashboard=function(){if(!isAdmin())return;set('dashboard');try{if(typeof setActiveModule==='function')return setActiveModule('dashboard')}catch(_){};window.renderAdminDashboard?.(document.getElementById('content'))};
+window.openCleanAdminDashboard=function(){
+  if(!isAdmin())return;
+  set('dashboard');
+  try{if(typeof activeModule!=='undefined')activeModule='dashboard'}catch(_){}
+  const c=document.getElementById('content');
+  if(typeof window.renderAdminDashboard==='function')return window.renderAdminDashboard(c);
+  if(c)c.innerHTML='<div class="card"><span class="spinner"></span> Memuat Dashboard Admin...</div>';
+  let n=0;const t=setInterval(()=>{n++;if(typeof window.renderAdminDashboard==='function'){clearInterval(t);window.renderAdminDashboard(c)}else if(n>=30){clearInterval(t);if(c)c.innerHTML='<div class="card">Dashboard Admin belum dapat dimuat. Muat ulang halaman.</div>'}},100);
+};
 window.openCleanAdminMaster=function(){if(!isAdmin())return;set('data-master');window.renderAdminMasterData?.(document.getElementById('content'))};
 window.openAdminDataMaster=window.openCleanAdminMaster;
 window.openCleanAdminMasterTP=function(){if(!isAdmin())return;set('master-tp');location.href='master-tp.html'};
@@ -96,8 +104,20 @@ window.openCleanAdminStudents=function(){if(!isAdmin())return;set('students');lo
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
 window.openCleanAdminSpecialActivity=function(){if(!isAdmin())return;set('kegiatan-khusus');const c=document.getElementById('content');if(typeof window.renderAdminSpecialActivity==='function')return window.renderAdminSpecialActivity(c);if(c)c.innerHTML='<div class="card">Memuat Kegiatan Khusus...</div>';setTimeout(()=>window.renderAdminSpecialActivity?.(c),250)};
 window.openCleanAdminHalaqahRoute=function(){if(!isAdmin())return;set('halaqah');if(window.openCleanAdminHalaqah)return window.openCleanAdminHalaqah();const c=document.getElementById('content');if(c)c.innerHTML='<div class="card">Memuat Pembagian Halaqah...</div>'};
-window.openCleanAdminClassPartners=function(){if(!isAdmin())return;set('partner-kelas');const c=document.getElementById('content');if(typeof window.renderAdminClassPartners==='function')return window.renderAdminClassPartners(c);if(c)c.innerHTML='<div class="card">Memuat Partner Kelas...</div>';setTimeout(()=>window.renderAdminClassPartners?.(c),200)};\nwindow.openCleanAdminAssignments=function(){if(!isAdmin())return;set('penugasan');const c=document.getElementById('content');if(typeof window.renderAdminAssignments==='function')return window.renderAdminAssignments(c);if(c)c.innerHTML='<div class="card">Memuat Penugasan...</div>';setTimeout(()=>window.renderAdminAssignments?.(c),200)};
+window.openCleanAdminClassPartners=function(){if(!isAdmin())return;set('partner-kelas');const c=document.getElementById('content');if(typeof window.renderAdminClassPartners==='function')return window.renderAdminClassPartners(c);if(c)c.innerHTML='<div class="card">Memuat Partner Kelas...</div>';setTimeout(()=>window.renderAdminClassPartners?.(c),200)};
+window.openCleanAdminAssignments=function(){if(!isAdmin())return;set('penugasan');const c=document.getElementById('content');if(typeof window.renderAdminAssignments==='function')return window.renderAdminAssignments(c);if(c)c.innerHTML='<div class="card">Memuat Penugasan...</div>';setTimeout(()=>window.renderAdminAssignments?.(c),200)};
 window.__cqRenderAdminSidebar=function(){return isAdmin()?draw():false}
+function takeAdminOwnership(){
+  if(!isAdmin())return false;
+  draw(window.__cqAdminActive||'dashboard');
+  if((!window.__cqAdminActive||window.__cqAdminActive==='dashboard')&&typeof window.renderAdminDashboard==='function'){
+    try{window.renderAdminDashboard(document.getElementById('content'))}catch(_){}
+  }
+  return true;
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(takeAdminOwnership,0),{once:true});
+else setTimeout(takeAdminOwnership,0);
+setTimeout(takeAdminOwnership,250);
 
 window.__cqAdminSidebarClean=true
 })();
