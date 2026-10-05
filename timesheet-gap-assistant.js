@@ -93,7 +93,7 @@ async function load(){
         busy.push({start_time:'07:00:00',end_time:'08:00:00',_fallback:'friday-morning'});
         const fridayBlock=(work.items||[]).find(x=>x.work_date===date&&x.activity_code==='friday_activity'&&x.start_time&&x.end_time);
         if(fridayBlock)busy.push(fridayBlock);
-        else busy.push({start_time:'08:00:00',end_time:hasUpper?'12:00:00':'10:40:00',_fallback:'friday-routine'});
+        else busy.push({start_time:'08:00:00',end_time:hasUpper?'12:30:00':'10:40:00',_fallback:'friday-routine'});
       }
       if(isSpecial){
         (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
