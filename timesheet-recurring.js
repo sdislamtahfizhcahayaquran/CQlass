@@ -52,6 +52,14 @@ function render(){const c=context();if(!c||!R.data)return;style();let card=c.roo
 async function load(force=false){const c=context();if(!c||R.loading)return;if(!force&&R.key===c.key&&R.data){render();return}R.key=c.key;R.loading=true;try{R.data=await api('bootstrap',{month:c.month,teacher_id:c.teacherId||undefined});render()}catch(e){console.warn('recurring timesheet',e);R.data=null}finally{R.loading=false}}
 window.cqRecurringSave=async()=>{const c=context();if(!c)return;const card=document.querySelector('.cqrec-card'),name=document.getElementById('cqrec-name')?.value.trim()||'',start=document.getElementById('cqrec-start')?.value||'',end=document.getElementById('cqrec-end')?.value||'',note=document.getElementById('cqrec-note')?.value.trim()||'',days=[...document.querySelectorAll('input[name="cqrec-day"]:checked')].map(x=>Number(x.value));if(card?.dataset.gapPatternSelected!=='1'){toast('Pilih slot dari Waktu Belum Tercatat lalu klik Jadikan Pola.',true);return}if(!name||!start||!end||!days.length){toast('Lengkapi nama kegiatan. Hari dan jam mengikuti slot yang dipilih.',true);return}try{await api('save',{month:c.month,teacher_id:c.teacherId||undefined,activity_name:name,days_of_week:days,start_time:start,end_time:end,note});toast('Pola kegiatan berulang tersimpan.');const ed=document.querySelector('.cqrec-editor');if(ed)ed.hidden=true;R.key='';R.data=null;await load(true)}catch(e){toast(e.message,true)}};
 window.cqRecurringReveal=()=>{window.tsv2OpenCard?.(1);const ed=document.querySelector('.cqrec-editor');if(ed)ed.hidden=false};
+window.cqRecurringSaveFromGap=async({date,start,end,activity_name,note})=>{
+  const c=context();if(!c)throw Error('Timesheet belum siap.');
+  const day=new Date(String(date)+'T12:00:00Z').getUTCDay();
+  if(day<1||day>5)throw Error('Pola mingguan hanya tersedia Senin–Jumat. Sabtu mengikuti agenda HRD.');
+  await api('save',{month:c.month,teacher_id:c.teacherId||undefined,activity_name,days_of_week:[day],start_time:start,end_time:end,note});
+  R.key='';R.data=null;await load(true);
+  return true
+};
 window.cqRecurringDelete=async id=>{const c=context();if(!c||!confirm('Hapus pola kegiatan berulang ini?'))return;try{await api('delete',{month:c.month,teacher_id:c.teacherId||undefined,id});toast('Pola kegiatan berulang dihapus.');R.key='';R.data=null;await load(true)}catch(e){toast(e.message,true)}};
 function ensure(){const c=context();if(!c)return;const card=c.root.querySelector('.cqrec-card');if(R.key!==c.key||!R.data){load();return}if(!card||card.dataset.key!==c.key)render();else{const expected=(R.data.items||[]).length,actual=c.root.querySelectorAll('.cqrec-row').length;if(actual!==expected)insertProjectedRows(c.root,R.data.items||[])}}
 setInterval(ensure,700);document.addEventListener('DOMContentLoaded',()=>setTimeout(ensure,400));setTimeout(ensure,800);
