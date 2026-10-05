@@ -15,15 +15,19 @@ function go(id){if(typeof setActiveModule==='function')setActiveModule(id)}
 
 const CLASSES=['1A Banin','1B Banin','1A Banat','1B Banat','2A Banin','2B Banin','2A Banat','2B Banat','3A Banin','3B Banin','3A Banat','3B Banat','4A Banin','4B Banin','4A Banat','4B Banat','5A Banin','5B Banin','5A Banat','5B Banat','6 Banin','6 Banat'];
 function toast(m,e){if(typeof showToast==='function')showToast(m,!!e)}
-function needXlsx(){if(!window.XLSX)throw new Error('Mesin Excel belum termuat. Refresh halaman lalu coba lagi.');return window.XLSX}
+function isAcademic(){const r=String(window.currentUser?.role||'').toLowerCase().trim();return r==='akademik'||r==='kabid_akademik'||r==='academic'}
+let xlsxPromise=null;
+function loadXlsx(){if(window.XLSX)return Promise.resolve(window.XLSX);if(xlsxPromise)return xlsxPromise;xlsxPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.async=true;s.dataset.cqAcademicDownload='xlsx';s.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('Mesin Excel gagal dimuat.'));s.onerror=()=>reject(new Error('Mesin Excel gagal dimuat. Periksa koneksi internet.'));document.head.appendChild(s)});return xlsxPromise}
+function needXlsx(){if(!window.XLSX)throw new Error('Mesin Excel belum termuat.');return window.XLSX}
 function aoaSheet(rows,widths){const X=needXlsx(),ws=X.utils.aoa_to_sheet(rows);if(widths)ws['!cols']=widths.map(w=>({wch:w}));return ws}
 function saveBook(wb,name){needXlsx().writeFile(wb,name,{compression:true})}
 function dateId(v){if(!v)return '';try{return new Date(v).toLocaleDateString('id-ID')}catch(_){return String(v)}}
 function authHeaders(){const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';let tok='';try{tok=typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){}return {'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':tok}}
 async function rppReq(action){const base=(typeof SUPABASE_URL!=='undefined'&&SUPABASE_URL)||'https://lmglkxzemtvxcgktiord.supabase.co';const r=await fetch(base+'/functions/v1/rpp-lp-manager',{method:'POST',headers:authHeaders(),body:JSON.stringify({action})});const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw new Error(d.error||'Data RPP & LP gagal dimuat.');return d}
 async function exportRppLp(btn){
+ if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}
  const old=btn.textContent;btn.disabled=true;btn.textContent='Menyiapkan...';
- try{
+ try{await loadXlsx();
   const [rpp,lp]=await Promise.all([rppReq('archive_report'),rppReq('report')]),X=needXlsx(),wb=X.utils.book_new();
   const rr=rpp.rows||[],ll=lp.rows||[],teachers=new Set([...rr.map(x=>x.teacher_name),...ll.map(x=>x.teacher_name)].filter(Boolean));
   const summary=[['RINGKASAN RPP & LP'],['Tahun Ajaran',rpp.academic_year||lp.academic_year||''],['Semester',rpp.semester_no||lp.semester_no||1],[],['Indikator','Jumlah'],['Total RPP',rr.length],['Total Target LP',ll.length],['Guru Tercatat',teachers.size],['RPP Perlu Ditinjau',Number(rpp.summary?.pending_review||0)],['LP RPP Masuk',Number(lp.summary?.submitted||0)],['LP Belum Upload',Number(lp.summary?.missing||0)]];
@@ -36,8 +40,9 @@ async function exportRppLp(btn){
  }catch(e){toast(e.message||'Gagal membuat Excel RPP & LP.',true)}finally{btn.disabled=false;btn.textContent=old}
 }
 async function exportBilingual(btn){
+ if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}
  const old=btn.textContent;btn.disabled=true;btn.textContent='Mengumpulkan 22 kelas...';
- try{
+ try{await loadXlsx();
   const all=[];let categories=[];
   for(let i=0;i<CLASSES.length;i++){btn.textContent='Kelas '+(i+1)+'/22';const d=await callApi('getVocabularyBulanan',{kelas:CLASSES[i],tahunAjaran:'2026/2027',semester:1});if(!d||d.success===false)continue;categories=d.categories||categories;for(const s of (d.students||[])){const vals=(d.categories||[]).map(cat=>d.values?.[String(s.nis)+'|'+Number(cat.urutan)]??'');const total=vals.reduce((a,v)=>a+(Number(v)||0),0);all.push({kelas:CLASSES[i],nis:s.nis,nama:s.nama,vals,total,target:(d.categories||[]).reduce((a,x)=>a+(Number(x.target)||0),0)})}}
   const X=needXlsx(),wb=X.utils.book_new(),by={};all.forEach(x=>{(by[x.kelas]||(by[x.kelas]=[])).push(x)});
@@ -49,10 +54,10 @@ async function exportBilingual(btn){
   saveBook(wb,'Rekap_Bilingual_SDCQ.xlsx');toast('Bilingual berhasil diunduh.');
  }catch(e){toast(e.message||'Gagal membuat Excel Bilingual.',true)}finally{btn.disabled=false;btn.textContent=old}
 }
-function exportNilai(btn){toast('Download Nilai sedang dikunci ke template Legger resmi; tidak dibuat dengan format generik.',true)}
+function exportNilai(btn){if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}toast('Download Nilai sedang dikunci ke template Legger resmi; tidak dibuat dengan format generik.',true)}
 function runDownload(kind,btn){if(kind==='RPP & LP')return exportRppLp(btn);if(kind==='Bilingual')return exportBilingual(btn);return exportNilai(btn)}
 
-window.renderAcademicDownloadData=function(c){css();c.innerHTML=`
+window.renderAcademicDownloadData=function(c){if(!isAcademic()){c.innerHTML='<div class="card">Menu ini khusus Kabid Akademik.</div>';return}css();c.innerHTML=`
 <div class="akdl"><div class="akdl-head"><h1>Download Data Akademik</h1><p>Unduh data akademik siap laporan. Setiap workbook memuat Ringkasan, Grafik, dan data detail.</p></div>
 <div class="akdl-grid">
 <section class="akdl-card"><h2>Nilai</h2><p>Legger nilai Semester 1 TA 2026/2027.</p><ul class="akdl-list"><li>Sheet Ringkasan</li><li>Grafik capaian nilai</li><li>1 sheet = 1 kelas</li><li>Detail nilai siswa per mata pelajaran</li></ul><div class="akdl-actions"><button class="akdl-btn" data-go="leger">Buka Nilai</button><button class="akdl-btn primary" data-dl="Nilai">Download Excel</button></div></section>
