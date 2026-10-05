@@ -105,7 +105,7 @@ Deno.serve(async(req:Request)=>{
     }
     if(action==="public_salam_status"){
       const wa=T(b.parent_whatsapp).replace(/\D/g,"");if(wa.length<9)return J({success:false,error:"invalid_whatsapp"},400);
-      const{data,error}=await sb.from("salam_cq_messages").select("ticket_code,message_type,class_name,topic,status,created_at").eq("parent_whatsapp",wa).order("created_at",{ascending:false}).limit(20);if(error)throw error;
+      const{data,error}=await sb.from("salam_cq_messages").select("ticket_code,status").eq("parent_whatsapp",wa).order("created_at",{ascending:false}).limit(20);if(error)throw error;
       return J({success:true,rows:data||[]});
     }
     const a=await me(req);if(!a)return J({success:false,error:"unauthorized"},401);
