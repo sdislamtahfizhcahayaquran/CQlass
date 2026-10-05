@@ -36,10 +36,16 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const isTahfizh=(tahRes.data||[]).length>0;
   const partnerClassIds=[...new Set((classPartnerRes.data||[]).map((x:any)=>txt(x.class_id)).filter(Boolean))];
   const homeroomClassIds=[...new Set((homRes.data||[]).map((x:any)=>txt(x.class_id)).filter(Boolean))];
-  const classIds=partnerClassIds.length&&isTahfizh?partnerClassIds:[...new Set([...(asgRes.data||[]),...(homRes.data||[]),...(tahRes.data||[])].map((x:any)=>txt(x.class_id)).filter(Boolean))];
+  const tahfizhClassIds=[...new Set((tahRes.data||[]).map((x:any)=>txt(x.class_id)).filter(Boolean))];
+  // Guru Tahfizh/Partner bisa mengampu beberapa kelas lintas level.
+  // Jangan batasi perhitungan rutinitas/Jumat hanya ke kelas partner walas,
+  // karena itu membuat kelas 4–6 terbaca seperti level 1–3.
+  const classIds=isTahfizh
+    ? [...new Set([...tahfizhClassIds,...partnerClassIds])]
+    : [...new Set([...(asgRes.data||[]),...(homRes.data||[])].map((x:any)=>txt(x.class_id)).filter(Boolean))];
   const{data:classes,error:classErr}=classIds.length?await sb.from("classes").select("id,name,grade_level").in("id",classIds):{data:[],error:null};if(classErr)throw classErr;
   const grades=[...new Set((classes||[]).map((x:any)=>Number(x.grade_level)).filter(Boolean))];
-  const fridayClassIds=isTahfizh&&partnerClassIds.length?partnerClassIds:homeroomClassIds;
+  const fridayClassIds=isTahfizh?tahfizhClassIds:homeroomClassIds;
   const fridayGrades=[...new Set((classes||[]).filter((x:any)=>fridayClassIds.includes(txt(x.id))).map((x:any)=>Number(x.grade_level)).filter(Boolean))];
   const fridayUpper=fridayGrades.some((g:number)=>g>=4);
   const fridayLower=fridayGrades.some((g:number)=>g>=1&&g<=3);
