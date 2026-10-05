@@ -202,17 +202,17 @@
     if(!r)return;
     primeDashboardRole(r);
 
-    if(['guru','walas','partner','guru_partner','pengabdian','akademik','pimpinan'].includes(r)){
+    if(['guru','walas','partner','guru_partner','pengabdian','akademik','kabid_akademik','academic','pimpinan'].includes(r)){
       add('./academic-sidebar-order.js?v=20260927-ranking7','__cqAcademicSidebarOrderRoleLazy',false);
     }
-    if(['akademik','pimpinan','admin'].includes(r)){
+    if(['akademik','kabid_akademik','academic','pimpinan','admin'].includes(r)){
       add('./academic-teacher-report.js?v=20260924-rolelazy1','__cqAcademicTeacherReportRoleLazy',false);
     }
-    if(['akademik','kegiatan'].includes(r)){
+    if(['akademik','kabid_akademik','academic','kegiatan'].includes(r)){
       add('./kabid-role-scope-fix.js?v=20261004-kesisolate9','__cqKabidRoleScopeRoleLazy',false);
     }
 
-    if(r==='akademik'){
+    if(['akademik','kabid_akademik','academic'].includes(r)){
       // Kabid Akademik: pastikan renderer Badal Guru Mapel selalu tersedia.
       // Scope sengaja hanya loader UI; data/modul lain tidak diubah.
       add('./academic-badal-v2.js?v=20260929-restore1','__cqAcademicBadalV2RoleLazy',false);
