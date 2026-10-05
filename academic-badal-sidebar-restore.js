@@ -69,19 +69,9 @@
       return true;
     }catch(e){console.warn('Badal Guru Mapel restore:',e);return false}
   }
-  function repaint(){
-    if(!ensure())return;
-    try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){}
-  }
   var tries=0;
   (function wait(){
     if(ensure()){
-      if(typeof renderSidebar==='function'&&!renderSidebar.__cqAcademicBadalRestore){
-        var old=renderSidebar;
-        renderSidebar=function(){ensure();return old.apply(this,arguments)};
-        renderSidebar.__cqAcademicBadalRestore=true;
-      }
-      setTimeout(repaint,0);setTimeout(repaint,250);setTimeout(repaint,1000);
       window.__CQ_ACADEMIC_BADAL_SIDEBAR_RESTORE__=true;
       return;
     }
