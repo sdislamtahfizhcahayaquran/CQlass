@@ -3941,6 +3941,31 @@ function injectRoleDashboardStyles(){
     .rd-bar-wrap{display:flex;align-items:end;gap:10px;height:155px;padding:8px 4px 0}.rd-bar-item{flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center;height:100%;gap:5px}.rd-bar{width:min(34px,75%);border-radius:8px 8px 3px 3px;background:#0b7d79;min-height:3px}.rd-bar.alt{background:#d9775d}.rd-bar-label{font-size:9px;color:var(--muted);white-space:nowrap}.rd-bar-value{font-size:9px;font-weight:850;color:var(--text)}
     @media(max-width:1050px){.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-grid3{grid-template-columns:1fr}.rd-grid2{grid-template-columns:1fr}}
     @media(max-width:650px){.rd-kpis{grid-template-columns:repeat(2,1fr)}.rd-title{font-size:22px}.rd-hero{padding:19px}.rd-quick{grid-template-columns:1fr}.rd-chart{height:160px}}
+
+    /* Walas dashboard — scoped, role khusus wali kelas */
+    .walas-dash{display:grid;gap:14px}
+    .walas-hero{position:relative;overflow:hidden;border-radius:24px;padding:24px 26px;color:#fff;background:linear-gradient(120deg,#0b5fd7 0%,#178de4 55%,#36c6d7 100%);box-shadow:0 18px 42px rgba(18,96,190,.20)}
+    .walas-hero:before,.walas-hero:after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.10)}
+    .walas-hero:before{width:220px;height:220px;right:-70px;top:-95px}.walas-hero:after{width:130px;height:130px;right:115px;bottom:-85px}
+    .walas-hero-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;position:relative;z-index:1}
+    .walas-eyebrow{font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:900;opacity:.82}
+    .walas-title{font-size:28px;line-height:1.08;font-weight:950;margin-top:7px}.walas-sub{font-size:12px;opacity:.9;margin-top:7px}
+    .walas-class-chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:9px 12px;border-radius:13px;font-size:11px;font-weight:850;white-space:nowrap;backdrop-filter:blur(8px)}
+    .walas-kpis{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}
+    .walas-kpi{position:relative;overflow:hidden;background:#fff;border:1px solid #e5eef8;border-radius:18px;padding:15px 16px;min-height:116px;box-shadow:0 8px 24px rgba(24,76,132,.07)}
+    .walas-kpi:after{content:"";position:absolute;width:92px;height:92px;border-radius:50%;right:-30px;bottom:-42px;background:var(--wk-bg,#eef6ff)}
+    .walas-kpi.blue{--wk:#1777e5;--wk-bg:#eaf4ff}.walas-kpi.green{--wk:#12a66f;--wk-bg:#e8f8f1}.walas-kpi.cyan{--wk:#05a8c8;--wk-bg:#e8f9fc}.walas-kpi.orange{--wk:#ed8a22;--wk-bg:#fff3e6}
+    .walas-kpi-icon{width:38px;height:38px;border-radius:12px;background:var(--wk-bg);color:var(--wk);display:flex;align-items:center;justify-content:center;margin-bottom:9px}.walas-kpi-icon svg{width:19px;height:19px}
+    .walas-kpi strong{display:block;font-size:26px;line-height:1;color:#14345f}.walas-kpi span{display:block;font-size:10.5px;font-weight:850;color:#52677f;margin-top:6px}.walas-kpi small{display:block;font-size:9.5px;color:#8a9bad;margin-top:5px}
+    .walas-grid-main{display:grid;grid-template-columns:1.35fr .9fr;gap:13px}.walas-grid-bottom{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:13px}
+    .walas-card{background:#fff;border:1px solid #e5eef8;border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(24,76,132,.06)}
+    .walas-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}.walas-card-title{font-size:13.5px;font-weight:900;color:#173c70}.walas-card-sub{font-size:10px;color:#7d8fa3;margin-top:3px;line-height:1.4}
+    .walas-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.walas-actions button{border:1px solid #dce8f6;background:#f8fbff;color:#285079;border-radius:12px;padding:11px 8px;font:inherit;font-size:10.2px;font-weight:850;cursor:pointer}.walas-actions button:hover{border-color:#2784e8;color:#0c64c7;background:#eef6ff}
+    .walas-alerts .rd-alert-row{background:#fff8f1;border-color:#f6d5b4}.walas-alerts .rd-alert-title{color:#bd651c}.walas-alerts .rd-alert-sub{color:#815f45}
+    .walas-dash .rd-chart-line{stroke:#1976df}.walas-dash .rd-chart-area{fill:rgba(25,118,223,.10)}.walas-dash .rd-chart-dot{fill:#16a6c9}
+    .walas-dash .rd-bar{background:#17a674}.walas-dash .rd-bar.alt{background:#f09a3e}
+    @media(max-width:1100px){.walas-kpis{grid-template-columns:repeat(2,1fr)}.walas-grid-main,.walas-grid-bottom{grid-template-columns:1fr}}
+    @media(max-width:650px){.walas-kpis{grid-template-columns:1fr 1fr}.walas-hero{padding:20px}.walas-title{font-size:23px}.walas-hero-top{display:block}.walas-class-chip{display:inline-flex;margin-top:12px}.walas-actions{grid-template-columns:1fr}}
   `;
   document.head.appendChild(s);
 }
@@ -4023,10 +4048,74 @@ function rdPointBars(v=0,r=0){
   </div>`;
 }
 
+
+function renderWalasDashboardOnly(d){
+  const root=document.getElementById('rd-root');if(!root)return;
+  const s=d.summary||{},scope=d.scope_label||currentUser?.kelas||'Kelas saya',tasks=d.tasks||[];
+  const name=currentUser?.nama||currentUser?.username||'Wali Kelas';
+  const attendance=s.attendance_pct==null?'-':String(s.attendance_pct).replace('.',',')+'%';
+  root.innerHTML=`
+    <div class="walas-dash">
+      <div class="walas-hero">
+        <div class="walas-hero-top">
+          <div>
+            <div class="walas-eyebrow">Dashboard Walas</div>
+            <div class="walas-title">Assalamu'alaikum, ${escapeHtml(name)}</div>
+            <div class="walas-sub">Ringkasan kelas yang Anda ampu · ${escapeHtml(d.date_label||'Hari ini')}</div>
+          </div>
+          <div class="walas-class-chip">${rdIcon('users',15)} ${escapeHtml(scope)}</div>
+        </div>
+      </div>
+
+      <div class="walas-kpis">
+        <div class="walas-kpi blue"><div class="walas-kpi-icon">${rdIcon('users')}</div><strong>${s.students||0}</strong><span>Jumlah Siswa</span><small>${escapeHtml(scope)}</small></div>
+        <div class="walas-kpi green"><div class="walas-kpi-icon">${rdIcon('check')}</div><strong>${attendance}</strong><span>Kehadiran Hari Ini</span><small>${s.attendance_filled?'Sudah ada input':'Belum ada input hari ini'}</small></div>
+        <div class="walas-kpi cyan"><div class="walas-kpi-icon">${rdIcon('gift')}</div><strong>${s.reward_points_month||0}</strong><span>Reward Bulan Ini</span><small>Poin positif kelas</small></div>
+        <div class="walas-kpi orange"><div class="walas-kpi-icon">${rdIcon('alert')}</div><strong>${s.escalation_count||0}</strong><span>Perlu Ditindaklanjuti</span><small>${s.violation_points_month||0} poin pelanggaran bulan ini</small></div>
+      </div>
+
+      <div class="walas-grid-main">
+        <div class="walas-card">
+          <div class="walas-card-head"><div><div class="walas-card-title">${rdIcon('chart',16)} Tren Kehadiran Kelas</div><div class="walas-card-sub">10 hari sekolah terakhir yang sudah mempunyai input Morning Talk.</div></div></div>
+          ${rdLineChart(d.attendance_trend||[])}
+        </div>
+        <div class="walas-card">
+          <div class="walas-card-head"><div><div class="walas-card-title">${rdIcon('chart',16)} Reward & Kedisiplinan</div><div class="walas-card-sub">Ringkasan perilaku siswa kelas pada bulan berjalan.</div></div></div>
+          ${rdPointBars(s.violation_points_month||0,s.reward_points_month||0)}
+        </div>
+      </div>
+
+      <div class="walas-grid-bottom">
+        <div class="walas-card">
+          <div class="walas-card-head"><div><div class="walas-card-title">Tugas Hari Ini</div><div class="walas-card-sub">Yang perlu diselesaikan oleh wali kelas hari ini.</div></div></div>
+          ${rdTasks(tasks)}
+        </div>
+        <div class="walas-card walas-alerts">
+          <div class="walas-card-head"><div><div class="walas-card-title">${rdIcon('alert',16)} Catatan & Tindak Lanjut</div><div class="walas-card-sub">Hanya siswa kelas Anda yang membutuhkan perhatian.</div></div></div>
+          ${rdAlerts(d.escalations||[])}
+        </div>
+        <div class="walas-card">
+          <div class="walas-card-head"><div><div class="walas-card-title">${rdIcon('star',16)} Siswa Inspiratif Kelas</div><div class="walas-card-sub">Apresiasi dari data reward yang sudah diinput.</div></div></div>
+          ${rdLeaderboard(d.class_student_leaderboard||[],'Belum ada input yang cukup untuk menampilkan siswa inspiratif.')}
+        </div>
+      </div>
+
+      <div class="walas-card">
+        <div class="walas-card-head"><div><div class="walas-card-title">Aksi Cepat Walas</div><div class="walas-card-sub">Masuk langsung ke pekerjaan utama kelas.</div></div></div>
+        <div class="walas-actions">
+          <button onclick="setActiveModule('absensi')">${rdIcon('check',15)} Morning Talk</button>
+          <button onclick="setActiveModule('kedisiplinan')">${rdIcon('alert',15)} Kedisiplinan</button>
+          <button onclick="setActiveModule('reward')">${rdIcon('gift',15)} Reward</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderRoleDashboard(d){
   const root=document.getElementById('rd-root');if(!root)return;
   const role=d.role||currentUser.role||'guru', name=currentUser?.nama||currentUser?.username||'Pengguna';
   if(role==='kesiswaan'&&typeof window.renderKesiswaanDashboardV1==='function'){window.renderKesiswaanDashboardV1(d);return;}
+  if(role==='walas'){renderWalasDashboardOnly(d);return;}
   const s=d.summary||{},scope=d.scope_label||'',tasks=d.tasks||[];
 
   if(role==='admin'){
