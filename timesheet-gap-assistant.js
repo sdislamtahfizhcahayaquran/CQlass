@@ -77,6 +77,7 @@ async function load(){
       const day=new Date(date+'T12:00:00Z').getUTCDay();if(day===0)continue;
       const busy=[];
       const isSpecial=spSet.has(date);
+      let workEnd=day===6?720:960;
       const grades=(work.grades||[]).map(Number).filter(Boolean);
       const hasUpper=grades.some(g=>g>=4);
       const hasLower=grades.some(g=>g<=3);
@@ -96,6 +97,7 @@ async function load(){
         // Backend sudah menentukan kelompok Jumat utama guru (1–3 atau 4–6).
         // Gunakan batas eksplisit itu agar mapel tambahan di kelas atas tidak mengubah kelompok Jumat.
         const fridayRequiredEnd=fridayBlock?.end_time||(hasUpper?'12:30:00':'10:40:00');
+        workEnd=mins(fridayRequiredEnd)??workEnd;
         if(fridayBlock)busy.push({...fridayBlock,start_time:'08:00:00',end_time:fridayRequiredEnd});
         else busy.push({start_time:'08:00:00',end_time:fridayRequiredEnd,_fallback:'friday-routine'});
       }
@@ -110,7 +112,7 @@ async function load(){
       (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       // Sabtu selalu dihitung dalam jam kerja 07.30–12.00.
       // Agenda HRD menjadi blocker; jika tidak ada agenda, seluruh rentang tetap muncul sebagai jam kosong.
-      const ws=day===6?450:420,we=day===6?720:960;
+      const ws=day===6?450:420,we=workEnd;
       for(const g of gaps(ws,we,busy))all.push({work_date:date,start_time:tm(g[0]),end_time:tm(g[1]),minutes:g[1]-g[0],special:isSpecial});
     }
     G.data={items:all,profile:work.profile||null};render();
