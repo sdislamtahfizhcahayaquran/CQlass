@@ -104,10 +104,8 @@ async function load(){
       }
       (core.activities||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
-      if(day===6){
-        const hasSaturdayAgenda=(core.saturdays||[]).some(x=>x.event_date===date&&x.configured!==false&&x.start_time&&x.end_time);
-        if(!hasSaturdayAgenda)continue;
-      }
+      // Sabtu selalu dihitung dalam jam kerja 07.30–12.00.
+      // Agenda HRD menjadi blocker; jika tidak ada agenda, seluruh rentang tetap muncul sebagai jam kosong.
       const ws=day===6?450:420,we=day===6?720:960;
       for(const g of gaps(ws,we,busy))all.push({work_date:date,start_time:tm(g[0]),end_time:tm(g[1]),minutes:g[1]-g[0],special:isSpecial});
     }
@@ -115,13 +113,19 @@ async function load(){
   }catch(e){console.warn('Timesheet gap assistant',e);G.data={items:[],error:true};render()}
   finally{G.loading=false}
 }
-function lockInputs(){
-  const form=document.querySelector('.tsv2-form');if(form){['tsv2-date','tsv2-start','tsv2-end'].forEach(id=>{const el=document.getElementById(id);if(el){el.readOnly=true;el.setAttribute('aria-readonly','true')}})}
-  const rs=document.getElementById('cqrec-start'),re=document.getElementById('cqrec-end');if(rs){rs.readOnly=true;rs.setAttribute('aria-readonly','true')}if(re){re.readOnly=true;re.setAttribute('aria-readonly','true')}
+function lockPatternInputs(){
+  const rs=document.getElementById('cqrec-start'),re=document.getElementById('cqrec-end');
+  if(rs){rs.readOnly=true;rs.setAttribute('aria-readonly','true')}
+  if(re){re.readOnly=true;re.setAttribute('aria-readonly','true')}
 }
 function pick(d,s,e){
-  const a=document.getElementById('tsv2-date'),b=document.getElementById('tsv2-start'),c=document.getElementById('tsv2-end'),form=document.querySelector('.tsv2-form'),card=document.querySelector('.tsv2-slot-editor');
-  if(a)a.value=d;if(b)b.value=s;if(c)c.value=e;if(form)form.dataset.gapSelected='1';if(card)card.hidden=false;lockInputs();
+  window.tsv2OpenCard?.(2);
+  const a=document.getElementById('tsv2-date'),b=document.getElementById('tsv2-start'),z=document.getElementById('tsv2-end'),form=document.querySelector('#tsv2-card2 .tsv2-form'),card=document.querySelector('#tsv2-card2 .tsv2-slot-editor');
+  if(a)a.value=d;
+  if(b){b.value=s;b.min=s;b.max=e;b.readOnly=false;b.removeAttribute('aria-readonly')}
+  if(z){z.value=e;z.min=s;z.max=e;z.readOnly=false;z.removeAttribute('aria-readonly')}
+  if(form){form.dataset.gapSelected='1';form.dataset.gapStart=s;form.dataset.gapEnd=e}
+  if(card)card.hidden=false;
   card?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('tsv2-act')?.focus();
 }
 function patternPick(d,s,e){
@@ -129,20 +133,21 @@ function patternPick(d,s,e){
   if(typeof window.cqRecurringReveal==='function')window.cqRecurringReveal();
   if(!rs||!re){const rec=document.querySelector('.cqrec-card');rec?.scrollIntoView({behavior:'smooth',block:'center'});return}
   rs.value=s;re.value=e;const rec=document.querySelector('.cqrec-card');if(rec)rec.dataset.gapPatternSelected='1';const day=new Date(d+'T12:00:00Z').getUTCDay();document.querySelectorAll('input[name="cqrec-day"]').forEach(x=>x.checked=Number(x.value)===day);
-  lockInputs();document.querySelector('.cqrec-card')?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('cqrec-name')?.focus();
+  lockPatternInputs();window.tsv2OpenCard?.(1);document.querySelector('.cqrec-card')?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('cqrec-name')?.focus();
 }
 function render(){
   const c=ctx();if(!c||!G.data)return;style();
   const host=c.root.querySelector('#tsv2-gap-host')||c.root.querySelector('#tsv2-body');if(!host)return;
   let card=c.root.querySelector('.tsgap-card');if(!card){card=document.createElement('div');card.className='tsv2-card tsgap-card';host.appendChild(card)}
   const xs=G.data.items||[],show=G.showAll?xs:xs.slice(0,18);
-  card.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar waktu belum tercatat belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Slot yang Perlu Diisi</div><div class="tsv2-help">Yang tampil hanya waktu kerja yang benar-benar belum punya kegiatan. Mengajar, briefing, penyambutan, istirahat, Ishoma, kegiatan Jumat, UKS, agenda Sabtu HRD, dan pola berulang tidak ditampilkan sebagai slot kosong.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot belum tercatat':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${x.special?'Hari/kegiatan khusus':'Pilih aktivitas untuk waktu ini'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Sekali</button><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPatternPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Jadikan Pola</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
+  card.innerHTML=`${G.data.error?'<div class="tsv2-help" style="margin-bottom:8px">Daftar waktu belum tercatat belum dapat dimuat. Tekan Muat ulang.</div>':''}<div class="tsgap-head"><div><div class="tsgap-title">Isi Jam Kosong <span style="font-size:8px;font-weight:900;background:#edf6f5;color:#12645f;border-radius:999px;padding:4px 7px">Card 2</span></div><div class="tsv2-help">Hanya waktu kerja yang benar-benar kosong yang tampil. Pilih slot, lalu jam mulai–selesai boleh disesuaikan selama masih berada di dalam rentang kosong. Agenda otomatis tidak dapat ditimpa.</div></div><span class="tsgap-count ${xs.length?'':'tsgap-ok'}">${xs.length?xs.length+' slot belum tercatat':'Semua slot tercatat ✓'}</span></div>${xs.length?`<div class="tsgap-list">${show.map(x=>`<div class="tsgap-row"><div class="tsgap-date">${esc(fd(x.work_date))}</div><div class="tsgap-time">${esc(x.start_time)}–${esc(x.end_time)}</div><div class="tsgap-note">${x.special?'Hari/kegiatan khusus':'Pilih aktivitas untuk waktu ini'}</div><div class="tsgap-actions"><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Isi Sekali</button><button class="tsv2-btn alt tsgap-btn" onclick="cqTsGapPatternPick('${esc(x.work_date)}','${esc(x.start_time)}','${esc(x.end_time)}')">Jadikan Pola</button></div></div>`).join('')}</div>${xs.length>18?`<button class="tsv2-btn alt tsgap-more" onclick="cqTsGapToggle()">${G.showAll?'Tampilkan ringkas':'Tampilkan semua ('+xs.length+')'}</button>`:''}`:''}`;
 }
 window.cqTsGapPick=pick;
 window.cqTsGapPatternPick=patternPick;
 window.cqTsGapToggle=()=>{G.showAll=!G.showAll;render()};
 window.cqTsGapRefresh=()=>{G.key='';G.data=null;load()};
-function ensure(){const c=ctx();if(!c)return;lockInputs();if(G.key!==c.key||!G.data){load();return}if(!c.root.querySelector('.tsgap-card'))render()}
+window.cqTsGapItems=()=>Array.isArray(G.data?.items)?G.data.items.slice():[];
+function ensure(){const c=ctx();if(!c)return;if(G.key!==c.key||!G.data){load();return}if(!c.root.querySelector('.tsgap-card'))render()}
 let t=0;const mo=new MutationObserver(()=>{clearTimeout(t);t=setTimeout(ensure,350)});
 function start(){style();mo.observe(document.body,{childList:true,subtree:true});setTimeout(ensure,700)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
