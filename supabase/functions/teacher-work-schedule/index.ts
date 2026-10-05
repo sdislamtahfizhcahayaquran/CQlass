@@ -36,9 +36,10 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const isTahfizh=(tahRes.data||[]).length>0;
   const partnerClassIds=[...new Set((classPartnerRes.data||[]).map((x:any)=>txt(x.class_id)).filter(Boolean))];
   const classIds=partnerClassIds.length&&isTahfizh?partnerClassIds:[...new Set([...(asgRes.data||[]),...(homRes.data||[]),...(tahRes.data||[])].map((x:any)=>txt(x.class_id)).filter(Boolean))];
-  const{data:classes,error:classErr}=classIds.length?await sb.from("classes").select("id,grade_level").in("id",classIds):{data:[],error:null};if(classErr)throw classErr;
+  const{data:classes,error:classErr}=classIds.length?await sb.from("classes").select("id,name,grade_level").in("id",classIds):{data:[],error:null};if(classErr)throw classErr;
   const grades=[...new Set((classes||[]).map((x:any)=>Number(x.grade_level)).filter(Boolean))];
   const upper=grades.some((g:number)=>g>=4);
+  const lateSnack=(classes||[]).some((x:any)=>Number(x.grade_level)===1||/banin/i.test(txt(x.name)));
 
   const routinePromise=classIds.length?sb.from("class_schedule_entries").select("day_of_week,start_time,end_time,activity_type,subject_name_raw").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true).in("class_id",classIds).in("activity_type",["break","school_routine"]).not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null});
   const tahSchedulePromise=isTahfizh&&classIds.length?sb.from("tahfizh_kbm_schedules").select("day_of_week,start_time,end_time,class_id,team_name").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true).in("class_id",classIds):Promise.resolve({data:[],error:null});
@@ -65,6 +66,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
     const seen=new Set<string>();
     for(const r of routineRes.data||[]){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.subject_name_raw}`;if(seen.has(k))continue;seen.add(k);items.push({id:`routine:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"routine_block",activity:r.subject_name_raw||"Rutinitas sekolah",note:"",source:"jadwal-kerja",automatic:true,display:false})}
     for(const r of tahScheduleRes.data||[]){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.class_id}`;items.push({id:`tahfizh:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"tahfizh_kbm",activity:"KBM Tahfizh",note:r.team_name||"",source:"jadwal-kerja",automatic:true,display:false})}
+    if(dow>=1&&dow<=4&&lateSnack)items.push({id:`snack:${date}`,template_id:null,work_date:date,start_time:"09:40:00",end_time:"10:10:00",activity_code:"snack_time",activity:"Snack Time",note:"Banin / seluruh kelas 1",source:"jadwal-kerja",automatic:true,display:false});
     if(dow===5)items.push({id:`friday:${date}`,template_id:null,work_date:date,start_time:"08:00:00",end_time:upper?"12:30:00":"10:40:00",activity_code:"friday_activity",activity:"Kegiatan Jumat",note:upper?"Level 4–6":"Level 1–3",source:"jadwal-kerja",automatic:true,display:false});
     for(const u of uksRows){if(Number(u.weekday)!==dow)continue;const reported=reportKeys.has(`${date}:${Number(u.shift_no)}`);const status=reported?"Laporan foto terkirim":date>today?"Terjadwal":"Belum ada laporan foto";items.push({id:`uks:${u.id}:${date}`,template_id:null,work_date:date,start_time:u.start_time,end_time:u.end_time,activity_code:"uks_duty",activity:"Jaga UKS",note:`Shift ${Number(u.shift_no)} · ${status}`,source:"jadwal-kerja",automatic:true,uks_shift_no:Number(u.shift_no),uks_reported:reported,display:true})}
   }
