@@ -100,13 +100,28 @@ function apply(){
   return true;
 }
 function install(){
+  // Jalankan sesudah patch awal, lalu jadikan lapisan final sebelum render.
   apply();
   if(typeof renderSidebar==='function'&&!renderSidebar.__cqAcademicSidebarCleanV1){
     const old=renderSidebar;
-    renderSidebar=function(){if(isAcademic())apply();return old.apply(this,arguments)};
+    renderSidebar=function(){
+      // Wrapper lama dapat menambah item sebelum memanggil kita; normalisasi di titik terakhir ini.
+      if(isAcademic())apply();
+      const out=old.apply(this,arguments);
+      // Beberapa patch lama memutasi MODULE_GROUPS di dalam rantai render.
+      // Normalisasi model sekali lagi tanpa render rekursif agar render berikutnya tetap deterministik.
+      if(isAcademic())apply();
+      return out;
+    };
     renderSidebar.__cqAcademicSidebarCleanV1=true;
   }
-  if(isAcademic()&&typeof renderSidebar==='function')renderSidebar();
+  if(isAcademic()&&typeof renderSidebar==='function'){
+    renderSidebar();
+    // Ranking legacy memasang ulang role lewat click capture; bersihkan setelah event selesai.
+    document.addEventListener('click',function(){setTimeout(function(){if(isAcademic()){apply();try{renderSidebar()}catch(_){}}},0)},true);
+    // Guard ringan untuk patch interval/late loader saat startup saja.
+    [80,250,600,1200,2200,4200].forEach(function(ms){setTimeout(function(){if(isAcademic()){apply();try{renderSidebar()}catch(_){}}},ms)});
+  }
   window.__CQ_ACADEMIC_SIDEBAR_CLEAN_V1__=true;
 }
 let n=0;(function wait(){if(typeof MODULE_GROUPS!=='undefined'){install();return}if(++n<100)setTimeout(wait,120)})();
