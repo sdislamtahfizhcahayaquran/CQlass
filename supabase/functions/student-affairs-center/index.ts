@@ -136,6 +136,30 @@ Deno.serve(async(req:Request)=>{
       if(se)throw se;if(ce)throw ce;
       return J({success:true,students:students||[],classes:(classes||[]).map((x:any)=>({...x,class_name:classLabel(x)})),permissions:{can_affairs:canAffairs,can_achievement:canAchievement},roles:a.roles})
     }
+    if(action==="timesheet_recap"){
+      if(!has(a,"kesiswaan","admin"))return J({success:false,error:"forbidden"},403);
+      const start=T(b.start_date)||ymd().slice(0,8)+"01",end=T(b.end_date)||ymd();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)return J({success:false,error:"invalid_date_range"},400);
+      const[{data:year},{data:sem}]=await Promise.all([
+        sb.from("academic_years").select("id").eq("is_active",true).limit(1).maybeSingle(),
+        sb.from("semesters").select("academic_year_id,semester_no").eq("is_active",true).limit(1).maybeSingle()
+      ]);
+      if(!year||!sem||T(sem.academic_year_id)!==T(year.id))throw Error("active_period_missing");
+      const{data:asg,error:ae}=await sb.from("report_class_assignments").select("class_id,homeroom_teacher_id").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no);
+      if(ae)throw ae;
+      const tids=[...new Set((asg||[]).map((x:any)=>x.homeroom_teacher_id).filter(Boolean))];
+      const[{data:teachers,error:te},{data:acts,error:xe}]=await Promise.all([
+        tids.length?sb.from("teachers").select("id,full_name").in("id",tids):Promise.resolve({data:[],error:null}),
+        tids.length?sb.from("teacher_timesheet_activities").select("id,teacher_id,work_date,start_time,end_time,activity,source").in("teacher_id",tids).gte("work_date",start).lte("work_date",end):Promise.resolve({data:[],error:null})
+      ]);
+      if(te)throw te;if(xe)throw xe;
+      const tm:any=Object.fromEntries((teachers||[]).map((x:any)=>[x.id,x.full_name]));
+      const rows=(asg||[]).map((x:any)=>{
+        const items=(acts||[]).filter((z:any)=>T(z.teacher_id)===T(x.homeroom_teacher_id));
+        return{class_id:x.class_id,teacher_id:x.homeroom_teacher_id,teacher_name:tm[x.homeroom_teacher_id]||"Wali Kelas",entry_count:items.length,days_filled:new Set(items.map((z:any)=>z.work_date)).size,last_entry:items.map((z:any)=>z.work_date).sort().at(-1)||null};
+      });
+      return J({success:true,period:{start_date:start,end_date:end},rows});
+    }
     if(action==="report"){if(!has(a,"kesiswaan","pimpinan","admin"))return J({success:false,error:"forbidden"},403);return J(await reportData(b))}
     if(action==="list"){
       const type=L(b.kind)==="achievement"?"achievement":"affairs",from=T(b.start_date),to=T(b.end_date);
