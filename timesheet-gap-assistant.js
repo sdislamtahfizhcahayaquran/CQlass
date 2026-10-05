@@ -88,7 +88,7 @@ async function load(){
         if(hasLower&&!hasUpper)busy.push({start_time:'09:40:00',end_time:'10:10:00',_fallback:'break-lower'});
       }
       if(day===5){
-        busy.push({start_time:'07:00:00',end_time:hasUpper?'12:00:00':'10:40:00',_fallback:'friday-routine'});
+        busy.push({start_time:'07:00:00',end_time:hasUpper?'12:30:00':'10:40:00',_fallback:'friday-routine'});
       }
       if(isSpecial){
         (special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
