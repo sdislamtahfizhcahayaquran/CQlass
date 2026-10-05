@@ -75,7 +75,7 @@ async function validateFreeSlot(req:Request,body:any){
   const routineQ=classIds.length?sb.from("class_schedule_entries").select("start_time,end_time,activity_type,subject_name_raw").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("day_of_week",day).eq("is_active",true).in("activity_type",["break","school_routine"]).in("class_id",classIds).not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null});
   const workQ=sb.from("teacher_work_schedule_templates").select("start_time,end_time,activity_name,activity_code").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("day_of_week",day).eq("is_active",true).or(`applies_to_all.eq.true,teacher_id.eq.${teacherId}`);
   const uksQ=isTahfizh?Promise.resolve({data:[],error:null}):sb.from("uks_duty_schedule").select("start_time,end_time,shift_no").eq("teacher_id",teacherId).eq("weekday",day).eq("is_active",true);
-  const manualQ=sb.from("teacher_timesheet_activities").select("start_time,end_time,activity").eq("teacher_id",teacherId).eq("work_date",date);
+  const manualQ=sb.from("teacher_timesheet_activities").select("id,start_time,end_time,activity").eq("teacher_id",teacherId).eq("work_date",date);
   const badalQ=sb.from("teacher_substitution_assignments").select("start_time,end_time,reason").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("work_date",date).eq("substitute_teacher_id",teacherId).eq("status","active");
   const tahBadalQ=sb.from("tahfizh_substitution_assignments").select("start_time,end_time,reason").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("work_date",date).eq("substitute_teacher_id",teacherId).eq("status","active");
   const [ownR,tahR,routineR,workR,uksR,manualR,badalR,tahBadalR]=await Promise.all([ownQ,tahQ,routineQ,workQ,uksQ,manualQ,badalQ,tahBadalQ]);
@@ -90,7 +90,7 @@ async function validateFreeSlot(req:Request,body:any){
     if(overlap(start,end,ws,we))conflicts.push({label:x.activity_code==="administration_eduhub"?"Administrasi Eduhub":T(x.activity_name)||"Jadwal kerja rutin",start:ws,end:we});
   }
   for(const x of uksR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:`Jaga UKS shift ${Number(x.shift_no)||""}`.trim(),start:x.start_time,end:x.end_time});
-  for(const x of manualR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.activity)||"Timesheet yang sudah diisi",start:x.start_time,end:x.end_time});
+  for(const x of manualR.data||[])if(T(x.id)!==T(body.id)&&overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.activity)||"Timesheet yang sudah diisi",start:x.start_time,end:x.end_time});
   for(const x of badalR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"Badal guru umum",start:x.start_time,end:x.end_time});
   for(const x of tahBadalR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"Badal Tahfizh",start:x.start_time,end:x.end_time});
   if(!conflicts.length)return null;
@@ -108,6 +108,7 @@ async function updateActivity(req:Request,b:any){
   if(!row||!mayTarget(me,T(row.teacher_id)))return J({success:false,error:"forbidden"},403);
   const d=dow(date),sm=Number(mins(start)),em=Number(mins(end)),minStart=d===6?450:420,maxEnd=d===6?720:960;
   if(d===7||sm<minStart||em>maxEnd)return J({success:false,error:"outside_work_hours"},400);
+  const conflict=await validateFreeSlot(req,{...b,teacher_id:row.teacher_id,id});if(conflict)return J({success:false,error:conflict},400);
   const{error}=await sb.from("teacher_timesheet_activities").update({work_date:date,start_time:start,end_time:end,activity,note:note||null,updated_at:new Date().toISOString()}).eq("id",id).eq("teacher_id",row.teacher_id);
   if(error)throw error;return J({success:true});
 }
