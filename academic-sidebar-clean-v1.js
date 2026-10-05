@@ -52,39 +52,32 @@ function apply(){
   const monitoring=ensureGroup('academic-monitoring','Monitoring');
   const reports=ensureGroup('laporan','Laporan');
 
-  // Bersihkan hanya keanggotaan role Akademik dari item yang akan diposisikan ulang.
-  const ids=['leger','master-tp-akademik','rpp-lp','rpp-lp-akademik','bilingual','pjbl','akd-badal',
+  // Ambil modul nyata yang sudah terdaftar. Tidak membuat menu tanpa renderer.
+  const wanted=['leger','master-tp-akademik','rpp-lp','rpp-lp-akademik','bilingual','pjbl','akd-badal',
     'legger-live','academic-ranking-report','laporan-akademik-guru','akd-laporan-guru',
     'academic-pjbl-report','akd-badal-recap','rapor','laporan-promosi'];
-  ids.forEach(removeFromAcademic);
+  wanted.forEach(removeFromAcademic);
 
-  // Pengelolaan Akademik.
-  ['leger','master-tp-akademik','bilingual','pjbl','akd-badal'].forEach(id=>{const it=findItem(id);if(it)move(id,academic)});
-  const rpp=findItem('rpp-lp-akademik')||findItem('rpp-lp');
-  if(rpp)move(rpp.id,academic,'RPP & LP');
+  // AKADEMIK — input/pengelolaan.
+  ['leger','master-tp-akademik'].forEach(id=>{const it=findItem(id);if(it)move(id,academic)});
+  const rpp=findItem('rpp-lp-akademik')||findItem('rpp-lp');if(rpp)move(rpp.id,academic,'RPP & LP');
+  ['bilingual','pjbl','akd-badal'].forEach(id=>{const it=findItem(id);if(it)move(id,academic)});
 
-  // Monitoring Akademik.
-  const mon=findItem('legger-live');
-  if(mon)move('legger-live',monitoring,'Monitoring Nilai');
-  const ranking=findItem('academic-ranking-report');
-  if(ranking)move('academic-ranking-report',monitoring,'Ranking');
+  // MONITORING — hanya halaman yang benar-benar dapat dibuka.
+  const mon=findItem('legger-live');if(mon)move('legger-live',monitoring,'Monitoring Nilai');
+  const ranking=findItem('academic-ranking-report');if(ranking)move('academic-ranking-report',monitoring,'Ranking');
   const teacher=findItem('akd-laporan-guru')||findItem('laporan-akademik-guru');
   if(teacher)move(teacher.id,monitoring,'Progres Guru');
-  if(typeof window.renderAcademicPtsReadiness==='function'){
-    ensureSynthetic(monitoring,'academic-pts-readiness','Kesiapan Rapor',window.renderAcademicPtsReadiness);
-  }
+  // Kesiapan Rapor sengaja tidak dibuat sebagai menu: readiness-live adalah panel Dashboard, bukan page renderer.
 
-  // Laporan/Rekap.
+  // LAPORAN.
   const recap=findItem('akd-badal-recap');if(recap)move('akd-badal-recap',reports,'Rekapan Badal');
   const pj=findItem('academic-pjbl-report');if(pj)move('academic-pjbl-report',reports,'Laporan PjBL');
   const rapor=findItem('rapor');if(rapor)move('rapor',reports,'Cetak Rapor');
-
-  // Promo Socmed: renderer bersama, tetapi item sidebar ini dibatasi ke Akademik saja.
   const promo=findItem('laporan-promosi');
   if(promo)move('laporan-promosi',reports,'Promo Socmed');
   else if(typeof window.renderPromotionReport==='function')ensureSynthetic(reports,'laporan-promosi','Promo Socmed',window.renderPromotionReport);
 
-  // Urutan deterministik, tanpa mengubah item milik role lain.
   const order=(g,ids)=>{
     const rank=new Map(ids.map((id,i)=>[id,i]));
     g.items.sort((a,b)=>{
@@ -94,7 +87,7 @@ function apply(){
     });
   };
   order(academic,['leger','master-tp-akademik','rpp-lp-akademik','rpp-lp','bilingual','pjbl','akd-badal']);
-  order(monitoring,['legger-live','academic-ranking-report','academic-pts-readiness','akd-laporan-guru','laporan-akademik-guru']);
+  order(monitoring,['legger-live','academic-ranking-report','akd-laporan-guru','laporan-akademik-guru']);
   order(reports,['akd-badal-recap','academic-pjbl-report','rapor','laporan-promosi']);
   return true;
 }
