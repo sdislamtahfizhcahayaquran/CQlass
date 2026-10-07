@@ -88,9 +88,13 @@ async function load(){
         busy.push({start_time:'11:50:00',end_time:'13:10:00',_fallback:'ishoma-literasi'});
       }
       if(day===5){
-        // Jumat jam kerja 08.00–16.00. Kegiatan wajib kelas menjadi blocker
-        // sampai 10.40 (kelas 1–3) atau 12.30 (kelas 4–6), lalu sisa waktu
-        // kembali menjadi slot kerja yang dapat diisi guru.
+        // Jumat tetap mulai kerja 07.00. Periode 07.00–08.00 adalah rutinitas
+        // sekolah otomatis (briefing/penyambutan/vocab) dan tidak boleh pernah
+        // tampil sebagai jam kosong meski data jadwal backend terlambat dimuat.
+        busy.push({start_time:'07:00:00',end_time:'08:00:00',_fallback:'friday-morning-routine'});
+        // Kegiatan wajib kelas menjadi blocker mulai 08.00 sampai 10.40
+        // (kelas 1–3) atau 12.30 (kelas 4–6), lalu sisa waktu kembali
+        // menjadi slot kerja yang dapat diisi guru.
         const fridayBlock=(work.items||[]).find(x=>x.work_date===date&&x.activity_code==='friday_activity'&&x.start_time&&x.end_time);
         // Backend sudah menentukan kelompok Jumat utama guru (1–3 atau 4–6).
         // Gunakan batas eksplisit itu agar mapel tambahan di kelas atas tidak mengubah kelompok Jumat.
