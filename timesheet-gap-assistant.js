@@ -120,6 +120,7 @@ async function load(){
       for(const g of gaps(ws,we,busy))all.push({work_date:date,start_time:tm(g[0]),end_time:tm(g[1]),minutes:g[1]-g[0],special:isSpecial});
     }
     G.data={items:all,profile:work.profile||null};render();
+    try{window.dispatchEvent(new CustomEvent('cq-timesheet-gap-updated',{detail:{key:G.key,count:all.length}}))}catch(_){}
   }catch(e){console.warn('Timesheet gap assistant',e);G.data={items:[],error:true};render()}
   finally{G.loading=false}
 }
