@@ -43,11 +43,27 @@ async function bootstrapWithTahfizhBadal(req:Request,body:any){
   const satRows=Array.isArray(data.saturdays)?data.saturdays:[];
   if(satRows.length){
     const ids=satRows.map((s:any)=>T(s.id)).filter(Boolean);
-    const oq=await sb.from("teacher_timesheet_activities").select("id,source_ref,start_time,end_time,activity,note").eq("teacher_id",teacherId).eq("source","saturday_override").in("source_ref",ids);
-    if(!oq.error){
-      const om=new Map((oq.data||[]).map((r:any)=>[T(r.source_ref),r]));
-      data.saturdays=satRows.map((s:any)=>{const o=om.get(T(s.id));return o?{...s,start_time:o.start_time||s.start_time,end_time:o.end_time||s.end_time,activity_name:o.activity||s.activity_name,note:o.note??s.note,override_id:o.id,editable:true}:{...s,editable:true}});
+    const oq=await sb.from("teacher_timesheet_activities").select("id,source,source_ref,start_time,end_time,activity,note").eq("teacher_id",teacherId).in("source_ref",ids).in("source",["saturday_override","saturday_certificate"]);
+    const sq=await sb.from("teacher_saturday_schedule").select("id,activity_master_id,saturday_activity_master(id,code,name,requires_certificate)").in("id",ids);
+    const om=new Map((oq.data||[]).map((r:any)=>[T(r.source_ref),r]));
+    const sm=new Map((sq.data||[]).map((s:any)=>{const m=Array.isArray(s.saturday_activity_master)?s.saturday_activity_master[0]:s.saturday_activity_master;return[T(s.id),m||null]}));
+    const activityIds=(oq.data||[]).map((r:any)=>T(r.id)).filter(Boolean);
+    const cq=activityIds.length?await sb.from("teacher_timesheet_activity_certificates").select("id,timesheet_activity_id,file_path,original_name,mime_type,file_size,created_at,updated_at").eq("teacher_id",teacherId).in("timesheet_activity_id",activityIds):{data:[],error:null};
+    const cm=new Map((cq.data||[]).map((r:any)=>[T(r.timesheet_activity_id),r]));
+    const out:any[]=[];
+    for(const s of satRows){
+      const sid=T(s.id),o=om.get(sid),m=sm.get(sid);
+      let certificate:any=null;
+      if(o){
+        const cr=cm.get(T(o.id));
+        if(cr){
+          const su=await sb.storage.from("teacher-certificates").createSignedUrl(T(cr.file_path),21600);
+          certificate={...cr,url:su.error?"":T(su.data?.signedUrl)};
+        }
+      }
+      out.push({...s,requires_certificate:!!(m as any)?.requires_certificate,activity_name:(m as any)?.name||s.activity_name||"Kegiatan Sabtu",...(o?{start_time:o.start_time||s.start_time,end_time:o.end_time||s.end_time,activity_name:o.activity||((m as any)?.name||s.activity_name),note:o.note??s.note,override_id:o.id}:{}),certificate,editable:true});
     }
+    data.saturdays=out;
   }
   return J(data,x.r.status);
 }
@@ -127,4 +143,35 @@ async function saveSaturdayOverride(req:Request,b:any){
   if(existing?.id){const{error}=await sb.from("teacher_timesheet_activities").update(payload).eq("id",existing.id);if(error)throw error;return J({success:true,id:existing.id})}
   const{data,error}=await sb.from("teacher_timesheet_activities").insert(payload).select("id").single();if(error)throw error;return J({success:true,id:data.id});
 }
-Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));const action=T(body.action);if(action==="bootstrap"){try{return await bootstrapWithTahfizhBadal(req,body)}catch(e){console.error("timesheet bootstrap v2",e);return J({success:false,error:"Timesheet belum dapat dimuat. Coba muat ulang."},400)}}if(action==="update_activity"){try{return await updateActivity(req,body)}catch(e){console.error("update activity",e);return J({success:false,error:"update_failed"},400)}}if(action==="save_saturday_override"){try{return await saveSaturdayOverride(req,body)}catch(e){console.error("saturday override",e);return J({success:false,error:"update_failed"},400)}}if(action==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal Timesheet belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}return proxy(req,body)});
+
+const CERT_BUCKET="teacher-certificates";
+const CERT_MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
+function certExt(m:string){if(m==="application/pdf")return"pdf";if(m==="image/png")return"png";if(m==="image/webp")return"webp";return"jpg"}
+async function uploadCertificate(req:Request,b:any){
+  const me=await account(req);if(!me)return J({success:false,error:"session_expired"},401);
+  const scheduleId=T(b.saturday_schedule_id),teacherId=T(b.teacher_id||me.teacher_id),fileName=T(b.file_name),mime=T(b.mime_type),base64=T(b.base64);
+  if(!scheduleId||!teacherId||!mayTarget(me,teacherId)||!fileName||!CERT_MIME.has(mime)||!base64)return J({success:false,error:"invalid_input"},400);
+  let bytes:Uint8Array;try{const raw=atob(base64);bytes=Uint8Array.from(raw,(x)=>x.charCodeAt(0))}catch{return J({success:false,error:"invalid_file"},400)}
+  if(bytes.byteLength>8*1024*1024)return J({success:false,error:"file_too_large"},400);
+  const{data:schedule,error:se}=await sb.from("teacher_saturday_schedule").select("id,event_date,start_time,end_time,activity_name,note,is_active,activity_master_id,saturday_activity_master(id,name,requires_certificate)").eq("id",scheduleId).eq("is_active",true).maybeSingle();
+  if(se)throw se;if(!schedule)return J({success:false,error:"saturday_schedule_not_found"},404);
+  const m=Array.isArray((schedule as any).saturday_activity_master)?(schedule as any).saturday_activity_master[0]:(schedule as any).saturday_activity_master;
+  const{data:parts,error:pe}=await sb.from("teacher_saturday_participants").select("teacher_id,is_assigned").eq("saturday_schedule_id",scheduleId).eq("teacher_id",teacherId);
+  if(pe)throw pe;if((parts||[]).some((p:any)=>p.is_assigned===false))return J({success:false,error:"forbidden"},403);
+  let{data:activity,error:ae}=await sb.from("teacher_timesheet_activities").select("id,source").eq("teacher_id",teacherId).eq("source_ref",scheduleId).in("source",["saturday_override","saturday_certificate"]).maybeSingle();
+  if(ae)throw ae;
+  if(!activity){
+    const payload={teacher_id:teacherId,work_date:schedule.event_date,start_time:schedule.start_time,end_time:schedule.end_time,activity:m?.name||schedule.activity_name||"Kegiatan Sabtu",note:schedule.note||null,source:"saturday_certificate",source_ref:scheduleId,created_by_account_id:me.id,updated_at:new Date().toISOString()};
+    const ins=await sb.from("teacher_timesheet_activities").insert(payload).select("id,source").single();if(ins.error)throw ins.error;activity=ins.data;
+  }
+  const path=`${teacherId}/${schedule.event_date}/${scheduleId}.${certExt(mime)}`;
+  const{data:old}=await sb.from("teacher_timesheet_activity_certificates").select("id,file_path").eq("teacher_id",teacherId).eq("timesheet_activity_id",activity.id).maybeSingle();
+  const up=await sb.storage.from(CERT_BUCKET).upload(path,bytes,{contentType:mime,upsert:true});if(up.error)throw up.error;
+  if(old?.file_path&&T(old.file_path)!==path)await sb.storage.from(CERT_BUCKET).remove([T(old.file_path)]);
+  const row={teacher_id:teacherId,timesheet_activity_id:activity.id,file_path:path,original_name:fileName,mime_type:mime,file_size:bytes.byteLength,uploaded_by_account_id:me.id,updated_at:new Date().toISOString()};
+  const uq=await sb.from("teacher_timesheet_activity_certificates").upsert(row,{onConflict:"teacher_id,timesheet_activity_id"}).select("id,file_path,original_name,mime_type,file_size,created_at,updated_at").single();if(uq.error)throw uq.error;
+  const su=await sb.storage.from(CERT_BUCKET).createSignedUrl(path,21600);
+  return J({success:true,certificate:{...uq.data,url:su.error?"":T(su.data?.signedUrl)},required:!!m?.requires_certificate});
+}
+
+Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));const action=T(body.action);if(action==="bootstrap"){try{return await bootstrapWithTahfizhBadal(req,body)}catch(e){console.error("timesheet bootstrap v2",e);return J({success:false,error:"Timesheet belum dapat dimuat. Coba muat ulang."},400)}}if(action==="update_activity"){try{return await updateActivity(req,body)}catch(e){console.error("update activity",e);return J({success:false,error:"update_failed"},400)}}if(action==="save_saturday_override"){try{return await saveSaturdayOverride(req,body)}catch(e){console.error("saturday override",e);return J({success:false,error:"update_failed"},400)}}if(action==="upload_certificate"){try{return await uploadCertificate(req,body)}catch(e){console.error("upload certificate",e);return J({success:false,error:"certificate_upload_failed"},400)}}if(action==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal Timesheet belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}return proxy(req,body)});
