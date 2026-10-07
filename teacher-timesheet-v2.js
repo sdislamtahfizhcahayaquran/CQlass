@@ -24,6 +24,11 @@ function badal(){return S.teaching.filter(x=>x.source==='badal').length}
 function pendingCert(){return S.saturdays.filter(x=>x.requires_certificate&&!x.certificate).length}
 async function specialOverlay(){try{const r=await fetch(SPECIAL_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':token()},body:JSON.stringify({month:S.month,teacher_id:S.teacherId||undefined})});const d=await r.json().catch(()=>({}));return r.ok&&d.success!==false?(d.items||[]):[]}catch{return []}}
 function gapRows(){try{return (window.cqTsGapItems?.()||[]).map(x=>({date:x.work_date,start:x.start_time,end:x.end_time,type:'Jam Kosong',title:'Belum terisi',detail:'',source:'gap',note:'',raw:x}))}catch{return[]}}
+function activityOptions(date){
+  const isSat=/^\d{4}-\d{2}-\d{2}$/.test(String(date||''))&&new Date(String(date)+'T12:00:00Z').getUTCDay()===6;
+  const list=S.master.filter(x=>isSat||String(x.category||'').toLowerCase()!=='saturday');
+  return '<option value="">Pilih kegiatan</option>'+list.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}${String(x.category||'').toLowerCase()==='saturday'?' · Sabtu':''}</option>`).join('');
+}
 function inRange(date){
   const d=String(date||'').slice(0,10);
   return !!d&&(!S.rangeFrom||d>=S.rangeFrom)&&(!S.rangeTo||d<=S.rangeTo);
@@ -86,10 +91,10 @@ function body(){
       <span class="tsv2-badge">Cepat & sederhana</span>
     </div>
     <div class="tsv2-form">
-      <div class="tsv2-field"><label>Tanggal</label><input id="tsv2-date" class="tsv2-in" type="date" value="${esc(today)}"></div>
+      <div class="tsv2-field"><label>Tanggal</label><input id="tsv2-date" class="tsv2-in" type="date" value="${esc(today)}" onchange="tsv2ActivityDateChanged(this.value)"></div>
       <div class="tsv2-field"><label>Mulai</label><input id="tsv2-start" class="tsv2-in" type="time"></div>
       <div class="tsv2-field"><label>Selesai</label><input id="tsv2-end" class="tsv2-in" type="time"></div>
-      <div class="tsv2-field"><label>Kegiatan</label><select id="tsv2-act" class="tsv2-sel"><option value="">Pilih kegiatan</option>${S.master.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>
+      <div class="tsv2-field"><label>Kegiatan</label><select id="tsv2-act" class="tsv2-sel">${activityOptions(today)}</select></div>
       <div class="tsv2-field"><label>Catatan (opsional)</label><input id="tsv2-note" class="tsv2-in" placeholder="Keterangan singkat bila perlu"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="tsv2-btn" onclick="tsv2Save()">Simpan</button>
@@ -134,9 +139,13 @@ window.tsv2ApplyRange=()=>{
 window.tsv2ResetRange=()=>{S.rangeFrom=S.month+'-01';S.rangeTo=monthEnd(S.month);body()};
 window.tsv2UseGap=(date,start,end)=>{
   const d=document.getElementById('tsv2-date'),s=document.getElementById('tsv2-start'),e=document.getElementById('tsv2-end');
-  if(d)d.value=date;if(s)s.value=start;if(e)e.value=end;
+  if(d)d.value=date;if(s)s.value=start;if(e)e.value=end;window.tsv2ActivityDateChanged?.(date);
   document.querySelector('.tsv2-entry-card')?.scrollIntoView({behavior:'smooth',block:'center'});
 };
+window.tsv2ActivityDateChanged=date=>{
+  const sel=document.getElementById('tsv2-act');if(sel)sel.innerHTML=activityOptions(date);
+};
+
 function openCardRaw(n){[1,2,3].forEach(i=>{const el=document.getElementById('tsv2-card'+i);if(el)el.hidden=i!==Number(n)});document.querySelectorAll('.tsv2-cardpick').forEach(b=>b.classList.toggle('active',Number(b.dataset.tsCard)===Number(n)))}
 window.tsv2OpenCard=n=>{n=Number(n);if(n===3){body();setTimeout(()=>openCardRaw(3),0);return}openCardRaw(n)};
 window.tsv2RecapMode=m=>{S.recapMode=m==='full'?'full':'gaps';body()};
