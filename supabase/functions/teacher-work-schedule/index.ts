@@ -59,29 +59,38 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const lateSnack=(classes||[]).some((x:any)=>Number(x.grade_level)===1||/banin/i.test(txt(x.name)));
 
   const routinePromise=classIds.length?sb.from("class_schedule_entries").select("day_of_week,start_time,end_time,activity_type,subject_name_raw").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true).in("class_id",classIds).in("activity_type",["break","school_routine"]).not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null});
+  const directTeachingPromise=!isTahfizh?sb.from("class_schedule_entries").select("day_of_week,start_time,end_time,class_id,subject_name_raw,activity_type").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true).eq("activity_type","teaching").not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null});
   const tahSchedulePromise=isTahfizh&&classIds.length?sb.from("tahfizh_kbm_schedules").select("day_of_week,start_time,end_time,class_id,team_name").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true).in("class_id",classIds):Promise.resolve({data:[],error:null});
-  const[tplRes,uksRes,reportRes,routineRes,tahScheduleRes]=await Promise.all([
+  const[tplRes,uksRes,reportRes,routineRes,directTeachingRes,tahScheduleRes]=await Promise.all([
     sb.from("teacher_work_schedule_templates").select("*").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true).or(`applies_to_all.eq.true,teacher_id.eq.${teacherId}`).order("day_of_week").order("start_time"),
     isTahfizh?Promise.resolve({data:[],error:null}):sb.from("uks_duty_schedule").select("id,teacher_id,weekday,shift_no,start_time,end_time,is_active").eq("teacher_id",teacherId).eq("is_active",true).order("weekday").order("shift_no"),
     isTahfizh?Promise.resolve({data:[],error:null}):sb.from("uks_duty_reports").select("id,duty_date,shift_no,captured_at,created_at").eq("teacher_id",teacherId).gte("duty_date",monthStart).lte("duty_date",monthEnd),
     routinePromise,
+    directTeachingPromise,
     tahSchedulePromise
   ]);
-  for(const r of[tplRes,uksRes,reportRes,routineRes,tahScheduleRes])if((r as any).error)throw (r as any).error;
+  for(const r of[tplRes,uksRes,reportRes,routineRes,directTeachingRes,tahScheduleRes])if((r as any).error)throw (r as any).error;
   const rows=tplRes.data||[],uksRows=uksRes.data||[],reportKeys=new Set((reportRes.data||[]).map((r:any)=>`${r.duty_date}:${Number(r.shift_no)}`));
   const ownGateDays=new Set(rows.filter((r:any)=>r.teacher_id===teacherId&&r.activity_code==="student_welcome_gate").map((r:any)=>Number(r.day_of_week)));
   const templates=rows.filter((r:any)=>{
     const d=Number(r.day_of_week);
+    if(txt(r.activity_code)==="timesheet_teaching")return false;
     if(ownGateDays.has(d)&&["student_welcome_class","briefing"].includes(txt(r.activity_code)))return false;
     if(r.activity_code==="administration_eduhub"&&!isTahfizh)return false;
     return true;
   });
+  const directTeachingRows=directTeachingRes.data||[];
+  const directClassIds=[...new Set(directTeachingRows.map((x:any)=>txt(x.class_id)).filter(Boolean))];
+  const directClassRes=directClassIds.length?await sb.from("classes").select("id,name").in("id",directClassIds):{data:[],error:null};
+  if((directClassRes as any).error)throw (directClassRes as any).error;
+  const directClassMap=new Map((((directClassRes as any).data)||[]).map((x:any)=>[txt(x.id),txt(x.name)]));
   const items:any[]=[];
   for(const date of dates){
     const dow=new Date(`${date}T12:00:00Z`).getUTCDay();if(dow<1||dow>6)continue;
     for(const r of templates){if(Number(r.day_of_week)!==dow)continue;const edu=r.activity_code==="administration_eduhub"&&isTahfizh;items.push({id:`${r.id}:${date}`,template_id:r.id,work_date:date,start_time:edu?"14:50:00":r.start_time,end_time:edu?"16:00:00":r.end_time,activity_code:r.activity_code,activity:edu?"Administrasi Eduhub":r.activity_name,note:r.duty_location?[r.duty_location,r.team_label].filter(Boolean).join(" · "):"",source:"jadwal-kerja",automatic:true,display:!["timesheet_teaching","ishoma"].includes(txt(r.activity_code))})}
     const seen=new Set<string>();
     for(const r of routineRes.data||[]){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.subject_name_raw}`;if(seen.has(k))continue;seen.add(k);items.push({id:`routine:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"routine_block",activity:r.subject_name_raw||"Rutinitas sekolah",note:"",source:"jadwal-kerja",automatic:true,display:false})}
+    for(const r of directTeachingRows){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.class_id}|${r.subject_name_raw}`;items.push({id:`class-teaching:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"class_teaching",activity:"Mengajar",subject_name:txt(r.subject_name_raw)||"Mengajar",class_id:r.class_id,class_name:directClassMap.get(txt(r.class_id))||"",note:[txt(r.subject_name_raw),directClassMap.get(txt(r.class_id))||""].filter(Boolean).join(" · "),source:"jadwal-kerja",automatic:true,display:false})}
     for(const r of tahScheduleRes.data||[]){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.class_id}`;items.push({id:`tahfizh:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"tahfizh_kbm",activity:"KBM Tahfizh",note:r.team_name||"",source:"jadwal-kerja",automatic:true,display:false})}
     if(dow>=1&&dow<=4)items.push({id:`snack:${date}`,template_id:null,work_date:date,start_time:"09:40:00",end_time:"10:10:00",activity_code:"snack_time",activity:"Snack Time",note:"Otomatis — tidak perlu diisi guru",source:"jadwal-kerja",automatic:true,display:false});
     if(dow===5&&fridayClassIds.length)items.push({id:`friday:${date}`,template_id:null,work_date:date,start_time:"08:00:00",end_time:fridayUpper?"12:30:00":"10:40:00",activity_code:"friday_activity",activity:fridayUpper?"Kegiatan Jumat Kelas 4–6":"Kegiatan Jumat Kelas 1–3",note:fridayUpper?"Fleksibel mulai 12.30":"Fleksibel mulai 10.40",source:"jadwal-kerja",automatic:true,display:false});
