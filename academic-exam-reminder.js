@@ -4,8 +4,8 @@
    Status selesai dihitung dari keterisian nilai TP, bukan tombol manual. */
 (function(){
   'use strict';
-  if(window.__CQ_EXAM_REMINDER_V2__) return;
-  window.__CQ_EXAM_REMINDER_V2__=true;
+  if(window.__CQ_EXAM_REMINDER_V3__) return;
+  window.__CQ_EXAM_REMINDER_V3__=true;
 
   const ENDPOINT=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/rpp-lp-manager';
   const CACHE_MS=90*1000;
@@ -40,7 +40,7 @@
     if(document.getElementById('cq-exam-reminder-style-v2'))return;
     document.getElementById('cq-exam-reminder-style')?.remove();
     const s=document.createElement('style');s.id='cq-exam-reminder-style-v2';s.textContent=`
-      .cqer{font-family:inherit;margin:0 0 18px;color:#173f3b}.cqer *{box-sizing:border-box}
+      .cqer{font-family:inherit;margin:16px 0 18px;color:#173f3b}.cqer *{box-sizing:border-box}
       .cqer-card{background:rgba(255,255,255,.96);border:1px solid #dceae7;border-radius:22px;box-shadow:0 10px 28px rgba(31,91,84,.075);overflow:hidden}
       .cqer-head{padding:20px 22px 14px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}
       .cqer-eyebrow{font-size:10px;letter-spacing:.11em;text-transform:uppercase;font-weight:900;color:#0b8276;margin-bottom:6px}
@@ -110,7 +110,14 @@
     if(!eligible()||String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard')return null;
     const c=document.getElementById('content');if(!c)return null;
     let m=document.getElementById('cq-exam-reminder-mount');
-    if(!m){m=document.createElement('div');m.id='cq-exam-reminder-mount';m.className='cqer';c.prepend(m)}
+    if(!m){m=document.createElement('div');m.id='cq-exam-reminder-mount';m.className='cqer'}
+    const hero=[...c.querySelectorAll('.cq-role-hero[data-cq-role-theme="1"],.ak7-hero,.rd-hero,.hrd-hero,[class*="dashboard-hero"],[class*="dash-hero"]')]
+      .find(el=>{try{return getComputedStyle(el).display!=='none'}catch(_){return true}});
+    if(hero){
+      if(hero.nextElementSibling!==m)hero.insertAdjacentElement('afterend',m);
+    }else if(c.firstElementChild!==m){
+      c.prepend(m);
+    }
     return m;
   }
   function paint(){
