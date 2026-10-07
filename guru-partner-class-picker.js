@@ -15,6 +15,7 @@
     6:'Az-Zukhruf s.d. Asy-Syura'
   };
   let state={boot:null,classId:'',students:[],reports:new Map(),dirty:false,undo:[],redo:[],applying:false,fill:null};
+  let autoSaveTimer=null,saving=false,saveAgain=false;
 
   async function call(action,payload={}){
     const token=getAuthToken?.();
@@ -41,7 +42,8 @@
   function toNum(v){const raw=String(v??'').trim().replace(/,/g,'.').replace(/[^0-9.\-]/g,'');if(!raw)return null;const n=Number(raw);return Number.isFinite(n)?n:null}
   function calcPct(baris,lp){const a=toNum(baris),b=toNum(lp);if(a===null||b===null||b<=0)return '';return `${Math.round((a/b)*100)}%`}
   function recalcRow(tr){if(!tr)return;const b=tr.querySelector('[data-key="jumlah_baris"]'),lp=tr.querySelector('[data-key="jumlah_baris_lp"]'),p=tr.querySelector('[data-formula="persentase"]');if(p)p.textContent=calcPct(b?.value,lp?.value)}
-  function statusDirty(){state.dirty=true;const st=document.getElementById('gpt2-status');if(st)st.textContent='Belum disimpan'}
+  function scheduleAutoSave(){if(autoSaveTimer)clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>{autoSaveTimer=null;if(state.dirty)void save(true)},3000)}
+  function statusDirty(){state.dirty=true;const st=document.getElementById('gpt2-status');if(st)st.textContent='Belum disimpan';scheduleAutoSave()}
   function cellAt(row,col){return document.querySelector(`#gpt2-body .gp-cell[data-row="${row}"][data-col="${col}"]`)}
   function focusAt(row,col,dir=1){let c=col;while(c>=0&&c<VISIBLE_COLS){if(c===MATERIAL_COL||c===FORMULA_COL){c+=dir;continue}const x=cellAt(row,c);if(x&&!x.readOnly){x.focus();x.select?.();x.scrollIntoView({block:'nearest',inline:'nearest'});return}c+=dir}}
   function removeFillHandle(){document.querySelectorAll('#gpt2-body .gp-fill-handle').forEach(x=>x.remove());document.querySelectorAll('#gpt2-body td.gp-active-cell').forEach(x=>x.classList.remove('gp-active-cell'))}
@@ -134,11 +136,11 @@
     attachGridEvents(body)
   }
 
-  async function save(){
-    const btn=document.getElementById('gpt2-save'),st=document.getElementById('gpt2-status');if(!state.classId||!state.students.length)return;commitFocused(document.activeElement);
+  async function save(silent=false){
+    const btn=document.getElementById('gpt2-save'),st=document.getElementById('gpt2-status');if(!state.classId||!state.students.length||!state.dirty)return;if(saving){saveAgain=true;return}saving=true;saveAgain=false;if(autoSaveTimer){clearTimeout(autoSaveTimer);autoSaveTimer=null;}commitFocused(document.activeElement);
     const map=new Map(state.students.map(s=>[s.id,{student_id:s.id}]));document.querySelectorAll('#gpt2-body .gp-cell').forEach(el=>{const r=map.get(el.dataset.student);if(r)r[el.dataset.key]=el.value.trim()});
     btn.disabled=true;const old=btn.textContent;btn.textContent='Menyimpan...';
-    try{const d=await call('save',{class_id:state.classId,items:[...map.values()]});state.dirty=false;st.textContent=`Tersimpan (${d.saved||state.students.length} siswa) · ${classMaterial()}`;if(window.showToast)showToast('Nilai PTS Tahfizh tersimpan.','success');await loadClass(state.classId)}catch(e){st.textContent='Gagal menyimpan';if(window.showToast)showToast(e.message,'error');else alert(e.message)}finally{btn.disabled=false;btn.textContent=old}
+    try{const d=await call('save',{class_id:state.classId,items:[...map.values()]});state.dirty=false;st.textContent=`Tersimpan (${d.saved||state.students.length} siswa) · ${classMaterial()}`;if(!silent&&window.showToast)showToast('Nilai PTS Tahfizh tersimpan.','success');if(!silent)await loadClass(state.classId)}catch(e){st.textContent='Gagal menyimpan';if(!silent){if(window.showToast)showToast(e.message,'error');else alert(e.message)}}finally{saving=false;btn.disabled=false;btn.textContent=old;if(saveAgain||state.dirty){saveAgain=false;scheduleAutoSave()}}
   }
 
   if(!install()){const obs=new MutationObserver(()=>{if(install())obs.disconnect()});obs.observe(document.documentElement,{childList:true,subtree:true});setTimeout(install,700)}
