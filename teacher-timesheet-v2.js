@@ -5,7 +5,7 @@ const WORK_SCHEDULE_ENDPOINT=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'ht
 const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
 const REVIEW=new Set(['akademik','kegiatan','pimpinan','hrd']);
 const SPECIAL_ENDPOINT=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/teacher-timesheet-special-overlay';
-let S={month:new Date().toISOString().slice(0,7),teacherId:'',teacher:null,teachers:[],teaching:[],saturdays:[],activities:[],standard:[],master:[],special:[],showAll:false,recapMode:'gaps',profile:'mapel'};
+let S={month:new Date().toISOString().slice(0,7),teacherId:'',teacher:null,teachers:[],teaching:[],saturdays:[],activities:[],standard:[],master:[],special:[],showAll:false,recapMode:'gaps',rangeFrom:'',rangeTo:'',profile:'mapel'};
 let FLEX={date:'',start:'',end:'',rows:[]};
 const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const role=()=>String(window.currentUser?.role||'').toLowerCase();
@@ -24,16 +24,19 @@ function badal(){return S.teaching.filter(x=>x.source==='badal').length}
 function pendingCert(){return S.saturdays.filter(x=>x.requires_certificate&&!x.certificate).length}
 async function specialOverlay(){try{const r=await fetch(SPECIAL_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'x-session-token':token()},body:JSON.stringify({month:S.month,teacher_id:S.teacherId||undefined})});const d=await r.json().catch(()=>({}));return r.ok&&d.success!==false?(d.items||[]):[]}catch{return []}}
 function gapRows(){try{return (window.cqTsGapItems?.()||[]).map(x=>({date:x.work_date,start:x.start_time,end:x.end_time,type:'Jam Kosong',title:'Belum terisi',detail:'',source:'gap',note:'',raw:x}))}catch{return[]}}
+function inRange(date){
+  const d=String(date||'').slice(0,10);
+  return !!d&&(!S.rangeFrom||d>=S.rangeFrom)&&(!S.rangeTo||d<=S.rangeTo);
+}
 function rows(){
-  if(S.recapMode==='gaps')return gapRows();
+  if(S.recapMode==='gaps')return gapRows().filter(x=>inRange(x.date));
   const a=[];
   S.standard.filter(x=>x.display!==false||['snack_time','friday_activity','ishoma'].includes(String(x.activity_code||''))).forEach(x=>a.push({date:x.work_date,start:x.start_time,end:x.end_time,type:'Jadwal Kerja',title:x.activity,detail:'',source:'jadwal-kerja',note:x.note||'',raw:x}));
   S.teaching.forEach(x=>a.push({date:x.work_date,start:x.start_time,end:x.end_time,type:x.source==='badal'?'Badal':x.source==='digantikan'?'Digantikan':'Mengajar',title:x.subject_name,detail:x.class_name||'',source:x.source,note:x.note||'',raw:x}));
   S.special.forEach(x=>a.push({date:x.work_date,start:x.start_time,end:x.end_time,type:'Kegiatan Khusus',title:x.activity_name,detail:x.class_scope||'',source:'special_activity',note:x.notes||'',raw:x}));
-  S.saturdays.forEach(x=>a.push({date:x.event_date,start:x.start_time,end:x.end_time,type:'Sabtu',title:x.activity_name,detail:'',source:x.configured?'sabtu':'sabtu-pending',note:x.note||'',raw:x}));
+  S.saturdays.filter(x=>x.configured).forEach(x=>a.push({date:x.event_date,start:x.start_time,end:x.end_time,type:'Sabtu',title:x.activity_name,detail:'',source:'sabtu',note:x.note||'',raw:x}));
   S.activities.filter(x=>x.source!=='saturday_override').forEach(x=>a.push({date:x.work_date,start:x.start_time,end:x.end_time,type:'Slot Terisi',title:x.activity,detail:'',source:'manual',note:x.note||'',raw:x}));
-  gapRows().forEach(x=>a.push(x));
-  return a.sort((x,y)=>String(x.date+' '+(x.start||'99:99')).localeCompare(String(y.date+' '+(y.start||'99:99'))))
+  return a.filter(x=>inRange(x.date)).sort((x,y)=>String(x.date+' '+(x.start||'99:99')).localeCompare(String(y.date+' '+(y.start||'99:99'))))
 }
 function badge(r){if(r.source==='gap')return '<span class="tsv2-badge warn">Belum Terisi</span>';if(r.source==='special_activity')return '<span class="tsv2-badge auto">Kegiatan Khusus</span>';if(r.source==='badal')return '<span class="tsv2-badge badal">Badal</span>';if(r.source==='digantikan')return '<span class="tsv2-badge off">Digantikan</span>';if(r.source==='jadwal'||r.source==='jadwal-kerja')return '<span class="tsv2-badge auto">Otomatis</span>';if(r.source==='sabtu-pending')return '<span class="tsv2-badge warn">Belum ditentukan</span>';if(r.source==='sabtu')return '<span class="tsv2-badge auto">Sabtu</span>';return '<span class="tsv2-badge">Diisi guru</span>'}
 function cert(r){if(r.type!=='Sabtu'||!r.raw.requires_certificate)return '—';if(r.raw.certificate)return `<div class="tsv2-cert"><span class="tsv2-badge">Sertifikat ✓</span>${r.raw.certificate.url?`<a class="tsv2-btn alt" target="_blank" href="${esc(r.raw.certificate.url)}">Lihat</a>`:''}<span class="tsv2-help">${esc(r.raw.certificate.original_name)}</span></div>`;return `<div class="tsv2-cert"><span class="tsv2-badge warn">Wajib upload</span><input id="tsv2-cert-${esc(r.raw.id)}" class="tsv2-file" type="file" accept=".pdf,image/jpeg,image/png,image/webp"><button class="tsv2-btn" onclick="tsv2Upload('${esc(r.raw.id)}')">Upload</button></div>`}
@@ -44,22 +47,31 @@ function row(r){
     const kind=r.type==='Sabtu'?'saturday':'manual',id=String(r.raw.id||''),key=kind+'-'+id;
     return `<tr class="${cls}" data-edit-key="${esc(key)}"><td><input class="tsv2-in" data-er="date" type="date" value="${esc(r.date)}"></td><td><div style="display:flex;gap:5px"><input class="tsv2-in" data-er="start" type="time" value="${esc(ft(r.start))}"><input class="tsv2-in" data-er="end" type="time" value="${esc(ft(r.end))}"></div></td><td>${badge(r)}</td><td><input class="tsv2-in" data-er="activity" value="${esc(r.title)}"></td><td><input class="tsv2-in" data-er="note" value="${esc(r.note||'')}" placeholder="Catatan"></td><td>${cert(r)}</td><td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="tsv2-btn" onclick="tsv2SaveRecapRow('${kind}','${esc(id)}')">Simpan</button>${del?`<button class="tsv2-btn danger" onclick="tsv2Delete('${esc(id)}')">Hapus</button>`:''}</div></td></tr>`;
   }
-  if(r.source==='gap')return `<tr class="${cls}"><td><b>${esc(fd(r.date))}</b></td><td>${esc(ft(r.start))}–${esc(ft(r.end))}</td><td>${badge(r)}</td><td><b>Belum terisi</b></td><td>—</td><td>—</td><td><button class="tsv2-btn alt" onclick="cqTsGapPick('${esc(r.date)}','${esc(ft(r.start))}','${esc(ft(r.end))}')">Isi</button></td></tr>`;
+  if(r.source==='gap')return `<tr class="${cls}"><td><b>${esc(fd(r.date))}</b></td><td>${esc(ft(r.start))}–${esc(ft(r.end))}</td><td>${badge(r)}</td><td><b>Belum terisi</b></td><td>Jam kerja belum memiliki aktivitas tercatat</td><td>—</td><td><button class="tsv2-btn alt" onclick="tsv2UseGap('${esc(r.date)}','${esc(ft(r.start))}','${esc(ft(r.end))}')">Isi</button></td></tr>`;
   return `<tr class="${cls}"><td><b>${esc(fd(r.date))}</b></td><td>${esc(ft(r.start))}${r.end?'–'+esc(ft(r.end)):''}</td><td>${badge(r)}</td><td><b>${esc(r.title)}</b>${r.detail?`<br><span class="tsv2-help">${esc(r.detail)}</span>`:''}</td><td>${esc(r.note||'—')}</td><td>${cert(r)}</td><td>—</td></tr>`
+}
+function monthEnd(month){const y=Number(month.slice(0,4)),m=Number(month.slice(5,7));return new Date(Date.UTC(y,m,0)).toISOString().slice(0,10)}
+function ensureRange(){
+  const start=S.month+'-01',end=monthEnd(S.month);
+  if(!S.rangeFrom||S.rangeFrom.slice(0,7)!==S.month)S.rangeFrom=start;
+  if(!S.rangeTo||S.rangeTo.slice(0,7)!==S.month)S.rangeTo=end;
 }
 function body(){
   const b=document.getElementById('tsv2-body');if(!b)return;
   if(!S.teacher){b.innerHTML='<div class="tsv2-card tsv2-empty">Data guru belum tersedia.</div>';return}
-  S.recapMode='full';
-  const all=rows().filter(r=>r.source!=='gap');
-  const autoCount=S.standard.filter(x=>x.display!==false).length;
-  const manualCount=S.activities.filter(x=>x.source!=='saturday_override').length;
+  ensureRange();
+  const all=rows();
+  const autoCount=S.standard.filter(x=>x.display!==false&&inRange(x.work_date)).length;
+  const manualCount=S.activities.filter(x=>x.source!=='saturday_override'&&inRange(x.work_date)).length;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const modeHelp=S.recapMode==='gaps'
+    ? 'Menampilkan jam kerja yang belum memiliki aktivitas tercatat.'
+    : 'Menampilkan seluruh aktivitas Senin–Jumat 07.00–16.00 dan Sabtu 07.30–12.00 pada rentang tanggal yang dipilih.';
   b.innerHTML=`
   <div class="tsv2-card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
       <div><span class="tsv2-help">Nama Guru</span><br><b style="font-size:15px">${esc(S.teacher.full_name)}</b></div>
-      <span class="tsv2-badge auto">${autoCount} jadwal otomatis tercatat</span>
+      <span class="tsv2-badge auto">${autoCount} jadwal otomatis pada periode</span>
     </div>
   </div>
   <div class="tsv2-kpis">
@@ -70,7 +82,7 @@ function body(){
   </div>
   <div class="tsv2-card tsv2-entry-card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-      <div><b style="font-size:15px">Tambah Aktivitas</b><div class="tsv2-help" style="margin-top:4px">Jadwal rutin sudah masuk otomatis. Isi hanya jika ada kegiatan tambahan yang belum tercatat.</div></div>
+      <div><b style="font-size:15px">Tambah Aktivitas</b><div class="tsv2-help" style="margin-top:4px">Jadwal rutin sudah masuk otomatis. Isi hanya kegiatan tambahan yang belum tercatat.</div></div>
       <span class="tsv2-badge">Cepat & sederhana</span>
     </div>
     <div class="tsv2-form">
@@ -88,23 +100,46 @@ function body(){
   </div>
   <div class="tsv2-card tsv2-timeline-card">
     <div class="tsv2-timeline-head">
-      <div><b style="font-size:15px">Rekap Saya — ${esc(fm(S.month))}</b><div class="tsv2-help" style="margin:4px 0 10px">Semua jadwal otomatis dan aktivitas tambahan yang sudah tersimpan langsung masuk ke rekap.</div></div>
+      <div><b style="font-size:15px">Rekap Timesheet</b><div class="tsv2-help" style="margin:4px 0 10px">${esc(modeHelp)}</div></div>
     </div>
-    <div class="tsv2-tablewrap"><table class="tsv2-table"><thead><tr><th>Tanggal</th><th>Jam</th><th>Jenis</th><th>Kegiatan</th><th>Keterangan</th><th>Bukti</th><th>Aksi</th></tr></thead><tbody>${all.length?all.map(row).join(''):'<tr><td colspan="7" class="tsv2-empty">Belum ada aktivitas pada bulan ini.</td></tr>'}</tbody></table></div>
+    <div class="tsv2-recap-tabs">
+      <button class="tsv2-btn alt ${S.recapMode==='gaps'?'active':''}" onclick="tsv2RecapMode('gaps')">1. Rekapan Jam Kosong</button>
+      <button class="tsv2-btn alt ${S.recapMode==='full'?'active':''}" onclick="tsv2RecapMode('full')">2. Rekapan Keseluruhan Aktivitas</button>
+    </div>
+    <div class="tsv2-guide" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+      <div class="tsv2-field"><label>Dari tanggal</label><input id="tsv2-range-from" class="tsv2-in" type="date" value="${esc(S.rangeFrom)}"></div>
+      <div class="tsv2-field"><label>Sampai tanggal</label><input id="tsv2-range-to" class="tsv2-in" type="date" value="${esc(S.rangeTo)}"></div>
+      <button class="tsv2-btn" onclick="tsv2ApplyRange()">Tampilkan</button>
+      <button class="tsv2-btn alt" onclick="tsv2ResetRange()">1 Bulan Penuh</button>
+      <div class="tsv2-help" style="margin-left:auto"><b>Periode:</b> ${esc(S.rangeFrom)} s.d. ${esc(S.rangeTo)}</div>
+    </div>
+    <div class="tsv2-tablewrap"><table class="tsv2-table"><thead><tr><th>Tanggal</th><th>Jam</th><th>Jenis</th><th>Kegiatan</th><th>Keterangan</th><th>Bukti</th><th>Aksi</th></tr></thead><tbody>${all.length?all.map(row).join(''):`<tr><td colspan="7" class="tsv2-empty">${S.recapMode==='gaps'?'Tidak ada jam kosong pada periode ini.':'Belum ada aktivitas pada periode ini.'}</td></tr>`}</tbody></table></div>
   </div>`;
-  setTimeout(()=>window.cqRecurringReveal&&null,0);
+}
 }async function load(){const b=document.getElementById('tsv2-body');if(b)b.innerHTML='<div class="tsv2-card tsv2-empty">Memuat Timesheet...</div>';try{const d=await api('bootstrap');S.teacher=d.teacher||null;S.teachers=d.teachers||[];S.teaching=d.teaching||[];S.saturdays=d.saturdays||[];S.activities=d.activities||[];S.master=d.activity_master||[];if(!S.teacherId&&S.teacher)S.teacherId=S.teacher.id;const [w,sp]=await Promise.all([workSchedule(),specialOverlay()]);S.standard=w.items||[];S.profile=w.profile||'mapel';S.special=sp||[];shell(false);body();setTimeout(()=>window.cqTsGapRefresh?.(),0)}catch(e){if(b)b.innerHTML=`<div class="tsv2-card tsv2-empty">${esc(e.message)}</div>`}}
 function shell(fetch=true){style();const c=document.getElementById('content');if(!c)return;const select=REVIEW.has(role())&&S.teachers.length?`<select class="tsv2-sel" onchange="tsv2Teacher(this.value)">${S.teachers.map(t=>`<option value="${esc(t.id)}" ${String(t.id)===String(S.teacherId)?'selected':''}>${esc(t.full_name)}</option>`).join('')}</select>`:'';c.innerHTML=`<div class="tsv2"><div class="tsv2-head"><div><div class="tsv2-title">Timesheet</div><div class="tsv2-sub">${S.profile==='tahfizh'?'Guru Tahfizh/Partner — jadwal KBM Tahfizh, rutinitas, dan Eduhub masuk otomatis.':'Guru Mapel/Walas — jadwal mengajar, rutinitas, UKS, dan tugas otomatis sudah diperhitungkan.'} Guru cukup menambahkan aktivitas yang belum tercatat; jadwal rutin masuk otomatis.</div></div><div class="tsv2-tools">${select}<input class="tsv2-in" type="month" value="${esc(S.month)}" onchange="tsv2Month(this.value)"><button class="tsv2-btn alt" onclick="tsv2Reload()">Muat ulang</button></div></div><div id="tsv2-body"></div></div>`;if(fetch)load()}
 window.renderTeacherTimesheet=()=>shell(true);
 window.cqTsStandardItems=()=>Array.isArray(S.standard)?S.standard.slice():[];
 window.cqTsProfile=()=>S.profile||'mapel';
 window.tsv2Reload=()=>shell(true);
-window.tsv2Month=v=>{if(/^\d{4}-\d{2}$/.test(v)){S.month=v;shell(true)}};
+window.tsv2Month=v=>{if(/^\d{4}-\d{2}$/.test(v)){S.month=v;S.rangeFrom=v+'-01';S.rangeTo=monthEnd(v);shell(true)}};
 window.tsv2Teacher=v=>{S.teacherId=v;shell(true)};
 window.tsv2ToggleView=()=>{S.showAll=!S.showAll;body()};
+window.tsv2ApplyRange=()=>{
+  const from=document.getElementById('tsv2-range-from')?.value||'',to=document.getElementById('tsv2-range-to')?.value||'';
+  if(!from||!to||to<from){toast('Rentang tanggal tidak valid.',true);return}
+  if(from.slice(0,7)!==S.month||to.slice(0,7)!==S.month){toast('Pilih tanggal dalam bulan '+fm(S.month)+'. Untuk bulan lain, ubah pilihan bulan di atas.',true);return}
+  S.rangeFrom=from;S.rangeTo=to;body();
+};
+window.tsv2ResetRange=()=>{S.rangeFrom=S.month+'-01';S.rangeTo=monthEnd(S.month);body()};
+window.tsv2UseGap=(date,start,end)=>{
+  const d=document.getElementById('tsv2-date'),s=document.getElementById('tsv2-start'),e=document.getElementById('tsv2-end');
+  if(d)d.value=date;if(s)s.value=start;if(e)e.value=end;
+  document.querySelector('.tsv2-entry-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+};
 function openCardRaw(n){[1,2,3].forEach(i=>{const el=document.getElementById('tsv2-card'+i);if(el)el.hidden=i!==Number(n)});document.querySelectorAll('.tsv2-cardpick').forEach(b=>b.classList.toggle('active',Number(b.dataset.tsCard)===Number(n)))}
 window.tsv2OpenCard=n=>{n=Number(n);if(n===3){body();setTimeout(()=>openCardRaw(3),0);return}openCardRaw(n)};
-window.tsv2RecapMode=m=>{S.recapMode=m==='full'?'full':'gaps';body();setTimeout(()=>openCardRaw(3),0)};
+window.tsv2RecapMode=m=>{S.recapMode=m==='full'?'full':'gaps';body()};
 window.tsv2SaveFixed=async(silent=false)=>{const form=document.querySelector('#tsv2-card1 .tsv2-form'),date=document.getElementById('tsv2-fixed-date')?.value||'',start=document.getElementById('tsv2-fixed-start')?.value||'',end=document.getElementById('tsv2-fixed-end')?.value||'',mid=document.getElementById('tsv2-fixed-act')?.value||'',note=document.getElementById('tsv2-fixed-note')?.value||'';if(form?.dataset.fixedSelected!=='1'){toast('Pilih dulu slot terjadwal.',true);return}if(!date||!start||!end||!mid||end<=start){toast('Pilih slot dan jenis aktivitas.',true);return}try{await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Slot terjadwal tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(1),0)}catch(e){toast(e.message,true)}};
 
 function flexCollect(){
