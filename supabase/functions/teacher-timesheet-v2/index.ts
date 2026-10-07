@@ -21,6 +21,9 @@ async function bootstrapWithTahfizhBadal(req:Request,body:any){
   if(!x.r.ok||!x.data||x.data.success===false)return new Response(x.txt,{status:x.r.status,headers:{...CORS,"Cache-Control":"no-store"}});
   const data=x.data,teacherId=T(data.teacher?.id),yearId=T(data.context?.academic_year_id),month=T(data.month||body.month);
   const range=monthBounds(month);
+  const mq=await sb.from("non_teaching_activity_master").select("id,code,name,category,counts_as_work,requires_note,sort_order,is_active").eq("is_active",true).order("sort_order").order("name");
+  if(!mq.error)data.activity_master=mq.data||[];
+  else console.error("timesheet activity master",mq.error);
   if(!teacherId||!yearId||!range)return J(data,x.r.status);
   const q=await sb.from("tahfizh_substitution_assignments").select("id,work_date,class_id,substitute_teacher_id,start_time,end_time,reason,status,substitute_name,substitute_type").eq("academic_year_id",yearId).eq("semester_no",1).eq("substitute_teacher_id",teacherId).eq("status","active").gte("work_date",range.start).lte("work_date",range.end).order("work_date").order("start_time");
   if(q.error){console.error("timesheet tahfizh badal",q.error);return J(data,x.r.status)}
