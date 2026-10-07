@@ -11,7 +11,7 @@
     {id:'tahfizh-badal',label:'Badal Tahfizh',section:'Monitoring Guru',url:'tahfizh-badal.html?v=20260929-quran2'},
     {id:'tahfizh-pts-kabid',label:'Nilai PTS',section:'Penilaian',url:'tahfizh-pts.html?v=20260929-quran2'},
     {id:'tahfizh-ukj-score',label:'UKJ',section:'Penilaian',url:'tahfizh-ukj-score.html?v=20260929-quran2'},
-    {id:'tahfizh-monthly-report',label:'Laporan Bulanan',section:'Laporan',url:'tahfizh-monthly.html?v=20260929-quran2'}
+    {id:'tahfizh-monthly-report',label:'Laporan Bulanan',section:'Laporan',url:'tahfizh-monthly.html?v=20261007-autosave1'}
   ];
   const BLOCKED=new Set(['kesiswaan','kesiswaan-center','kedisiplinan','reward','tahfizh-kedisiplinan','tahfizh-reward']);
   let previousRender=null,previousSetActive=null,stableRender=null,stableSetActive=null;
