@@ -13,7 +13,7 @@ const defs=[
  ['quran_pts','Penilaian','Nilai PTS','tahfizh-pts.html?v=20260929-quran11'],
  ['quran_ukj','Penilaian','UKJ','tahfizh-ukj-score.html?mode=ukj&v=20260930-embedded1'],
  ['quran_komp','Penilaian','Komprehensif','tahfizh-ukj-score.html?mode=komprehensif&v=20260930-embedded1'],
- ['quran_monthly','Laporan','Laporan Bulanan','tahfizh-monthly.html?v=20260930-monthly-export4']
+ ['quran_monthly','Laporan','Laporan Bulanan','tahfizh-monthly.html?v=20261007-autosave1']
 ];
 function injectCss(){
  if(document.getElementById('cq-quran-native-css'))return;
