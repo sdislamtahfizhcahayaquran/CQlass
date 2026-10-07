@@ -68,7 +68,7 @@
     g.items=(g.items||[]).filter(x=>x&&['partner-pts','partner-monthly'].includes(x.id));
     const pts=g.items.find(x=>x.id==='partner-pts');if(pts){pts.label='Nilai PTS';pts.roles=[ROLE]}
     let monthly=g.items.find(x=>x.id==='partner-monthly');
-    if(!monthly){monthly={id:'partner-monthly',label:'Laporan Bulanan',roles:[ROLE],built:true,render:function(content){content.innerHTML='<div class="card"><span class="spinner"></span> Membuka Laporan Bulanan Tahfizh...</div>';setTimeout(()=>{window.location.href='tahfizh-monthly.html?v=20260907-datafix2'},30)}};g.items.push(monthly)}
+    if(!monthly){monthly={id:'partner-monthly',label:'Laporan Bulanan',roles:[ROLE],built:true,render:function(content){content.innerHTML='<div class="card"><span class="spinner"></span> Membuka Laporan Bulanan Tahfizh...</div>';setTimeout(()=>{window.location.href='tahfizh-monthly.html?v=20261007-autosave1'},30)}};g.items.push(monthly)}
     monthly.roles=[ROLE];
   }
 
