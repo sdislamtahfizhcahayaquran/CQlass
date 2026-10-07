@@ -50,35 +50,51 @@ function row(r){
 function body(){
   const b=document.getElementById('tsv2-body');if(!b)return;
   if(!S.teacher){b.innerHTML='<div class="tsv2-card tsv2-empty">Data guru belum tersedia.</div>';return}
-  const all=rows();
+  S.recapMode='full';
+  const all=rows().filter(r=>r.source!=='gap');
+  const autoCount=S.standard.filter(x=>x.display!==false).length;
+  const manualCount=S.activities.filter(x=>x.source!=='saturday_override').length;
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   b.innerHTML=`
-  <div class="tsv2-card"><span class="tsv2-help">Nama Guru</span><br><b>${esc(S.teacher.full_name)}</b></div>
-  <div class="tsv2-kpis"><div class="tsv2-kpi"><b>${jp()}</b><span>JP terlaksana</span></div><div class="tsv2-kpi"><b>${badal()}</b><span>Badal</span></div><div class="tsv2-kpi"><b>${S.standard.filter(x=>x.display!==false).length}</b><span>Jadwal kerja otomatis</span></div><div class="tsv2-kpi"><b>${pendingCert()}</b><span>Sertifikat belum upload</span></div></div>
-  <div class="tsv2-guide"><b>Cara mengisi:</b> <b>Card 1</b> menampilkan slot kosong dan pola pengulangan. <b>Card 2</b> untuk isi jam sendiri serta melihat rekap pola mingguan yang sama. <b>Card 3</b> menampilkan seluruh rentang kerja Senin–Jumat 07.00–16.00 dan Sabtu 07.30–12.00; aktivitas manual dan kegiatan Sabtu dapat diedit lalu disimpan.</div>
-  <div class="tsv2-cardnav">
-    <button class="tsv2-cardpick active" data-ts-card="1" onclick="tsv2OpenCard(1)"><b>1. Slot Kosong Otomatis</b><span>Pilih isi sekali atau jadikan pola mingguan. Jumat–Sabtu rentang kosong bisa dibagi menjadi beberapa kegiatan.</span></button>
-    <button class="tsv2-cardpick" data-ts-card="2" onclick="tsv2OpenCard(2)"><b>2. Isi Jam Sendiri</b><span>Tulis tanggal dan jam sendiri, lalu pilih simpan sekali atau ulang mingguan.</span></button>
-    <button class="tsv2-cardpick" data-ts-card="3" onclick="tsv2OpenCard(3)"><b>3. Rekap Timesheet</b><span>Lihat semua jam kosong atau timeline lengkap.</span></button>
-  </div>
-  <div id="tsv2-card1" class="tsv2-section">
-    <div id="tsv2-fixed-gap-host"></div>
-    <div id="tsv2-recurring-host"></div>
-    <div class="tsv2-card tsv2-fixed-slot-editor" hidden><b>Isi Slot Card 1</b><div class="tsv2-help">Senin–Kamis jam dikunci sesuai slot sistem. Guru hanya memilih kegiatan.</div><div class="tsv2-form" data-fixed-selected="0"><div class="tsv2-field"><label>Tanggal</label><input id="tsv2-fixed-date" class="tsv2-in" type="date" readonly></div><div class="tsv2-field"><label>Mulai</label><input id="tsv2-fixed-start" class="tsv2-in" type="time" readonly></div><div class="tsv2-field"><label>Selesai</label><input id="tsv2-fixed-end" class="tsv2-in" type="time" readonly></div><div class="tsv2-field"><label>Kegiatan</label><select id="tsv2-fixed-act" class="tsv2-sel"><option value="">Pilih kegiatan</option>${S.master.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div><div class="tsv2-field"><label>Catatan (opsional)</label><input id="tsv2-fixed-note" class="tsv2-in" placeholder="Contoh: administrasi kelas"></div><button class="tsv2-btn" onclick="tsv2SaveFixed()">Simpan Slot</button></div></div>
-    <div class="tsv2-card tsv2-flex-slot-editor" hidden><div class="tsv2-flex-head"><div><b>Bagi Rentang Jumat/Sabtu</b><div class="tsv2-help">Bagi satu rentang kosong menjadi beberapa kegiatan. Jam boleh berbeda-beda, tetapi tidak boleh tumpang tindih atau keluar dari rentang.</div></div><div id="tsv2-flex-range" class="tsv2-flex-range"></div></div><div id="tsv2-flex-rows"></div><div class="tsv2-flex-actions"><button class="tsv2-btn alt" onclick="tsv2FlexAdd()">+ Tambah Kegiatan</button><button class="tsv2-btn" onclick="tsv2FlexSaveAll()">Simpan Semua</button></div></div>
-  </div>
-  <div id="tsv2-card2" class="tsv2-section" hidden>
-    <div class="tsv2-card tsv2-entry-card"><b>Isi Jam Sendiri</b><div class="tsv2-help">Tulis tanggal dan jam kegiatan. Tidak perlu memilih slot lebih dulu. Sistem akan memeriksa agar waktu yang diisi benar-benar berada di jam kosong dan tidak bertabrakan dengan jadwal otomatis.</div><div class="tsv2-form"><div class="tsv2-field"><label>Tanggal</label><input id="tsv2-date" class="tsv2-in" type="date"></div><div class="tsv2-field"><label>Mulai</label><input id="tsv2-start" class="tsv2-in" type="time"></div><div class="tsv2-field"><label>Selesai</label><input id="tsv2-end" class="tsv2-in" type="time"></div><div class="tsv2-field"><label>Kegiatan Jam Kosong</label><select id="tsv2-act" class="tsv2-sel"><option value="">Pilih kegiatan</option>${S.master.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div><div class="tsv2-field"><label>Catatan (opsional)</label><input id="tsv2-note" class="tsv2-in" placeholder="Contoh: administrasi kelas"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="tsv2-btn" onclick="tsv2Save()">Simpan Sekali</button><button class="tsv2-btn alt" onclick="tsv2SavePattern()">Ulang Mingguan</button></div></div></div>
-    <div id="tsv2-recurring-host-2"></div>
-  </div>
-  <div id="tsv2-card3" class="tsv2-section" hidden>
-    <div class="tsv2-card tsv2-timeline-card"><div class="tsv2-timeline-head"><div><b>Rekap Timesheet Real — ${esc(fm(S.month))}</b><div class="tsv2-help" style="margin:4px 0 10px">${S.recapMode==='gaps'?'Menampilkan seluruh jam yang masih kosong.':'Menampilkan kegiatan dan jam kosong dalam rentang kerja: Senin–Jumat 07.00–16.00, Sabtu 07.30–12.00.'}</div>${pendingCert()?'<div class="tsv2-help" style="margin-bottom:8px"><b>'+pendingCert()+' agenda Sabtu memerlukan sertifikat.</b> Buka Timeline Lengkap lalu upload sertifikat pada baris agenda Sabtu.</div>':''}</div></div>
-      <div class="tsv2-recap-tabs"><button class="tsv2-btn alt ${S.recapMode==='gaps'?'active':''}" onclick="tsv2RecapMode('gaps')">Semua Jam Kosong</button><button class="tsv2-btn alt ${S.recapMode==='full'?'active':''}" onclick="tsv2RecapMode('full')">Timeline Lengkap</button></div>
-      <div class="tsv2-tablewrap"><table class="tsv2-table"><thead><tr><th>Tanggal</th><th>Jam</th><th>Jenis</th><th>Kegiatan</th><th>Catatan</th><th>Sertifikat</th><th></th></tr></thead><tbody>${all.length?all.map(row).join(''):'<tr><td colspan="7" class="tsv2-empty">Tidak ada data pada tampilan ini.</td></tr>'}</tbody></table></div>
+  <div class="tsv2-card">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div><span class="tsv2-help">Nama Guru</span><br><b style="font-size:15px">${esc(S.teacher.full_name)}</b></div>
+      <span class="tsv2-badge auto">${autoCount} jadwal otomatis tercatat</span>
     </div>
+  </div>
+  <div class="tsv2-kpis">
+    <div class="tsv2-kpi"><b>${jp()}</b><span>JP terlaksana</span></div>
+    <div class="tsv2-kpi"><b>${autoCount}</b><span>Jadwal otomatis</span></div>
+    <div class="tsv2-kpi"><b>${manualCount}</b><span>Aktivitas tambahan</span></div>
+    <div class="tsv2-kpi"><b>${pendingCert()}</b><span>Sertifikat belum upload</span></div>
+  </div>
+  <div class="tsv2-card tsv2-entry-card">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+      <div><b style="font-size:15px">Tambah Aktivitas</b><div class="tsv2-help" style="margin-top:4px">Jadwal rutin sudah masuk otomatis. Isi hanya jika ada kegiatan tambahan yang belum tercatat.</div></div>
+      <span class="tsv2-badge">Cepat & sederhana</span>
+    </div>
+    <div class="tsv2-form">
+      <div class="tsv2-field"><label>Tanggal</label><input id="tsv2-date" class="tsv2-in" type="date" value="${esc(today)}"></div>
+      <div class="tsv2-field"><label>Mulai</label><input id="tsv2-start" class="tsv2-in" type="time"></div>
+      <div class="tsv2-field"><label>Selesai</label><input id="tsv2-end" class="tsv2-in" type="time"></div>
+      <div class="tsv2-field"><label>Kegiatan</label><select id="tsv2-act" class="tsv2-sel"><option value="">Pilih kegiatan</option>${S.master.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>
+      <div class="tsv2-field"><label>Catatan (opsional)</label><input id="tsv2-note" class="tsv2-in" placeholder="Keterangan singkat bila perlu"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="tsv2-btn" onclick="tsv2Save()">Simpan</button>
+        <button class="tsv2-btn alt" onclick="tsv2SavePattern()">Ulang Mingguan</button>
+      </div>
+    </div>
+    <div id="tsv2-recurring-host-2" style="margin-top:10px"></div>
+  </div>
+  <div class="tsv2-card tsv2-timeline-card">
+    <div class="tsv2-timeline-head">
+      <div><b style="font-size:15px">Rekap Saya — ${esc(fm(S.month))}</b><div class="tsv2-help" style="margin:4px 0 10px">Semua jadwal otomatis dan aktivitas tambahan yang sudah tersimpan langsung masuk ke rekap.</div></div>
+    </div>
+    <div class="tsv2-tablewrap"><table class="tsv2-table"><thead><tr><th>Tanggal</th><th>Jam</th><th>Jenis</th><th>Kegiatan</th><th>Keterangan</th><th>Bukti</th><th>Aksi</th></tr></thead><tbody>${all.length?all.map(row).join(''):'<tr><td colspan="7" class="tsv2-empty">Belum ada aktivitas pada bulan ini.</td></tr>'}</tbody></table></div>
   </div>`;
-  setTimeout(()=>window.cqTsGapRefresh?.(),0);
+  setTimeout(()=>window.cqRecurringReveal&&null,0);
 }async function load(){const b=document.getElementById('tsv2-body');if(b)b.innerHTML='<div class="tsv2-card tsv2-empty">Memuat Timesheet...</div>';try{const d=await api('bootstrap');S.teacher=d.teacher||null;S.teachers=d.teachers||[];S.teaching=d.teaching||[];S.saturdays=d.saturdays||[];S.activities=d.activities||[];S.master=d.activity_master||[];if(!S.teacherId&&S.teacher)S.teacherId=S.teacher.id;const [w,sp]=await Promise.all([workSchedule(),specialOverlay()]);S.standard=w.items||[];S.profile=w.profile||'mapel';S.special=sp||[];shell(false);body();setTimeout(()=>window.cqTsGapRefresh?.(),0)}catch(e){if(b)b.innerHTML=`<div class="tsv2-card tsv2-empty">${esc(e.message)}</div>`}}
-function shell(fetch=true){style();const c=document.getElementById('content');if(!c)return;const select=REVIEW.has(role())&&S.teachers.length?`<select class="tsv2-sel" onchange="tsv2Teacher(this.value)">${S.teachers.map(t=>`<option value="${esc(t.id)}" ${String(t.id)===String(S.teacherId)?'selected':''}>${esc(t.full_name)}</option>`).join('')}</select>`:'';c.innerHTML=`<div class="tsv2"><div class="tsv2-head"><div><div class="tsv2-title">Timesheet</div><div class="tsv2-sub">${S.profile==='tahfizh'?'Guru Tahfizh/Partner — jadwal KBM Tahfizh, rutinitas, dan Eduhub masuk otomatis.':'Guru Mapel/Walas — jadwal mengajar, rutinitas, UKS, dan tugas otomatis sudah diperhitungkan.'} Guru hanya mengisi waktu yang belum tercatat.</div></div><div class="tsv2-tools">${select}<input class="tsv2-in" type="month" value="${esc(S.month)}" onchange="tsv2Month(this.value)"><button class="tsv2-btn alt" onclick="tsv2Reload()">Muat ulang</button></div></div><div id="tsv2-body"></div></div>`;if(fetch)load()}
+function shell(fetch=true){style();const c=document.getElementById('content');if(!c)return;const select=REVIEW.has(role())&&S.teachers.length?`<select class="tsv2-sel" onchange="tsv2Teacher(this.value)">${S.teachers.map(t=>`<option value="${esc(t.id)}" ${String(t.id)===String(S.teacherId)?'selected':''}>${esc(t.full_name)}</option>`).join('')}</select>`:'';c.innerHTML=`<div class="tsv2"><div class="tsv2-head"><div><div class="tsv2-title">Timesheet</div><div class="tsv2-sub">${S.profile==='tahfizh'?'Guru Tahfizh/Partner — jadwal KBM Tahfizh, rutinitas, dan Eduhub masuk otomatis.':'Guru Mapel/Walas — jadwal mengajar, rutinitas, UKS, dan tugas otomatis sudah diperhitungkan.'} Guru cukup menambahkan aktivitas yang belum tercatat; jadwal rutin masuk otomatis.</div></div><div class="tsv2-tools">${select}<input class="tsv2-in" type="month" value="${esc(S.month)}" onchange="tsv2Month(this.value)"><button class="tsv2-btn alt" onclick="tsv2Reload()">Muat ulang</button></div></div><div id="tsv2-body"></div></div>`;if(fetch)load()}
 window.renderTeacherTimesheet=()=>shell(true);
 window.cqTsStandardItems=()=>Array.isArray(S.standard)?S.standard.slice():[];
 window.cqTsProfile=()=>S.profile||'mapel';
