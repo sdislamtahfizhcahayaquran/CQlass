@@ -47,7 +47,7 @@
     await add('teacher-timesheet-v2.js?v=20261007-authoritativeclass1','cq-ts-v2');
     await add('teacher-autosave-safe.js?v=20261006-safe1','cq-teacher-autosave-safe');
     await add('timesheet-recurring.js?v=20261006-card12recap1','cq-ts-recurring');
-    await add('timesheet-gap-assistant.js?v=20261007-gaprefresh1','cq-ts-gap-assistant');
+    await add('timesheet-gap-assistant.js?v=20261007-fridaymorning1','cq-ts-gap-assistant');
     try{
       var r=String((typeof currentUser!=='undefined'&&currentUser?.role)||'').toLowerCase();
       if(r==='hrd') await add('admin-timesheet-master.js?v=20260922-layout3','cq-ts-admin-master');
