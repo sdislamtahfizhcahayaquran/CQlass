@@ -76,7 +76,7 @@ async function validateFreeSlot(req:Request,body:any){
     ...(partnerRows||[]).map((x:any)=>T(x.class_id)),
     ...(classPartners||[]).map((x:any)=>T(x.class_id))
   ].filter(Boolean))];
-  const ownQ=Promise.resolve({data:[],error:null});
+  const ownQ=sb.from("class_schedule_entries").select("start_time,end_time,subject_name_raw,class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("day_of_week",day).eq("is_active",true).eq("activity_type","teaching").not("start_time","is",null).not("end_time","is",null);
   const tahQ=Promise.resolve({data:[],error:null});
   const routineQ=classIds.length?sb.from("class_schedule_entries").select("start_time,end_time,activity_type,subject_name_raw").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("day_of_week",day).eq("is_active",true).in("activity_type",["break","school_routine"]).in("class_id",classIds).not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null});
   const workQ=sb.from("teacher_work_schedule_templates").select("start_time,end_time,activity_name,activity_code").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("day_of_week",day).eq("is_active",true).or(`applies_to_all.eq.true,teacher_id.eq.${teacherId}`);
