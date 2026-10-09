@@ -249,7 +249,7 @@
   function renderWeeklyReport(){
     const body=document.getElementById('krek-body');if(!body)return;
     const todayISO=today(),end=S.to<todayISO?S.to:todayISO;
-    const days=S.from<=end?dateSeq(S.from,end).filter(d=>isoDow(d)<=6):[];
+    const days=S.from<=end?dateSeq(S.from,end).filter(d=>isoDow(d)<=5):[];
     const rows=classRows();
     body.innerHTML=`<div class="krek-weekly-report">
       <div class="krek-report-head">
@@ -261,15 +261,9 @@
       <div class="krek-weekly-table"><div class="krek-wrap">
       <table aria-label="Rekapan mingguan Kesiswaan"><thead><tr><th>No</th><th>Kelas</th><th>Nama Guru</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th></tr></thead><tbody>
       ${rows.map((x,i)=>{
-        const studentIds=new Set((x.students||[]).map(z=>String(z.student_id)));
-        const completeAttendanceDays=new Set();
-        for(const date of days){
-          if(!studentIds.size)continue;
-          const recorded=new Set((x.a||[]).filter(z=>String(z.attendance_date||z.date||'').slice(0,10)===date).map(z=>String(z.student_id)));
-          if([...studentIds].every(id=>recorded.has(id)))completeAttendanceDays.add(date);
-        }
-        const missingAttendance=studentIds.size?days.length-completeAttendanceDays.size:null;
-        const attendanceReason=studentIds.size?'Jumlah hari yang belum memiliki absensi seluruh siswa':'Daftar siswa tidak tersedia';
+        const submittedDays=new Set((S.data.attendance_days||[]).filter(z=>String(z.class_id)===String(x.id)).map(z=>String(z.date||'').slice(0,10)));
+        const missingAttendance=days.filter(d=>!submittedDays.has(d)).length;
+        const attendanceReason=missingAttendance?'Hari belum diisi: '+days.filter(d=>!submittedDays.has(d)).join(', '):'Absensi telah tersimpan pada semua hari efektif';
         // Incident and reward rows represent events, not submission confirmations.
         // Without explicit zero-incident confirmations, missing-day counts cannot be inferred.
         const disciplineDates=new Set((x.v||[]).map(z=>String(z.incident_date||z.date||'').slice(0,10)));
@@ -279,14 +273,14 @@
         return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td><b>${E(x.walas)}</b></td><td>${weeklyMark(missingAttendance,attendanceReason)}</td><td>${weeklyMark(disciplineValue,'Tidak ada konfirmasi laporan nihil; tanda — berarti belum dapat diverifikasi')}</td><td>${weeklyMark(rewardValue,'Tidak ada konfirmasi laporan nihil; tanda — berarti belum dapat diverifikasi')}</td></tr>`;
       }).join('')}
       </tbody></table></div></div>
-      <div class="krek-weeknote">Angka merah = hari absensi kelas yang belum lengkap. ✓ = terverifikasi berdasarkan data tersedia. — = tidak dapat ditentukan dari catatan kejadian (bukan berarti guru belum mengisi). Hari Ahad dan tanggal mendatang tidak dihitung. Timesheet tidak termasuk laporan ini.</div>
+      <div class="krek-weeknote">Angka merah = jumlah hari Senin–Jumat tanpa absensi tersimpan. ✓ = terverifikasi berdasarkan data tersedia. — = tidak dapat ditentukan dari catatan kejadian (bukan berarti guru belum mengisi). Sabtu, Ahad, dan tanggal mendatang tidak dihitung. Timesheet tidak termasuk laporan ini.</div>
     </div>`;
     document.getElementById('krek-exit-weekly')?.addEventListener('click',exitWeeklyMode);
   }
   function enterWeeklyMode(){
     if(!S.weeklyMode)S.previousRange={from:S.from,to:S.to};
     S.weeklyMode=true;S.dailyMode=false;
-    const start=mondayOf(today());S.from=start;S.to=addDays(start,5);
+    const start=mondayOf(today());S.from=start;S.to=addDays(start,4);
     document.body.classList.add('krek-shot-mode');load();
   }
   function exitWeeklyMode(){
