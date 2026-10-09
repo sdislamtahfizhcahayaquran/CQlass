@@ -264,16 +264,21 @@
         const submittedDays=new Set((S.data.attendance_days||[]).filter(z=>String(z.class_id)===String(x.id)).map(z=>String(z.date||'').slice(0,10)));
         const missingAttendance=days.filter(d=>!submittedDays.has(d)).length;
         const attendanceReason=missingAttendance?'Hari belum diisi: '+days.filter(d=>!submittedDays.has(d)).join(', '):'Absensi telah tersimpan pada semua hari efektif';
-        // Incident and reward rows represent events, not submission confirmations.
-        // Without explicit zero-incident confirmations, missing-day counts cannot be inferred.
-        const disciplineDates=new Set((x.v||[]).map(z=>String(z.incident_date||z.date||'').slice(0,10)));
-        const rewardDates=new Set((x.r||[]).map(z=>String(z.reward_date||z.date||'').slice(0,10)));
-        const disciplineValue=days.length&&days.every(d=>disciplineDates.has(d))?0:null;
-        const rewardValue=days.length&&days.every(d=>rewardDates.has(d))?0:null;
-        return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td><b>${E(x.walas)}</b></td><td>${weeklyMark(missingAttendance,attendanceReason)}</td><td>${weeklyMark(disciplineValue,'Tidak ada konfirmasi laporan nihil; tanda — berarti belum dapat diverifikasi')}</td><td>${weeklyMark(rewardValue,'Tidak ada konfirmasi laporan nihil; tanda — berarti belum dapat diverifikasi')}</td></tr>`;
+        const confirmed=S.data.point_confirmations||[];
+        const disciplineDates=new Set([
+          ...(x.v||[]).map(z=>String(z.incident_date||z.date||'').slice(0,10)),
+          ...confirmed.filter(z=>String(z.class_id)===String(x.id)&&z.kind==='discipline').map(z=>String(z.date||'').slice(0,10))
+        ]);
+        const rewardDates=new Set([
+          ...(x.r||[]).map(z=>String(z.reward_date||z.date||'').slice(0,10)),
+          ...confirmed.filter(z=>String(z.class_id)===String(x.id)&&z.kind==='reward').map(z=>String(z.date||'').slice(0,10))
+        ]);
+        const disciplineValue=days.filter(d=>!disciplineDates.has(d)).length;
+        const rewardValue=days.filter(d=>!rewardDates.has(d)).length;
+        return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td><b>${E(x.walas)}</b></td><td>${weeklyMark(missingAttendance,attendanceReason)}</td><td>${weeklyMark(disciplineValue,'Hari tanpa catatan kejadian maupun konfirmasi pemeriksaan')}</td><td>${weeklyMark(rewardValue,'Hari tanpa catatan reward maupun konfirmasi pemeriksaan')}</td></tr>`;
       }).join('')}
       </tbody></table></div></div>
-      <div class="krek-weeknote">Angka merah = jumlah hari Senin–Jumat tanpa absensi tersimpan. ✓ = terverifikasi berdasarkan data tersedia. — = tidak dapat ditentukan dari catatan kejadian (bukan berarti guru belum mengisi). Sabtu, Ahad, dan tanggal mendatang tidak dihitung. Timesheet tidak termasuk laporan ini.</div>
+      <div class="krek-weeknote">Angka merah = jumlah hari Senin–Jumat tanpa pencatatan atau konfirmasi pemeriksaan. ✓ = seluruh hari yang diwajibkan sudah tercatat atau dikonfirmasi. Sabtu, Ahad, dan tanggal mendatang tidak dihitung. Timesheet tidak termasuk laporan ini.</div>
     </div>`;
     document.getElementById('krek-exit-weekly')?.addEventListener('click',exitWeeklyMode);
   }
