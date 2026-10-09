@@ -61,6 +61,27 @@ async function exportClassWorkbook(classMap,assignments){
     ws.mergeCells(1,1,1,Math.max(3,heads.length));ws.mergeCells(4,2,4,Math.max(3,heads.length));
     ws.autoFilter={from:{row:5,column:1},to:{row:5,column:heads.length}};
     styleLeggerSheet(ws,5,ordered.length,heads.length);
+    // Soft alternating subject blocks, with a clear vertical separator.
+    const palette=['EAF4F3','F0F0FA','FFF5E9','EEF4FC','F7EEF3','F0F6EA','F6F2EB'];
+    let subjectCol=4;
+    for(let mi=0;mi<loads.length;mi++){
+      const m=loads[mi],blockWidth=11+m.objectives.length,color=palette[mi%palette.length];
+      for(let c=subjectCol;c<subjectCol+blockWidth;c++){
+        const head=ws.getRow(5).getCell(c);
+        head.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+color}};
+        head.font={name:'Tahoma',size:10,bold:true,color:{argb:'FF243B4B'}};
+        head.border={bottom:{style:'medium',color:{argb:'FF97ABB6'}},left:c===subjectCol?{style:'medium',color:{argb:'FF78929F'}}:{style:'hair',color:{argb:'FFDCE6EB'}}};
+        for(let r=6;r<=5+ordered.length;r++){
+          const cell=ws.getRow(r).getCell(c);
+          cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+(r%2===0?color:'FFFFFF')}};
+          if(c===subjectCol)cell.border={left:{style:'medium',color:{argb:'FFB3C6CF'}},bottom:{style:'hair',color:{argb:'FFDCE6EB'}}};
+        }
+      }
+      subjectCol+=blockWidth;
+    }
+    const longest=ordered.reduce((max,st)=>Math.max(max,String(st.name||'').length),0);
+    ws.getColumn(3).width=Math.min(65,Math.max(30,longest+5));
+    ws.views=[{state:'frozen',xSplit:3,ySplit:5,topLeftCell:'D6'}];
     let name=String(classMap.get(classId)||'Kelas').replace(/[\\/?*\[\]:]/g,' ').slice(0,31),base=name,i=2;while(used.has(name))name=(base.slice(0,27)+' '+i++).slice(0,31);used.add(name);ws.name=name;totalLoaded++;
   }
   if(!totalLoaded)throw Error('Belum ada kelas yang dapat diekspor');
