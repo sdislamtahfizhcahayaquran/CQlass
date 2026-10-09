@@ -33,7 +33,7 @@ function styleLeggerSheet(ws,headerRow,dataRows,colCount){
   ws.eachRow((row,r)=>row.eachCell({includeEmpty:true},cell=>{cell.font={name:'Tahoma',size:10,color:{argb:'FF'+ink}};cell.alignment={vertical:'middle',horizontal:typeof cell.value==='number'?'center':'left',wrapText:r===headerRow};if(r>=headerRow)cell.border={bottom:{style:'hair',color:{argb:'FF'+line}}};if(r>headerRow&&r<=headerRow+dataRows&&r%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF4F8FA'}}}));
   ws.getRow(1).height=38;ws.getRow(1).eachCell({includeEmpty:true},c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+navy}};c.font={name:'Tahoma',bold:true,size:16,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'left',indent:1}});
   ws.getRow(headerRow).height=42;ws.getRow(headerRow).eachCell({includeEmpty:true},c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+teal}};c.font={name:'Tahoma',bold:true,size:10,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};c.border={bottom:{style:'medium',color:{argb:'FF'+navy}}}});
-  for(let r=headerRow+1;r<=headerRow+dataRows;r++){const row=ws.getRow(r);row.height=23;for(let c=4;c<=colCount;c++){const cell=row.getCell(c);if(typeof cell.value==='number')cell.numFmt='0.##'}} 
+  for(let r=headerRow+1;r<=headerRow+dataRows;r++){const row=ws.getRow(r);row.height=23;for(let c=4;c<=colCount;c++){const cell=row.getCell(c);if(typeof cell.value==='number')cell.numFmt='0.##;-0.##;0'}} 
   ws.pageSetup.margins={left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.2,footer:0.2};
 }
 async function exportClassWorkbook(classMap,assignments){
@@ -74,7 +74,7 @@ async function exportClassWorkbook(classMap,assignments){
         for(let r=6;r<=5+ordered.length;r++){
           const cell=ws.getRow(r).getCell(c);
           cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+(r%2===0?color:'FFFFFF')}};
-          if(c===subjectCol)cell.border={left:{style:'medium',color:{argb:'FFB3C6CF'}},bottom:{style:'hair',color:{argb:'FFDCE6EB'}}};
+          cell.border={top:{style:'thin',color:{argb:'FFD1DEE5'}},bottom:{style:'thin',color:{argb:'FFD1DEE5'}},right:{style:'thin',color:{argb:'FFD1DEE5'}},left:{style:c===subjectCol?'medium':'thin',color:{argb:'FF'+(c===subjectCol?'A3B8C3':'D1DEE5')}}};
         }
       }
       subjectCol+=blockWidth;
