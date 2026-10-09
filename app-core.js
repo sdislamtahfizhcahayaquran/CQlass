@@ -3364,6 +3364,15 @@ async function pv2RenderWorkspace(kind){
       </div>
     </div>
 
+    ${cid?`<div class="card" style="padding:12px 14px;margin-top:10px">
+      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+        <strong style="font-size:12px">Konfirmasi ${kind==='violation'?'Kedisiplinan':'Reward'} Harian</strong>
+        <input type="date" id="pv2-confirm-date-${kind}" class="pv2-control" style="max-width:165px" value="${pv2Today()}" max="${pv2Today()}">
+        <button type="button" class="pv2-mini" onclick="pv2ConfirmDaily('${kind}')">✓ Sudah diperiksa</button>
+        <span id="pv2-confirm-state-${kind}" style="font-size:11px;color:var(--muted)">Gunakan juga jika tidak ada kejadian pada tanggal tersebut.</span>
+      </div>
+    </div>`:''}
+
     ${mode==='student'&&sid&&snap?pv2Summary(snap.summary):''}
 
     ${cid&&(mode==='type'||sid)?`<div class="card">
@@ -3497,6 +3506,24 @@ async function pv2Render(kind,content){
     await pv2RenderWorkspace(kind);
   }catch(e){
     document.getElementById(`pv2-root-${kind}`).innerHTML=`<div class="card"><div class="pv2-alert">${escapeHtml(e.message||'Gagal membuka modul.')}</div></div>`;
+  }
+}
+async function pv2ConfirmDaily(kind){
+  const cid=POINT_V2.classId[kind],date=document.getElementById('pv2-confirm-date-'+kind)?.value,output=document.getElementById('pv2-confirm-state-'+kind);
+  if(!cid||!date){showToast('Pilih kelas dan tanggal terlebih dahulu.',true);return}
+  if(output)output.textContent='Menyimpan konfirmasi…';
+  try{
+    const api=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/student-affairs-center';
+    const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
+    const auth=typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'');
+    const res=await fetch(api,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':auth},body:JSON.stringify({action:'point_daily_confirm',class_id:cid,kind:kind==='violation'?'discipline':'reward',date})});
+    const data=await res.json();
+    if(!res.ok||!data.success)throw Error(data.error||'Konfirmasi gagal disimpan');
+    if(output)output.textContent='✓ Tersimpan untuk '+date;
+    showToast('Konfirmasi harian tersimpan.');
+  }catch(err){
+    if(output)output.textContent='Gagal menyimpan. Silakan coba lagi.';
+    showToast(err.message||'Gagal menyimpan konfirmasi.',true);
   }
 }
 function renderKedisiplinan(content){return pv2Render('violation',content)}
