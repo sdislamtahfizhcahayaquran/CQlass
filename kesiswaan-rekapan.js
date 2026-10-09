@@ -112,9 +112,8 @@
       .krek-boxhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid #e5ebf0;position:sticky;top:0;background:#fff;z-index:2}.krek-boxhead h2{font-size:17px;margin:0}.krek-boxhead p{font-size:10px;color:#718294;margin:3px 0 0}.krek-close{border:0;background:#eef3f7;width:32px;height:32px;border-radius:50%;font-size:20px;cursor:pointer}.krek-boxbody{padding:14px 18px 18px}
       .krek-break{display:grid;gap:7px}.krek-breakrow{display:flex;justify-content:space-between;gap:15px;padding:8px 10px;background:#f7f9fc;border-radius:9px;font-size:11px}.krek-breakrow b{font-weight:900}
       @media(max-width:700px){.krek-filter{display:grid;grid-template-columns:1fr 1fr}.krek-btn{grid-column:1/-1}.krek-box{width:100%;max-height:92vh}}
-    `;
-      /* Weekly-only: compact screenshot grid, without impacting daily/table reports. */
-      .krek-weekly-table{max-width:1050px;margin:0 auto;overflow:hidden;border:1px solid #dbe4ed;border-radius:10px}
+
+.krek-weekly-table{max-width:1050px;margin:0 auto;overflow:hidden;border:1px solid #dbe4ed;border-radius:10px}
       .krek-weekly-table .krek-wrap{overflow-x:auto}
       .krek-weekly-table table{width:100%!important;min-width:690px!important;table-layout:fixed!important}
       .krek-weekly-table th,.krek-weekly-table td{padding:8px 5px!important;vertical-align:middle!important}
@@ -353,7 +352,7 @@
   async function load(){
     const body=document.getElementById('krek-body');if(!body)return;
     body.innerHTML='<div class="krek-loading">Memuat rekapan Kesiswaan…</div>';
-    try{const [report,schedule,timesheet]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'}),post({action:'timesheet_recap',start_date:S.from,end_date:S.to})]);S.data=report;S.uksSchedule=schedule.schedule||[];S.timesheet=timesheet.rows||[];if(S.dailyMode)renderDailyReport();else if(S.weeklyMode)renderWeeklyReport();else renderTable()}
+    try{if(S.weeklyMode){S.data=await post({action:'report',start_date:S.from,end_date:S.to});renderWeeklyReport();return}const [report,schedule,timesheet]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'}),post({action:'timesheet_recap',start_date:S.from,end_date:S.to})]);S.data=report;S.uksSchedule=schedule.schedule||[];S.timesheet=timesheet.rows||[];if(S.dailyMode)renderDailyReport();else renderTable()}
     catch(e){body.innerHTML='<div class="krek-error"><b>Rekapan belum dapat dimuat.</b><br>'+E(e.message||'Gagal memuat data.')+'</div>'}
   }
   function render(content){
