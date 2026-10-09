@@ -69,6 +69,14 @@ async function reportData(b:any){
   for(const x of historicalAttendance)attendanceMap.set([x.class_id,x.attendance_date,x.student_id].join("|"),x);
   for(const x of liveAttendance)attendanceMap.set([x.class_id,x.attendance_date,x.student_id].join("|"),x);
   const attendance=[...attendanceMap.values()];
+  // A submitted Morning Talk session is one completed attendance day per class.
+  // Include archived daily recaps for legacy attendance entries.
+  const {data:legacyRecaps,error:legacyRecapError}=await addClass(sb.from("morning_talk_recap_history").select("class_id,recap_date").gte("recap_date",start).lte("recap_date",end)).limit(2000);
+  if(legacyRecapError)throw legacyRecapError;
+  const attendanceDayMap=new Map<string,{class_id:string,date:string}>();
+  for(const x of liveSessions||[]){if(x.class_id&&x.attendance_date)attendanceDayMap.set(x.class_id+"|"+x.attendance_date,{class_id:x.class_id,date:x.attendance_date})}
+  for(const x of legacyRecaps||[]){if(x.class_id&&x.recap_date)attendanceDayMap.set(x.class_id+"|"+x.recap_date,{class_id:x.class_id,date:x.recap_date})}
+  const attendance_days=[...attendanceDayMap.values()];
   const rewards=enrich(rwR.data||[],sm,cm,"reward_date"),violations=enrich(viR.data||[],sm,cm,"incident_date"),cases=enrich(csR.data||[],sm,cm,"incident_date"),affairs=enrich(afR.data||[],sm,cm,"record_date"),achievements=enrich(acR.data||[],sm,cm,"achievement_date");
   const uks=(ukR.data||[]).map((x:any)=>({...x,date:x.duty_date,teacher_name:tm[x.teacher_id]||"Guru"}));
   const counts:any={hadir:0,sakit:0,izin:0,alpha:0,lainnya:0};
@@ -77,7 +85,7 @@ async function reportData(b:any){
   const openCases=cases.filter((x:any)=>!["selesai","closed","done"].includes(L(x.status))).length;
   const typeCounts:any={};for(const x of affairs)typeCounts[x.record_type]=(typeCounts[x.record_type]||0)+1;
   const roster=scopedEnroll.map((e:any)=>({student_id:e.student_id,class_id:e.class_id,student_name:sm[e.student_id]?.full_name||"-",nis:sm[e.student_id]?.nis||"",nisn:sm[e.student_id]?.nisn||"",class_name:classLabel(cm[e.class_id])})).filter((x:any)=>x.student_name!=="-");
-  return{success:true,period:{start_date:start,end_date:end},classes:(classes||[]).map((x:any)=>({id:x.id,name:classLabel(x),grade_level:x.grade_level,rombel:x.rombel,gender_group:x.gender_group})),roster,summary:{students:new Set(roster.map((x:any)=>x.student_id)).size,attendance:counts,late,rewards:rewards.length,violations:violations.length,cases:cases.length,open_cases:openCases,uks_duty_reports:uks.length,achievements:achievements.length,affairs_by_type:typeCounts},attendance,rewards,violations,cases,affairs,achievements,uks}
+  return{success:true,period:{start_date:start,end_date:end},classes:(classes||[]).map((x:any)=>({id:x.id,name:classLabel(x),grade_level:x.grade_level,rombel:x.rombel,gender_group:x.gender_group})),roster,summary:{students:new Set(roster.map((x:any)=>x.student_id)).size,attendance:counts,late,rewards:rewards.length,violations:violations.length,cases:cases.length,open_cases:openCases,uks_duty_reports:uks.length,achievements:achievements.length,affairs_by_type:typeCounts},attendance,attendance_days,rewards,violations,cases,affairs,achievements,uks}
 }
 
 Deno.serve(async(req:Request)=>{
