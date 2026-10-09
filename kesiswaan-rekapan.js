@@ -34,7 +34,7 @@
     '2272ba1a-9a4e-447a-9996-8a4232b4d792':'Dila Nur Azizah, S.Pd.',
     '4fa0f6ad-e5b2-4a13-bf64-fd798c8e4da5':'Abdurrokhman, M.Pd.'
   };
-  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],timesheet:[],dailyMode:false};
+  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],timesheet:[],dailyMode:false,weeklyMode:false,previousRange:null};
 
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const N=v=>String(v??'').trim().toLowerCase().replace(/[\s.,]/g,'');
@@ -112,6 +112,22 @@
       .krek-boxhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid #e5ebf0;position:sticky;top:0;background:#fff;z-index:2}.krek-boxhead h2{font-size:17px;margin:0}.krek-boxhead p{font-size:10px;color:#718294;margin:3px 0 0}.krek-close{border:0;background:#eef3f7;width:32px;height:32px;border-radius:50%;font-size:20px;cursor:pointer}.krek-boxbody{padding:14px 18px 18px}
       .krek-break{display:grid;gap:7px}.krek-breakrow{display:flex;justify-content:space-between;gap:15px;padding:8px 10px;background:#f7f9fc;border-radius:9px;font-size:11px}.krek-breakrow b{font-weight:900}
       @media(max-width:700px){.krek-filter{display:grid;grid-template-columns:1fr 1fr}.krek-btn{grid-column:1/-1}.krek-box{width:100%;max-height:92vh}}
+    `;
+      /* Weekly-only: compact screenshot grid, without impacting daily/table reports. */
+      .krek-weekly-table{max-width:1050px;margin:0 auto;overflow:hidden;border:1px solid #dbe4ed;border-radius:10px}
+      .krek-weekly-table .krek-wrap{overflow-x:auto}
+      .krek-weekly-table table{width:100%!important;min-width:690px!important;table-layout:fixed!important}
+      .krek-weekly-table th,.krek-weekly-table td{padding:8px 5px!important;vertical-align:middle!important}
+      .krek-weekly-table th:nth-child(1),.krek-weekly-table td:nth-child(1){width:45px!important;text-align:center!important;font-weight:800!important}
+      .krek-weekly-table th:nth-child(2),.krek-weekly-table td:nth-child(2){width:108px!important;text-align:center!important;font-weight:800!important}
+      .krek-weekly-table th:nth-child(3),.krek-weekly-table td:nth-child(3){width:auto!important;text-align:left!important;font-weight:800!important}
+      .krek-weekly-table th:nth-child(n+4),.krek-weekly-table td:nth-child(n+4){width:115px!important;text-align:center!important}
+      .krek-weekly-table .krek-weekmark{display:flex;align-items:center;justify-content:center;margin:auto;width:100%;min-height:23px;font-size:16px;font-weight:900;line-height:1}
+      .krek-weekmark.ok{color:#168449}.krek-weekmark.missing{color:#bd303a}.krek-weekmark.unknown{color:#738296}
+      .krek-weeknote{max-width:1050px;margin:12px auto 0;padding:10px 12px;background:#f7f9fc;border:1px solid #e2e8ef;border-radius:9px;color:#586a7b;font-size:11px}
+      body.krek-shot-mode .krek-weekly-report{padding:0 3px}
+      body.krek-shot-mode .krek-weekly-table{max-width:1050px}
+      @media print{body.krek-shot-mode .krek-weekly-report #krek-exit-weekly{display:none!important}}
     `;
     document.head.appendChild(s);
   }
@@ -209,12 +225,77 @@
     document.getElementById('krek-exit-report')?.addEventListener('click',exitDailyMode);
   }
   function enterDailyMode(){
-    const d=today();S.dailyMode=true;S.from=d;S.to=d;document.body.classList.add('krek-shot-mode');
+    const d=today();S.weeklyMode=false;S.previousRange=null;S.dailyMode=true;S.from=d;S.to=d;document.body.classList.add('krek-shot-mode');
     const f=document.getElementById('krek-from'),t=document.getElementById('krek-to');if(f)f.value=d;if(t)t.value=d;
     load();
   }
   function exitDailyMode(){
     S.dailyMode=false;document.body.classList.remove('krek-shot-mode');renderTable();
+  }
+  function mondayOf(date){
+    const d=new Date(date+'T12:00:00Z');
+    const dow=d.getUTCDay()||7;
+    d.setUTCDate(d.getUTCDate()-dow+1);
+    return d.toISOString().slice(0,10);
+  }
+  function addDays(date,n){
+    const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);
+    return d.toISOString().slice(0,10);
+  }
+  function weeklyMark(value,reason){
+    const cls=value===null?'unknown':value>0?'missing':'ok';
+    const label=value===null?'—':value>0?String(value):'✓';
+    return '<span class="krek-weekmark '+cls+'" title="'+E(reason||'')+'">'+label+'</span>';
+  }
+  function renderWeeklyReport(){
+    const body=document.getElementById('krek-body');if(!body)return;
+    const todayISO=today(),end=S.to<todayISO?S.to:todayISO;
+    const days=S.from<=end?dateSeq(S.from,end).filter(d=>isoDow(d)<=6):[];
+    const rows=classRows();
+    body.innerHTML=`<div class="krek-weekly-report">
+      <div class="krek-report-head">
+        <div><div class="krek-report-title">REKAPAN MINGGUAN KESISWAAN</div>
+        <div class="krek-report-school">SD Islam Tahfizh Cahaya Qur'an</div>
+        <div class="krek-report-date">${E(S.from)} s.d. ${E(S.to)}</div></div>
+        <button type="button" class="krek-btn secondary" id="krek-exit-weekly">Kembali ke Rekapan</button>
+      </div>
+      <div class="krek-weekly-table"><div class="krek-wrap">
+      <table aria-label="Rekapan mingguan Kesiswaan"><thead><tr><th>No</th><th>Kelas</th><th>Nama Guru</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th></tr></thead><tbody>
+      ${rows.map((x,i)=>{
+        const studentIds=new Set((x.students||[]).map(z=>String(z.student_id)));
+        const completeAttendanceDays=new Set();
+        for(const date of days){
+          if(!studentIds.size)continue;
+          const recorded=new Set((x.a||[]).filter(z=>String(z.attendance_date||z.date||'').slice(0,10)===date).map(z=>String(z.student_id)));
+          if([...studentIds].every(id=>recorded.has(id)))completeAttendanceDays.add(date);
+        }
+        const missingAttendance=studentIds.size?days.length-completeAttendanceDays.size:null;
+        const attendanceReason=studentIds.size?'Jumlah hari yang belum memiliki absensi seluruh siswa':'Daftar siswa tidak tersedia';
+        // Incident and reward rows represent events, not submission confirmations.
+        // Without explicit zero-incident confirmations, missing-day counts cannot be inferred.
+        const disciplineDates=new Set((x.v||[]).map(z=>String(z.incident_date||z.date||'').slice(0,10)));
+        const rewardDates=new Set((x.r||[]).map(z=>String(z.reward_date||z.date||'').slice(0,10)));
+        const disciplineValue=days.length&&days.every(d=>disciplineDates.has(d))?0:null;
+        const rewardValue=days.length&&days.every(d=>rewardDates.has(d))?0:null;
+        return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td><b>${E(x.walas)}</b></td><td>${weeklyMark(missingAttendance,attendanceReason)}</td><td>${weeklyMark(disciplineValue,'Tidak ada konfirmasi laporan nihil; tanda — berarti belum dapat diverifikasi')}</td><td>${weeklyMark(rewardValue,'Tidak ada konfirmasi laporan nihil; tanda — berarti belum dapat diverifikasi')}</td></tr>`;
+      }).join('')}
+      </tbody></table></div></div>
+      <div class="krek-weeknote">Angka merah = hari absensi kelas yang belum lengkap. ✓ = terverifikasi berdasarkan data tersedia. — = tidak dapat ditentukan dari catatan kejadian (bukan berarti guru belum mengisi). Hari Ahad dan tanggal mendatang tidak dihitung. Timesheet tidak termasuk laporan ini.</div>
+    </div>`;
+    document.getElementById('krek-exit-weekly')?.addEventListener('click',exitWeeklyMode);
+  }
+  function enterWeeklyMode(){
+    if(!S.weeklyMode)S.previousRange={from:S.from,to:S.to};
+    S.weeklyMode=true;S.dailyMode=false;
+    const start=mondayOf(today());S.from=start;S.to=addDays(start,5);
+    document.body.classList.add('krek-shot-mode');load();
+  }
+  function exitWeeklyMode(){
+    S.weeklyMode=false;document.body.classList.remove('krek-shot-mode');
+    if(S.previousRange){S.from=S.previousRange.from;S.to=S.previousRange.to;S.previousRange=null}
+    const f=document.getElementById('krek-from'),t=document.getElementById('krek-to');
+    if(f)f.value=S.from;if(t)t.value=S.to;
+    load();
   }
   function classRows(){
     const d=S.data||{},classes=d.classes||[],roster=d.roster||[],att=d.attendance||[],rw=d.rewards||[],vi=d.violations||[],uks=d.uks||[];
@@ -272,16 +353,17 @@
   async function load(){
     const body=document.getElementById('krek-body');if(!body)return;
     body.innerHTML='<div class="krek-loading">Memuat rekapan Kesiswaan…</div>';
-    try{const [report,schedule,timesheet]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'}),post({action:'timesheet_recap',start_date:S.from,end_date:S.to})]);S.data=report;S.uksSchedule=schedule.schedule||[];S.timesheet=timesheet.rows||[];if(S.dailyMode)renderDailyReport();else renderTable()}
+    try{const [report,schedule,timesheet]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'}),post({action:'timesheet_recap',start_date:S.from,end_date:S.to})]);S.data=report;S.uksSchedule=schedule.schedule||[];S.timesheet=timesheet.rows||[];if(S.dailyMode)renderDailyReport();else if(S.weeklyMode)renderWeeklyReport();else renderTable()}
     catch(e){body.innerHTML='<div class="krek-error"><b>Rekapan belum dapat dimuat.</b><br>'+E(e.message||'Gagal memuat data.')+'</div>'}
   }
   function render(content){
     if(!isKesiswaan()){content.innerHTML='<div class="krek-error">Menu ini khusus Kabid Kesiswaan.</div>';return}
     css();ensureModal();const t=today();if(!S.to){S.to=t;S.from=t.slice(0,8)+'01'}
-    document.body.classList.toggle('krek-shot-mode',!!S.dailyMode);
-    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Monitoring input Kehadiran, Kedisiplinan, Reward, Jaga UKS, dan Timesheet Walas. UKS ditampilkan untuk kelas 1–3.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button><div class="krek-actions"><button type="button" class="krek-btn report" id="krek-daily">Laporan Hari Ini</button></div></div><div id="krek-body"></div></div>`;
-    document.getElementById('krek-apply').addEventListener('click',()=>{const f=document.getElementById('krek-from').value,t2=document.getElementById('krek-to').value;if(!f||!t2||f>t2){document.getElementById('krek-body').innerHTML='<div class="krek-error">Rentang tanggal tidak valid.</div>';return}S.dailyMode=false;document.body.classList.remove('krek-shot-mode');S.from=f;S.to=t2;load()});
+    document.body.classList.toggle('krek-shot-mode',!!(S.dailyMode||S.weeklyMode));
+    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Monitoring input Kehadiran, Kedisiplinan, Reward, Jaga UKS, dan Timesheet Walas. UKS ditampilkan untuk kelas 1–3.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button><div class="krek-actions"><button type="button" class="krek-btn report" id="krek-daily">Laporan Hari Ini</button><button type="button" class="krek-btn report" id="krek-weekly">Rekapan Mingguan (SS)</button></div></div><div id="krek-body"></div></div>`;
+    document.getElementById('krek-apply').addEventListener('click',()=>{const f=document.getElementById('krek-from').value,t2=document.getElementById('krek-to').value;if(!f||!t2||f>t2){document.getElementById('krek-body').innerHTML='<div class="krek-error">Rentang tanggal tidak valid.</div>';return}S.dailyMode=false;S.weeklyMode=false;S.previousRange=null;document.body.classList.remove('krek-shot-mode');S.from=f;S.to=t2;load()});
     document.getElementById('krek-daily')?.addEventListener('click',enterDailyMode);
+    document.getElementById('krek-weekly')?.addEventListener('click',enterWeeklyMode);
     load();
   }
   window.renderKesiswaanRekapan=render;
