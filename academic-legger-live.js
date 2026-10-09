@@ -34,7 +34,7 @@ function styleLeggerSheet(ws,headerRow,dataRows,colCount){
   ws.getRow(1).height=38;ws.getRow(1).eachCell({includeEmpty:true},c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+navy}};c.font={name:'Tahoma',bold:true,size:16,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'left',indent:1}});
   ws.getRow(headerRow).height=42;ws.getRow(headerRow).eachCell({includeEmpty:true},c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+teal}};c.font={name:'Tahoma',bold:true,size:10,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};c.border={bottom:{style:'medium',color:{argb:'FF'+navy}}}});
   for(let r=headerRow+1;r<=headerRow+dataRows;r++){const row=ws.getRow(r);row.height=23;for(let c=4;c<=colCount;c++){const cell=row.getCell(c);if(typeof cell.value==='number')cell.numFmt='0.00'}} 
-  ws.sheetProperties.pageSetUpPr={fitToPage:true};ws.pageSetup.margins={left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.2,footer:0.2};
+  ws.pageSetup.margins={left:0.25,right:0.25,top:0.4,bottom:0.4,header:0.2,footer:0.2};
 }
 async function exportClassWorkbook(classMap,assignments){
   const ExcelJS=await (async()=>{if(window.ExcelJS)return window.ExcelJS;await new Promise((ok,bad)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';x.onload=ok;x.onerror=()=>bad(Error('Pustaka Excel gagal dimuat'));document.head.appendChild(x)});return window.ExcelJS})();
