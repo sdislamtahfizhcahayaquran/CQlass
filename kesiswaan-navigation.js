@@ -13,6 +13,7 @@
   const KESISWAAN_ROUTE_RENDERERS={
     'kes-laporan-masuk':c=>window.renderStudentAffairsCases?.(c),
     'kes-pendampingan':c=>window.renderStudentAffairsCases?.(c),
+    'kes-masalah-kelas':c=>window.renderKesiswaanClassIssueInput?.(c),
     'kes-muhadhoroh':c=>window.renderStudentAffairsType?.(c,'muhadhoroh'),
     'kes-controlling-mt':c=>renderControllingMt(c),
     'kes-prestasi':c=>window.renderStudentAffairsType?.(c,'prestasi'),
@@ -49,6 +50,7 @@
     const groups=[
       {id:'kes-layanan',label:'Layanan',items:[
         ['kes-pendampingan','Pendampingan Siswa'],
+        ['kes-masalah-kelas','Masalah Umum Kelas'],
         ['kes-kebutuhan','Kebutuhan Siswa'],
         ['kes-salam-cq','SALAM CQ']
       ]},
