@@ -48,7 +48,7 @@
    }catch(e){msg.textContent=e.message;msg.className='cdp-error';button.disabled=!checkbox.checked;}
   });
  }
- window.renderWalasDailyMonitoring=function(content){css();root=content;load();};
+ window.renderWalasDailyMonitoring=function(content){css();chosenClass='';loaded=null;root=content;load();};
  window.renderKesiswaanDailyMonitoring=async function(content){
   css();content.innerHTML='<div class="cdp-wrap"><h2>Rekap Pemantauan Harian</h2><p>Rekap otomatis dari konfirmasi wali kelas. Tidak ada input bukan berarti sudah dipantau.</p><div class="cdp-panel"><label>Tanggal <input id="cdp-date" type="date"></label> <button id="cdp-refresh">Tampilkan</button></div><div class="cdp-panel" id="cdp-report">Memuat...</div></div>';
   const box=content.querySelector('#cdp-report'),input=content.querySelector('#cdp-date');
