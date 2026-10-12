@@ -18,16 +18,16 @@
   function role(){
     try{return norm((typeof currentUser!=='undefined'&&currentUser?.role)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')?.role)}catch(_){return''}
   }
-  // Panel khusus dashboard Kabid Akademik. Role aktif adalah sumber otorisasi UI;
-  // role sekunder (u.roles) tidak boleh membuat panel muncul pada akun Walas/Guru.
+  // Dashboard reminder ditampilkan hanya untuk role aktif Akademik, Walas, atau Guru.
+  // Akses data dijaga oleh API berdasarkan teacher_id dan penugasan mapel aktif.
   function eligible(){
     try{
       const u=typeof currentUser!=='undefined'&&currentUser?currentUser:JSON.parse(localStorage.getItem('cqlass_user')||'{}');
       const active=norm(u?.role||u?.role_code||u?.primary_role);
-      return ['akademik','kabid_akademik','academic'].includes(active);
+      return ['akademik','kabid_akademik','academic','walas','wali_kelas','guru','guru_mapel'].includes(active);
     }catch(_){return false}
   }
-  function academicRole(){return eligible()}
+  function academicRole(){return ['akademik','kabid_akademik','academic'].includes(role())}
   function currentSessionKey(){
     try{const u=typeof currentUser!=='undefined'&&currentUser?currentUser:JSON.parse(localStorage.getItem('cqlass_user')||'{}');return String(u?.id||u?.user_id||u?.username||'')+'|'+norm(u?.role||u?.role_code||u?.primary_role)+'|'+token()}
     catch(_){return ''}
@@ -46,9 +46,10 @@
     return {'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()};
   }
   async function request(){
-    const r=await fetch(ENDPOINT,{method:'POST',headers:headers(),body:JSON.stringify({action:'exam_schedule',academic_year:'2026/2027',semester_no:1,today:todayJakarta()})});
+    const r=await fetch(ENDPOINT,{method:'POST',headers:headers(),body:JSON.stringify({action:'exam_schedule',scope:academicRole()?'all':'mine',academic_year:'2026/2027',semester_no:1,today:todayJakarta()})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||d.success===false) throw new Error(typeof d.error==='string'?d.error:(typeof d.message==='string'?d.message:'Layanan jadwal ujian belum tersedia.'));
+    if(!academicRole()&&d.can_browse_all)throw new Error('Data belum dibatasi sesuai penugasan. Hubungi admin.');
     return d;
   }
   function injectStyle(){
@@ -162,7 +163,7 @@
   function rowHtml(r){
     const linked=(r.linked_tp||[]).map(x=>x.code).join(', ');
     const progress=Math.max(0,Math.min(100,Number(r.score_progress)||0));
-    const teacher=esc(r.teacher_name||'Guru belum tercatat');
+    const teacher=esc(r.teacher_name||'');
     const total=Math.max(0,Number(r.student_total)||0);
     const estimated=total?Math.round(total*progress/100):0;
     const remaining=Math.max(0,total-estimated);
@@ -176,7 +177,7 @@
       </div>
       <div><div class="cqer-date">${esc(fmtDate(r))}</div><div class="cqer-date-sub">${labelStatus(r.status)}${nearly?' · hampir selesai':''}</div></div>
       <div class="cqer-progress ${esc(r.status)}"><div class="cqer-progress-line"><span>${progressText}</span><b>${progress}%</b></div><div class="cqer-bar"><i style="width:${progress}%"></i></div></div>
-      <div class="cqer-side"><span class="cqer-pill ${esc(r.status)}">${nearly?'Hampir selesai':labelStatus(r.status)}</span>${r.status==='completed'?'':`<button class="cqer-action ${nearly?'finish':''}" onclick="cqExamOpenScore('${esc(r.assignment_id)}')">${actionLabel}</button>`}</div>
+      <div class="cqer-side"><span class="cqer-pill ${esc(r.status)}">${nearly?'Hampir selesai':labelStatus(r.status)}</span>${r.status==='completed'||!academicRole()?'':`<button class="cqer-action ${nearly?'finish':''}" onclick="cqExamOpenScore('${esc(r.assignment_id)}')">${actionLabel}</button>`}</div>
     </div>`;
   }
   function mount(){
@@ -204,7 +205,7 @@
     const rows=shown.slice(0,state.expanded?120:5);
     m.innerHTML=`<div class="cqer-card">
       <div class="cqer-head">
-        <div><div class="cqer-eyebrow">DASHBOARD AKADEMIK · SEMESTER 1</div><div class="cqer-title">Reminder Ujian LP/KD</div><div class="cqer-sub">Jadwal pelaksanaan guru mata pelajaran berdasarkan LP dan progres pengisian nilai TP.</div></div>
+        <div><div class="cqer-eyebrow">${academicRole()?'DASHBOARD AKADEMIK':'JADWAL UJIAN SAYA'} · SEMESTER 1</div><div class="cqer-title">Reminder Ujian TP/KD</div><div class="cqer-sub">${academicRole()?'Monitoring seluruh guru berdasarkan LP dan progres nilai TP.':'Hanya mapel dan kelas sesuai penugasan mengajar Anda.'}</div></div>
         <div class="cqer-summary">
           <div class="cqer-stat red"><strong>${Number(sm.overdue)||0}</strong><span>Terlambat</span></div>
           <div class="cqer-stat orange"><strong>${Number(sm.current)||0}</strong><span>Pekan Ini</span></div>
@@ -219,7 +220,7 @@
         <option value="completed" ${state.filter==='completed'?'selected':''}>Selesai</option>
         <option value="all" ${state.filter==='all'?'selected':''}>Semua Jadwal</option>
       </select><span class="cqer-meta">Urutan berdasarkan prioritas LP.</span><button class="cqer-more" onclick="cqExamRefresh(true)">↻ Perbarui</button></div>
-      <div class="cqer-section"><div class="cqer-section-head"><div class="cqer-section-title">Jadwal Guru Mapel</div><div class="cqer-section-note">${shown.length} jadwal</div></div>
+      <div class="cqer-section"><div class="cqer-section-head"><div class="cqer-section-title">${academicRole()?'Jadwal Guru Mapel':'Jadwal Mapel yang Diampu'}</div><div class="cqer-section-note">${shown.length} jadwal</div></div>
       <div class="cqer-list">${rows.length?rows.map(rowHtml).join(''):'<div class="cqer-empty">Tidak ada jadwal pada filter ini.</div>'}</div></div>
       ${shown.length>5?`<div class="cqer-foot"><button class="cqer-more" onclick="cqExamToggleMore()">${state.expanded?'Menampilkan seluruh prioritas':'Lihat jadwal lainnya →'}</button></div>`:''}
     </div>`;
@@ -252,6 +253,7 @@
   window.cqExamToggleMore=()=>{state.expanded=true;paint()};
   window.cqExamOpenScore=function(assignmentId){
     try{
+      if(!academicRole())return;
       if(typeof setActiveModule==='function')setActiveModule('leger');
       let tries=0;const timer=setInterval(()=>{
         tries++;
