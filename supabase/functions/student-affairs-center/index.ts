@@ -297,7 +297,7 @@ Deno.serve(async(req:Request)=>{
         const{data:cls,error:classError}=await sb.from("classes").select("id").eq("id",row.class_id).eq("is_active",true).maybeSingle();
         if(classError)throw classError;
         if(!cls)return J({success:false,error:"class_not_found"},400);
-        if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(row.record_date)||!row.description)return J({success:false,error:"invalid_class_issue"},400);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(row.record_date)||!row.description)return J({success:false,error:"invalid_class_issue"},400);
         if(!["baru","dalam_penanganan","selesai"].includes(row.status))return J({success:false,error:"invalid_class_issue_status"},400);
         if(T(b.id)){
           const{data:existing,error:existingError}=await sb.from("student_affairs_records").select("id").eq("id",T(b.id)).eq("record_type","masalah_kelas").eq("is_deleted",false).maybeSingle();
