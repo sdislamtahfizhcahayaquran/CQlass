@@ -103,6 +103,7 @@
         if(dis)ordered.push({...dis,label:'Kedisiplinan',roles:[...new Set([...(dis.roles||[]),...TEACHER_ROLES])]});
         if(rew)ordered.push({...rew,label:'Reward',roles:[...new Set([...(rew.roles||[]),...TEACHER_ROLES])]});
         if(mas)ordered.push({...mas,roles:[...new Set([...(mas.roles||[]),'walas'])]});
+        ordered.push({id:'pemantauan-harian',label:'Pemantauan Harian',roles:['walas'],built:true,render:function(content){if(typeof window.renderWalasDailyMonitoring==='function')return window.renderWalasDailyMonitoring(content);content.innerHTML='<div class="card">Modul Pemantauan Harian belum termuat. Segarkan halaman.</div>';}});
         student.items=ordered;
       }
       if(reports&&Array.isArray(reports.items)){
