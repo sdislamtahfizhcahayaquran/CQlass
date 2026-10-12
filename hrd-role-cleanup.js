@@ -59,6 +59,33 @@ function installCss(){
   .cq-hrd-sat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.cq-hrd-sat-card{border:1px solid #dde9e7;background:#fff;border-radius:15px;padding:14px}.cq-hrd-sat-card h3{margin:0 0 5px;font-size:13px;color:#214441}.cq-hrd-sat-card p{margin:4px 0;color:#708783;font-size:10px;line-height:1.5}.cq-hrd-form{display:grid;grid-template-columns:1.2fr 1.5fr .8fr .8fr 1.5fr auto;gap:9px;align-items:end}.cq-hrd-field{display:grid;gap:5px}.cq-hrd-field label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6f8582;font-weight:850}.cq-hrd-field input,.cq-hrd-field select{height:40px;border:1px solid #d8e6e4;border-radius:11px;padding:0 10px;background:#fff}
   #content.cq-hrd-clean-mode #hrd-report-inbox-panel,#content.cq-hrd-clean-mode .hrd-navtabs,#content.cq-hrd-clean-mode .cq-hf-wrap{display:none!important}
   @media(max-width:1000px){.cq-hrd-grid{grid-template-columns:repeat(2,1fr)}.cq-hrd-form{grid-template-columns:repeat(2,1fr)}.cq-hrd-sat{grid-template-columns:1fr}}@media(max-width:620px){.cq-hrd-grid,.cq-hrd-quick,.cq-hrd-form{grid-template-columns:1fr}.cq-hrd-head{align-items:flex-start;flex-direction:column}.cq-hrd-tools>*{width:100%}}
+
+  /* HRD typography harmonized with Walas; strictly scoped to HRD-owned UI. */
+  #content.cq-hrd-clean-mode .cq-hrd-clean,
+  .sidebar:has(>.cq-hrd-side) .cq-hrd-side{font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.5}
+  #content.cq-hrd-clean-mode .cq-hrd-page-title h1{font-size:24px}
+  #content.cq-hrd-clean-mode .cq-hrd-page-title p,
+  #content.cq-hrd-clean-mode .cq-hrd-head p{font-size:13px}
+  #content.cq-hrd-clean-mode .cq-hrd-panel h2{font-size:19px}
+  #content.cq-hrd-clean-mode .cq-hrd-kpi span,
+  #content.cq-hrd-clean-mode .cq-hrd-kpi small,
+  #content.cq-hrd-clean-mode .cq-hrd-sat-card p,
+  #content.cq-hrd-clean-mode .cq-hrd-field label,
+  #content.cq-hrd-clean-mode .cq-hrd-time-note,
+  #content.cq-hrd-clean-mode .cq-hrd-day-summary span{font-size:12px}
+  #content.cq-hrd-clean-mode .cq-hrd-table th{font-size:12px}
+  #content.cq-hrd-clean-mode .cq-hrd-table td,
+  #content.cq-hrd-clean-mode .cq-hrd-sat-card h3,
+  #content.cq-hrd-clean-mode .cq-hrd-chip,
+  #content.cq-hrd-clean-mode .cq-hrd-empty,
+  #content.cq-hrd-clean-mode .cq-hrd-modal-meta{font-size:13px}
+  #content.cq-hrd-clean-mode .cq-hrd-field input,
+  #content.cq-hrd-clean-mode .cq-hrd-field select,
+  #content.cq-hrd-clean-mode .cq-hrd-tools input,
+  #content.cq-hrd-clean-mode .cq-hrd-tools select,
+  #content.cq-hrd-clean-mode .cq-hrd-btn{font:600 13px/1.3 Inter,system-ui,sans-serif}
+  .sidebar:has(>.cq-hrd-side) .cq-hrd-group-label{font-size:11px!important}
+  .sidebar:has(>.cq-hrd-side) .cq-hrd-sub .cq-hrd-nav{font-size:12px!important}
   `;document.head.appendChild(s);
 }
 
@@ -73,7 +100,8 @@ function drawSidebar(active){
       ${navButton('live','Aktivitas Harian','openHrdCleanLive()')}
       ${navButton('completeness','Rekap Kelengkapan','openHrdCompleteness()')}
       ${navButton('monthly','Laporan Bulanan','openHrdCleanMonthly()')}
-      ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}\n      ${navButton('report-grades','Laporan Nilai Rapor','openHrdReportGrades()')}
+      ${navButton('promotion','Laporan Promo Socmed','openHrdCleanPromotion()')}
+      ${navButton('report-grades','Laporan Nilai Rapor','openHrdReportGrades()')}
     </div>
     <button class="cq-hrd-group-label ${state.manageOpen?'open':''}" onclick="hrdToggleGroup('manage')">Pengelolaan</button>
     <div class="cq-hrd-sub" ${state.manageOpen?'':'hidden'}>
@@ -411,9 +439,9 @@ window.hrdCleanLiveQuery=v=>{state.liveQuery=v;drawLive()};
 window.hrdCleanLiveSort=v=>{state.liveSort=v;drawLive()};
 window.hrdCleanReload=async()=>{state.admin=null;await renderLive()};
 window.hrdSaveSaturday=async()=>{const date=document.getElementById('hrd-sat-date')?.value||'',mid=document.getElementById('hrd-sat-master')?.value||'',start=document.getElementById('hrd-sat-start')?.value||'',end=document.getElementById('hrd-sat-end')?.value||'',note=document.getElementById('hrd-sat-note')?.value||'';if(!date||!mid)return typeof showToast==='function'?showToast('Tanggal dan kegiatan wajib dipilih.',true):alert('Tanggal dan kegiatan wajib dipilih.');if(new Date(date+'T12:00:00Z').getUTCDay()!==6)return typeof showToast==='function'?showToast('Tanggal harus hari Sabtu.',true):alert('Tanggal harus hari Sabtu.');try{await api('hrd-saturday-schedule',{action:'save',event_date:date,activity_master_id:mid,start_time:start,end_time:end,note});if(typeof showToast==='function')showToast('Jadwal Kegiatan Sabtu tersimpan.');renderSaturdayManage()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
-window.hrdDeleteSaturday=async id=>{try{await api('hrd-saturday-schedule',{action:'delete',id});if(typeof showToast==='function')showToast('Jadwal Kegiatan Sabtu dihapus.');renderSaturdayManage()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
+window.hrdDeleteSaturday=async id=>{if(!window.confirm('Hapus jadwal kegiatan Sabtu ini? Tindakan ini tidak dapat dibatalkan.'))return;try{await api('hrd-saturday-schedule',{action:'delete',id});if(typeof showToast==='function')showToast('Jadwal Kegiatan Sabtu dihapus.');renderSaturdayManage()}catch(e){typeof showToast==='function'?showToast(e.message,true):alert(e.message)}};
 
-window.hrdToggleGroup=g=>{if(g==='report'){state.reportOpen=!state.reportOpen;if(state.reportOpen)state.manageOpen=false}else if(g==='manage'){state.manageOpen=!state.manageOpen;if(state.manageOpen)state.reportOpen=false}side()};
+window.hrdToggleGroup=g=>{if(g==='report'){state.reportOpen=!state.reportOpen;if(state.reportOpen)state.manageOpen=false}else if(g==='manage'){state.manageOpen=!state.manageOpen;if(state.manageOpen)state.reportOpen=false}drawSidebar()};
 window.__cqRenderHrdSidebar=()=>drawSidebar();
 window.openHrdCleanDashboard=renderDashboard;
 window.openHrdCleanLive=()=>{state.reportOpen=true;renderLive()};
