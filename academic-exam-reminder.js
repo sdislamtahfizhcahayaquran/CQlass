@@ -198,7 +198,7 @@
       </select><span class="cqer-meta">Urutan berdasarkan prioritas LP.</span><button class="cqer-more" onclick="cqExamRefresh(true)">↻ Perbarui</button></div>
       <div class="cqer-section"><div class="cqer-section-head"><div class="cqer-section-title">Jadwal Guru Mapel</div><div class="cqer-section-note">${shown.length} jadwal</div></div>
       <div class="cqer-list">${rows.length?rows.map(rowHtml).join(''):'<div class="cqer-empty">Tidak ada jadwal pada filter ini.</div>'}</div></div>
-      ${shown.length>5?<div class="cqer-foot"><button class="cqer-more" onclick="cqExamToggleMore()">${state.expanded?'Menampilkan seluruh prioritas':'Lihat jadwal lainnya →'}</button></div>:''}
+      ${shown.length>5?`<div class="cqer-foot"><button class="cqer-more" onclick="cqExamToggleMore()">${state.expanded?'Menampilkan seluruh prioritas':'Lihat jadwal lainnya →'}</button></div>`:''}
     </div>`;
   }
   async function load(force){
