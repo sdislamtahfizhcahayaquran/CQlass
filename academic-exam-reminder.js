@@ -11,6 +11,7 @@
   const CACHE_MS=90*1000;
   let state={loading:false,loadedAt:0,data:null,filter:'active',expanded:false,error:''};
   let observer=null, renderTimer=0;
+  let sessionKey='',sessionEpoch=0;
 
   const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -27,6 +28,12 @@
     }catch(_){return false}
   }
   function academicRole(){return eligible()}
+  function currentSessionKey(){
+    try{const u=typeof currentUser!=='undefined'&&currentUser?currentUser:JSON.parse(localStorage.getItem('cqlass_user')||'{}');return String(u?.id||u?.user_id||u?.username||'')+'|'+norm(u?.role||u?.role_code||u?.primary_role)+'|'+token()}
+    catch(_){return ''}
+  }
+  function cleanupPanel(){document.getElementById('cq-exam-reminder-mount')?.remove()}
+  function syncSession(){const key=currentSessionKey();if(key!==sessionKey){sessionKey=key;sessionEpoch++;state.data=null;state.loadedAt=0;state.error='';state.loading=false;cleanupPanel()}}
   function todayJakarta(){
     try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
     catch(_){return new Date().toISOString().slice(0,10)}
@@ -198,21 +205,22 @@
     </div>`;
   }
   async function load(force){
-    if(!eligible())return;
+    syncSession();
+    if(!eligible()||String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard')return;
+    const epoch=sessionEpoch;
     const now=Date.now();if(!force&&state.data&&now-state.loadedAt<CACHE_MS){paint();return}
     if(state.loading)return;
     state.loading=true;state.error='';paint();
-    try{state.data=await request();state.loadedAt=Date.now()}
-    catch(e){state.error=e?.message||'Gagal memuat jadwal.'}
-    finally{state.loading=false;paint()}
+    try{const data=await request();if(epoch!==sessionEpoch||!eligible())return;state.data=data;state.loadedAt=Date.now()}
+    catch(e){if(epoch===sessionEpoch)state.error=e?.message||'Gagal memuat jadwal.'}
+    finally{if(epoch===sessionEpoch){state.loading=false;paint()}}
   }
   function ensure(){
-    if(!eligible()){
-      // Bersihkan panel lama jika pengguna beralih ke role non-Akademik.
-      document.getElementById('cq-exam-reminder-mount')?.remove();
+    syncSession();
+    if(!eligible()||String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard'){
+      cleanupPanel();
       return;
     }
-    if(String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard')return;
     mount();load(false);
   }
   function scheduleEnsure(){
@@ -252,7 +260,7 @@
   }
   const content=document.getElementById('content');
   if(content){
-    observer=new MutationObserver(()=>{if(eligible()&&String(typeof activeModule!=='undefined'?activeModule:'')==='dashboard'&&!document.getElementById('cq-exam-reminder-mount'))scheduleEnsure()});
+    observer=new MutationObserver(()=>{if(!eligible()||String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard'){cleanupPanel();return}if(!document.getElementById('cq-exam-reminder-mount'))scheduleEnsure()});
     observer.observe(content,{childList:true,subtree:false});
   }
   setTimeout(scheduleEnsure,250);
