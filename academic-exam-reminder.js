@@ -17,14 +17,16 @@
   function role(){
     try{return norm((typeof currentUser!=='undefined'&&currentUser?.role)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')?.role)}catch(_){return''}
   }
+  // Panel khusus dashboard Kabid Akademik. Role aktif adalah sumber otorisasi UI;
+  // role sekunder (u.roles) tidak boleh membuat panel muncul pada akun Walas/Guru.
   function eligible(){
     try{
       const u=typeof currentUser!=='undefined'&&currentUser?currentUser:JSON.parse(localStorage.getItem('cqlass_user')||'{}');
-      const roles=[u?.role,u?.role_code,u?.primary_role,...(Array.isArray(u?.roles)?u.roles:[])].map(norm);
-      return roles.some(r=>['guru','walas','akademik','kabid_akademik','academic'].includes(r)||r.includes('kabid_akademik'));
-    }catch(_){return ['guru','walas','akademik','kabid_akademik','academic'].includes(role())}
+      const active=norm(u?.role||u?.role_code||u?.primary_role);
+      return ['akademik','kabid_akademik','academic'].includes(active);
+    }catch(_){return false}
   }
-  function academicRole(){try{const u=typeof currentUser!=='undefined'&&currentUser?currentUser:JSON.parse(localStorage.getItem('cqlass_user')||'{}');return [u?.role,u?.role_code,u?.primary_role,...(Array.isArray(u?.roles)?u.roles:[])].map(norm).some(r=>['akademik','kabid_akademik','academic'].includes(r)||r.includes('kabid_akademik'))}catch(_){return ['akademik','kabid_akademik','academic'].includes(role())}}
+  function academicRole(){return eligible()}
   function todayJakarta(){
     try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
     catch(_){return new Date().toISOString().slice(0,10)}
