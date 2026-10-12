@@ -5,8 +5,10 @@
   window.__cqKesiswaanFinalSidebarV7=true;
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
   function role(){
-    try{return norm(currentUser?.role||currentUser?.primary_role||currentUser?.role_code).replace(/[ -]+/g,'_')}
-    catch(_){try{return norm(JSON.parse(localStorage.getItem('cqlass_user')||'{}').role).replace(/[ -]+/g,'_')}catch(_2){return''}}
+    let live='';
+    try{live=currentUser?.role||currentUser?.primary_role||currentUser?.role_code||''}catch(_){}
+    if(!live)try{const u=JSON.parse(localStorage.getItem('cqlass_user')||'{}');live=u.role||u.primary_role||u.role_code||''}catch(_){}
+    return norm(live).replace(/[ -]+/g,'_');
   }
   const KESISWAAN_ROUTE_RENDERERS={
     'kes-laporan-masuk':c=>window.renderStudentAffairsCases?.(c),
@@ -23,7 +25,8 @@
     'rekap-input-poin':c=>window.renderPointInputAudit?.(c),
     'laporan-kesiswaan-super':c=>window.renderKesiswaanSuperReport?.(c),
     'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c),
-    'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c)
+    'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c),
+    'kes-laporan-kelas':c=>window.renderKesiswaanProblemRecap?.(c)
   };
 
   function renderControllingMt(content){
@@ -59,6 +62,7 @@
       ]},
       {id:'kes-laporan',label:'Laporan',items:[
         ['laporan-kesiswaan-super','Laporan Kesiswaan'],
+        ['kes-laporan-kelas','Laporan Kelas'],
         ['kes-rekap-masalah','Rekapan Masalah Kelas & Siswa'],
         ['rekap-input-poin','Monitoring Input'],
         ['kes-controlling-mt','Controlling MT'],
@@ -71,7 +75,7 @@
     ];
     groups.forEach(g=>{
       const active=g.items.some(x=>x[0]===activeModule);
-      const isOpen=openGroupId===g.id||active;
+      const isOpen=openGroupId===g.id||active||(g.id==='kes-laporan'&&openGroupId==null);
       const head=document.createElement('div');
       head.className='nav-group-head'+(isOpen?' open':'');
       head.innerHTML='<span>'+g.label+'</span><svg class="nav-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
