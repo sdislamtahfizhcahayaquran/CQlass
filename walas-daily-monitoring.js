@@ -76,7 +76,7 @@
  function paint(){
   if(!root||!loaded)return;
   const d=loaded,c=d.counts,exists=d.confirmation;
-  const v=c.violation>0||c.late>0?'ada':'nihil',r=c.reward>0?'ada':'nihil';
+  // No automatic selection: the teacher must review and choose both answers explicitly.
   const mismatch=exists&&((exists.violation_status==='nihil'&&(c.violation||c.late))||(exists.reward_status==='nihil'&&c.reward)||(exists.violation_status==='ada'&&!(c.violation||c.late))||(exists.reward_status==='ada'&&!c.reward));
   const dateLabel=esc(new Date(d.date+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
   const status=exists?(mismatch?'<span class="cdp-status issue">● Perlu Verifikasi</span>':'<span class="cdp-status done">✓ Sudah Dipantau</span>'):'<span class="cdp-status wait">● Belum Dikonfirmasi</span>';
@@ -89,22 +89,26 @@
    '<div class="cdp-metric"><span class="cdp-metric-icon">★</span><div><div class="cdp-metric-num">'+c.reward+'</div><div class="cdp-metric-label">Reward terverifikasi</div></div></div></div>'+
    (exists?'<div class="cdp-foot" style="margin-top:11px">'+(mismatch?'Catatan berubah setelah konfirmasi. Periksa dan konfirmasi ulang.':'Terakhir dikonfirmasi '+esc(new Date(exists.confirmed_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})))+'</div>':'')+'</div>'+
    '<div class="cdp-panel"><div class="cdp-check-section"><div class="cdp-section"><div class="cdp-section-icon">✓</div><div><div class="cdp-section-title">Kedisiplinan</div><p class="cdp-section-sub">Tinjau pelanggaran dan keterlambatan yang terjadi di kelas.</p></div></div><div class="cdp-options">'+
-   option('cdp-violation','nihil','Tidak ada pelanggaran','Sudah diperiksa dan tidak ditemukan kejadian.',v==='nihil')+
-   option('cdp-violation','ada','Ada pelanggaran / keterlambatan','Kejadian telah dicatat pada sistem.',v==='ada')+'</div></div>'+
+   option('cdp-violation','nihil','Tidak ada pelanggaran','Sudah diperiksa dan tidak ditemukan kejadian.',false)+
+   option('cdp-violation','ada','Ada pelanggaran / keterlambatan','Kejadian telah dicatat pada sistem.',false)+'</div></div>'+
    '<div class="cdp-check-section"><div class="cdp-section"><div class="cdp-section-icon">★</div><div><div class="cdp-section-title">Apresiasi Siswa</div><p class="cdp-section-sub">Pastikan apakah ada apresiasi khusus yang perlu dicatat.</p></div></div><div class="cdp-options">'+
-   option('cdp-reward','nihil','Belum ada apresiasi khusus','Tidak perlu membuat reward jika memang tidak ada.',r==='nihil')+
-   option('cdp-reward','ada','Ada apresiasi siswa','Reward telah dicatat dan diverifikasi.',r==='ada')+'</div></div>'+
+   option('cdp-reward','nihil','Belum ada apresiasi khusus','Tidak perlu membuat reward jika memang tidak ada.',false)+
+   option('cdp-reward','ada','Ada apresiasi siswa','Reward telah dicatat dan diverifikasi.',false)+'</div></div>'+
    '<label class="cdp-declaration"><input type="checkbox" id="cdp-declaration"><span>Saya telah memeriksa kondisi siswa dan memastikan laporan sesuai dengan temuan hari ini.</span></label>'+
-   '<div class="cdp-action"><button id="cdp-submit" disabled>✓ &nbsp; Konfirmasi Pemantauan</button><span id="cdp-message" class="cdp-foot">Centang pernyataan untuk mengonfirmasi.</span></div></div>'+
+   '<div class="cdp-action"><button id="cdp-submit" disabled>✓ &nbsp; Konfirmasi Pemantauan</button><span id="cdp-message" class="cdp-foot">Pilih kedua hasil pemeriksaan dan centang pernyataan.</span></div></div>'+
    '<p class="cdp-foot cdp-note">Hanya dapat dikonfirmasi untuk hari ini. Jika data berubah, status akan ditandai untuk diperiksa ulang.</p></div>';
   const checkbox=root.querySelector('#cdp-declaration'),button=root.querySelector('#cdp-submit'),msg=root.querySelector('#cdp-message');
-  checkbox.addEventListener('change',()=>{button.disabled=!checkbox.checked;msg.textContent=checkbox.checked?'Siap disimpan.':'Centang pernyataan untuk mengonfirmasi.';});
+  const ready=()=>!!(checkbox.checked&&root.querySelector('input[name="cdp-violation"]:checked')&&root.querySelector('input[name="cdp-reward"]:checked'));
+  const sync=()=>{button.disabled=!ready();msg.textContent=ready()?'Siap disimpan.':'Pilih kedua hasil pemeriksaan dan centang pernyataan.';};
+  checkbox.addEventListener('change',sync);
+  root.querySelectorAll('input[name="cdp-violation"],input[name="cdp-reward"]').forEach(el=>el.addEventListener('change',sync));
+  sync();
   button.addEventListener('click',async()=>{
-   button.disabled=true;msg.textContent='Menyimpan...';
+   if(!ready())return;button.disabled=true;msg.textContent='Menyimpan...';
    try{
     await api({action:'daily_confirm',class_id:chosenClass,checked:checkbox.checked,violation_status:root.querySelector('input[name="cdp-violation"]:checked').value,reward_status:root.querySelector('input[name="cdp-reward"]:checked').value});
     await load();
-   }catch(e){msg.textContent=e.message;msg.className='cdp-error';button.disabled=!checkbox.checked;}
+   }catch(e){msg.textContent=e.message;msg.className='cdp-error';button.disabled=!ready();}
   });
  }
  window.renderWalasDailyMonitoring=function(content){css();chosenClass='';loaded=null;root=content;load();};
