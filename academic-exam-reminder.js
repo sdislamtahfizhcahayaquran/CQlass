@@ -139,13 +139,13 @@
   function rowHtml(r){
     const linked=(r.linked_tp||[]).map(x=>x.code).join(', ');
     const progress=Math.max(0,Math.min(100,Number(r.score_progress)||0));
-    const teacher=academicRole()?esc(r.teacher_name||''):'';
+    const teacher=esc(r.teacher_name||'Guru belum tercatat');
     const total=Math.max(0,Number(r.student_total)||0);
     const estimated=total?Math.round(total*progress/100):0;
     const remaining=Math.max(0,total-estimated);
     const nearly=progress>=80&&progress<100;
     const progressText=progress>=100?'Nilai lengkap':nearly?(remaining===1?'Tinggal 1 siswa':`Tinggal sekitar ${remaining} siswa`):(total?`${estimated}/${total} siswa dinilai`:`Nilai TP ${progress}%`);
-    const actionLabel=nearly?'Selesaikan →':'Isi Nilai →';
+    const actionLabel=nearly?'Lihat Nilai →':'Lihat Nilai →';
     return `<div class="cqer-row ${esc(r.status)}">
       <div class="cqer-main">
         <div class="cqer-main-top"><b>${esc(r.subject_name||'Mata pelajaran')} · ${esc(r.class_name||'')}</b>${linked?`<span class="cqer-tp">${esc(linked)}</span>`:''}</div>
@@ -171,37 +171,34 @@
     return m;
   }
   function paint(){
-    injectStyle();const m=mount();if(!m)return;m.style.display='';
-    if(state.loading&&!state.data){m.innerHTML='<div class="cqer-card"><div class="cqer-empty"><span class="spinner"></span> Menyiapkan jadwal ujian dari LP...</div></div>';return}
-    if(state.error&&!state.data){m.replaceChildren();m.style.display='none';console.warn('CQlass jadwal ujian LP/KD:',state.error);return}
+    if(!eligible()){document.getElementById('cq-exam-reminder-mount')?.remove();return}
+    injectStyle();const m=mount();if(!m)return;
+    m.style.display='';
+    if(state.loading&&!state.data){m.innerHTML='<div class="cqer-card"><div class="cqer-empty">Memuat reminder ujian LP/KD...</div></div>';return}
+    if(state.error&&!state.data){m.innerHTML='<div class="cqer-card"><div class="cqer-empty">Jadwal ujian belum tersedia. <button class="cqer-more" onclick="cqExamRefresh(true)">Coba lagi</button></div></div>';return}
     const d=state.data||{summary:{},rows:[]},sm=d.summary||{};
-    const shown=filteredRows(),limit=academicRole()?(state.expanded?120:8):(state.expanded?50:4),rows=shown.slice(0,limit);
-    const title=academicRole()?'Monitoring Ujian TP/KD':'Yang perlu Anda selesaikan';
-    const subtitle=academicRole()?'Pantau jadwal ujian seluruh guru berdasarkan LP dan keterisian nilai TP.':'Jadwal ujian otomatis dari LP Anda. Fokus pada yang perlu dituntaskan lebih dulu.';
-    const priority=Number(sm.overdue)>0?`<div class="cqer-priority"><div class="cqer-priority-main"><i class="cqer-priority-dot"></i><div><b>${academicRole()?Number(sm.overdue)+' jadwal perlu perhatian':'Ada '+Number(sm.overdue)+' jadwal yang melewati target LP'}</b><span> · prioritaskan nilai yang belum lengkap</span></div></div><button onclick="cqExamSetFilter('overdue')">Lihat terlambat →</button></div>`:'';
-    const tools=`<div class="cqer-tools"><select class="cqer-filter" onchange="cqExamSetFilter(this.value)">
-      <option value="active" ${state.filter==='active'?'selected':''}>Perlu perhatian</option>
-      <option value="overdue" ${state.filter==='overdue'?'selected':''}>Terlambat</option>
-      <option value="current" ${state.filter==='current'?'selected':''}>Pekan Ini</option>
-      <option value="upcoming" ${state.filter==='upcoming'?'selected':''}>Mendatang</option>
-      <option value="completed" ${state.filter==='completed'?'selected':''}>Selesai</option>
-      <option value="all" ${state.filter==='all'?'selected':''}>Semua</option>
-    </select><span class="cqer-meta">Status mengikuti nilai TP yang masuk.</span><button class="cqer-more" onclick="cqExamRefresh(true)" title="Muat ulang jadwal">↻ Perbarui</button></div>`;
+    const shown=filteredRows();
+    const rows=shown.slice(0,state.expanded?120:5);
     m.innerHTML=`<div class="cqer-card">
       <div class="cqer-head">
-        <div><div class="cqer-eyebrow">Academic Reminder</div><div class="cqer-title">${title}</div><div class="cqer-sub">${subtitle}</div></div>
+        <div><div class="cqer-eyebrow">DASHBOARD AKADEMIK · SEMESTER 1</div><div class="cqer-title">Reminder Ujian LP/KD</div><div class="cqer-sub">Jadwal pelaksanaan guru mata pelajaran berdasarkan LP dan progres pengisian nilai TP.</div></div>
         <div class="cqer-summary">
           <div class="cqer-stat red"><strong>${Number(sm.overdue)||0}</strong><span>Terlambat</span></div>
           <div class="cqer-stat orange"><strong>${Number(sm.current)||0}</strong><span>Pekan Ini</span></div>
-          <div class="cqer-stat blue"><strong>${Number(sm.upcoming)||0}</strong><span>Mendatang</span></div>
           <div class="cqer-stat green"><strong>${Number(sm.completed)||0}</strong><span>Selesai</span></div>
         </div>
       </div>
-      ${priority}${tools}
-      <div class="cqer-section"><div class="cqer-section-head"><div class="cqer-section-title">${state.filter==='active'?'Prioritas Anda':state.filter==='all'?'Semua Jadwal':labelStatus(state.filter)}</div><div class="cqer-section-note">${shown.length} jadwal</div></div>
-        <div class="cqer-list">${rows.length?rows.map(rowHtml).join(''):'<div class="cqer-empty">Tidak ada jadwal pada bagian ini.</div>'}</div>
-      </div>
-      ${shown.length>limit?`<div class="cqer-foot"><button class="cqer-more" onclick="cqExamToggleMore()">Lihat semua ${shown.length} jadwal →</button></div>`:''}
+      <div class="cqer-tools"><select class="cqer-filter" aria-label="Filter jadwal ujian" onchange="cqExamSetFilter(this.value)">
+        <option value="active" ${state.filter==='active'?'selected':''}>Perlu Perhatian</option>
+        <option value="overdue" ${state.filter==='overdue'?'selected':''}>Terlambat</option>
+        <option value="current" ${state.filter==='current'?'selected':''}>Pekan Ini</option>
+        <option value="upcoming" ${state.filter==='upcoming'?'selected':''}>Mendatang</option>
+        <option value="completed" ${state.filter==='completed'?'selected':''}>Selesai</option>
+        <option value="all" ${state.filter==='all'?'selected':''}>Semua Jadwal</option>
+      </select><span class="cqer-meta">Urutan berdasarkan prioritas LP.</span><button class="cqer-more" onclick="cqExamRefresh(true)">↻ Perbarui</button></div>
+      <div class="cqer-section"><div class="cqer-section-head"><div class="cqer-section-title">Jadwal Guru Mapel</div><div class="cqer-section-note">${shown.length} jadwal</div></div>
+      <div class="cqer-list">${rows.length?rows.map(rowHtml).join(''):'<div class="cqer-empty">Tidak ada jadwal pada filter ini.</div>'}</div></div>
+      ${shown.length>5?<div class="cqer-foot"><button class="cqer-more" onclick="cqExamToggleMore()">${state.expanded?'Menampilkan seluruh prioritas':'Lihat jadwal lainnya →'}</button></div>:''}
     </div>`;
   }
   async function load(force){
