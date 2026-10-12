@@ -24,6 +24,7 @@
     'kes-program':c=>window.renderStudentAffairsType?.(c,'kegiatan'),
     'uks-duty-inbox':c=>window.renderUksKesiswaanInbox?.(c),
     'rekap-input-poin':c=>window.renderPointInputAudit?.(c),
+    'kes-pemantauan-harian':c=>window.renderKesiswaanDailyMonitoring?.(c),
     'laporan-kesiswaan-super':c=>window.renderKesiswaanSuperReport?.(c),
     'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c),
     'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c),
@@ -67,6 +68,7 @@
         ['kes-laporan-kelas','Laporan Kelas'],
         ['kes-rekap-masalah','Rekapan Masalah Kelas & Siswa'],
         ['rekap-input-poin','Monitoring Input'],
+        ['kes-pemantauan-harian','Pemantauan Harian'],
         ['kes-controlling-mt','Controlling MT'],
         ['laporan-promosi','Promosi Socmed']
       ]},
