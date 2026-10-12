@@ -123,20 +123,20 @@
   function paint(){
     injectStyle();const m=mount();if(!m)return;
     if(state.loading&&!state.data){m.innerHTML='<div class="cqer-card"><div class="cqer-empty"><span class="spinner"></span> Menyiapkan jadwal ujian dari LP...</div></div>';return}
-    if(state.error&&!state.data){m.innerHTML=`<div class="cqer-card"><div class="cqer-empty">Jadwal ujian belum dapat dimuat. <button class="cqer-more" onclick="cqExamRefresh(true)">Coba lagi</button></div></div>`;return}
+    if(state.error&&!state.data){m.innerHTML=`<div class="cqer-card"><div class="cqer-empty">Jadwal ujian belum dapat dimuat: ${esc(state.error)}. <button class="cqer-more" onclick="cqExamRefresh(true)">Coba lagi</button></div></div>`;return}
     const d=state.data||{summary:{},rows:[]},sm=d.summary||{};
     const shown=filteredRows(),limit=academicRole()?(state.expanded?120:8):(state.expanded?50:4),rows=shown.slice(0,limit);
     const title=academicRole()?'Monitoring Ujian TP/KD':'Yang perlu Anda selesaikan';
     const subtitle=academicRole()?'Pantau jadwal ujian seluruh guru berdasarkan LP dan keterisian nilai TP.':'Jadwal ujian otomatis dari LP Anda. Fokus pada yang perlu dituntaskan lebih dulu.';
     const priority=Number(sm.overdue)>0?`<div class="cqer-priority"><div class="cqer-priority-main"><i class="cqer-priority-dot"></i><div><b>${academicRole()?Number(sm.overdue)+' jadwal perlu perhatian':'Ada '+Number(sm.overdue)+' jadwal yang melewati target LP'}</b><span> · prioritaskan nilai yang belum lengkap</span></div></div><button onclick="cqExamSetFilter('overdue')">Lihat terlambat →</button></div>`:'';
-    const tools=academicRole()?`<div class="cqer-tools"><select class="cqer-filter" onchange="cqExamSetFilter(this.value)">
+    const tools=`<div class="cqer-tools"><select class="cqer-filter" onchange="cqExamSetFilter(this.value)">
       <option value="active" ${state.filter==='active'?'selected':''}>Perlu perhatian</option>
       <option value="overdue" ${state.filter==='overdue'?'selected':''}>Terlambat</option>
       <option value="current" ${state.filter==='current'?'selected':''}>Pekan Ini</option>
       <option value="upcoming" ${state.filter==='upcoming'?'selected':''}>Mendatang</option>
       <option value="completed" ${state.filter==='completed'?'selected':''}>Selesai</option>
       <option value="all" ${state.filter==='all'?'selected':''}>Semua</option>
-    </select><span class="cqer-meta">Status berubah otomatis saat nilai TP masuk.</span></div>`:'';
+    </select><span class="cqer-meta">Status mengikuti nilai TP yang masuk.</span><button class="cqer-more" onclick="cqExamRefresh(true)" title="Muat ulang jadwal">↻ Perbarui</button></div>`;
     m.innerHTML=`<div class="cqer-card">
       <div class="cqer-head">
         <div><div class="cqer-eyebrow">Academic Reminder</div><div class="cqer-title">${title}</div><div class="cqer-sub">${subtitle}</div></div>
@@ -189,23 +189,11 @@
     }catch(_){}
   };
 
-  function patchDashboardRole(){
-    try{
-      if(typeof DASHBOARD_MODULE!=='undefined'&&Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes('guru'))DASHBOARD_MODULE.roles.push('guru');
-    }catch(_){}
-  }
-  patchDashboardRole();
-
+  // Do not mutate shared role permissions or force a user's navigation.
   if(typeof enterApp==='function'&&!enterApp.__cqExamReminder){
     const old=enterApp;enterApp=function(){
-      patchDashboardRole();
       const out=old.apply(this,arguments);
-      setTimeout(()=>{
-        try{
-          if(role()==='guru'&&typeof activeModule!=='undefined'&&activeModule!=='dashboard'&&typeof setActiveModule==='function')setActiveModule('dashboard');
-          else scheduleEnsure();
-        }catch(_){}
-      },80);
+      setTimeout(scheduleEnsure,100);
       return out;
     };enterApp.__cqExamReminder=true;
   }
@@ -219,5 +207,5 @@
     observer=new MutationObserver(()=>{if(eligible()&&String(typeof activeModule!=='undefined'?activeModule:'')==='dashboard'&&!document.getElementById('cq-exam-reminder-mount'))scheduleEnsure()});
     observer.observe(content,{childList:true,subtree:false});
   }
-  setTimeout(()=>{patchDashboardRole();try{if(typeof renderSidebar==='function'&&eligible())renderSidebar()}catch(_){}scheduleEnsure()},250);
+  setTimeout(scheduleEnsure,250);
 })();
