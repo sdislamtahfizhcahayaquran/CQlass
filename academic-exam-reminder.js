@@ -39,7 +39,7 @@
   async function request(){
     const r=await fetch(ENDPOINT,{method:'POST',headers:headers(),body:JSON.stringify({action:'exam_schedule',academic_year:'2026/2027',semester_no:1,today:todayJakarta()})});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok||d.success===false) throw new Error(d.error||'Jadwal ujian belum dapat dimuat.');
+    if(!r.ok||d.success===false) throw new Error(typeof d.error==='string'?d.error:(typeof d.message==='string'?d.message:'Layanan jadwal ujian belum tersedia.'));
     return d;
   }
   function injectStyle(){
@@ -162,9 +162,9 @@
     return m;
   }
   function paint(){
-    injectStyle();const m=mount();if(!m)return;
+    injectStyle();const m=mount();if(!m)return;m.style.display='';
     if(state.loading&&!state.data){m.innerHTML='<div class="cqer-card"><div class="cqer-empty"><span class="spinner"></span> Menyiapkan jadwal ujian dari LP...</div></div>';return}
-    if(state.error&&!state.data){m.innerHTML=`<div class="cqer-card"><div class="cqer-empty">Jadwal ujian belum dapat dimuat: ${esc(state.error)}. <button class="cqer-more" onclick="cqExamRefresh(true)">Coba lagi</button></div></div>`;return}
+    if(state.error&&!state.data){m.replaceChildren();m.style.display='none';console.warn('CQlass jadwal ujian LP/KD:',state.error);return}
     const d=state.data||{summary:{},rows:[]},sm=d.summary||{};
     const shown=filteredRows(),limit=academicRole()?(state.expanded?120:8):(state.expanded?50:4),rows=shown.slice(0,limit);
     const title=academicRole()?'Monitoring Ujian TP/KD':'Yang perlu Anda selesaikan';
