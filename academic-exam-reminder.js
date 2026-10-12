@@ -207,7 +207,12 @@
     finally{state.loading=false;paint()}
   }
   function ensure(){
-    if(!eligible()||String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard')return;
+    if(!eligible()){
+      // Bersihkan panel lama jika pengguna beralih ke role non-Akademik.
+      document.getElementById('cq-exam-reminder-mount')?.remove();
+      return;
+    }
+    if(String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard')return;
     mount();load(false);
   }
   function scheduleEnsure(){
