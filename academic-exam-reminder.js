@@ -154,8 +154,9 @@
     const futureY=future.toISOString().slice(0,10);
     return rows.filter(r=>r.status==='overdue'||r.status==='current'||(r.status==='upcoming'&&String(r.period_start||'')<=futureY));
   }
+  function displaySubject(v){const name=String(v||'').trim();return /^sosial$/i.test(name)?'Social Science':name}
   function filteredRows(){
-    const rows=Array.isArray(state.data?.rows)?state.data.rows:[];
+    const rows=(Array.isArray(state.data?.rows)?state.data.rows:[]).filter(r=>!(/\bsospan\b/i.test(String(r.subject_name||''))));
     if(state.filter==='active')return activeRows(rows);
     if(state.filter==='all')return rows;
     return rows.filter(r=>r.status===state.filter);
@@ -172,7 +173,7 @@
     const actionLabel=nearly?'Lihat Nilai →':'Lihat Nilai →';
     return `<div class="cqer-row ${esc(r.status)}">
       <div class="cqer-main">
-        <div class="cqer-main-top"><b>${esc(r.subject_name||'Mata pelajaran')} · ${esc(r.class_name||'')}</b>${linked?`<span class="cqer-tp">${esc(linked)}</span>`:''}</div>
+        <div class="cqer-main-top"><b>${esc(displaySubject(r.subject_name)||'Mata pelajaran')} · ${esc(r.class_name||'')}</b>${linked?`<span class="cqer-tp">${esc(linked)}</span>`:''}</div>
         <span>${teacher?(teacher+' · '):''}${esc(r.target_text||'Ujian TP/KD')}</span>
       </div>
       <div><div class="cqer-date">${esc(fmtDate(r))}</div><div class="cqer-date-sub">${labelStatus(r.status)}${nearly?' · hampir selesai':''}</div></div>
