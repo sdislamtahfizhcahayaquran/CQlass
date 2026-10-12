@@ -17,8 +17,14 @@
   function role(){
     try{return norm((typeof currentUser!=='undefined'&&currentUser?.role)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')?.role)}catch(_){return''}
   }
-  function eligible(){return ['guru','walas','akademik','kabid_akademik','academic'].includes(role())}
-  function academicRole(){return ['akademik','kabid_akademik','academic'].includes(role())}
+  function eligible(){
+    try{
+      const u=typeof currentUser!=='undefined'&&currentUser?currentUser:JSON.parse(localStorage.getItem('cqlass_user')||'{}');
+      const roles=[u?.role,u?.role_code,u?.primary_role,...(Array.isArray(u?.roles)?u.roles:[])].map(norm);
+      return roles.some(r=>['guru','walas','akademik','kabid_akademik','academic'].includes(r)||r.includes('kabid_akademik'));
+    }catch(_){return ['guru','walas','akademik','kabid_akademik','academic'].includes(role())}
+  }
+  function academicRole(){try{const u=typeof currentUser!=='undefined'&&currentUser?currentUser:JSON.parse(localStorage.getItem('cqlass_user')||'{}');return [u?.role,u?.role_code,u?.primary_role,...(Array.isArray(u?.roles)?u.roles:[])].map(norm).some(r=>['akademik','kabid_akademik','academic'].includes(r)||r.includes('kabid_akademik'))}catch(_){return ['akademik','kabid_akademik','academic'].includes(role())}}
   function todayJakarta(){
     try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
     catch(_){return new Date().toISOString().slice(0,10)}
@@ -143,7 +149,7 @@
   }
   function mount(){
     if(!eligible()||String(typeof activeModule!=='undefined'?activeModule:'')!=='dashboard')return null;
-    const c=document.getElementById('content');if(!c)return null;
+    const c=document.querySelector('#content #cq-ak7')||document.querySelector('#content .ak7')||document.getElementById('content');if(!c)return null;
     let m=document.getElementById('cq-exam-reminder-mount');
     if(!m){m=document.createElement('div');m.id='cq-exam-reminder-mount';m.className='cqer'}
     const hero=[...c.querySelectorAll('.cq-role-hero[data-cq-role-theme="1"],.ak7-hero,.rd-hero,.hrd-hero,[class*="dashboard-hero"],[class*="dash-hero"]')]
