@@ -22,7 +22,8 @@
     'uks-duty-inbox':c=>window.renderUksKesiswaanInbox?.(c),
     'rekap-input-poin':c=>window.renderPointInputAudit?.(c),
     'laporan-kesiswaan-super':c=>window.renderKesiswaanSuperReport?.(c),
-    'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c)
+    'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c),
+    'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c)
   };
 
   function renderControllingMt(content){
@@ -58,6 +59,7 @@
       ]},
       {id:'kes-laporan',label:'Laporan',items:[
         ['laporan-kesiswaan-super','Laporan Kesiswaan'],
+        ['kes-rekap-masalah','Rekapan Masalah Kelas & Siswa'],
         ['rekap-input-poin','Monitoring Input'],
         ['kes-controlling-mt','Controlling MT'],
         ['laporan-promosi','Promosi Socmed']
