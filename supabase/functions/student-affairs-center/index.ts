@@ -292,6 +292,19 @@ Deno.serve(async(req:Request)=>{
     if(action==="save_affairs"){
       if(!canAffairs)return J({success:false,error:"forbidden"},403);
       const row={record_type:L(b.record_type),student_id:T(b.student_id)||null,class_id:T(b.class_id)||null,record_date:T(b.record_date)||ymd(),title:T(b.title),description:T(b.description)||null,follow_up:T(b.follow_up)||null,status:L(b.status)||"baru",priority:L(b.priority)||"normal",evidence_url:T(b.evidence_url)||null,support_category:L(b.record_type)==="dukungan"?(T(b.support_category)||null):null,support_type:L(b.record_type)==="dukungan"?(T(b.support_type)||null):null,support_form:L(b.record_type)==="dukungan"?(T(b.support_form)||null):null,support_pic:L(b.record_type)==="dukungan"?(T(b.support_pic)||null):null,updated_by_account_id:a.id};
+      if(row.record_type==="masalah_kelas"){
+        if(!row.class_id||row.student_id)return J({success:false,error:"class_issue_requires_class_without_student"},400);
+        const{data:cls,error:classError}=await sb.from("classes").select("id").eq("id",row.class_id).eq("is_active",true).maybeSingle();
+        if(classError)throw classError;
+        if(!cls)return J({success:false,error:"class_not_found"},400);
+        if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(row.record_date)||!row.description)return J({success:false,error:"invalid_class_issue"},400);
+        if(!["baru","dalam_penanganan","selesai"].includes(row.status))return J({success:false,error:"invalid_class_issue_status"},400);
+        if(T(b.id)){
+          const{data:existing,error:existingError}=await sb.from("student_affairs_records").select("id").eq("id",T(b.id)).eq("record_type","masalah_kelas").eq("is_deleted",false).maybeSingle();
+          if(existingError)throw existingError;
+          if(!existing)return J({success:false,error:"class_issue_not_found"},404);
+        }
+      }
       if(!row.title)return J({success:false,error:"title_required"},400);
       if(T(b.id)){const{data,error}=await sb.from("student_affairs_records").update({...row,updated_at:new Date().toISOString()}).eq("id",T(b.id)).eq("is_deleted",false).select().single();if(error)throw error;return J({success:true,row:data})}
       const{data,error}=await sb.from("student_affairs_records").insert({...row,created_by_account_id:a.id}).select().single();if(error)throw error;return J({success:true,row:data})
