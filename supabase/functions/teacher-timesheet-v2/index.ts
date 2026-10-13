@@ -108,7 +108,7 @@ async function validateFreeSlot(req:Request,body:any){
     if(x.activity_code==="administration_eduhub"&&!isTahfizh)continue;
     const ws=x.activity_code==="administration_eduhub"&&isTahfizh?"14:50:00":x.start_time;
     const we=x.activity_code==="administration_eduhub"&&isTahfizh?"16:00:00":x.end_time;
-    if(overlap(start,end,ws,we))conflicts.push({label:x.activity_code==="administration_eduhub"?"Administrasi Eduhub":T(x.activity_name)||"Jadwal kerja rutin",start:ws,end:we});
+    if(!(day===6&&["saturday_work","saturday_role_work"].includes(T(x.activity_code)))&&overlap(start,end,ws,we))conflicts.push({label:x.activity_code==="administration_eduhub"?"Administrasi Eduhub":T(x.activity_name)||"Jadwal kerja rutin",start:ws,end:we});
   }
   for(const x of uksR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:`Jaga UKS shift ${Number(x.shift_no)||""}`.trim(),start:x.start_time,end:x.end_time});
   for(const x of manualR.data||[])if(T(x.id)!==T(body.id)&&overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.activity)||"Timesheet yang sudah diisi",start:x.start_time,end:x.end_time});
