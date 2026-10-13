@@ -852,7 +852,7 @@ function enterApp(){
     }
   }else{
     const entryRole=String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
-    activeModule = ['kesiswaan','kabid_kesiswaan'].includes(entryRole) ? 'dashboard' : (DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi');
+    activeModule = (entryRole==='sapras'||['kesiswaan','kabid_kesiswaan'].includes(entryRole)) ? 'dashboard' : (DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi');
     renderSidebar();
     setActiveModule(activeModule);
   }
@@ -909,6 +909,16 @@ function renderSidebar(){
   }
   sidebar.innerHTML = '';
 
+  // SAPRAS: isolated navigation, never expose attendance or academic modules.
+  if (sidebarRole === 'sapras') {
+    const item = document.createElement('div');
+    item.className = 'nav-item active';
+    item.textContent = 'Dashboard SAPRAS · Laporan Fasilitas';
+    item.onclick = () => setActiveModule('dashboard');
+    sidebar.appendChild(item);
+    return;
+  }
+
   if (DASHBOARD_MODULE.roles.includes(sidebarRole)) {
     const dashItem = document.createElement('div');
     dashItem.className = 'nav-item' + (activeModule === 'dashboard' ? ' active' : '');
@@ -951,6 +961,15 @@ function renderSidebar(){
 }
 
 function setActiveModule(id){
+  // Route SAPRAS only to the facilities dashboard; block accidental legacy module navigation.
+  if(String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_')==='sapras'){
+    activeModule='dashboard';
+    renderSidebar();
+    const c=document.getElementById('content');
+    if(typeof window.renderSaprasHardDashboard==='function')window.renderSaprasHardDashboard();
+    else if(c)c.innerHTML='<div class="card">Dashboard SAPRAS belum tersedia. Muat ulang halaman.</div>';
+    return;
+  }
   if(String(currentUser?.role||'').trim().toLowerCase()==='hrd'){
     if(id==='dashboard') return window.openHrdCleanDashboard?.();
     return;
