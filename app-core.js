@@ -948,7 +948,7 @@ function renderSidebar(){
         const div = document.createElement('div');
         div.className = 'nav-item nav-item-sub' + (m.id === activeModule ? ' active' : '') + (!m.built ? ' disabled' : '');
         let badge = !m.built ? '<span class="nav-badge">segera</span>' : '';
-        if (m.id === 'kedisiplinan' && pendingKeterlambatanCount > 0) {
+        if (sidebarRole !== 'walas' && m.id === 'kedisiplinan' && pendingKeterlambatanCount > 0) {
           badge = `<span class="nav-badge alert">${pendingKeterlambatanCount} telat</span>`;
         }
         div.innerHTML = `<span>${m.label}</span>` + badge;
