@@ -77,14 +77,33 @@ async function reportData(b:any){
   for(const x of liveSessions||[]){if(x.class_id&&x.attendance_date)attendanceDayMap.set(x.class_id+"|"+x.attendance_date,{class_id:x.class_id,date:x.attendance_date})}
   for(const x of legacyRecaps||[]){if(x.class_id&&x.recap_date)attendanceDayMap.set(x.class_id+"|"+x.recap_date,{class_id:x.class_id,date:x.recap_date})}
   const attendance_days=[...attendanceDayMap.values()];
-  // Explicit teacher confirmations, including valid zero-incident / zero-reward days.
-  const {data:pointFlags,error:pointFlagsError}=await sb.from("teacher_daily_task_status")
-    .select("task_date,task_code,scope_ref")
-    .in("task_code",["kesiswaan_discipline_checked","kesiswaan_reward_checked"])
-    .gte("task_date",start).lte("task_date",end).limit(5000);
-  if(pointFlagsError)throw pointFlagsError;
-  const point_confirmations=(pointFlags||[]).filter((x:any)=>!classId||T(x.scope_ref)===classId)
-    .map((x:any)=>({class_id:T(x.scope_ref),date:x.task_date,kind:x.task_code==="kesiswaan_discipline_checked"?"discipline":"reward"}));
+  // Reconcile current category confirmations with legacy Walas daily attestations.
+  // Both are read-only, deduplicated by class/date/kind; no fake student-level incidents.
+  const [{data:pointFlags,error:pointFlagsError},{data:legacyFlags,error:legacyFlagsError}]=await Promise.all([
+    sb.from("teacher_daily_task_status").select("task_date,task_code,scope_ref,status")
+      .in("task_code",["kesiswaan_discipline_checked","kesiswaan_reward_checked"])
+      .eq("status","done").gte("task_date",start).lte("task_date",end).limit(5000),
+    addClass(sb.from("walas_daily_point_verifications")
+      .select("class_id,report_date,violation_status,reward_status")
+      .gte("report_date",start).lte("report_date",end)).limit(5000)
+  ]);
+  if(pointFlagsError||legacyFlagsError)throw(pointFlagsError||legacyFlagsError);
+  const confirmationMap=new Map<string,{class_id:string,date:string,kind:string,source:string}>();
+  for(const x of legacyFlags||[]){
+    for(const [kind,field] of [["discipline","violation_status"],["reward","reward_status"]]){
+      if(x[field]==="nihil"||x[field]==="ada"){
+        const key=T(x.class_id)+"|"+T(x.report_date)+"|"+kind;
+        confirmationMap.set(key,{class_id:T(x.class_id),date:x.report_date,kind,source:"legacy"});
+      }
+    }
+  }
+  for(const x of pointFlags||[]){
+    if(classId&&T(x.scope_ref)!==classId)continue;
+    const kind=x.task_code==="kesiswaan_discipline_checked"?"discipline":"reward";
+    const key=T(x.scope_ref)+"|"+T(x.task_date)+"|"+kind;
+    confirmationMap.set(key,{class_id:T(x.scope_ref),date:x.task_date,kind,source:"daily"});
+  }
+  const point_confirmations=[...confirmationMap.values()];
 
   const rewards=enrich(rwR.data||[],sm,cm,"reward_date"),violations=enrich(viR.data||[],sm,cm,"incident_date"),cases=enrich(csR.data||[],sm,cm,"incident_date"),affairs=enrich(afR.data||[],sm,cm,"record_date"),achievements=enrich(acR.data||[],sm,cm,"achievement_date");
   const uks=(ukR.data||[]).map((x:any)=>({...x,date:x.duty_date,teacher_name:tm[x.teacher_id]||"Guru"}));
