@@ -145,6 +145,13 @@
     if(hasPointConfirmation(row.id,kind,from,to))return '<span class="krek-status done">Sudah Diperiksa (Nihil)</span>';
     return status(kind,0);
   }
+  // Daily report must visibly distinguish a checked zero-event day from an actual incident.
+  function pointDailyCell(row,kind,date){
+    const entries=kind==='discipline'?row.v:row.r;
+    if(entries.length)return mini(true);
+    if(hasPointConfirmation(row.id,kind,date,date))return '<span class="krek-mini ok" title="Diperiksa guru; tidak ada kejadian">Nihil</span>';
+    return mini(false);
+  }
   function status(kind,count){
     return Number(count)>0?'<span class="krek-status done">Sudah</span>':'<span class="krek-status pending">Belum</span>';
   }
@@ -227,7 +234,7 @@
         <div class="krek-sum"><b>${tsDone}/${rows.length}</b><span>Timesheet Walas</span></div>
       </div>
       <div class="krek-daily-table"><div class="krek-wrap"><table><thead><tr><th>No</th><th>Kelas</th><th>Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th></tr></thead><tbody>
-        ${rows.map((x,i)=>{const u=uksDailyState(x,date);return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${mini(x.a.length>0)}</td><td>${pointDone(x,'discipline',date,date)?mini(true):mini(false)}</td><td>${pointDone(x,'reward',date,date)?mini(true):mini(false)}</td><td>${u.applicable?mini(u.done):mini(null,true,'—')}</td><td>${(()=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t?mini(Number(t.days_filled)>0):mini(null,true,'—')})()}</td></tr>`}).join('')}
+        ${rows.map((x,i)=>{const u=uksDailyState(x,date);return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${mini(x.a.length>0)}</td><td>${pointDailyCell(x,'discipline',date)}</td><td>${pointDailyCell(x,'reward',date)}</td><td>${u.applicable?mini(u.done):mini(null,true,'—')}</td><td>${(()=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t?mini(Number(t.days_filled)>0):mini(null,true,'—')})()}</td></tr>`}).join('')}
       </tbody></table></div></div>
       <div class="krek-missing"><h3>Belum lengkap hari ini</h3>
         <div class="krek-missing-line"><b>Kehadiran:</b> ${E(missAtt.length?missAtt.join(', '):'Semua kelas sudah terisi')}</div>
