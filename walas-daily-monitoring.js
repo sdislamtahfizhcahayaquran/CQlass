@@ -70,7 +70,7 @@
 
  // Single source of truth: existing per-category confirmation and actual saved input.
  function isWalas(){try{return currentUser?.role==='walas'}catch{return false}}
- let last=null,loading=false,refreshAt=0,lastClass='';
+ let last=null,loading=false,refreshAt=0,refreshAgain=false,reportDate='',reportedAccount='';
  const MENU={'absensi':'absensi','kedisiplinan':'kedisiplinan','reward':'reward'};
  function draw(){
   if(!isWalas()||!last)return;
@@ -86,15 +86,19 @@
   });
  }
  async function refresh(force=false){
-  if(!isWalas()||loading||document.hidden)return;
+  if(!isWalas()||document.hidden)return;
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const account=String(currentUser?.id||currentUser?.username||'');
+  if(today!==reportDate||account!==reportedAccount){last=null;refreshAt=0;reportDate=today;reportedAccount=account;force=true}
+  if(loading){if(force)refreshAgain=true;return}
   if(!force&&Date.now()-refreshAt<45000){draw();return}
   loading=true;refreshAt=Date.now();
   try{
    const out=await api({action:'daily_get'});
    const c=out.completion;
-   if(c){last={absensi:!!c.attendance,kedisiplinan:!!c.discipline,reward:!!c.reward};lastClass=out.class_id||'';draw()}
-  }catch(e){console.warn('Notifikasi Walas: status tidak tersedia',e)}
-  finally{loading=false}
+   if(c){last={absensi:!!c.attendance,kedisiplinan:!!c.discipline,reward:!!c.reward};draw()}
+  }catch(e){last=null;refreshAt=0;console.warn('Notifikasi Walas: status tidak tersedia',e)}
+  finally{loading=false;if(refreshAgain){refreshAgain=false;refresh(true)}}
  }
  window.cqWalasConfirmEmpty=async function(kind,cid,day,output){
   if(!isWalas())return;
