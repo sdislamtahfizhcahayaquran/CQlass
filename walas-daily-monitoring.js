@@ -70,7 +70,7 @@
  async function load(){
   if(!root)return;
   root.innerHTML='<div class="cdp-panel">Memeriksa catatan hari ini...</div>';
-  try{loaded=await api({action:'daily_get',class_id:chosenClass});chosenClass=loaded.class_id;paint();}
+  try{loaded=await api({action:'daily_get',class_id:chosenClass});chosenClass=loaded.class_id;paint();updateMarkers(true);}
   catch(e){root.innerHTML='<div class="cdp-panel cdp-error">'+esc(e.message)+'</div>';}
  }
  function paint(){
@@ -79,7 +79,8 @@
   // No automatic selection: the teacher must review and choose both answers explicitly.
   const mismatch=exists&&((exists.violation_status==='nihil'&&(c.violation||c.late))||(exists.reward_status==='nihil'&&c.reward)||(exists.violation_status==='ada'&&!(c.violation||c.late))||(exists.reward_status==='ada'&&!c.reward));
   const dateLabel=esc(new Date(d.date+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
-  const status=exists?(mismatch?'<span class="cdp-status issue">● Perlu Verifikasi</span>':'<span class="cdp-status done">✓ Sudah Dipantau</span>'):'<span class="cdp-status wait">● Belum Dikonfirmasi</span>';
+  const automatic=!!d.completion?.monitoring&&!exists;
+  const status=automatic?'<span class="cdp-status done">✓ Input Sudah Lengkap</span>':exists?(mismatch?'<span class="cdp-status issue">● Perlu Verifikasi</span>':'<span class="cdp-status done">✓ Sudah Dipantau</span>'):'<span class="cdp-status wait">● Belum Dikonfirmasi</span>';
   const option=(group,value,title,help,selected)=>'<label><input type="radio" name="'+group+'" value="'+value+'" '+(selected?'checked':'')+'><span><span class="cdp-opt-title">'+title+'</span><span class="cdp-opt-help">'+help+'</span></span></label>';
   root.innerHTML='<div class="cdp-wrap">'+
    '<div class="cdp-hero"><div><div class="cdp-eyebrow">Kesiswaan · Wali Kelas</div><h2>Pemantauan Harian Siswa</h2><p>Pastikan kondisi siswa telah diperiksa sebelum mengonfirmasi laporan hari ini.</p></div></div>'+
@@ -107,10 +108,56 @@
    if(!ready())return;button.disabled=true;msg.textContent='Menyimpan...';
    try{
     await api({action:'daily_confirm',class_id:chosenClass,checked:checkbox.checked,violation_status:root.querySelector('input[name="cdp-violation"]:checked').value,reward_status:root.querySelector('input[name="cdp-reward"]:checked').value});
-    await load();
+    await load();window.dispatchEvent(new Event('cq-daily-point-saved'));
    }catch(e){msg.textContent=e.message;msg.className='cdp-error';button.disabled=!ready();}
   });
  }
+
+ // Sidebar markers are strictly WALAS-only; no role or database changes.
+ const markerNames={'absensi':'Absensi (Morning Talk)','kedisiplinan':'Kedisiplinan','reward':'Reward','pemantauan':'Pemantauan Harian'};
+ let markerState=null,lastMarkerFetch=0,markerPending=false;
+ function isWalas(){try{return String(currentUser?.role||'').toLowerCase()==='walas'}catch(_){return false}}
+ function renderMarkers(){
+   const side=document.getElementById('sidebar');if(!side||!isWalas()||!markerState)return;
+   const lookup=Object.entries(markerNames);
+   side.querySelectorAll('.nav-group-items .nav-item').forEach(node=>{
+     const label=String(node.querySelector('span')?.textContent||'').trim();
+     const match=lookup.find(([key,name])=>label===name);
+     if(!match)return;
+     const key=match[0],show=!!markerState[key];
+     // Remove only this feature's own old marker. Never strip other role menus.
+     let dot=node.querySelector('.cdp-sidebar-alert');
+     if(!show){if(dot)dot.remove();return}
+     if(!dot){dot=document.createElement('span');dot.className='cdp-sidebar-alert';dot.setAttribute('aria-label','Perlu ditindaklanjuti');dot.title='Perlu ditindaklanjuti';node.appendChild(dot)}
+   });
+ }
+ async function updateMarkers(force=false){
+   if(!isWalas()||markerPending)return;
+   if(!force&&Date.now()-lastMarkerFetch<20000){renderMarkers();return;}
+   markerPending=true;lastMarkerFetch=Date.now();
+   try{
+     const info=await api({action:'daily_get'});
+     const d=info.completion;
+     if(!d){markerState=null;return}
+     markerState={absensi:!d.attendance,kedisiplinan:!d.discipline,reward:!d.reward,pemantauan:!d.monitoring};
+     renderMarkers();
+   }catch(e){markerState=null;console.warn('Pemantauan sidebar tidak dapat dimuat:',e)}
+   finally{markerPending=false}
+ }
+ function installSidebarMarkers(){
+   if(window.__cqWalasSidebarMarkers)return;window.__cqWalasSidebarMarkers=true;
+   const style=document.createElement('style');style.id='cq-walas-sidebar-markers';
+   style.textContent='#sidebar .nav-item .cdp-sidebar-alert{display:inline-flex;flex:0 0 auto;margin-left:auto;width:16px;height:16px;border-radius:50%;background:#e74436;color:#fff;box-shadow:0 0 0 2px #fff;align-items:center;justify-content:center}#sidebar .nav-item .cdp-sidebar-alert:after{content:"1";font-size:10px;font-weight:800;line-height:1}#sidebar .nav-item:has(.cdp-sidebar-alert){display:flex;align-items:center}';
+   document.head.appendChild(style);
+   // Sidebars are recreated by multiple existing CQlass modules; poll DOM without recreating them.
+   window.setInterval(()=>{if(isWalas()){renderMarkers();updateMarkers()}},5000);
+   window.addEventListener('focus',()=>{if(isWalas())updateMarkers(true)});
+   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&isWalas())updateMarkers(true)});
+   window.addEventListener('cq-daily-point-saved',()=>updateMarkers(true));
+   if(isWalas())updateMarkers(true);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installSidebarMarkers,{once:true});
+ else installSidebarMarkers();
  window.renderWalasDailyMonitoring=function(content){css();chosenClass='';loaded=null;root=content;load();};
  window.renderKesiswaanDailyMonitoring=async function(content){
   css();content.innerHTML='<div class="cdp-wrap"><h2>Rekap Pemantauan Harian</h2><p>Rekap otomatis dari konfirmasi wali kelas. Tidak ada input bukan berarti sudah dipantau.</p><div class="cdp-panel"><label>Tanggal <input id="cdp-date" type="date"></label> <button id="cdp-refresh">Tampilkan</button></div><div class="cdp-panel" id="cdp-report">Memuat...</div></div>';
