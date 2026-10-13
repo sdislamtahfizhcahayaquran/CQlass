@@ -782,7 +782,7 @@ const MODULE_GROUPS = [
   {
     id: 'kesiswaan', label: 'Kesiswaan', roles: ['guru','walas','pimpinan'],
     items: [
-      { id: 'absensi',      label: 'Absensi (Morning Talk)', roles: ['walas','pimpinan'], built: true, render: renderAbsensi },
+      { id: 'absensi',      label: 'Absensi', roles: ['walas','pimpinan'], built: true, render: renderAbsensi },
       { id: 'kedisiplinan', label: 'Kedisiplinan',           roles: ['guru','walas','pimpinan'], built: true, render: renderKedisiplinan },
       { id: 'reward',       label: 'Reward Siswa',           roles: ['guru','walas','pimpinan'], built: true, render: renderReward },
       { id: 'masalah',      label: 'Masalah Siswa',          roles: ['walas','pimpinan'], built: true, render: renderMasalahSiswa }
