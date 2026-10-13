@@ -1625,6 +1625,7 @@ async function submitAbsensiSupabase(){
     }, { timeoutMs: 45000 });
 
     showToast(absensiState.existing ? 'Absensi berhasil diperbarui' : 'Absensi berhasil disimpan');
+    if(currentUser?.role==='walas')window.dispatchEvent(new Event('cq-walas-kesiswaan-saved'));
     await loadAbsensiSupabase();
   }catch(err){
     showToast(err.message || 'Gagal menyimpan Absensi', true);
@@ -3387,7 +3388,7 @@ async function pv2RenderWorkspace(kind){
       <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
         <strong style="font-size:12px">Konfirmasi ${kind==='violation'?'Kedisiplinan':'Reward'} Harian</strong>
         <input type="date" id="pv2-confirm-date-${kind}" class="pv2-control" style="max-width:165px" value="${pv2Today()}" max="${pv2Today()}">
-        <button type="button" class="pv2-mini" onclick="pv2ConfirmDaily('${kind}')">✓ Sudah diperiksa</button>
+        <button type="button" class="pv2-mini" onclick="pv2ConfirmDaily('${kind}')">${currentUser?.role==='walas'?(kind==='violation'?'Tidak Ada Pelanggaran':'Tidak Ada Reward'):'✓ Sudah diperiksa'}</button>
         <span id="pv2-confirm-state-${kind}" style="font-size:11px;color:var(--muted)">Gunakan juga jika tidak ada kejadian pada tanggal tersebut.</span>
       </div>
     </div>`:''}
@@ -3443,6 +3444,7 @@ async function pv2BulkSave(kind){
     POINT_V2.studentCache.delete(cid);
     if(mode==='student'&&sid){POINT_V2.snapshot[kind]=await pointV2Snapshot(sid)}
     await pv2RenderWorkspace(kind);
+    if(currentUser?.role==='walas')window.dispatchEvent(new Event('cq-walas-kesiswaan-saved'));
   }catch(e){showToast(e.message||'Gagal menyimpan data',true)}
   finally{btn.disabled=false;btn.innerHTML=old}
 }
@@ -3529,6 +3531,8 @@ async function pv2Render(kind,content){
 }
 async function pv2ConfirmDaily(kind){
   const cid=POINT_V2.classId[kind],date=document.getElementById('pv2-confirm-date-'+kind)?.value,output=document.getElementById('pv2-confirm-state-'+kind);
+  // Isolated Walas path: enforce zero-record confirmation on server; other roles retain their prior workflow.
+  if(currentUser?.role==='walas' && typeof window.cqWalasConfirmEmpty==='function')return window.cqWalasConfirmEmpty(kind,cid,date,output);
   if(!cid||!date){showToast('Pilih kelas dan tanggal terlebih dahulu.',true);return}
   if(output)output.textContent='Menyimpan konfirmasi…';
   try{
