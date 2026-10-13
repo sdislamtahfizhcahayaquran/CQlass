@@ -45,6 +45,7 @@
    let dot=el.querySelector('.cq-walas-red-dot');
    if(!shouldShow){dot?.remove();return;}
    if(!dot){dot=document.createElement('span');dot.className='cq-walas-red-dot';dot.title='Belum dilaporkan hari ini';dot.setAttribute('aria-label','Belum dilaporkan hari ini');el.appendChild(dot)}
+   else if(dot.style.display==='none')dot.style.display='';
   });
  }
  async function refresh(force=false){
