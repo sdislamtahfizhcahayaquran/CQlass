@@ -951,6 +951,11 @@ function renderSidebar(){
         if (sidebarRole !== 'walas' && m.id === 'kedisiplinan' && pendingKeterlambatanCount > 0) {
           badge = `<span class="nav-badge alert">${pendingKeterlambatanCount} telat</span>`;
         }
+        // Walas-only daily reminder: render together with each sidebar item, not only after a later DOM scan.
+        if(sidebarRole==='walas'&&['absensi','kedisiplinan','reward'].includes(m.id)){
+          const completed=window.__cqWalasDailyCompleted?.[m.id];
+          badge='<span class="cq-walas-red-dot" aria-label="Belum selesai hari ini" title="Belum selesai hari ini"'+(completed===true?' style="display:none"':'')+'></span>';
+        }
         div.innerHTML = `<span>${m.label}</span>` + badge;
         if (m.built) div.onclick = () => setActiveModule(m.id);
         sub.appendChild(div);
