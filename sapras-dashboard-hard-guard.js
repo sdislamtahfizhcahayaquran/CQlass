@@ -82,7 +82,7 @@
   }
   function bind(root){
     root.querySelectorAll('[data-sg-process]').forEach(b=>b.onclick=()=>update(b.dataset.sgProcess,'DIPROSES',''));
-    root.querySelectorAll('[data-sg-done]').forEach(b=>b.onclick=()=>{const n=window.prompt('Catatan penyelesaian (opsional):','');update(b.dataset.sgDone,'SELESAI',n||'')});
+    root.querySelectorAll('[data-sg-done]').forEach(b=>b.onclick=()=>{const n=window.prompt('Catatan penyelesaian (wajib diisi):','');if(n===null)return;if(!n.trim()){toast('Catatan penyelesaian wajib diisi.',true);return;}update(b.dataset.sgDone,'SELESAI',n.trim())});
   }
   function paint(){
     if(!isSapras()||!dashboardActive()||!appVisible())return;
@@ -96,30 +96,13 @@
     state.busy=true;state.error='';
     const c=content();if(c&&!c.querySelector('[data-cq-sapras-dashboard]')){injectCss();c.innerHTML='<div class="cq-sg" data-cq-sapras-dashboard="1"><section class="cq-sg-hero"><div class="cq-sg-eye">CQlass · Sapras</div><h1>Dashboard Sapras</h1><p>Menyiapkan laporan sarana-prasarana...</p></section><div class="cq-sg-card cq-sg-loading">Memuat laporan Sapras...</div></div>'}
     try{const d=await req('inbox',{report_type:'SAPRAS'});state.reports=d.reports||[];state.loaded=true;paint();}
-    catch(e){state.error=e.message||'Gagal memuat laporan Sapras.';if(c)c.innerHTML='<div class="cq-sg" data-cq-sapras-dashboard="1"><section class="cq-sg-hero"><div class="cq-sg-eye">CQlass · Sapras</div><h1>Dashboard Sapras</h1><p>Dashboard khusus sarana-prasarana.</p></section><div class="cq-sg-card"><div class="cq-sg-empty">Laporan belum dapat dimuat. Silakan coba lagi.</div></div></div>';console.warn('Sapras dashboard:',e)}
+    catch(e){state.error=e.message||'Gagal memuat laporan Sapras.';if(c){c.innerHTML='<div class="cq-sg" data-cq-sapras-dashboard="1"><section class="cq-sg-hero"><div class="cq-sg-eye">CQlass · Sapras</div><h1>Dashboard Sapras</h1><p>Dashboard khusus sarana-prasarana.</p></section><div class="cq-sg-card"><div class="cq-sg-empty">Laporan belum dapat dimuat. <button type="button" id="cq-sg-retry">Coba lagi</button></div></div></div>';const retry=c.querySelector('#cq-sg-retry');if(retry)retry.onclick=()=>load(true);}console.warn('Sapras dashboard:',e)}
     finally{state.busy=false;}
   }
   async function update(id,status,note){
     try{await req('update_status',{id,status,resolution_note:note||''});toast(status==='SELESAI'?'Laporan ditandai selesai.':'Laporan mulai diproses.');state.loaded=false;await load(true)}catch(e){toast('Status laporan gagal diperbarui.',true)}
   }
-  function enforce(){
-    if(!isSapras()||!dashboardActive()||!appVisible())return;
-    const c=content();if(!c)return;
-    if(!c.querySelector('[data-cq-sapras-dashboard]'))load(false);
-  }
-  function patchDashboard(){
-    try{
-      if(typeof DASHBOARD_MODULE!=='undefined'&&!DASHBOARD_MODULE.__cqSaprasHardGuard){
-        if(Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes('sapras'))DASHBOARD_MODULE.roles.push('sapras');
-        const base=DASHBOARD_MODULE.render;
-        DASHBOARD_MODULE.render=function(c){if(isSapras())return load(true);return typeof base==='function'?base.apply(this,arguments):undefined};
-        DASHBOARD_MODULE.__cqSaprasHardGuard=true;
-      }
-    }catch(e){console.warn('Sapras dashboard patch:',e)}
-  }
-
-  patchDashboard();
-  // Router calls the SAPRAS renderer explicitly. Avoid global DOM observers and polling.
-  document.addEventListener('DOMContentLoaded',()=>{patchDashboard();if(isSapras())load(false)},{once:true});
+  // SAPRAS route is owned by app-core; no global renderer wrapper or background polling.
+  document.addEventListener('DOMContentLoaded',()=>{if(isSapras())load(false)},{once:true});
   window.renderSaprasHardDashboard=()=>load(true);
 })();
