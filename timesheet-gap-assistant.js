@@ -114,7 +114,7 @@ async function load(){
       const seenWork=new Set();
       workItems.filter(x=>x.work_date===date&&!(day===6&&['saturday_work','saturday_role_work'].includes(String(x.activity_code||'')))).forEach(x=>{const k=[x.work_date,x.start_time,x.end_time,x.activity_code,x.activity].join('|');if(seenWork.has(k))return;seenWork.add(k);busy.push(x)});
       (core.teaching||[]).filter(x=>x.work_date===date&&x.source!=='digantikan').forEach(x=>busy.push(x));
-      if(day===6)(core.saturdays||[]).filter(x=>x.event_date===date&&x.configured!==false).forEach(x=>busy.push({start_time:x.start_time,end_time:x.end_time}));
+      if(day===6&&date<'2026-10-17')(core.saturdays||[]).filter(x=>x.event_date===date&&x.configured!==false).forEach(x=>busy.push({start_time:x.start_time,end_time:x.end_time}));
       if(isSpecial)(special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       (core.activities||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
