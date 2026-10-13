@@ -67,98 +67,66 @@
 `;
   document.head.appendChild(s);
  }
- async function load(){
-  if(!root)return;
-  root.innerHTML='<div class="cdp-panel">Memeriksa catatan hari ini...</div>';
-  try{loaded=await api({action:'daily_get',class_id:chosenClass});chosenClass=loaded.class_id;paint();updateMarkers(true);}
-  catch(e){root.innerHTML='<div class="cdp-panel cdp-error">'+esc(e.message)+'</div>';}
- }
- function paint(){
-  if(!root||!loaded)return;
-  const d=loaded,c=d.counts,exists=d.confirmation;
-  // No automatic selection: the teacher must review and choose both answers explicitly.
-  const mismatch=exists&&((exists.violation_status==='nihil'&&(c.violation||c.late))||(exists.reward_status==='nihil'&&c.reward)||(exists.violation_status==='ada'&&!(c.violation||c.late))||(exists.reward_status==='ada'&&!c.reward));
-  const dateLabel=esc(new Date(d.date+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
-  const automatic=!!d.completion?.monitoring&&!exists;
-  const status=automatic?'<span class="cdp-status done">✓ Input Sudah Lengkap</span>':exists?(mismatch?'<span class="cdp-status issue">● Perlu Verifikasi</span>':'<span class="cdp-status done">✓ Sudah Dipantau</span>'):'<span class="cdp-status wait">● Belum Dikonfirmasi</span>';
-  const option=(group,value,title,help,selected)=>'<label><input type="radio" name="'+group+'" value="'+value+'" '+(selected?'checked':'')+'><span><span class="cdp-opt-title">'+title+'</span><span class="cdp-opt-help">'+help+'</span></span></label>';
-  root.innerHTML='<div class="cdp-wrap">'+
-   '<div class="cdp-hero"><div><div class="cdp-eyebrow">Kesiswaan · Wali Kelas</div><h2>Pemantauan Harian Siswa</h2><p>Pastikan kondisi siswa telah diperiksa sebelum mengonfirmasi laporan hari ini.</p></div></div>'+
-   '<div class="cdp-panel cdp-overview"><div class="cdp-overview-head"><div class="cdp-context"><span class="cdp-pill">▦ &nbsp;'+dateLabel+'</span><span class="cdp-pill">Kelas <b>'+esc(d.class_name)+'</b></span></div>'+status+'</div>'+
-   '<div class="cdp-metrics"><div class="cdp-metric"><span class="cdp-metric-icon">!</span><div><div class="cdp-metric-num">'+c.violation+'</div><div class="cdp-metric-label">Pelanggaran tercatat</div></div></div>'+
-   '<div class="cdp-metric"><span class="cdp-metric-icon">◷</span><div><div class="cdp-metric-num">'+c.late+'</div><div class="cdp-metric-label">Keterlambatan Morning Talk</div></div></div>'+
-   '<div class="cdp-metric"><span class="cdp-metric-icon">★</span><div><div class="cdp-metric-num">'+c.reward+'</div><div class="cdp-metric-label">Reward terverifikasi</div></div></div></div>'+
-   (exists?'<div class="cdp-foot" style="margin-top:11px">'+(mismatch?'Catatan berubah setelah konfirmasi. Periksa dan konfirmasi ulang.':'Terakhir dikonfirmasi '+esc(new Date(exists.confirmed_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})))+'</div>':'')+'</div>'+
-   '<div class="cdp-panel"><div class="cdp-check-section"><div class="cdp-section"><div class="cdp-section-icon">✓</div><div><div class="cdp-section-title">Kedisiplinan</div><p class="cdp-section-sub">Tinjau pelanggaran dan keterlambatan yang terjadi di kelas.</p></div></div><div class="cdp-options">'+
-   option('cdp-violation','nihil','Tidak ada pelanggaran','Sudah diperiksa dan tidak ditemukan kejadian.',false)+
-   option('cdp-violation','ada','Ada pelanggaran / keterlambatan','Kejadian telah dicatat pada sistem.',false)+'</div></div>'+
-   '<div class="cdp-check-section"><div class="cdp-section"><div class="cdp-section-icon">★</div><div><div class="cdp-section-title">Apresiasi Siswa</div><p class="cdp-section-sub">Pastikan apakah ada apresiasi khusus yang perlu dicatat.</p></div></div><div class="cdp-options">'+
-   option('cdp-reward','nihil','Belum ada apresiasi khusus','Tidak perlu membuat reward jika memang tidak ada.',false)+
-   option('cdp-reward','ada','Ada apresiasi siswa','Reward telah dicatat dan diverifikasi.',false)+'</div></div>'+
-   '<label class="cdp-declaration"><input type="checkbox" id="cdp-declaration"><span>Saya telah memeriksa kondisi siswa dan memastikan laporan sesuai dengan temuan hari ini.</span></label>'+
-   '<div class="cdp-action"><button id="cdp-submit" disabled>✓ &nbsp; Konfirmasi Pemantauan</button><span id="cdp-message" class="cdp-foot">Pilih kedua hasil pemeriksaan dan centang pernyataan.</span></div></div>'+
-   '<p class="cdp-foot cdp-note">Hanya dapat dikonfirmasi untuk hari ini. Jika data berubah, status akan ditandai untuk diperiksa ulang.</p></div>';
-  const checkbox=root.querySelector('#cdp-declaration'),button=root.querySelector('#cdp-submit'),msg=root.querySelector('#cdp-message');
-  const ready=()=>!!(checkbox.checked&&root.querySelector('input[name="cdp-violation"]:checked')&&root.querySelector('input[name="cdp-reward"]:checked'));
-  const sync=()=>{button.disabled=!ready();msg.textContent=ready()?'Siap disimpan.':'Pilih kedua hasil pemeriksaan dan centang pernyataan.';};
-  checkbox.addEventListener('change',sync);
-  root.querySelectorAll('input[name="cdp-violation"],input[name="cdp-reward"]').forEach(el=>el.addEventListener('change',sync));
-  sync();
-  button.addEventListener('click',async()=>{
-   if(!ready())return;button.disabled=true;msg.textContent='Menyimpan...';
-   try{
-    await api({action:'daily_confirm',class_id:chosenClass,checked:checkbox.checked,violation_status:root.querySelector('input[name="cdp-violation"]:checked').value,reward_status:root.querySelector('input[name="cdp-reward"]:checked').value});
-    await load();window.dispatchEvent(new Event('cq-daily-point-saved'));
-   }catch(e){msg.textContent=e.message;msg.className='cdp-error';button.disabled=!ready();}
+
+ // Single source of truth: existing per-category confirmation and actual saved input.
+ function isWalas(){try{return currentUser?.role==='walas'}catch{return false}}
+ let last=null,loading=false,refreshAt=0,lastClass='';
+ const MENU={'absensi':'absensi','kedisiplinan':'kedisiplinan','reward':'reward'};
+ function draw(){
+  if(!isWalas()||!last)return;
+  const sidebar=document.getElementById('sidebar');if(!sidebar)return;
+  sidebar.querySelectorAll('.nav-group-items .nav-item').forEach(el=>{
+   const label=String(el.querySelector('span')?.textContent||'').trim().toLowerCase();
+   const key=label==='absensi (morning talk)'||label==='absensi'?'absensi':label==='kedisiplinan'?'kedisiplinan':label==='reward'?'reward':null;
+   if(!key)return;
+   const shouldShow=!last[key];
+   let dot=el.querySelector('.cq-walas-red-dot');
+   if(!shouldShow){dot?.remove();return;}
+   if(!dot){dot=document.createElement('span');dot.className='cq-walas-red-dot';dot.title='Belum dilaporkan hari ini';dot.setAttribute('aria-label','Belum dilaporkan hari ini');el.appendChild(dot)}
   });
  }
-
- // Sidebar markers are strictly WALAS-only; no role or database changes.
- const markerNames={'absensi':'Absensi (Morning Talk)','kedisiplinan':'Kedisiplinan','reward':'Reward','pemantauan':'Pemantauan Harian'};
- let markerState=null,lastMarkerFetch=0,markerPending=false;
- function isWalas(){try{return String(currentUser?.role||'').toLowerCase()==='walas'}catch(_){return false}}
- function renderMarkers(){
-   const side=document.getElementById('sidebar');if(!side||!isWalas()||!markerState)return;
-   const lookup=Object.entries(markerNames);
-   side.querySelectorAll('.nav-group-items .nav-item').forEach(node=>{
-     const label=String(node.querySelector('span')?.textContent||'').trim();
-     const match=lookup.find(([key,name])=>label===name);
-     if(!match)return;
-     const key=match[0],show=!!markerState[key];
-     // Remove only this feature's own old marker. Never strip other role menus.
-     let dot=node.querySelector('.cdp-sidebar-alert');
-     if(!show){if(dot)dot.remove();return}
-     if(!dot){dot=document.createElement('span');dot.className='cdp-sidebar-alert';dot.setAttribute('aria-label','Perlu ditindaklanjuti');dot.title='Perlu ditindaklanjuti';node.appendChild(dot)}
-   });
+ async function refresh(force=false){
+  if(!isWalas()||loading||document.hidden)return;
+  if(!force&&Date.now()-refreshAt<45000){draw();return}
+  loading=true;refreshAt=Date.now();
+  try{
+   const out=await api({action:'daily_get'});
+   const c=out.completion;
+   if(c){last={absensi:!!c.attendance,kedisiplinan:!!c.discipline,reward:!!c.reward};lastClass=out.class_id||'';draw()}
+  }catch(e){console.warn('Notifikasi Walas: status tidak tersedia',e)}
+  finally{loading=false}
  }
- async function updateMarkers(force=false){
-   if(!isWalas()||markerPending)return;
-   if(!force&&Date.now()-lastMarkerFetch<20000){renderMarkers();return;}
-   markerPending=true;lastMarkerFetch=Date.now();
-   try{
-     const info=await api({action:'daily_get'});
-     const d=info.completion;
-     if(!d){markerState=null;return}
-     markerState={absensi:!d.attendance,kedisiplinan:!d.discipline,reward:!d.reward,pemantauan:!d.monitoring};
-     renderMarkers();
-   }catch(e){markerState=null;console.warn('Pemantauan sidebar tidak dapat dimuat:',e)}
-   finally{markerPending=false}
+ window.cqWalasConfirmEmpty=async function(kind,cid,day,output){
+  if(!isWalas())return;
+  const label=kind==='violation'?'pelanggaran':'reward';
+  const actionKind=kind==='violation'?'discipline':'reward';
+  if(!cid||!day){showToast('Pilih kelas dan tanggal terlebih dahulu.',true);return}
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  if(day!==today){showToast('Konfirmasi tanpa kejadian hanya untuk hari ini.',true);return}
+  if(!window.confirm('Sudah memeriksa kelas dan memastikan tidak ada '+label+' hari ini?'))return;
+  if(output)output.textContent='Memeriksa dan menyimpan...';
+  try{
+   await api({action:'daily_zero',class_id:cid,date:day,kind:actionKind,checked:true});
+   if(output)output.textContent='Tersimpan: tidak ada '+label+' hari ini.';
+   showToast('Pemeriksaan tersimpan.');
+   window.dispatchEvent(new Event('cq-walas-kesiswaan-saved'));
+  }catch(e){if(output)output.textContent='Gagal: '+e.message;showToast(e.message,true)}
+ };
+ function startMarkers(){
+  if(window.__cqWalasMarkersV2)return;window.__cqWalasMarkersV2=true;
+  const el=document.createElement('style');el.textContent='#sidebar .nav-item .cq-walas-red-dot{display:inline-block;flex:0 0 9px;margin-left:auto;width:9px;height:9px;border-radius:50%;background:#e7473c;box-shadow:0 0 0 2px rgba(255,255,255,.65)}#sidebar .nav-item:has(.cq-walas-red-dot){display:flex;align-items:center}';
+  document.head.appendChild(el);
+  // Observe sidebar redraws; do not poll DOM every five seconds or rewrite global routing.
+  const side=document.getElementById('sidebar');
+  if(side){const observer=new MutationObserver(()=>{if(isWalas())draw()});observer.observe(side,{childList:true,subtree:false})}
+  window.addEventListener('focus',()=>refresh(true));
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh(true)});
+  window.addEventListener('cq-walas-kesiswaan-saved',()=>refresh(true));
+  // One lightweight refresh cadence, not repeated DOM polling.
+  window.setInterval(()=>refresh(false),60000);
+  refresh(true);
  }
- function installSidebarMarkers(){
-   if(window.__cqWalasSidebarMarkers)return;window.__cqWalasSidebarMarkers=true;
-   const style=document.createElement('style');style.id='cq-walas-sidebar-markers';
-   style.textContent='#sidebar .nav-item .cdp-sidebar-alert{display:inline-flex;flex:0 0 auto;margin-left:auto;width:16px;height:16px;border-radius:50%;background:#e74436;color:#fff;box-shadow:0 0 0 2px #fff;align-items:center;justify-content:center}#sidebar .nav-item .cdp-sidebar-alert:after{content:"1";font-size:10px;font-weight:800;line-height:1}#sidebar .nav-item:has(.cdp-sidebar-alert){display:flex;align-items:center}';
-   document.head.appendChild(style);
-   // Sidebars are recreated by multiple existing CQlass modules; poll DOM without recreating them.
-   window.setInterval(()=>{if(isWalas()){renderMarkers();updateMarkers()}},5000);
-   window.addEventListener('focus',()=>{if(isWalas())updateMarkers(true)});
-   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&isWalas())updateMarkers(true)});
-   window.addEventListener('cq-daily-point-saved',()=>updateMarkers(true));
-   if(isWalas())updateMarkers(true);
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installSidebarMarkers,{once:true});
- else installSidebarMarkers();
- window.renderWalasDailyMonitoring=function(content){css();chosenClass='';loaded=null;root=content;load();};
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startMarkers,{once:true});else startMarkers();
  window.renderKesiswaanDailyMonitoring=async function(content){
   css();content.innerHTML='<div class="cdp-wrap"><h2>Rekap Pemantauan Harian</h2><p>Rekap otomatis dari konfirmasi wali kelas. Tidak ada input bukan berarti sudah dipantau.</p><div class="cdp-panel"><label>Tanggal <input id="cdp-date" type="date"></label> <button id="cdp-refresh">Tampilkan</button></div><div class="cdp-panel" id="cdp-report">Memuat...</div></div>';
   const box=content.querySelector('#cdp-report'),input=content.querySelector('#cdp-date');
