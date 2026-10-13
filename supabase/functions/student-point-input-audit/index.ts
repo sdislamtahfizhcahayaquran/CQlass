@@ -79,7 +79,22 @@ async function daily(s:any,req:Request,body:any){
   s.from("classes").select("name").eq("id",cid).maybeSingle(),
   s.from("walas_daily_point_verifications").select("violation_status,reward_status,confirmed_at").eq("class_id",cid).eq("report_date",date).maybeSingle()]);
  if(cle||che)throw(cle||che);
- return json({success:true,date,class_id:cid,class_name:cl?.name||"-",classes:mine.map((x:any)=>x.class_id),counts:await getCounts(cid,date),confirmation:confirmation||null});
+ const counts=await getCounts(cid,date);
+ const {count:expected,error:ee}=await s.from("student_enrollments").select("student_id",{count:"exact",head:true}).eq("class_id",cid);
+ if(ee)throw ee;
+ const {data:sessions,error:sessErr}=await s.from("morning_talk_sessions").select("id").eq("class_id",cid).eq("attendance_date",date);
+ if(sessErr)throw sessErr;
+ let marked=0;
+ if((sessions||[]).length){
+   const {data:marks,error:marksErr}=await s.from("morning_talk_attendance").select("student_id").in("session_id",(sessions||[]).map((x:any)=>x.id));
+   if(marksErr)throw marksErr;
+   marked=new Set((marks||[]).map((x:any)=>x.student_id)).size;
+ }
+ const attendance_complete=!!expected&&marked>=expected;
+ const bad=confirmation&&((confirmation.violation_status==="nihil"&&(counts.violation>0||counts.late>0))||(confirmation.violation_status==="ada"&&!(counts.violation||counts.late))||(confirmation.reward_status==="nihil"&&counts.reward>0)||(confirmation.reward_status==="ada"&&!counts.reward));
+ const discipline_complete=counts.violation>0||counts.late>0||!!(confirmation&&!bad);
+ const reward_complete=counts.reward>0||!!(confirmation&&!bad);
+ return json({success:true,date,class_id:cid,class_name:cl?.name||"-",classes:mine.map((x:any)=>x.class_id),counts,confirmation:confirmation||null,completion:{attendance:attendance_complete,attendance_marked:marked,attendance_expected:expected||0,discipline:discipline_complete,reward:reward_complete,monitoring:!!(confirmation&&!bad)||(attendance_complete&&(counts.violation>0||counts.late>0)&&counts.reward>0)}});
 }
 
 Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return json({success:false,error:"method_not_allowed"},405);let body:any={};try{body=await req.json()}catch{return json({success:false,error:"invalid_json"},400)}try{const s=db();if(['daily_get','daily_confirm','daily_summary'].includes(t(body.action)))return await daily(s,req,body);const me=await auth(s,req,body);if(!me)return json({success:false,error:"forbidden"},403);let start=t(body.start_date),end=t(body.end_date)||ymdToday();if(!start){const d=new Date(end+"T00:00:00Z");d.setUTCDate(d.getUTCDate()-6);start=d.toISOString().slice(0,10)}if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end||end>ymdToday())return json({success:false,error:"invalid_date_range"},400);const days=schoolDays(start,end);
