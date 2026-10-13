@@ -53,12 +53,24 @@ async function daily(s:any,req:Request,body:any){
   if(ce||che||vie||rwe)throw(ce||che||vie||rwe);
   const names=new Map((classes||[]).map((x:any)=>[x.id,x.name])),confirmed=new Map((checks||[]).map((x:any)=>[x.class_id,x]));
   const violations=new Map(),rewards=new Map();
+  const walasAccounts=(assigned||[]).map((x:any)=>x.homeroom_teacher_id).filter(Boolean);
+  const {data:ownerAccounts,error:oe}=await s.from("user_accounts").select("id,teacher_id").in("teacher_id",walasAccounts.length?walasAccounts:["00000000-0000-0000-0000-000000000000"]);
+  if(oe)throw oe;
+  const owners=new Map((ownerAccounts||[]).map((x:any)=>[x.teacher_id,x.id]));
+  const ids=[...owners.values()];
+  const {data:tasks,error:te}=ids.length?await s.from("teacher_daily_task_status").select("user_account_id,scope_ref,task_code,status").in("user_account_id",ids).eq("task_date",day).in("task_code",["kesiswaan_discipline_checked","kesiswaan_reward_checked"]):{data:[],error:null};
+  if(te)throw te;
+  const completed=new Set((tasks||[]).filter((x:any)=>x.status==="done").map((x:any)=>x.user_account_id+"|"+x.scope_ref+"|"+x.task_code));
   for(const x of viol||[])violations.set(x.class_id,(violations.get(x.class_id)||0)+1);
   for(const x of rew||[])rewards.set(x.class_id,(rewards.get(x.class_id)||0)+1);
   return json({success:true,date:day,rows:(assigned||[]).map((x:any)=>{
    const check:any=confirmed.get(x.class_id),v=violations.get(x.class_id)||0,r=rewards.get(x.class_id)||0;
    const mismatch=!!check&&((check.violation_status==="nihil"&&v>0)||(check.reward_status==="nihil"&&r>0)||(check.violation_status==="ada"&&v===0)||(check.reward_status==="ada"&&r===0));
-   return {class_id:x.class_id,class_name:names.get(x.class_id)||"-",violation_count:v,reward_count:r,violation_status:check?.violation_status||null,reward_status:check?.reward_status||null,confirmed_at:check?.confirmed_at||null,status:!check?"belum_lapor":mismatch?"perlu_verifikasi":"lengkap"}
+   const aid=owners.get(x.homeroom_teacher_id)||"";
+   const dc=completed.has(aid+"|"+x.class_id+"|kesiswaan_discipline_checked"),rc=completed.has(aid+"|"+x.class_id+"|kesiswaan_reward_checked");
+   const disciplineComplete=v>0||dc||!!(check&&!mismatch&&check.violation_status==="nihil");
+   const rewardComplete=r>0||rc||!!(check&&!mismatch&&check.reward_status==="nihil");
+   return {class_id:x.class_id,class_name:names.get(x.class_id)||"-",violation_count:v,reward_count:r,violation_status:dc?"nihil":check?.violation_status||null,reward_status:rc?"nihil":check?.reward_status||null,confirmed_at:check?.confirmed_at||null,discipline_complete:disciplineComplete,reward_complete:rewardComplete,status:mismatch?"perlu_verifikasi":disciplineComplete&&rewardComplete?"lengkap":"belum_lapor"}
   })});
  }
  const mine=(assigned||[]).filter((x:any)=>x.homeroom_teacher_id===account.teacher_id);
@@ -132,6 +144,20 @@ if(a.error||b.error||c.error)throw(a.error||b.error||c.error);checks=a.data||[];
 const classV=new Set(inc.map((x:any)=>t(x.class_id)+"|"+t(x.incident_date)));
 const classR=new Set(rew.map((x:any)=>t(x.class_id)+"|"+t(x.reward_date)));
 const confirmedV:any={},confirmedR:any={};
+// Read the existing per-category daily confirmations; no new table or duplicate records.
+if(accountIds.length&&classIds.length){
+ const {data:tasks,error:te}=await s.from("teacher_daily_task_status").select("user_account_id,scope_ref,task_date,task_code,status").in("user_account_id",accountIds).in("scope_ref",classIds).gte("task_date",start).lte("task_date",end).in("task_code",["kesiswaan_discipline_checked","kesiswaan_reward_checked"]);
+ if(te)throw te;
+ const accountTeacher=new Map(Object.values(am).map((x:any)=>[t(x.id),t(x.teacher_id)]));
+ for(const x of tasks||[]){
+  if(x.status!=="done")continue;
+  const tid=accountTeacher.get(t(x.user_account_id)),cid=t(x.scope_ref),day=t(x.task_date);
+  if(!tid||!classByTeacher[tid]?.has(cid))continue;
+  if(x.task_code==="kesiswaan_discipline_checked")(confirmedV[tid]??=new Set()).add(day);
+  if(x.task_code==="kesiswaan_reward_checked")(confirmedR[tid]??=new Set()).add(day);
+ }
+}
+
 for(const x of checks){const id=t(x.teacher_id),cid=t(x.class_id),day=t(x.report_date);if(!classByTeacher[id]?.has(cid))continue;
 const v=classV.has(cid+"|"+day),r=classR.has(cid+"|"+day);
 if((x.violation_status==="nihil"&&!v)||(x.violation_status==="ada"&&v))(confirmedV[id]??=new Set()).add(day);
