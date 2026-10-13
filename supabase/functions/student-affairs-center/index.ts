@@ -91,7 +91,7 @@ async function reportData(b:any){
   const confirmationMap=new Map<string,{class_id:string,date:string,kind:string,source:string}>();
   for(const x of legacyFlags||[]){
     for(const [kind,field] of [["discipline","violation_status"],["reward","reward_status"]]){
-      if(x[field]==="nihil"||x[field]==="ada"){
+      if(x[field]==="nihil"){
         const key=T(x.class_id)+"|"+T(x.report_date)+"|"+kind;
         confirmationMap.set(key,{class_id:T(x.class_id),date:x.report_date,kind,source:"legacy"});
       }
