@@ -40,6 +40,8 @@ async function bootstrapWithTahfizhBadal(req:Request,body:any){
   }
   current.sort((a:any,b:any)=>String((a.work_date||"")+(a.start_time||"")).localeCompare(String((b.work_date||"")+(b.start_time||""))));
   data.teaching=current;
+  // Saturday self-entry begins 17 Oct 2026; preserve earlier HRD attendance and certificate records.
+  if(Array.isArray(data.saturdays))data.saturdays=data.saturdays.filter((s:any)=>T(s.event_date)<"2026-10-17");
   const satRows=Array.isArray(data.saturdays)?data.saturdays:[];
   if(satRows.length){
     const ids=satRows.map((s:any)=>T(s.id)).filter(Boolean);
