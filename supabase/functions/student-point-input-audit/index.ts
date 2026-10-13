@@ -86,9 +86,11 @@ async function daily(s:any,req:Request,body:any){
   const counts=await getCounts(cid,day);
   if((kind==="discipline"&&counts.violation>0)||(kind==="reward"&&counts.reward>0))return json({success:false,error:"already_has_records"},409);
   const code=kind==="discipline"?"kesiswaan_discipline_checked":"kesiswaan_reward_checked";
-  const {data:exists,error:e}=await s.from("teacher_daily_task_status").select("id").eq("user_account_id",account.id).eq("task_code",code).eq("scope_ref",cid).eq("task_date",day).limit(1);
+  const {data:exists,error:e}=await s.from("teacher_daily_task_status").select("id,status").eq("user_account_id",account.id).eq("task_code",code).eq("scope_ref",cid).eq("task_date",day).limit(1);
   if(e)throw e;
-  if(!(exists||[]).length){const {error:insertErr}=await s.from("teacher_daily_task_status").insert({user_account_id:account.id,task_code:code,scope_ref:cid,task_date:day,status:"done"});if(insertErr)throw insertErr;}
+  if((exists||[]).length){
+   if(exists[0].status!=="done"){const {error:upErr}=await s.from("teacher_daily_task_status").update({status:"done",completed_at:new Date().toISOString()}).eq("id",exists[0].id).eq("user_account_id",account.id);if(upErr)throw upErr;}
+  }else{const {error:insertErr}=await s.from("teacher_daily_task_status").insert({user_account_id:account.id,task_code:code,scope_ref:cid,task_date:day,status:"done"});if(insertErr)throw insertErr;}
   return json({success:true,class_id:cid,date:day,kind,confirmed:true});
  }
  if(body.action==="daily_confirm"){
@@ -107,17 +109,21 @@ async function daily(s:any,req:Request,body:any){
   s.from("walas_daily_point_verifications").select("violation_status,reward_status,confirmed_at").eq("class_id",cid).eq("report_date",date).maybeSingle()]);
  if(cle||che)throw(cle||che);
  const counts=await getCounts(cid,date);
- const {count:expected,error:ee}=await s.from("student_enrollments").select("student_id",{count:"exact",head:true}).eq("class_id",cid).eq("academic_year_id",yr.id).eq("semester_no",sem.semester_no).eq("is_active",true);
+ const {data:enrolled,error:ee}=await s.from("student_enrollments").select("student_id").eq("class_id",cid).eq("academic_year_id",yr.id).eq("semester_no",sem.semester_no).eq("is_active",true);
+ const studentIds=new Set((enrolled||[]).map((x:any)=>t(x.student_id)));
+ const expected=studentIds.size;
  if(ee)throw ee;
  const {data:sessions,error:sessErr}=await s.from("morning_talk_sessions").select("id,theme").eq("class_id",cid).eq("attendance_date",date);
  if(sessErr)throw sessErr;
- let marked=0;
+ let marked=0;let allStudentsMarked=false;
  if((sessions||[]).length){
-   const {data:marks,error:marksErr}=await s.from("morning_talk_attendance").select("student_id").in("session_id",(sessions||[]).map((x:any)=>x.id));
+   const {data:marks,error:marksErr}=await s.from("morning_talk_attendance").select("student_id,status").in("session_id",(sessions||[]).map((x:any)=>x.id));
    if(marksErr)throw marksErr;
-   marked=new Set((marks||[]).map((x:any)=>x.student_id)).size;
+   const byId=new Map((marks||[]).map((x:any)=>[t(x.student_id),t(x.status)]));
+   marked=[...studentIds].filter(id=>byId.has(id)).length;
+   allStudentsMarked=expected>0&&[...studentIds].every(id=>!!byId.get(id));
  }
- const attendance_complete=!!expected&&marked>=expected&&(sessions||[]).some((x:any)=>t(x.theme).length>0);
+ const attendance_complete=allStudentsMarked&&(sessions||[]).some((x:any)=>t(x.theme).length>0);
  const {data:dailyTasks,error:tasksErr}=await s.from("teacher_daily_task_status").select("task_code,status").eq("user_account_id",account.id).eq("scope_ref",cid).eq("task_date",date).in("task_code",["kesiswaan_discipline_checked","kesiswaan_reward_checked"]);
  if(tasksErr)throw tasksErr;
  const checked=new Set((dailyTasks||[]).filter((x:any)=>x.status==="done").map((x:any)=>x.task_code));
