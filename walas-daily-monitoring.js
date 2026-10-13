@@ -51,14 +51,18 @@
   if(!isWalas()||document.hidden)return;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const account=String(currentUser?.id||currentUser?.username||'');
-  if(today!==reportDate||account!==reportedAccount){last=null;refreshAt=0;reportDate=today;reportedAccount=account;force=true}
+  if(today!==reportDate||account!==reportedAccount){last=null;delete window.__cqWalasDailyCompleted;refreshAt=0;reportDate=today;reportedAccount=account;force=true}
   if(loading){if(force)refreshAgain=true;return}
   if(!force&&Date.now()-refreshAt<45000){draw();return}
   loading=true;refreshAt=Date.now();
   try{
    const out=await api({action:'daily_get'});
    const c=out.completion;
-   if(c){last={absensi:!!c.attendance,kedisiplinan:!!c.discipline,reward:!!c.reward};draw()}
+   if(c){
+    last={absensi:!!c.attendance,kedisiplinan:!!c.discipline,reward:!!c.reward};
+    window.__cqWalasDailyCompleted={...last};
+    draw();
+   }
   }catch(e){last=null;refreshAt=0;console.warn('Notifikasi Walas: status tidak tersedia',e)}
   finally{loading=false;if(refreshAgain){refreshAgain=false;refresh(true)}}
  }
@@ -84,7 +88,7 @@
   document.head.appendChild(el);
   // Observe sidebar redraws; do not poll DOM every five seconds or rewrite global routing.
   const side=document.getElementById('sidebar');
-  if(side){const observer=new MutationObserver(()=>{if(isWalas())draw()});observer.observe(side,{childList:true,subtree:false})}
+  if(side){const observer=new MutationObserver(()=>{if(isWalas())draw()});observer.observe(side,{childList:true,subtree:true})}
   window.addEventListener('focus',()=>refresh(true));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh(true)});
   window.addEventListener('cq-walas-kesiswaan-saved',()=>refresh(true));
