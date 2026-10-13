@@ -143,13 +143,6 @@
   function sync(){
     // HRD owns its complete workspace (sidebar + dashboard + data). Do not mutate
     // HRD content with the generic role-theme observer.
-    if(roleNorm()==='sapras'){
-      // SAPRAS owns its own facilities banner; never inject a second generic hero.
-      var saprasRoot=content();
-      var oldHero=fallbackHero(saprasRoot);
-      if(oldHero)oldHero.remove();
-      return;
-    }
     if(roleNorm()==='hrd'||roleNorm()==='admin'){
       restoreOutsideDashboard();
       return;
@@ -164,7 +157,7 @@
   document.addEventListener('click',function(){setTimeout(sync,45);},true);
   document.addEventListener('DOMContentLoaded',function(){setTimeout(sync,70);},{once:true});
   window.addEventListener('load',function(){setTimeout(sync,100);},{once:true});
-  setInterval(function(){if(!['hrd','admin','sapras'].includes(roleNorm())&&dashboardActive()&&appVisible())enforceOneHero();},900);
+  setInterval(function(){if(!['hrd','admin'].includes(roleNorm())&&dashboardActive()&&appVisible())enforceOneHero();},900);
   setTimeout(sync,70);
   window.__CQ_GLOBAL_ROLE_THEME__=true;
   window.__CQ_GLOBAL_ROLE_THEME_V3__=true;
