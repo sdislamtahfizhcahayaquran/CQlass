@@ -18,52 +18,15 @@
   s.textContent=`
 .cdp-wrap{max-width:1040px;margin:0 auto;padding:4px 0 26px;color:#203747;font-family:inherit}
 .cdp-wrap *{box-sizing:border-box}
-.cdp-hero{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:17px;flex-wrap:wrap}
-.cdp-hero h2{margin:0 0 6px;font-size:clamp(21px,2.3vw,29px);font-weight:850;letter-spacing:-.5px;color:#173e4a}
-.cdp-hero p{margin:0;max-width:770px;color:#637986;font-size:13px;line-height:1.65}
-.cdp-eyebrow{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#0b8678;font-weight:850;margin-bottom:7px}
-.cdp-panel{background:#fff;border:1px solid #deeaeb;border-radius:18px;padding:22px 24px;margin:0 0 14px;box-shadow:0 6px 20px rgba(24,77,78,.035)}
-.cdp-overview{background:linear-gradient(112deg,#fff 40%,#f2fbf8);border:1px solid #cfe6df}
-.cdp-overview-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:15px}
-.cdp-context{display:flex;gap:8px;flex-wrap:wrap}
-.cdp-pill{padding:8px 12px;background:#fff;border:1px solid #d9e9e7;border-radius:999px;color:#3e6570;font-size:12px;font-weight:750;display:inline-flex;align-items:center;gap:6px}
-.cdp-pill b{color:#194653}
-.cdp-status{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;font-size:12px;font-weight:800}
-.cdp-status.wait{background:#fff7e6;color:#9a6710;border:1px solid #f0dfbd}
-.cdp-status.done{background:#dff6ed;color:#0b755f;border:1px solid #bce9d4}
-.cdp-status.issue{background:#fff0ee;color:#b13e31;border:1px solid #f7d4cd}
-.cdp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-.cdp-metric{border:1px solid #e2ecec;border-radius:13px;background:#fff;padding:13px 15px;display:flex;align-items:center;gap:12px}
-.cdp-metric-icon{width:40px;height:40px;border-radius:12px;background:#e8f6f3;color:#14766d;display:grid;place-items:center;font-size:17px;font-weight:900;flex-shrink:0}
-.cdp-metric-num{font-size:23px;font-weight:850;line-height:1.05;color:#1b4650;font-variant-numeric:tabular-nums}
-.cdp-metric-label{font-size:11px;font-weight:650;color:#708592;margin-top:4px;line-height:1.3}
-.cdp-section{display:flex;gap:13px;align-items:flex-start;margin-bottom:17px}
-.cdp-section-icon{width:41px;height:41px;flex-shrink:0;background:#e7f6f2;color:#0c806e;border-radius:12px;display:grid;place-items:center;font-size:20px;font-weight:900}
-.cdp-section-title{font-size:16px;font-weight:850;color:#1d3e4c;margin:0 0 4px}
-.cdp-section-sub{font-size:12px;color:#78909a;line-height:1.5;margin:0}
-.cdp-check-section+.cdp-check-section{border-top:1px solid #eaf0f1;padding-top:22px;margin-top:23px}
-.cdp-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
-.cdp-options label{border:1.5px solid #dce7e9;background:#fff;border-radius:13px;display:flex;align-items:flex-start;gap:12px;min-height:86px;padding:17px;cursor:pointer;transition:border-color .16s,background .16s,box-shadow .16s}
-.cdp-options label:hover{border-color:#9dd1c8;background:#f8fcfb}
-.cdp-options label:has(input:checked){border-color:#1a9281;background:#effaf6;box-shadow:0 0 0 1px rgba(26,146,129,.13)}
-.cdp-options input{margin:3px 0 0;width:18px;height:18px;accent-color:#138978;flex-shrink:0}
-.cdp-opt-title{display:block;font-size:13px;font-weight:800;color:#274754;line-height:1.45}
-.cdp-opt-help{display:block;font-size:11px;color:#748a94;margin-top:6px;line-height:1.4;font-weight:500}
-.cdp-declaration{display:flex;align-items:flex-start;gap:11px;background:#f4f9fa;border:1px solid #deebee;border-radius:13px;padding:15px 17px;cursor:pointer;margin:23px 0 16px}
-.cdp-declaration input{width:18px;height:18px;accent-color:#138978;flex-shrink:0;margin:2px 0}
-.cdp-declaration span{font-size:12.5px;line-height:1.6;font-weight:650;color:#355b66}
-.cdp-action{display:flex;align-items:center;gap:15px;flex-wrap:wrap}
-.cdp-wrap button{padding:12px 22px;border:0;border-radius:11px;font:inherit;background:#087f74;color:#fff;cursor:pointer;font-size:13px;font-weight:800;box-shadow:0 5px 12px rgba(8,127,116,.17)}
-.cdp-wrap button:hover:not(:disabled){background:#066a61}
-.cdp-wrap button:disabled{background:#b5d2cd;color:#f9ffff;box-shadow:none;cursor:not-allowed}
-.cdp-wrap select,.cdp-wrap input[type=date]{padding:10px 12px;border:1px solid #c9dfe0;border-radius:10px;font:inherit}
-.cdp-foot{font-size:11px;line-height:1.6;color:#79909a}
-.cdp-note{padding:0 9px}
-.cdp-state{background:#eaf7f2;padding:12px;border-radius:10px;color:#165b48;font-weight:700}
-.cdp-error{color:#b43a34;font-size:12px;font-weight:750}
-.cdp-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.cdp-wrap h2{font-size:22px;color:#173e4a;margin:0 0 8px}
+.cdp-wrap p{color:#637986;font-size:13px;line-height:1.6}
+.cdp-panel{background:#fff;border:1px solid #deeaeb;border-radius:16px;padding:20px 22px;margin:12px 0;box-shadow:0 5px 15px rgba(24,77,78,.035)}
+.cdp-wrap button{padding:11px 18px;border:0;border-radius:10px;font:inherit;background:#087f74;color:#fff;cursor:pointer;font-size:13px;font-weight:800}
+.cdp-wrap button:hover{background:#066a61}
+.cdp-wrap input[type=date]{padding:10px 12px;border:1px solid #c9dfe0;border-radius:10px;font:inherit}
 .cdp-meta{font-size:12px;font-weight:750;color:#526c7b}
-@media(max-width:700px){.cdp-panel{padding:17px}.cdp-metrics{grid-template-columns:1fr 1fr}.cdp-metric:last-child{grid-column:span 2}.cdp-options{grid-template-columns:1fr}.cdp-options label{min-height:68px}.cdp-hero{margin-bottom:15px}}
+.cdp-error{color:#b43a34;font-size:12px;font-weight:750}
+@media(max-width:700px){.cdp-panel{padding:16px}}
 `;
   document.head.appendChild(s);
  }
@@ -71,7 +34,6 @@
  // Single source of truth: existing per-category confirmation and actual saved input.
  function isWalas(){try{return currentUser?.role==='walas'}catch{return false}}
  let last=null,loading=false,refreshAt=0,refreshAgain=false,reportDate='',reportedAccount='';
- const MENU={'absensi':'absensi','kedisiplinan':'kedisiplinan','reward':'reward'};
  function draw(){
   if(!isWalas()||!last)return;
   const sidebar=document.getElementById('sidebar');if(!sidebar)return;
