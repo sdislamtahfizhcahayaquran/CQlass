@@ -119,11 +119,7 @@
   }
 
   patchDashboard();
-  const obs=new MutationObserver(()=>setTimeout(enforce,0));
-  if(document.documentElement)obs.observe(document.documentElement,{childList:true,subtree:true});
-  document.addEventListener('DOMContentLoaded',()=>{patchDashboard();setTimeout(()=>load(false),50)},{once:true});
-  document.addEventListener('click',()=>setTimeout(enforce,30),true);
-  setInterval(()=>{patchDashboard();enforce()},700);
-  setTimeout(()=>load(false),60);
+  // Router calls the SAPRAS renderer explicitly. Avoid global DOM observers and polling.
+  document.addEventListener('DOMContentLoaded',()=>{patchDashboard();if(isSapras())load(false)},{once:true});
   window.renderSaprasHardDashboard=()=>load(true);
 })();
