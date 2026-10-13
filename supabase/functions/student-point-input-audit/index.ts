@@ -64,6 +64,21 @@ async function daily(s:any,req:Request,body:any){
  const mine=(assigned||[]).filter((x:any)=>x.homeroom_teacher_id===account.teacher_id);
  const cid=t(body.class_id)||t(mine[0]?.class_id);
  if(!cid||!mine.some((x:any)=>x.class_id===cid))return json({success:false,error:"not_assigned_homeroom"},403);
+ // WALAS-only confirmation for a category with genuinely zero saved records.
+ if(body.action==="daily_zero"){
+  if(!mine.some((x:any)=>x.class_id===cid)||!account.teacher_id)return json({success:false,error:"forbidden"},403);
+  const kind=t(body.kind),day=t(body.date)||date;
+  if(!["discipline","reward"].includes(kind)||day!==date||body.checked!==true)return json({success:false,error:"invalid_confirmation"},400);
+  const dow=new Date(day+"T12:00:00Z").getUTCDay();
+  if(dow===0||dow===6)return json({success:false,error:"weekday_only"},400);
+  const counts=await getCounts(cid,day);
+  if((kind==="discipline"&&counts.violation>0)||(kind==="reward"&&counts.reward>0))return json({success:false,error:"already_has_records"},409);
+  const code=kind==="discipline"?"kesiswaan_discipline_checked":"kesiswaan_reward_checked";
+  const {data:exists,error:e}=await s.from("teacher_daily_task_status").select("id").eq("user_account_id",account.id).eq("task_code",code).eq("scope_ref",cid).eq("task_date",day).limit(1);
+  if(e)throw e;
+  if(!(exists||[]).length){const {error:insertErr}=await s.from("teacher_daily_task_status").insert({user_account_id:account.id,task_code:code,scope_ref:cid,task_date:day,status:"done"});if(insertErr)throw insertErr;}
+  return json({success:true,class_id:cid,date:day,kind,confirmed:true});
+ }
  if(body.action==="daily_confirm"){
   if(body.checked!==true)return json({success:false,error:"confirmation_required"},400);
   const vs=t(body.violation_status),rs=t(body.reward_status);
@@ -80,9 +95,9 @@ async function daily(s:any,req:Request,body:any){
   s.from("walas_daily_point_verifications").select("violation_status,reward_status,confirmed_at").eq("class_id",cid).eq("report_date",date).maybeSingle()]);
  if(cle||che)throw(cle||che);
  const counts=await getCounts(cid,date);
- const {count:expected,error:ee}=await s.from("student_enrollments").select("student_id",{count:"exact",head:true}).eq("class_id",cid);
+ const {count:expected,error:ee}=await s.from("student_enrollments").select("student_id",{count:"exact",head:true}).eq("class_id",cid).eq("academic_year_id",yr.id).eq("semester_no",sem.semester_no).eq("is_active",true);
  if(ee)throw ee;
- const {data:sessions,error:sessErr}=await s.from("morning_talk_sessions").select("id").eq("class_id",cid).eq("attendance_date",date);
+ const {data:sessions,error:sessErr}=await s.from("morning_talk_sessions").select("id,theme").eq("class_id",cid).eq("attendance_date",date);
  if(sessErr)throw sessErr;
  let marked=0;
  if((sessions||[]).length){
@@ -90,14 +105,17 @@ async function daily(s:any,req:Request,body:any){
    if(marksErr)throw marksErr;
    marked=new Set((marks||[]).map((x:any)=>x.student_id)).size;
  }
- const attendance_complete=!!expected&&marked>=expected;
+ const attendance_complete=!!expected&&marked>=expected&&(sessions||[]).some((x:any)=>t(x.theme).length>0);
+ const {data:dailyTasks,error:tasksErr}=await s.from("teacher_daily_task_status").select("task_code,status").eq("user_account_id",account.id).eq("scope_ref",cid).eq("task_date",date).in("task_code",["kesiswaan_discipline_checked","kesiswaan_reward_checked"]);
+ if(tasksErr)throw tasksErr;
+ const checked=new Set((dailyTasks||[]).filter((x:any)=>x.status==="done").map((x:any)=>x.task_code));
  const bad=confirmation&&((confirmation.violation_status==="nihil"&&(counts.violation>0||counts.late>0))||(confirmation.violation_status==="ada"&&!(counts.violation||counts.late))||(confirmation.reward_status==="nihil"&&counts.reward>0)||(confirmation.reward_status==="ada"&&!counts.reward));
- const discipline_complete=counts.violation>0||counts.late>0||!!(confirmation&&!bad);
- const reward_complete=counts.reward>0||!!(confirmation&&!bad);
- return json({success:true,date,class_id:cid,class_name:cl?.name||"-",classes:mine.map((x:any)=>x.class_id),counts,confirmation:confirmation||null,completion:{attendance:attendance_complete,attendance_marked:marked,attendance_expected:expected||0,discipline:discipline_complete,reward:reward_complete,monitoring:!!(confirmation&&!bad)||(attendance_complete&&(counts.violation>0||counts.late>0)&&counts.reward>0)}});
+ const discipline_complete=counts.violation>0||checked.has("kesiswaan_discipline_checked")||!!(confirmation&&!bad&&confirmation.violation_status==="nihil");
+ const reward_complete=counts.reward>0||checked.has("kesiswaan_reward_checked")||!!(confirmation&&!bad&&confirmation.reward_status==="nihil");
+ return json({success:true,date,class_id:cid,class_name:cl?.name||"-",classes:mine.map((x:any)=>x.class_id),counts,confirmation:confirmation||null,completion:{attendance:attendance_complete,attendance_marked:marked,attendance_expected:expected||0,discipline:discipline_complete,reward:reward_complete,monitoring:discipline_complete&&reward_complete}});
 }
 
-Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return json({success:false,error:"method_not_allowed"},405);let body:any={};try{body=await req.json()}catch{return json({success:false,error:"invalid_json"},400)}try{const s=db();if(['daily_get','daily_confirm','daily_summary'].includes(t(body.action)))return await daily(s,req,body);const me=await auth(s,req,body);if(!me)return json({success:false,error:"forbidden"},403);let start=t(body.start_date),end=t(body.end_date)||ymdToday();if(!start){const d=new Date(end+"T00:00:00Z");d.setUTCDate(d.getUTCDate()-6);start=d.toISOString().slice(0,10)}if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end||end>ymdToday())return json({success:false,error:"invalid_date_range"},400);const days=schoolDays(start,end);
+Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return json({success:false,error:"method_not_allowed"},405);let body:any={};try{body=await req.json()}catch{return json({success:false,error:"invalid_json"},400)}try{const s=db();if(['daily_get','daily_confirm','daily_summary','daily_zero'].includes(t(body.action)))return await daily(s,req,body);const me=await auth(s,req,body);if(!me)return json({success:false,error:"forbidden"},403);let start=t(body.start_date),end=t(body.end_date)||ymdToday();if(!start){const d=new Date(end+"T00:00:00Z");d.setUTCDate(d.getUTCDate()-6);start=d.toISOString().slice(0,10)}if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end||end>ymdToday())return json({success:false,error:"invalid_date_range"},400);const days=schoolDays(start,end);
 const[{data:year},{data:sem}]=await Promise.all([s.from("academic_years").select("id").eq("is_active",true).maybeSingle(),s.from("semesters").select("academic_year_id,semester_no").eq("is_active",true).maybeSingle()]);if(!year||!sem)return json({success:false,error:"active_period_missing"},500);
 const[{data:walas,error:we},{data:tahfizh,error:te}]=await Promise.all([s.from("report_class_assignments").select("homeroom_teacher_id").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no),s.from("tahfizh_teacher_assignments").select("teacher_id").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no).eq("is_active",true)]);if(we)throw we;if(te)throw te;
 const assigned:any={};for(const x of walas||[]){const id=t(x.homeroom_teacher_id);if(id)(assigned[id]??=new Set()).add("walas")}for(const x of tahfizh||[]){const id=t(x.teacher_id);if(id)(assigned[id]??=new Set()).add("tahfizh")};const teacherIds=Object.keys(assigned);if(!teacherIds.length)return json({success:true,start_date:start,end_date:end,school_days:days,rows:[],summary:{teachers:0,never_both:0,total_missing_days:0}});
