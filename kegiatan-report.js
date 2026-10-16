@@ -213,7 +213,7 @@
   window.renderKegiatanRinci=function(content){
     injectStyle();ensureModal();
     content.innerHTML='<div class="kv2" id="kv2-rinci"><div class="kv2-card"><span class="spinner"></span> Memuat laporan rinci...</div></div>';
-    (async()=>{try{await bootstrap();if(isLanguagePIC())KR.filter.program='PEKAN_BAHASA';if(isTasmiPIC()&&!isKabid())KR.filter.program='LAINNYA';renderRinciBody();}catch(e){document.getElementById('kv2-rinci').innerHTML='<div class="kv2-card kv2-empty">'+esc(e.message)+'</div>';}})();
+    (async()=>{try{await bootstrap();if(isLanguagePIC()){KR.filter.program='PEKAN_BAHASA';KR.filter.status='ALL';KR.filter.scope='ALL';}if(isTasmiPIC()&&!isKabid())KR.filter.program='LAINNYA';renderRinciBody();}catch(e){document.getElementById('kv2-rinci').innerHTML='<div class="kv2-card kv2-empty">'+esc(e.message)+'</div>';}})();
   };
   function filteredEvents(){
     const ev=KR.boot?.events||[];return ev.filter(e=>{
@@ -278,10 +278,11 @@
   window.kv2SaveEvent=async function(){
     const e=KR.detail?.event;if(!e)return;const b=document.getElementById('kv2-save');if(b){b.disabled=true;b.innerHTML='<span class="spinner"></span>Menyimpan...';}
     try{
-      await act('save_event',{event_id:e.id,status:document.getElementById('kv2-status')?.value||e.status,actual_date:document.getElementById('kv2-actual')?.value||'',attendance_date:document.getElementById('kv2-attdate')?.value||'',manual_participant_count:document.getElementById('kv2-manual')?.value??null,notes:document.getElementById('kv2-notes')?.value||''});
+      const mainResult=await act('save_event',{event_id:e.id,status:document.getElementById('kv2-status')?.value||e.status,actual_date:document.getElementById('kv2-actual')?.value||'',attendance_date:document.getElementById('kv2-attdate')?.value||'',manual_participant_count:document.getElementById('kv2-manual')?.value??null,notes:document.getElementById('kv2-notes')?.value||''});
+      if(!mainResult?.success)throw new Error('Laporan utama belum berhasil disimpan.');
       if(e.category==='PEKAN_BAHASA'){
         const participants=[];document.querySelectorAll('.kv2-langrow').forEach(row=>{const ck=row.querySelector('.kv2-langcheck');if(!ck?.checked)return;participants.push({student_id:ck.dataset.studentId,performance_category:row.querySelector('.kv2-langcat')?.value||'',placement:row.querySelector('.kv2-langplace')?.value||null});});
-        await act('save_language_participants',{event_id:e.id,participants});
+        try{await act('save_language_participants',{event_id:e.id,participants});}catch(participantError){KR.boot=null;throw new Error('Laporan utama tersimpan, tetapi peserta belum tersimpan: '+(participantError.message||'Kesalahan tidak diketahui')+'. Periksa kembali sebelum mengulang.');}
       }
       showToast('Laporan kegiatan berhasil disimpan.');KR.boot=null;await bootstrap(true);KR.detail=await act('detail',{event_id:e.id});renderEventModal();refreshVisiblePage();
     }catch(err){showToast(err.message||'Data belum tersimpan.',true);}finally{const x=document.getElementById('kv2-save');if(x){x.disabled=false;x.textContent='Simpan';}}
