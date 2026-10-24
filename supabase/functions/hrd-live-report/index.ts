@@ -115,7 +115,7 @@ async function studentAttendanceRecap(start:string,end:string){
  for(const a of assigned||[]){const teacher=T(a.homeroom_teacher_id),cls=T(a.class_id);if(!teacher||!cls)continue;if(!classesByTeacher.has(teacher))classesByTeacher.set(teacher,new Set());classesByTeacher.get(teacher)!.add(cls)}
  for(const x of sessions||[]){const cls=T(x.class_id),day=T(x.attendance_date);if(!datesByClass.has(cls))datesByClass.set(cls,new Set());datesByClass.get(cls)!.add(day)}
  const rows=[...classesByTeacher].map(([teacher_id,classes])=>{
-  const covered=[...classes].map(class_id=>({class_id,days:datesByClass.get(class_id)?.size||0}));
+  const covered=[...classes].map(class_id=>({class_id,days:datesByClass.get(class_id)?.size||0,dates:[...(datesByClass.get(class_id)||new Set<string>())].sort()}));
   return {teacher_id,class_count:covered.length,session_days:covered.reduce((n,x)=>n+x.days,0),classes:covered,has_attendance:covered.some(x=>x.days>0)};
  });
  return {success:true,range:{start,end},rows};
