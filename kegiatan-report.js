@@ -25,7 +25,7 @@
 
   const KR = {
     boot:null, bootAt:0, month:'', detail:null, exkul:null, exkulRows:[], exkulState:'unknown',
-    filter:{month:'',program:'ALL',status:'ALL',scope:'ALL'}, languageStats:new Map()
+    filter:{date:'',program:'ALL',status:'ALL',scope:'ALL'}, languageStats:new Map()
   };
 
   function esc(v){ return escapeHtml(String(v == null ? '' : v)); }
@@ -93,6 +93,10 @@
     .kv2-langwrap{max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:10px}.kv2-lang{width:100%;border-collapse:collapse;min-width:720px}.kv2-lang th,.kv2-lang td{padding:7px;border-bottom:1px solid var(--border);font-size:9.5px}.kv2-lang th{position:sticky;top:0;background:#f3f8f8;z-index:1;color:var(--muted);font-size:8.8px}.kv2-lang input[type=text],.kv2-lang select{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:7px;padding:6px;font:inherit;font-size:9px}
     .kv2-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}.kv2-tab{border:1px solid var(--border);background:#fff;border-radius:999px;padding:7px 10px;font:inherit;font-size:9.5px;font-weight:850;color:var(--muted);cursor:pointer}.kv2-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}.kv2-student-action{display:flex;gap:5px;align-items:center;flex-wrap:wrap}.kv2-student-action input{min-width:145px}
     @media(max-width:980px){.kv2-grid2{grid-template-columns:1fr}.kv2-programs{grid-template-columns:repeat(2,1fr)}.kv2-kpis,.kv2-exgrid{grid-template-columns:repeat(2,1fr)}.kv2-form{grid-template-columns:1fr 1fr}.kv2-span3{grid-column:1/-1}}
+    /* Tombol laporan tetap terlihat saat tabel kegiatan digeser horizontal. */
+    .kv2-event-table th:last-child,.kv2-event-table td:last-child{position:sticky;right:0;background:#fff;z-index:3;box-shadow:-5px 0 10px rgba(0,0,0,.06)}
+    .kv2-event-table th:last-child{background:#f4f8f8;z-index:4}
+    .kv2-event-table td:last-child .kv2-btn{white-space:nowrap}
     @media(max-width:640px){.kv2-kpis,.kv2-exgrid,.kv2-programs{grid-template-columns:1fr 1fr}.kv2-form{grid-template-columns:1fr}.kv2-span3{grid-column:auto}.kv2-photos{grid-template-columns:repeat(2,1fr)}.kv2-up{grid-template-columns:1fr}.kv2-head h2{font-size:21px}}
     @media print{body.kv2-printing .topbar,body.kv2-printing .sidebar,body.kv2-printing .kv2-actions,body.kv2-printing .kv2-filters{display:none!important}body.kv2-printing .layout{display:block!important}body.kv2-printing .content{padding:0!important;margin:0!important;width:100%!important}.kv2-card,.kv2-kpi{break-inside:avoid}}
     `;
@@ -111,7 +115,7 @@
     KR.boot=await act('bootstrap'); KR.bootAt=Date.now();
     const months=[...new Set((KR.boot.events||[]).map(e=>String(e.planned_date||'').slice(0,7)).filter(Boolean))].sort();
     if(!KR.month)KR.month=months.includes(currentYM())?currentYM():(months[0]||currentYM());
-    if(!KR.filter.month)KR.filter.month=KR.month;
+    
     return KR.boot;
   }
   async function loadExkul(force=false){
@@ -176,7 +180,7 @@
   }
   window.kv2DashboardMonth=function(v){KR.month=v;renderDashboardBody();};
   window.kv2GoRinci=function(program='ALL'){
-    KR.filter.month=KR.month||currentYM();KR.filter.program=program||'ALL';KR.filter.status='ALL';KR.filter.scope='ALL';
+    KR.filter.date='';KR.filter.program=program||'ALL';KR.filter.status='ALL';KR.filter.scope='ALL';
     if(typeof setActiveModule==='function')setActiveModule('kegiatan-rinci');
   };
   window.kv2Print=function(){document.body.classList.add('kv2-printing');window.print();setTimeout(()=>document.body.classList.remove('kv2-printing'),300);};
@@ -217,7 +221,7 @@
   };
   function filteredEvents(){
     const ev=KR.boot?.events||[];return ev.filter(e=>{
-      if(KR.filter.month&&String(e.planned_date||'').slice(0,7)!==KR.filter.month)return false;
+      if(KR.filter.date&&String(e.planned_date||'')!==KR.filter.date)return false;
       if(KR.filter.program!=='ALL'){
         const p=PROGRAMS.find(x=>x.key===KR.filter.program);if(p&&!p.cats.includes(e.category))return false;
       }
@@ -233,13 +237,13 @@
     const scopes=[...new Set(events.map(e=>String(e.scope_label||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
     root.innerHTML=`<div class="kv2-head"><div><h2>${isLanguagePIC()?'Pekan Bahasa':isTasmiPIC()&&!isKabid()?"Tasmi' Syahriyyah":'Laporan Rinci Kegiatan'}</h2><p>Satu kegiatan hanya memiliki satu record. Setelah diisi, pengguna lain hanya dapat melihat atau mengedit record yang sama.</p></div>${isKabid()?'<div class="kv2-actions"><button class="kv2-btn ghost" onclick="setActiveModule(\'dashboard\')">Kembali ke Dashboard</button></div>':''}</div>
     <div class="kv2-card" style="margin-bottom:12px"><div class="kv2-filters">
-      <select class="kv2-select" onchange="kv2Filter('month',this.value)">${monthOptions(events,KR.filter.month)}</select>
+      <label class="kv2-date-filter">Tanggal kegiatan <input class="kv2-input" type="date" value="${esc(KR.filter.date||'')}" onchange="kv2Filter('date',this.value)" aria-label="Pilih tanggal kegiatan"></label><button class="kv2-btn ghost" onclick="kv2Filter('date','')">Semua Tanggal</button>
       ${isKabid()||isPimpinan()?`<select class="kv2-select" onchange="kv2Filter('program',this.value)"><option value="ALL">Semua Kegiatan</option>${PROGRAMS.map(p=>`<option value="${p.key}" ${KR.filter.program===p.key?'selected':''}>${esc(p.label)}</option>`).join('')}</select>`:''}
       <select class="kv2-select" onchange="kv2Filter('status',this.value)"><option value="ALL">Semua Status</option><option value="TERLAKSANA" ${KR.filter.status==='TERLAKSANA'?'selected':''}>Terlaksana</option><option value="BELUM_DILAPORKAN" ${KR.filter.status==='BELUM_DILAPORKAN'?'selected':''}>Belum Dilaporkan</option><option value="TERJADWAL" ${KR.filter.status==='TERJADWAL'?'selected':''}>Terjadwal</option><option value="DITUNDA" ${KR.filter.status==='DITUNDA'?'selected':''}>Ditunda</option><option value="DIJADWALKAN_ULANG" ${KR.filter.status==='DIJADWALKAN_ULANG'?'selected':''}>Dijadwalkan Ulang</option><option value="BATAL" ${KR.filter.status==='BATAL'?'selected':''}>Batal</option></select>
       <select class="kv2-select" onchange="kv2Filter('scope',this.value)"><option value="ALL">Semua Kelas/Sasaran</option>${scopes.map(s=>`<option value="${esc(s)}" ${KR.filter.scope===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
       <span class="kv2-badge">${rows.length} kegiatan</span>
     </div></div>
-    <div class="kv2-tablewrap"><table class="kv2-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kelas/Sasaran</th><th>PIC</th><th>Status</th><th>Peserta</th><th>Aksi</th></tr></thead><tbody>${rows.length?rows.map(e=>{const st=stateOf(e),p=e.permission||{},count=e.manual_participant_count!=null?e.manual_participant_count:'—';return`<tr><td><b>${esc(fmtDate(e.planned_date))}</b>${e.actual_date&&e.actual_date!==e.planned_date?`<div class="kv2-note">Realisasi: ${esc(fmtDate(e.actual_date))}</div>`:''}</td><td><b>${esc(e.title)}</b><div class="kv2-note">${esc(CATEGORY[e.category]||e.category)}</div></td><td>${esc(e.scope_label||'—')}</td><td>${esc(e.pic_text||'—')}</td><td><span class="kv2-badge ${st.cls}">${esc(st.label)}</span></td><td>${esc(count)}</td><td><button class="kv2-btn ${e.report_filled_at?'secondary':''}" onclick="kv2OpenEvent('${esc(e.id)}')">${e.report_filled_at?(p.edit?'Lihat / Edit':'Lihat'):(p.edit?'Isi Laporan':'Lihat')}</button></td></tr>`}).join(''):'<tr><td colspan="7"><div class="kv2-empty">Tidak ada kegiatan sesuai filter.</div></td></tr>'}</tbody></table></div>`;
+    <div class="kv2-tablewrap"><table class="kv2-table kv2-event-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Kelas/Sasaran</th><th>PIC</th><th>Status</th><th>Peserta</th><th>Aksi</th></tr></thead><tbody>${rows.length?rows.map(e=>{const st=stateOf(e),p=e.permission||{},count=e.manual_participant_count!=null?e.manual_participant_count:'—';return`<tr><td><b>${esc(fmtDate(e.planned_date))}</b>${e.actual_date&&e.actual_date!==e.planned_date?`<div class="kv2-note">Realisasi: ${esc(fmtDate(e.actual_date))}</div>`:''}</td><td><b>${esc(e.title)}</b><div class="kv2-note">${esc(CATEGORY[e.category]||e.category)}</div></td><td>${esc(e.scope_label||'—')}</td><td>${esc(e.pic_text||'—')}</td><td><span class="kv2-badge ${st.cls}">${esc(st.label)}</span></td><td>${esc(count)}</td><td><button class="kv2-btn ${e.report_filled_at?'secondary':''}" onclick="kv2OpenEvent('${esc(e.id)}')">${e.report_filled_at?(p.edit?'Lihat / Edit':'Lihat'):(p.edit?'Isi Laporan':'Lihat')}</button></td></tr>`}).join(''):'<tr><td colspan="7"><div class="kv2-empty">Tidak ada kegiatan sesuai filter.</div></td></tr>'}</tbody></table></div>`;
   }
 
   window.kv2OpenEvent=async function(id){
