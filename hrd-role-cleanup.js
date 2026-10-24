@@ -5,7 +5,7 @@ if(window.__cqHrdWorkspaceLoaded)return;
 window.__cqHrdWorkspaceLoaded=true;
 
 const jktDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false,grades:null,gradeSemester:1,gradeType:'STS',gradeClass:'all',promoStart:'',promoEnd:'',promoDefaultStart:'',promoDefaultEnd:'',promoRequestSeq:0};
+const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false,grades:null,gradeSemester:1,gradeType:'STS',gradeClass:'all',promoStart:'',promoEnd:'',promoDefaultStart:'',promoDefaultEnd:'',promoRequestSeq:0,completenessStart:'',completenessEnd:'',completenessSeq:0};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const low=v=>String(v??'').trim().toLowerCase();
 const content=()=>document.getElementById('content');
@@ -348,21 +348,30 @@ function hrdOverallMark(t,isTah){
 }
 async function renderCompleteness(){
   setActive('completeness');state.reportOpen=true;drawSidebar('completeness');loading('Rekap Kelengkapan');
+  const sequence=++state.completenessSeq;
   try{
-    const d=await getAdmin(),rows=[...(d?.teachers||[])].sort((a,b)=>teacherName(a).localeCompare(teacherName(b),'id')),c=content();if(!c)return;
+    const today=jktDate();
+    const start=state.completenessStart||today.slice(0,7)+'-01';
+    const end=state.completenessEnd||today;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)throw new Error('Rentang tanggal tidak valid.');
+    state.completenessStart=start;state.completenessEnd=end;
+    const d=await api('hrd-live-report',{action:'administration',start,end});
+    if(sequence!==state.completenessSeq||state.active!=='completeness')return;
+    const septemberFull=start==='2026-09-01'&&end==='2026-09-30';
+    const rows=[...(d?.teachers||[])].sort((a,b)=>teacherName(a).localeCompare(teacherName(b),'id')),c=content();if(!c)return;
     const body=rows.map((t,i)=>{
       const tah=hrdIsTahfizhPartner(t);
-      const mark=(keys,force)=>hrdFixedSeptemberMark(t,keys,hrdMark(hrdCat(t,keys),force));
+      const mark=(keys,force)=>septemberFull?hrdFixedSeptemberMark(t,keys,hrdMark(hrdCat(t,keys),force)):hrdMark(hrdCat(t,keys),force);
       return '<tr><td>'+(i+1)+'</td><td><b>'+esc(teacherName(t))+'</b></td><td>'+esc(rolesText(t))+'</td>'+
         '<td class="cq-hrd-center">'+mark(['timesheet'],true)+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['attendance','student_attendance','absensi_siswa']):(tah?'–':mark(['attendance','student_attendance','absensi_siswa'])))+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['academic','nilai','scores']):(tah?'–':mark(['academic','nilai','scores'])))+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['pjbl','pbl_market_day']):(tah?'–':mark(['pjbl','pbl_market_day'])))+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?mark(['student_affairs','kesiswaan','discipline_reward']):(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['attendance','student_attendance','absensi_siswa']):(tah?'–':mark(['attendance','student_attendance','absensi_siswa'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['academic','nilai','scores']):(tah?'–':mark(['academic','nilai','scores'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['pjbl','pbl_market_day']):(tah?'–':mark(['pjbl','pbl_market_day'])))+'</td>'+
+        '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['student_affairs','kesiswaan','discipline_reward']):(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward'])))+'</td>'+
         '<td class="cq-hrd-center">'+mark(['uks','uks_duty'])+'</td>'+
         '<td class="cq-hrd-center">'+mark(['badal','substitute'])+'</td>'+
         '<td class="cq-hrd-center">'+mark(['promotion','promosi_sekolah','promo_socmed'],true)+'</td>'+
-        '<td class="cq-hrd-center">'+((state.month==='2026-09'&&hrdIsTeachingStaff(t))?(()=>{
+        '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?(()=>{
           const real=[
             hrdMark(hrdCat(t,['uks','uks_duty'])),
             hrdMark(hrdCat(t,['badal','substitute'])),
@@ -372,9 +381,9 @@ async function renderCompleteness(){
         })():hrdOverallMark(t,tah))+'</td></tr>';
     }).join('');
     c.innerHTML='<div class="cq-hrd-clean">'+head('Rekap Kelengkapan','Ceklis = sudah/lengkap, silang = belum, tanda – = tidak wajib atau sumber indikator belum tersedia untuk guru tersebut.')+
-      '<div class="cq-hrd-panel"><div class="cq-hrd-tools"><input type="month" value="'+esc(state.month)+'" onchange="hrdCompletenessMonth(this.value)"><button class="cq-hrd-btn alt" onclick="hrdCompletenessReload()">Muat Ulang</button></div></div>'+
+      '<div class="cq-hrd-panel"><h2>Rentang Pemeriksaan</h2><div class="cq-hrd-promo-dates"><div class="cq-hrd-field"><label for="hrd-complete-start">Dari Tanggal</label><input id="hrd-complete-start" type="date" value="'+esc(start)+'" onchange="hrdCompletenessDateChanged(\'start\')"></div><div class="cq-hrd-field"><label for="hrd-complete-end">Sampai Tanggal</label><input id="hrd-complete-end" type="date" value="'+esc(end)+'" onchange="hrdCompletenessDateChanged(\'end\')"></div><button type="button" class="cq-hrd-btn" onclick="hrdApplyCompletenessRange()">Terapkan</button><button type="button" class="cq-hrd-btn alt" onclick="hrdCompletenessReload()">Muat Ulang</button></div><p class="cq-hrd-time-note" style="margin:9px 0 0">Ceklis Promo Socmed = minimal satu bukti unggahan pada rentang terpilih. Pemeriksaan postingan mingguan dilakukan manual oleh HRD di menu Laporan Promo Socmed.</p></div>'+
       '<div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table cq-hrd-check-table"><thead><tr><th>No</th><th>Guru</th><th>Role</th><th>Timesheet</th><th>Absensi Siswa</th><th>Nilai</th><th>PjBL</th><th>Kesiswaan</th><th>UKS</th><th>Badal</th><th>Promo Socmed</th><th>Status</th></tr></thead><tbody>'+body+'</tbody></table></div></div></div>';
-  }catch(e){errorView('Rekap Kelengkapan',e)}
+  }catch(e){if(sequence===state.completenessSeq)errorView('Rekap Kelengkapan',e)}
 }
 
 async function renderMonthly(){
@@ -480,9 +489,22 @@ window.hrdToggleGroup=g=>{if(g==='report'){state.reportOpen=!state.reportOpen;if
 window.__cqRenderHrdSidebar=()=>drawSidebar();
 window.openHrdCleanDashboard=renderDashboard;
 window.openHrdCleanLive=()=>{state.reportOpen=true;renderLive()};
+window.hrdCompletenessDateChanged=which=>{
+  const first=document.getElementById('hrd-complete-start'),last=document.getElementById('hrd-complete-end');
+  if(!first||!last)return;
+  if(which==='start'&&first.value&&(!last.value||last.value<first.value))last.value=first.value;
+  if(which==='end'&&last.value&&(!first.value||first.value>last.value))first.value=last.value;
+  last.min=first.value||'';
+};
+window.hrdApplyCompletenessRange=()=>{
+  const start=document.getElementById('hrd-complete-start')?.value||'';
+  const end=document.getElementById('hrd-complete-end')?.value||'';
+  if(!start||!end||start>end){const msg='Pilih rentang tanggal yang benar.';return typeof showToast==='function'?showToast(msg,true):alert(msg)}
+  state.completenessStart=start;state.completenessEnd=end;renderCompleteness();
+};
 window.openHrdCompleteness=renderCompleteness;
-window.hrdCompletenessMonth=v=>{state.month=String(v||jktDate().slice(0,7));state.admin=null;renderCompleteness()};
-window.hrdCompletenessReload=()=>{state.admin=null;renderCompleteness()};
+window.hrdCompletenessMonth=v=>{const month=String(v||jktDate().slice(0,7));const r=monthRange(month);state.completenessStart=r.start;state.completenessEnd=minDate(r.end,jktDate());renderCompleteness()};
+window.hrdCompletenessReload=()=>renderCompleteness();
 window.openHrdCleanTimesheet=renderTimesheet;
 window.openHrdCleanAdministration=renderAdministration;
 window.openHrdCleanAttendance=renderAttendance;
