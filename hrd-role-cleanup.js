@@ -5,7 +5,7 @@ if(window.__cqHrdWorkspaceLoaded)return;
 window.__cqHrdWorkspaceLoaded=true;
 
 const jktDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false,grades:null,gradeSemester:1,gradeType:'STS',gradeClass:'all',promoStart:'',promoEnd:'',promoDefaultStart:'',promoDefaultEnd:'',promoRequestSeq:0,completenessStart:'',completenessEnd:'',completenessSeq:0};
+const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false,grades:null,gradeSemester:1,gradeType:'STS',gradeClass:'all',promoStart:'',promoEnd:'',promoDefaultStart:'',promoDefaultEnd:'',promoRequestSeq:0,completenessStart:'',completenessEnd:'',completenessSeq:0,completenessRows:[],completenessAttendance:{}};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const low=v=>String(v??'').trim().toLowerCase();
 const content=()=>document.getElementById('content');
@@ -371,12 +371,13 @@ async function renderCompleteness(){
     }
     const septemberFull=start==='2026-09-01'&&end==='2026-09-30';
     const rows=[...(d?.teachers||[])].sort((a,b)=>teacherName(a).localeCompare(teacherName(b),'id')),c=content();if(!c)return;
+    state.completenessRows=rows;state.completenessAttendance=Object.fromEntries(attendanceByTeacher);
     const body=rows.map((t,i)=>{
       const tah=hrdIsTahfizhPartner(t);
       const mark=(keys,force)=>septemberFull?hrdFixedSeptemberMark(t,keys,hrdMark(hrdCat(t,keys),force)):hrdMark(hrdCat(t,keys),force);
       const absence=attendanceByTeacher.get(String(t.teacher_id));
       const attendanceMark=absence?(absence.has_attendance?'<b class="cq-hrd-check" title="Absensi terisi '+Number(absence.session_days||0)+' hari dalam rentang ini">✓</b>':'<b class="cq-hrd-cross" title="Belum ada sesi absensi siswa dalam rentang ini">✕</b>'):'<span title="Tidak tercatat sebagai Wali Kelas">–</span>';
-      return '<tr><td>'+(i+1)+'</td><td><b>'+esc(teacherName(t))+'</b></td><td>'+esc(rolesText(t))+'</td>'+
+      return '<tr><td>'+(i+1)+'</td><td><button type="button" style="border:0;background:none;padding:0;color:#0f4c81;font:inherit;font-weight:800;cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:3px" onclick="openHrdCompletenessTeacher(\''+esc(String(t.teacher_id||''))+'\')">'+esc(teacherName(t))+'</button></td><td>'+esc(rolesText(t))+'</td>'+
         '<td class="cq-hrd-center">'+mark(['timesheet'],true)+'</td>'+
         '<td class="cq-hrd-center">'+attendanceMark+'</td>'+
         '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['academic','nilai','scores']):(tah?'–':mark(['academic','nilai','scores'])))+'</td>'+
@@ -399,6 +400,35 @@ async function renderCompleteness(){
       '<div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table cq-hrd-check-table"><thead><tr><th>No</th><th>Guru</th><th>Role</th><th>Timesheet</th><th>Absensi Siswa</th><th>Nilai</th><th>PjBL</th><th>Kesiswaan</th><th>UKS</th><th>Badal</th><th>Promo Socmed</th><th>Status</th></tr></thead><tbody>'+body+'</tbody></table></div></div></div>';
   }catch(e){if(sequence===state.completenessSeq)errorView('Rekap Kelengkapan',e)}
 }
+
+
+function hrdCompletenessDetailCategory(t,label,keys,notRequired=false){
+ const cat=hrdCat(t,keys),noDuty=notRequired||cat?.applicable===false;
+ const mark=noDuty||!cat?'–':hrdMark(cat).includes('cq-hrd-check')?'✓':'✕';
+ const raw=[...(Array.isArray(cat?.items)?cat.items:[]),...(Array.isArray(cat?.activity_items)?cat.activity_items:[])];
+ const items=[...new Map(raw.map((x,i)=>[String(x.id||i),x])).values()];
+ const list=items.slice(0,150).map(x=>'<tr><td>'+esc(x.period_start||x.work_date||x.activity_date||String(x.created_at||'').slice(0,10)||'—')+'</td><td>'+esc(x.title||x.activity||x.task_code||label)+'</td><td>'+esc(x.description||x.note||x.status||'—')+'</td></tr>').join('');
+ const detail=mark==='✓'?'Ada data administrasi':mark==='✕'?'Belum memenuhi indikator laporan':'Tidak wajib atau sumber indikator belum tersedia';
+ const color=mark==='✓'?'cq-hrd-check':mark==='✕'?'cq-hrd-cross':'';
+ return '<details style="border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;padding:12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-weight:700"><span>'+esc(label)+'</span><span class="'+color+'">'+mark+'</span></summary><div style="margin-top:12px"><p>'+esc(detail)+' · '+Number(cat?.item_count??items.length)+' data tercatat</p>'+(cat?.note?'<p style="color:#64748b">'+esc(cat.note)+'</p>':'')+(list?'<div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>Tanggal</th><th>Data</th><th>Catatan</th></tr></thead><tbody>'+list+'</tbody></table></div>':'<p style="color:#64748b">Tidak ada rincian kegiatan pada sumber laporan untuk rentang ini. Tanggal kekurangan tidak dapat ditentukan tanpa jadwal wajib yang valid.</p>')+'</div></details>';
+}
+window.openHrdCompletenessTeacher=teacherId=>{
+ if(!isHrd()||state.active!=='completeness')return;
+ const t=(state.completenessRows||[]).find(x=>String(x.teacher_id)===String(teacherId)),c=content();
+ if(!t||!c)return;
+ const a=state.completenessAttendance[String(teacherId)],tah=hrdIsTahfizhPartner(t);
+ const abs=a?'<details open style="border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;padding:12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;font-weight:700"><span>Absensi Siswa</span><span class="'+(a.has_attendance?'cq-hrd-check':'cq-hrd-cross')+'">'+(a.has_attendance?'✓':'✕')+'</span></summary><div style="margin-top:12px"><p>'+Number(a.session_days||0)+' hari-kelas memiliki laporan pada periode ini.</p><ul>'+(a.classes||[]).map(x=>'<li>'+esc(x.class_name||x.class_id)+' — '+Number(x.days||0)+' hari</li>').join('')+'</ul><p>✓ menandakan sudah ada isian, belum tentu seluruh hari wajib terisi. Pemeriksaan kalender sekolah tetap dilakukan HRD.</p></div></details>':'<details style="border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;padding:12px"><summary>Absensi Siswa —</summary><p>Tidak tercatat sebagai Wali Kelas.</p></details>';
+ const sections=[
+ hrdCompletenessDetailCategory(t,'Timesheet',['timesheet']),abs,
+ hrdCompletenessDetailCategory(t,'Nilai',['academic','nilai','scores'],tah),
+ hrdCompletenessDetailCategory(t,'PjBL',['pjbl','pbl_market_day'],tah),
+ hrdCompletenessDetailCategory(t,'Kesiswaan',['student_affairs','kesiswaan','discipline_reward'],tah),
+ hrdCompletenessDetailCategory(t,'UKS',['uks','uks_duty']),
+ hrdCompletenessDetailCategory(t,'Badal',['badal','substitute']),
+ hrdCompletenessDetailCategory(t,'Promo Socmed',['promotion','promosi_sekolah','promo_socmed'])].join('');
+ c.innerHTML='<div class="cq-hrd-clean">'+head('Detail Kelengkapan Guru',teacherName(t)+' • '+state.completenessStart+' s.d. '+state.completenessEnd)+'<div class="cq-hrd-panel"><button type="button" class="cq-hrd-btn alt" onclick="hrdBackToCompleteness()">← Kembali ke Daftar Guru</button><h2 style="margin-top:14px">'+esc(teacherName(t))+'</h2><p>'+esc(rolesText(t))+'</p><p style="color:#64748b">Detail ini hanya membaca laporan tersimpan, tanpa mengubah data guru. Pilih kategori untuk membuka daftar buktinya.</p></div><div class="cq-hrd-panel"><h2>Daftar Pemeriksaan Administrasi</h2>'+sections+'</div></div>';
+};
+window.hrdBackToCompleteness=()=>renderCompleteness();
 
 async function renderMonthly(){
  setActive('monthly');loading('Laporan Bulanan');
