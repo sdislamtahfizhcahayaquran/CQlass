@@ -87,7 +87,24 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const items:any[]=[];
   for(const date of dates){
     const dow=new Date(`${date}T12:00:00Z`).getUTCDay();if(dow<1||dow>6)continue;
-    for(const r of templates){if(Number(r.day_of_week)!==dow)continue;const edu=r.activity_code==="administration_eduhub"&&isTahfizh;items.push({id:`${r.id}:${date}`,template_id:r.id,work_date:date,start_time:edu?"14:50:00":r.start_time,end_time:edu?"16:00:00":r.end_time,activity_code:r.activity_code,activity:edu?"Administrasi Eduhub":r.activity_name,note:r.duty_location?[r.duty_location,r.team_label].filter(Boolean).join(" · "):"",source:"jadwal-kerja",automatic:true,display:!["timesheet_teaching","ishoma"].includes(txt(r.activity_code))})}
+    // Dedicated Tahfizh default schedule. Existing daily edits remain in the Timesheet activity layer.
+    // Friday and Saturday are intentionally left to manual/recurring activities.
+    const hasLeadTahfizh=(tahRes.data||[]).length>0;
+    if(hasLeadTahfizh&&dow>=1&&dow<=4){
+      const fixed=[
+        ["08:00:00","11:50:00","Mengajar Tahfizh","tahfizh_teaching"],
+        ["11:50:00","12:50:00","Ishoma","tahfizh_ishoma"],
+        ["12:50:00","13:30:00","Literasi","tahfizh_literacy"],
+        ["13:30:00","14:50:00","Mengajar Tahfizh","tahfizh_teaching"],
+        ["14:50:00","16:00:00","Mengisi Eduhub","tahfizh_eduhub"]
+      ];
+      for(const [start_time,end_time,activity,activity_code] of fixed){
+        const conflicts=(templates||[]).some((r:any)=>Number(r.day_of_week)===dow&&txt(r.start_time)<end_time&&txt(r.end_time)>start_time&&r.activity_code!=="timesheet_teaching"&&r.activity_code!=="ishoma"&&!(activity_code==="tahfizh_eduhub"&&r.activity_code==="administration_eduhub"))||(tahScheduleRes.data||[]).some((r:any)=>Number(r.day_of_week)===dow&&txt(r.start_time)<end_time&&txt(r.end_time)>start_time);
+        if(!conflicts)items.push({id:`tahfizh-default:${date}:${start_time}`,template_id:null,work_date:date,start_time,end_time,activity_code,activity,note:"Jadwal dasar — dapat disesuaikan melalui Timesheet",source:"jadwal-kerja",automatic:true,display:true});
+      }
+    }
+    // Friday and Saturday keep existing assigned duties; no Tahfizh default is generated.
+    for(const r of templates){if(Number(r.day_of_week)!==dow)continue;if(hasLeadTahfizh&&dow>=1&&dow<=4&&r.activity_code==="administration_eduhub")continue;const edu=r.activity_code==="administration_eduhub"&&isTahfizh;items.push({id:`${r.id}:${date}`,template_id:r.id,work_date:date,start_time:edu?"14:50:00":r.start_time,end_time:edu?"16:00:00":r.end_time,activity_code:r.activity_code,activity:edu?"Administrasi Eduhub":r.activity_name,note:r.duty_location?[r.duty_location,r.team_label].filter(Boolean).join(" · "):"",source:"jadwal-kerja",automatic:true,display:!["timesheet_teaching","ishoma"].includes(txt(r.activity_code))})}
     const seen=new Set<string>();
     for(const r of routineRes.data||[]){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.subject_name_raw}`;if(seen.has(k))continue;seen.add(k);items.push({id:`routine:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"routine_block",activity:r.subject_name_raw||"Rutinitas sekolah",note:"",source:"jadwal-kerja",automatic:true,display:false})}
     for(const r of directTeachingRows){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.class_id}|${r.subject_name_raw}`;items.push({id:`class-teaching:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"class_teaching",activity:"Mengajar",subject_name:txt(r.subject_name_raw)||"Mengajar",class_id:r.class_id,class_name:directClassMap.get(txt(r.class_id))||"",note:[txt(r.subject_name_raw),directClassMap.get(txt(r.class_id))||""].filter(Boolean).join(" · "),source:"jadwal-kerja",automatic:true,display:false})}

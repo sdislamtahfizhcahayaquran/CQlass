@@ -107,6 +107,8 @@ async function validateFreeSlot(req:Request,body:any){
   for(const x of tahR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"KBM Tahfizh",start:x.start_time,end:x.end_time});
   for(const x of routineR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Rutinitas sekolah",start:x.start_time,end:x.end_time});
   for(const x of workR.data||[]){
+    // Friday/Saturday Tahfizh entries are teacher-entered; generic teaching placeholders must not block saving.
+    if(isTahfizh&&day>=5&&x.activity_code==="timesheet_teaching")continue;
     if(x.activity_code==="administration_eduhub"&&!isTahfizh)continue;
     const ws=x.activity_code==="administration_eduhub"&&isTahfizh?"14:50:00":x.start_time;
     const we=x.activity_code==="administration_eduhub"&&isTahfizh?"16:00:00":x.end_time;
@@ -177,4 +179,20 @@ async function uploadCertificate(req:Request,b:any){
   return J({success:true,certificate:{...uq.data,url:su.error?"":T(su.data?.signedUrl)},required:!!m?.requires_certificate});
 }
 
-Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));const action=T(body.action);if(action==="bootstrap"){try{return await bootstrapWithTahfizhBadal(req,body)}catch(e){console.error("timesheet bootstrap v2",e);return J({success:false,error:"Timesheet belum dapat dimuat. Coba muat ulang."},400)}}if(action==="update_activity"){try{return await updateActivity(req,body)}catch(e){console.error("update activity",e);return J({success:false,error:"update_failed"},400)}}if(action==="save_saturday_override"){try{return await saveSaturdayOverride(req,body)}catch(e){console.error("saturday override",e);return J({success:false,error:"update_failed"},400)}}if(action==="upload_certificate"){try{return await uploadCertificate(req,body)}catch(e){console.error("upload certificate",e);return J({success:false,error:"certificate_upload_failed"},400)}}if(action==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal Timesheet belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}return proxy(req,body)});
+async function saveTahfizhOverride(req:Request,b:any){
+ const me=await account(req);if(!me)return J({success:false,error:"session_expired"},401);
+ const teacherId=T(b.teacher_id||me.teacher_id),date=T(b.work_date),ref=T(b.source_ref),start=T(b.start_time),end=T(b.end_time),activity=T(b.activity);
+ const fixed=["08:00:00","11:50:00","12:50:00","13:30:00","14:50:00"];
+ if(!mayTarget(me,teacherId)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||dow(date)<1||dow(date)>4||!fixed.some(t=>ref==="tahfizh-default:"+date+":"+t)||mins(start)===null||mins(end)===null||Number(mins(start))<480||Number(mins(end))>960||Number(mins(end))<=Number(mins(start))||!activity)return J({success:false,error:"invalid_input"},400);
+ const {data:teacher}=await sb.from("teachers").select("school_unit_id").eq("id",teacherId).maybeSingle();
+ let yq=sb.from("academic_years").select("id").lte("start_date",date).gte("end_date",date).limit(1);if(teacher?.school_unit_id)yq=yq.eq("school_unit_id",teacher.school_unit_id);
+ const {data:years}=await yq;const year=years?.[0];if(!year)return J({success:false,error:"academic_year_not_found"},400);
+ const {data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();
+ const {data:asg}=await sb.from("tahfizh_teacher_assignments").select("teacher_id").eq("teacher_id",teacherId).eq("academic_year_id",year.id).eq("semester_no",Number(sem?.semester_no||1)).eq("is_active",true).limit(1);
+ if(!asg?.length)return J({success:false,error:"forbidden"},403);
+ const {data:prior}=await sb.from("teacher_timesheet_activities").select("id").eq("teacher_id",teacherId).eq("source_ref",ref).eq("source","tahfizh_default_override").limit(1);
+ const payload={teacher_id:teacherId,work_date:date,start_time:start,end_time:end,activity,note:T(b.note)||null,source:"tahfizh_default_override",source_ref:ref,updated_at:new Date().toISOString()};
+ if(prior?.[0]){const {error}=await sb.from("teacher_timesheet_activities").update(payload).eq("id",prior[0].id).eq("teacher_id",teacherId);if(error)throw error;return J({success:true})}
+ const {error}=await sb.from("teacher_timesheet_activities").insert({...payload,created_by_account_id:me.id});if(error)throw error;return J({success:true});
+}
+Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));const action=T(body.action);if(action==="bootstrap"){try{return await bootstrapWithTahfizhBadal(req,body)}catch(e){console.error("timesheet bootstrap v2",e);return J({success:false,error:"Timesheet belum dapat dimuat. Coba muat ulang."},400)}}if(action==="save_tahfizh_override"){try{return await saveTahfizhOverride(req,body)}catch(e){console.error("tahfizh override",e);return J({success:false,error:"override_failed"},400)}}if(action==="update_activity"){try{return await updateActivity(req,body)}catch(e){console.error("update activity",e);return J({success:false,error:"update_failed"},400)}}if(action==="save_saturday_override"){try{return await saveSaturdayOverride(req,body)}catch(e){console.error("saturday override",e);return J({success:false,error:"update_failed"},400)}}if(action==="upload_certificate"){try{return await uploadCertificate(req,body)}catch(e){console.error("upload certificate",e);return J({success:false,error:"certificate_upload_failed"},400)}}if(action==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal Timesheet belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}return proxy(req,body)});
