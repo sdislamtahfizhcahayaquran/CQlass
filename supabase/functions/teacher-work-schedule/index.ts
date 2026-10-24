@@ -87,6 +87,21 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
   const items:any[]=[];
   for(const date of dates){
     const dow=new Date(`${date}T12:00:00Z`).getUTCDay();if(dow<1||dow>6)continue;
+    // Dedicated Tahfizh default schedule. Existing daily edits remain in the Timesheet activity layer.
+    // Friday and Saturday are intentionally left to manual/recurring activities.
+    if(isTahfizh&&dow>=1&&dow<=4){
+      const fixed=[
+        ["08:00:00","11:50:00","Mengajar Tahfizh","tahfizh_teaching"],
+        ["11:50:00","12:50:00","Ishoma","tahfizh_ishoma"],
+        ["12:50:00","13:30:00","Literasi","tahfizh_literacy"],
+        ["13:30:00","14:50:00","Mengajar Tahfizh","tahfizh_teaching"],
+        ["14:50:00","16:00:00","Mengisi Eduhub","tahfizh_eduhub"]
+      ];
+      for(const [start_time,end_time,activity,activity_code] of fixed)
+        items.push({id:`tahfizh-default:${date}:${start_time}`,template_id:null,work_date:date,start_time,end_time,activity_code,activity,note:"Jadwal dasar — dapat disesuaikan melalui Timesheet",source:"jadwal-kerja",automatic:true,display:true});
+      continue;
+    }
+    if(isTahfizh&&(dow===5||dow===6))continue;
     for(const r of templates){if(Number(r.day_of_week)!==dow)continue;const edu=r.activity_code==="administration_eduhub"&&isTahfizh;items.push({id:`${r.id}:${date}`,template_id:r.id,work_date:date,start_time:edu?"14:50:00":r.start_time,end_time:edu?"16:00:00":r.end_time,activity_code:r.activity_code,activity:edu?"Administrasi Eduhub":r.activity_name,note:r.duty_location?[r.duty_location,r.team_label].filter(Boolean).join(" · "):"",source:"jadwal-kerja",automatic:true,display:!["timesheet_teaching","ishoma"].includes(txt(r.activity_code))})}
     const seen=new Set<string>();
     for(const r of routineRes.data||[]){if(Number(r.day_of_week)!==dow)continue;const k=`${r.start_time}|${r.end_time}|${r.subject_name_raw}`;if(seen.has(k))continue;seen.add(k);items.push({id:`routine:${date}:${k}`,template_id:null,work_date:date,start_time:r.start_time,end_time:r.end_time,activity_code:"routine_block",activity:r.subject_name_raw||"Rutinitas sekolah",note:"",source:"jadwal-kerja",automatic:true,display:false})}
