@@ -215,7 +215,7 @@ async function renderPromotion(){
      start=state.promoStart=state.promoDefaultStart;
      end=state.promoEnd=state.promoDefaultEnd;
    }
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(start)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(end)||start>end)throw new Error('Rentang tanggal Promo Socmed tidak valid.');
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)throw new Error('Rentang tanggal Promo Socmed tidak valid.');
    const d=await api('hrd-live-report',{action:'promotion_center',start,end});
    if(requestSeq!==state.promoRequestSeq||state.active!=='promotion')return;
    const rows=d.rows||[],c=content();if(!c)return;
