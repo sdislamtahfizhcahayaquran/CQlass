@@ -89,7 +89,8 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
     const dow=new Date(`${date}T12:00:00Z`).getUTCDay();if(dow<1||dow>6)continue;
     // Dedicated Tahfizh default schedule. Existing daily edits remain in the Timesheet activity layer.
     // Friday and Saturday are intentionally left to manual/recurring activities.
-    if((tahRes.data||[]).length>0&&dow>=1&&dow<=4){
+    const hasLeadTahfizh=(tahRes.data||[]).length>0;
+    if(hasLeadTahfizh&&dow>=1&&dow<=4){
       const fixed=[
         ["08:00:00","11:50:00","Mengajar Tahfizh","tahfizh_teaching"],
         ["11:50:00","12:50:00","Ishoma","tahfizh_ishoma"],
@@ -97,9 +98,10 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
         ["13:30:00","14:50:00","Mengajar Tahfizh","tahfizh_teaching"],
         ["14:50:00","16:00:00","Mengisi Eduhub","tahfizh_eduhub"]
       ];
-      for(const [start_time,end_time,activity,activity_code] of fixed)
-        items.push({id:`tahfizh-default:${date}:${start_time}`,template_id:null,work_date:date,start_time,end_time,activity_code,activity,note:"Jadwal dasar — dapat disesuaikan melalui Timesheet",source:"jadwal-kerja",automatic:true,display:true});
-      continue;
+      for(const [start_time,end_time,activity,activity_code] of fixed){
+        const conflicts=(templates||[]).some((r:any)=>Number(r.day_of_week)===dow&&txt(r.start_time)<end_time&&txt(r.end_time)>start_time&&r.activity_code!=="timesheet_teaching"&&r.activity_code!=="ishoma");
+        if(!conflicts)items.push({id:`tahfizh-default:${date}:${start_time}`,template_id:null,work_date:date,start_time,end_time,activity_code,activity,note:"Jadwal dasar — dapat disesuaikan melalui Timesheet",source:"jadwal-kerja",automatic:true,display:true});
+      }
     }
     // Friday and Saturday keep existing assigned duties; no Tahfizh default is generated.
     for(const r of templates){if(Number(r.day_of_week)!==dow)continue;const edu=r.activity_code==="administration_eduhub"&&isTahfizh;items.push({id:`${r.id}:${date}`,template_id:r.id,work_date:date,start_time:edu?"14:50:00":r.start_time,end_time:edu?"16:00:00":r.end_time,activity_code:r.activity_code,activity:edu?"Administrasi Eduhub":r.activity_name,note:r.duty_location?[r.duty_location,r.team_label].filter(Boolean).join(" · "):"",source:"jadwal-kerja",automatic:true,display:!["timesheet_teaching","ishoma"].includes(txt(r.activity_code))})}
