@@ -99,7 +99,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
         ["14:50:00","16:00:00","Mengisi Eduhub","tahfizh_eduhub"]
       ];
       for(const [start_time,end_time,activity,activity_code] of fixed){
-        const conflicts=(templates||[]).some((r:any)=>Number(r.day_of_week)===dow&&txt(r.start_time)<end_time&&txt(r.end_time)>start_time&&r.activity_code!=="timesheet_teaching"&&r.activity_code!=="ishoma");
+        const conflicts=(templates||[]).some((r:any)=>Number(r.day_of_week)===dow&&txt(r.start_time)<end_time&&txt(r.end_time)>start_time&&r.activity_code!=="timesheet_teaching"&&r.activity_code!=="ishoma")||(tahScheduleRes.data||[]).some((r:any)=>Number(r.day_of_week)===dow&&txt(r.start_time)<end_time&&txt(r.end_time)>start_time);
         if(!conflicts)items.push({id:`tahfizh-default:${date}:${start_time}`,template_id:null,work_date:date,start_time,end_time,activity_code,activity,note:"Jadwal dasar — dapat disesuaikan melalui Timesheet",source:"jadwal-kerja",automatic:true,display:true});
       }
     }
