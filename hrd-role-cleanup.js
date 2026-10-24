@@ -5,7 +5,7 @@ if(window.__cqHrdWorkspaceLoaded)return;
 window.__cqHrdWorkspaceLoaded=true;
 
 const jktDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false,grades:null,gradeSemester:1,gradeType:'STS',gradeClass:'all'};
+const state={active:'dashboard',month:jktDate().slice(0,7),dailyDate:jktDate(),admin:null,liveQuery:'',liveSort:'issues',monthlyQuery:'',monthlyRole:'all',monthlyStatus:'all',monthlySort:'az',reportOpen:false,manageOpen:false,grades:null,gradeSemester:1,gradeType:'STS',gradeClass:'all',promoStart:'',promoEnd:'',promoDefaultStart:'',promoDefaultEnd:'',promoRequestSeq:0};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const low=v=>String(v??'').trim().toLowerCase();
 const content=()=>document.getElementById('content');
@@ -60,6 +60,10 @@ function installCss(){
   #content.cq-hrd-clean-mode #hrd-report-inbox-panel,#content.cq-hrd-clean-mode .hrd-navtabs,#content.cq-hrd-clean-mode .cq-hf-wrap{display:none!important}
   @media(max-width:1000px){.cq-hrd-grid{grid-template-columns:repeat(2,1fr)}.cq-hrd-form{grid-template-columns:repeat(2,1fr)}.cq-hrd-sat{grid-template-columns:1fr}}@media(max-width:620px){.cq-hrd-grid,.cq-hrd-quick,.cq-hrd-form{grid-template-columns:1fr}.cq-hrd-head{align-items:flex-start;flex-direction:column}.cq-hrd-tools>*{width:100%}}
 
+  #content.cq-hrd-clean-mode .cq-hrd-promo-dates{display:grid;grid-template-columns:minmax(150px,1fr) minmax(150px,1fr) auto auto;align-items:end;gap:10px}
+  #content.cq-hrd-clean-mode .cq-hrd-promo-dates .cq-hrd-btn{min-height:40px}
+  @media(max-width:760px){#content.cq-hrd-clean-mode .cq-hrd-promo-dates{grid-template-columns:repeat(2,minmax(0,1fr))}#content.cq-hrd-clean-mode .cq-hrd-promo-dates .cq-hrd-btn{width:100%}}
+  @media(max-width:430px){#content.cq-hrd-clean-mode .cq-hrd-promo-dates{grid-template-columns:1fr}}
   /* HRD typography harmonized with Walas; strictly scoped to HRD-owned UI. */
   #content.cq-hrd-clean-mode .cq-hrd-clean,
   .sidebar:has(>.cq-hrd-side) .cq-hrd-side{font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.5}
@@ -199,17 +203,37 @@ function drawPromoRows(){
 window.filterHrdPromo=drawPromoRows;
 window.openHrdPromoPhoto=(personId)=>{const row=(window.__cqHrdPromoRows||[]).find(x=>String(x.id||'')===String(personId));if(!row)return;const items=[...(row.items||[])].sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||'')));if(!items.length)return;const old=document.getElementById('cq-hrd-promo-modal');if(old)old.remove();const m=document.createElement('div');m.id='cq-hrd-promo-modal';m.className='cq-hrd-modal';m.onclick=e=>{if(e.target===m)m.remove()};const evidence=items.map(i=>`<div class="cq-hrd-promo-gallery-item">${i.photo_url?`<img class="cq-hrd-modal-img" src="${esc(i.photo_url)}" alt="Bukti Promo Socmed">`:'<div class="cq-hrd-empty">Foto tidak tersedia.</div>'}<div class="cq-hrd-modal-meta"><b>${esc(promoWhen(i.created_at))}</b>${i.description?`<br>${esc(i.description)}`:''}</div></div>`).join('');m.innerHTML=`<div class="cq-hrd-modal-card"><div class="cq-hrd-modal-head"><b>Promo Socmed — ${esc(row.name||'')}</b><button class="cq-hrd-modal-close" onclick="document.getElementById('cq-hrd-promo-modal')?.remove()">Tutup</button></div><div class="cq-hrd-promo-gallery">${evidence}</div></div>`;document.body.appendChild(m)};
 async function renderPromotion(){
- setActive('promotion');loading('Laporan Promo Socmed');
- try{
-  const ps=await api('hrd-live-report',{action:'period_list'}),active=(ps.periods||[]).find(x=>x.is_active)||(ps.periods||[])[0];
-  if(!active)throw new Error('Buat Periode Laporan terlebih dahulu.');
-  const d=await api('hrd-live-report',{action:'promotion_center',start:active.start_date,end:active.end_date}),rows=d.rows||[],c=content();if(!c)return;
-  rows.forEach(x=>{x.items=(x.items||[]).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))});
-  window.__cqHrdPromoRows=rows;const sm=d.summary||{};
-  c.innerHTML=`<div class="cq-hrd-clean">${head('Laporan Promo Socmed',active.name+' • '+active.start_date+' s.d. '+active.end_date)}<div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Personel</span><b>${sm.people||0}</b></div><div class="cq-hrd-kpi"><span>Sudah Upload</span><b>${sm.done||0}</b></div><div class="cq-hrd-kpi"><span>Belum Upload</span><b>${sm.missing||0}</b></div><div class="cq-hrd-kpi"><span>Total Unggahan</span><b>${sm.uploads||0}</b></div></div><div class="cq-hrd-panel"><div class="cq-hrd-promo-tools"><input id="hrd-promo-q" placeholder="Cari nama / role..." oninput="filterHrdPromo()"><select id="hrd-promo-status" onchange="filterHrdPromo()"><option value="all">Semua status</option><option value="done">Sudah upload</option><option value="missing">Belum upload</option></select><select id="hrd-promo-sort" onchange="filterHrdPromo()"><option value="latest">Upload terbaru</option><option value="oldest">Upload terlama</option><option value="az">Nama A–Z</option><option value="za">Nama Z–A</option></select><button class="cq-hrd-btn alt" onclick="document.getElementById('hrd-promo-q').value='';document.getElementById('hrd-promo-status').value='all';document.getElementById('hrd-promo-sort').value='latest';filterHrdPromo()">Reset</button></div><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Nama</th><th>Role</th><th>Upload Terakhir</th><th>Jumlah</th><th>Bukti</th></tr></thead><tbody id="hrd-promo-body"></tbody></table></div></div></div>`;
-  drawPromoRows();
- }catch(e){errorView('Laporan Promo Socmed',e)}
+  setActive('promotion');loading('Laporan Promo Socmed');
+  const requestSeq=++state.promoRequestSeq;
+  try{
+   let start=state.promoStart,end=state.promoEnd;
+   if(!start||!end){
+     const ps=await api('hrd-live-report',{action:'period_list'});
+     const active=(ps.periods||[]).find(x=>x.is_active)||(ps.periods||[])[0];
+     if(!active)throw new Error('Buat Periode Laporan terlebih dahulu.');
+     state.promoDefaultStart=String(active.start_date);state.promoDefaultEnd=String(active.end_date);
+     start=state.promoStart=state.promoDefaultStart;
+     end=state.promoEnd=state.promoDefaultEnd;
+   }
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(start)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(end)||start>end)throw new Error('Rentang tanggal Promo Socmed tidak valid.');
+   const d=await api('hrd-live-report',{action:'promotion_center',start,end});
+   if(requestSeq!==state.promoRequestSeq||state.active!=='promotion')return;
+   const rows=d.rows||[],c=content();if(!c)return;
+   rows.forEach(x=>{x.items=(x.items||[]).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))});
+   window.__cqHrdPromoRows=rows;const sm=d.summary||{};
+   c.innerHTML=`<div class="cq-hrd-clean">${head('Laporan Promo Socmed','Pemeriksaan bukti upload dari '+promoDate(start)+' sampai '+promoDate(end)+'.')}<div class="cq-hrd-panel"><h2>Rentang Pemeriksaan</h2><div class="cq-hrd-promo-dates"><div class="cq-hrd-field"><label for="hrd-promo-start">Tanggal Mulai</label><input id="hrd-promo-start" type="date" value="${esc(start)}"></div><div class="cq-hrd-field"><label for="hrd-promo-end">Tanggal Selesai</label><input id="hrd-promo-end" type="date" value="${esc(end)}"></div><button type="button" class="cq-hrd-btn" onclick="hrdApplyPromoRange()">Terapkan</button><button type="button" class="cq-hrd-btn alt" onclick="hrdResetPromoRange()">Periode Aktif</button></div><div class="cq-hrd-time-note" style="margin-top:9px">Ceklis dihitung dari tanggal kegiatan promosi yang tercatat dalam rentang ini. Pengaturan ini hanya berlaku untuk tampilan Promo Socmed.</div></div><div class="cq-hrd-grid"><div class="cq-hrd-kpi"><span>Personel</span><b>${sm.people||0}</b></div><div class="cq-hrd-kpi"><span>Sudah Upload</span><b>${sm.done||0}</b></div><div class="cq-hrd-kpi"><span>Belum Upload</span><b>${sm.missing||0}</b></div><div class="cq-hrd-kpi"><span>Total Unggahan</span><b>${sm.uploads||0}</b></div></div><div class="cq-hrd-panel"><div class="cq-hrd-promo-tools"><input id="hrd-promo-q" placeholder="Cari nama / role..." oninput="filterHrdPromo()"><select id="hrd-promo-status" onchange="filterHrdPromo()"><option value="all">Semua status</option><option value="done">Sudah upload</option><option value="missing">Belum upload</option></select><select id="hrd-promo-sort" onchange="filterHrdPromo()"><option value="latest">Upload terbaru</option><option value="oldest">Upload terlama</option><option value="az">Nama A–Z</option><option value="za">Nama Z–A</option></select><button class="cq-hrd-btn alt" onclick="document.getElementById('hrd-promo-q').value='';document.getElementById('hrd-promo-status').value='all';document.getElementById('hrd-promo-sort').value='latest';filterHrdPromo()">Reset Filter</button></div><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>No</th><th>Nama</th><th>Role</th><th>Upload Terakhir</th><th>Jumlah</th><th>Bukti</th></tr></thead><tbody id="hrd-promo-body"></tbody></table></div></div></div>`;
+   drawPromoRows();
+  }catch(e){if(requestSeq===state.promoRequestSeq)errorView('Laporan Promo Socmed',e)}
 }
+window.hrdApplyPromoRange=()=>{
+  const start=document.getElementById('hrd-promo-start')?.value||'',end=document.getElementById('hrd-promo-end')?.value||'';
+  if(!start||!end||start>end){const msg='Isi tanggal mulai dan selesai dengan benar (mulai tidak boleh setelah selesai).';return typeof showToast==='function'?showToast(msg,true):alert(msg)}
+  state.promoStart=start;state.promoEnd=end;renderPromotion();
+};
+window.hrdResetPromoRange=()=>{
+  state.promoStart='';state.promoEnd='';renderPromotion();
+};
+
 async function renderPeriods(){
  setActive('periods');loading('Periode Laporan');
  try{const d=await api('hrd-live-report',{action:'period_list'}),rows=d.periods||[],c=content();if(!c)return;c.innerHTML=`<div class="cq-hrd-clean">${head('Periode Laporan','Rentang tanggal fleksibel untuk laporan HRD. Data asli tidak disalin atau diubah.')}<div class="cq-hrd-panel"><h2>Buat Periode</h2><div class="cq-hrd-form" style="grid-template-columns:1.4fr 1fr 1fr .8fr auto"><div class="cq-hrd-field"><label>Nama Periode</label><input id="hrdp-name" placeholder="Oktober 2026"></div><div class="cq-hrd-field"><label>Mulai</label><input id="hrdp-start" type="date"></div><div class="cq-hrd-field"><label>Selesai</label><input id="hrdp-end" type="date"></div><div class="cq-hrd-field"><label>Status</label><select id="hrdp-active"><option value="1">Aktif</option><option value="0">Arsip</option></select></div><button class="cq-hrd-btn" onclick="saveHrdPeriod()">Simpan</button></div></div><div class="cq-hrd-panel"><div class="cq-hrd-table-wrap"><table class="cq-hrd-table"><thead><tr><th>Periode</th><th>Mulai</th><th>Selesai</th><th>Status</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.start_date)}</td><td>${esc(x.end_date)}</td><td><span class="cq-hrd-chip ${x.is_active?'ok':''}">${x.is_active?'Aktif':'Arsip'}</span></td></tr>`).join('')}</tbody></table></div></div></div>`}catch(e){errorView('Periode Laporan',e)}
