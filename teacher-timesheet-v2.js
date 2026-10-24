@@ -69,7 +69,7 @@ function body(){
   const autoCount=S.standard.filter(x=>x.display!==false&&inRange(x.work_date)).length;
   const manualCount=S.activities.filter(x=>x.source!=='saturday_override'&&inRange(x.work_date)).length;
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const modeHelp=S.recapMode==='gaps'
+  const modeHelp=S.recapMode==='gaps'&&S.profile!=='tahfizh'
     ? 'Menampilkan jam kerja yang belum memiliki aktivitas tercatat.'
     : S.profile==='tahfizh' ? 'Rekap Senin–Sabtu: Senin–Kamis terjadwal otomatis, Jumat–Sabtu diisi manual atau pola berulang.' : 'Menampilkan seluruh aktivitas Senin–Jumat 07.00–16.00 dan Sabtu 07.30–12.00 pada rentang tanggal yang dipilih.';
   b.innerHTML=`
