@@ -99,4 +99,25 @@ async function reportGrades(b:any){
  return{success:true,academic_year:year.name,semester_no:semester,report_type:reportType,threshold:80,tp_start_threshold:50,classes,rows}
 }
 
-Deno.serve(async(req:Request)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);try{const me=await auth(req);if(!me)return J({success:false,error:"session_invalid"},401);const b=await req.json().catch(()=>({})),action=L(b.action||"administration");if(action==="report_grades"){const z=await reportGrades(b);return J(z,z?.success===false?400:200)}if(["period_list","period_save","promotion_center"].includes(action)){const z=await reportPeriods(action,b,me);return J(z,z?.success===false?400:200)}if(action==="rpp_file"){const x=await forwardAdmin(req,b,10000);return J(x.data,x.status)}if(action!=="administration")return J({success:false,error:"forbidden"},403);const start=T(b.start),end=T(b.end);if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)return J({success:false,error:"invalid_date_range"},400);const x=await forwardAdmin(req,b,4500);if(x.ok){try{const enriched=await addOpsTimesheet(x.data,start,end);return J(await addPromotion(enriched,start,end))}catch(e){console.warn("promotion enrichment failed",e);for(const t of x.data?.teachers||[]){normalizeTimesheet(t);recalc(t)}return J(x.data)}}console.warn("hrd-administration slow/unavailable; using fast fallback",x.data?.error);return J(await fallback(start,end))}catch(e){console.error("hrd-live-report",e);return J({success:false,error:"server_error",message:T((e as any)?.message)||"internal_error"},500)}});
+async function studentAttendanceRecap(start:string,end:string){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end) return {success:false,error:"invalid_date_range"};
+ const [{data:year,error:yearError},{data:sem,error:semError}]=await Promise.all([
+  sb.from("academic_years").select("id").eq("is_active",true).maybeSingle(),
+  sb.from("semesters").select("semester_no").eq("is_active",true).maybeSingle()
+ ]);
+ if(yearError||semError||!year||!sem)throw yearError||semError||Error("active_year_missing");
+ const [{data:assigned,error:assignedError},{data:sessions,error:sessionError}]=await Promise.all([
+  sb.from("report_class_assignments").select("class_id,homeroom_teacher_id").eq("academic_year_id",year.id).eq("semester_no",sem.semester_no),
+  sb.from("morning_talk_sessions").select("class_id,attendance_date").gte("attendance_date",start).lte("attendance_date",end).range(0,9999)
+ ]);
+ if(assignedError||sessionError)throw assignedError||sessionError;
+ const classesByTeacher=new Map<string,Set<string>>(),datesByClass=new Map<string,Set<string>>();
+ for(const a of assigned||[]){const teacher=T(a.homeroom_teacher_id),cls=T(a.class_id);if(!teacher||!cls)continue;if(!classesByTeacher.has(teacher))classesByTeacher.set(teacher,new Set());classesByTeacher.get(teacher)!.add(cls)}
+ for(const x of sessions||[]){const cls=T(x.class_id),day=T(x.attendance_date);if(!datesByClass.has(cls))datesByClass.set(cls,new Set());datesByClass.get(cls)!.add(day)}
+ const rows=[...classesByTeacher].map(([teacher_id,classes])=>{
+  const covered=[...classes].map(class_id=>({class_id,days:datesByClass.get(class_id)?.size||0}));
+  return {teacher_id,class_count:covered.length,session_days:covered.reduce((n,x)=>n+x.days,0),classes:covered,has_attendance:covered.some(x=>x.days>0)};
+ });
+ return {success:true,range:{start,end},rows};
+}
+Deno.serve(async(req:Request)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);try{const me=await auth(req);if(!me)return J({success:false,error:"session_invalid"},401);const b=await req.json().catch(()=>({})),action=L(b.action||"administration");if(action==="student_attendance_recap"){const start=T(b.start),end=T(b.end);const z=await studentAttendanceRecap(start,end);return J(z,z?.success===false?400:200)}if(action==="report_grades"){const z=await reportGrades(b);return J(z,z?.success===false?400:200)}if(["period_list","period_save","promotion_center"].includes(action)){const z=await reportPeriods(action,b,me);return J(z,z?.success===false?400:200)}if(action==="rpp_file"){const x=await forwardAdmin(req,b,10000);return J(x.data,x.status)}if(action!=="administration")return J({success:false,error:"forbidden"},403);const start=T(b.start),end=T(b.end);if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)return J({success:false,error:"invalid_date_range"},400);const x=await forwardAdmin(req,b,4500);if(x.ok){try{const enriched=await addOpsTimesheet(x.data,start,end);return J(await addPromotion(enriched,start,end))}catch(e){console.warn("promotion enrichment failed",e);for(const t of x.data?.teachers||[]){normalizeTimesheet(t);recalc(t)}return J(x.data)}}console.warn("hrd-administration slow/unavailable; using fast fallback",x.data?.error);return J(await fallback(start,end))}catch(e){console.error("hrd-live-report",e);return J({success:false,error:"server_error",message:T((e as any)?.message)||"internal_error"},500)}});
