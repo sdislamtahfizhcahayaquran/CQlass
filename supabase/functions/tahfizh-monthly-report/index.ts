@@ -175,8 +175,11 @@ Deno.serve(async (req: Request) => {
     const ctx = await context(s);
     if (!(await canUse(s,ctx,a))) return J({ success:false,error:"forbidden" },403);
     const action = L(body.action);
+    if(body.academic_year_id && (T(body.academic_year_id)!==ctx.yearId||Number(body.semester_no)!==ctx.semesterNo))return J({success:false,error:"period_changed"},409);
+    if(action==="save"&&(!T(body.academic_year_id)||body.semester_no==null))return J({success:false,error:"period_reload_required"},409);
 
-    if (action === "bootstrap") return J({ success: true, academic_year: ctx.yearName, semester_no: ctx.semesterNo, classes: await classes(s,ctx,a) });
+
+    if (action === "bootstrap") return J({ success: true, academic_year: ctx.yearName, academic_year_id:ctx.yearId, semester_no: ctx.semesterNo, classes: await classes(s,ctx,a) });
     if (action === "roster") {
       const classId = T(body.class_id), ps = T(body.period_start), pe = T(body.period_end);
       if (!classId || !ps || !pe) return J({ success: false, error: "class_and_period_required" }, 400);

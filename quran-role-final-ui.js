@@ -10,10 +10,10 @@ const defs=[
  ['quran_daily','Monitoring Guru','Laporan Harian','tahfizh-daily-report.html?v=20260929-quran11'],
  ['quran_badal','Monitoring Guru','Badal Tahfizh','tahfizh-badal.html?v=20260930-badal-clean7'],
  ['quran_badal_recap','Monitoring Guru','Rekapan Badal','tahfizh-badal-recap.html?v=20260930-recap-edit2'],
- ['quran_pts','Penilaian','Nilai PTS','tahfizh-pts.html?v=20260929-quran11'],
+ ['quran_pts','Penilaian','Nilai PTS','tahfizh-pts.html?v=20261025-period2'],
  ['quran_ukj','Penilaian','UKJ','tahfizh-ukj-score.html?mode=ukj&v=20260930-embedded1'],
  ['quran_komp','Penilaian','Komprehensif','tahfizh-ukj-score.html?mode=komprehensif&v=20260930-embedded1'],
- ['quran_monthly','Laporan','Laporan Bulanan','tahfizh-monthly.html?v=20261007-autosave1']
+ ['quran_monthly','Laporan','Laporan Bulanan','tahfizh-monthly.html?v=20261025-period2']
 ];
 function injectCss(){
  if(document.getElementById('cq-quran-native-css'))return;

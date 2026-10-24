@@ -16,6 +16,13 @@ const ACADEMIC_SCORES_URL = `${SUPABASE_URL}/functions/v1/academic-scores`;
 const REPORT_PREVIEW_URL = `${SUPABASE_URL}/functions/v1/report-preview`;
 const TEACHER_SIGNATURE_URL = `${SUPABASE_URL}/functions/v1/teacher-signature`;
 
+async function loadActiveAcademicPeriod(){
+ const token=getAuthToken();if(!token)throw Error('Sesi login tidak ditemukan.');
+ const r=await fetch(SUPABASE_URL+'/functions/v1/admin-academic-period',{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify({action:'current_period'})});
+ const d=await r.json();if(!r.ok||d.success===false||!d.academic_year||![1,2].includes(Number(d.semester_no)))throw Error('Periode aktif belum tersedia. Periksa pengaturan tahun ajaran Admin.');
+ return d;
+}
+
 const AUTH_STORAGE = Object.freeze({
   TOKEN: 'cqlass_session_token',
   EXPIRES: 'cqlass_session_expires_at',
@@ -3639,15 +3646,32 @@ async function renderCetakRapor(content){
   injectRaporPreviewStyles();
   raporPreviewState={academicYear:'',semester:0,reportType:'PTS',classes:[],classLocked:false,classId:'',students:[],studentId:'',startDate:rpDefaultStartYmd(),endDate:rpTodayYmd(),printDate:rpTodayYmd(),hijriDate:'',report:null,classReports:[]};
   content.innerHTML=`<div class="page-title">Rapor</div><div class="page-sub">Preview dan cetak rapor siswa sesuai kelas wali.</div><div id="rpv-root"><div class="card"><span class="spinner"></span> Menyiapkan Rapor...</div></div>`;
-  try{const b=await reportPreviewRequest('bootstrap',{});raporPreviewState.academicYear=b.academic_year||'';raporPreviewState.semester=Number(b.semester_no)||0;raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();if(raporPreviewState.classId)await rpLoadStudents()}catch(e){document.getElementById('rpv-root').innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuka Rapor.')}</div></div>`}
+  await rpLoadPeriod({});
 }
 
+let rpPeriodSequence=0;
+function rpPeriodKey(){return JSON.stringify([raporPreviewState.academicYear,raporPreviewState.semester,raporPreviewState.classId,raporPreviewState.reportType]);}
+async function rpLoadPeriod(payload){
+ const root=document.getElementById('rpv-root');if(!root)return;
+ const seq=++rpPeriodSequence;
+ raporPreviewState.classId='';raporPreviewState.studentId='';raporPreviewState.students=[];raporPreviewState.classes=[];raporPreviewState.report=null;raporPreviewState.classReports=[];
+ root.innerHTML='<div class="card"><span class="spinner"></span> Memuat periode rapor...</div>';
+ try{
+  const b=await reportPreviewRequest('bootstrap',payload);
+  if(seq!==rpPeriodSequence||document.getElementById('rpv-root')!==root)return;
+  raporPreviewState.academicYear=b.academic_year||'';raporPreviewState.semester=Number(b.semester_no)||0;
+  raporPreviewState.years=b.years||[];raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';
+  renderRaporControls();if(raporPreviewState.classId)await rpLoadStudents();
+ }catch(e){if(seq===rpPeriodSequence&&document.getElementById('rpv-root')===root)root.innerHTML='<div class="card"><div class="ms-alert">'+escapeHtml(e.message||'Gagal memuat periode rapor.')+'</div></div>';}
+}
+async function rpChangeYear(value){await rpLoadPeriod({academic_year:value,semester_no:raporPreviewState.semester});}
 function renderRaporControls(){
   const root=document.getElementById('rpv-root');if(!root)return;
   const className=raporPreviewState.classes.find(c=>c.id===raporPreviewState.classId)?.name||'-';
   root.innerHTML=`<div class="card"><div class="card-title">Pengaturan Rapor</div>
     <div class="rpv-status-chip" style="margin-bottom:12px">Kelas Walas: ${escapeHtml(className)}</div>
     <div class="rpv-toolbar">
+      <div class="rpv-field"><label>Tahun Ajaran</label><select id="rpv-year" class="rpv-control" onchange="rpChangeYear(this.value)">${(raporPreviewState.years?.length?raporPreviewState.years:[{name:raporPreviewState.academicYear}]).map(y=>`<option value="${escapeHtml(y.name)}" ${y.name===raporPreviewState.academicYear?'selected':''}>${escapeHtml(y.name)}${y.is_active?' · Aktif':''}</option>`).join('')}</select></div>
       <div class="rpv-field"><label>Jenis Rapor</label><select id="rpv-type" class="rpv-control" onchange="raporPreviewState.reportType=this.value;rpUpdatePrintUi()"><option value="PTS" ${raporPreviewState.reportType==='PTS'?'selected':''}>PTS</option><option value="SEMESTER" ${raporPreviewState.reportType==='SEMESTER'?'selected':''}>Akhir Semester</option></select></div>
       <div class="rpv-field"><label>Semester</label><select id="rpv-sem" class="rpv-control" onchange="rpChangeSemester(this.value)"><option value="1" ${Number(raporPreviewState.semester)===1?'selected':''}>Semester 1</option><option value="2" ${Number(raporPreviewState.semester)===2?'selected':''}>Semester 2</option></select></div>
       <div class="rpv-field"><label>Cetak Rapor</label><select id="rpv-mode" class="rpv-control" onchange="rpUpdatePrintUi()"><option value="STUDENT">Per Siswa</option><option value="CLASS">Per Kelas</option></select></div>
@@ -3675,9 +3699,16 @@ async function rpPrintByMode(){
   return mode==='CLASS'?rpLoadClassPreview(true):rpPrintStudentPdf();
 }
 
-async function rpChangeSemester(v){raporPreviewState.semester=Number(v)||1;raporPreviewState.classId='';raporPreviewState.studentId='';raporPreviewState.report=null;try{const b=await reportPreviewRequest('bootstrap',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester});raporPreviewState.classes=b.classes||[];raporPreviewState.classLocked=Boolean(b.class_locked);raporPreviewState.classId=b.default_class_id||'';renderRaporControls();const sem=document.getElementById('rpv-sem');if(sem)sem.value=String(raporPreviewState.semester);if(raporPreviewState.classId)await rpLoadStudents()}catch(e){showToast(e.message||'Gagal mengganti semester',true)}}
+async function rpChangeSemester(v){await rpLoadPeriod({academic_year:raporPreviewState.academicYear,semester_no:Number(v)});}
 async function rpChangeClass(id){raporPreviewState.classId=id;raporPreviewState.studentId='';raporPreviewState.report=null;await rpLoadStudents()}
-async function rpLoadStudents(){const sel=document.getElementById('rpv-student');if(!sel||!raporPreviewState.classId)return;sel.disabled=true;sel.innerHTML='<option>Memuat siswa...</option>';try{const d=await reportPreviewRequest('students',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:raporPreviewState.classId});raporPreviewState.students=d.students||[];sel.innerHTML='<option value="">— Pilih siswa —</option>'+raporPreviewState.students.map(s=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} — ${escapeHtml(s.nis||s.nisn||'')}</option>`).join('')}catch(e){sel.innerHTML='<option value="">Gagal memuat siswa</option>';showToast(e.message||'Gagal memuat siswa',true)}finally{sel.disabled=false}}
+async function rpLoadStudents(){
+ const sel=document.getElementById('rpv-student'),key=rpPeriodKey();if(!sel||!raporPreviewState.classId)return;
+ const current=()=>document.getElementById('rpv-student')===sel&&key===rpPeriodKey();
+ sel.disabled=true;sel.innerHTML='<option>Memuat siswa...</option>';
+ try{const d=await reportPreviewRequest('students',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:raporPreviewState.classId});if(!current())return;
+ raporPreviewState.students=d.students||[];sel.innerHTML='<option value="">— Pilih siswa —</option>'+raporPreviewState.students.map(s=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} — ${escapeHtml(s.nis||s.nisn||'')}</option>`).join('');
+ }catch(e){if(current()){sel.innerHTML='<option value="">Gagal memuat siswa</option>';showToast(e.message||'Gagal memuat siswa',true)}}finally{if(current())sel.disabled=false}
+}
 
 async function rpLoadPreview(){
   const classId=raporPreviewState.classId;
@@ -3693,9 +3724,11 @@ async function rpLoadPreview(){
   const btn=document.getElementById('rpv-preview-btn'),area=document.getElementById('rpv-preview-area');
   if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Memuat...'}
   if(area)area.innerHTML='<div class="card"><span class="spinner"></span> Menyusun rapor siswa...</div>';
+  const periodKey=rpPeriodKey(),periodRoot=document.getElementById('rpv-root');
+  const current=()=>periodKey===rpPeriodKey()&&periodRoot===document.getElementById('rpv-root');
   try{
     const d=await reportPreviewRequest('preview',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,student_id:studentId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},45000);
-    raporPreviewState.report=d.report;const sig=await rpFetchReportSignatures(classId);rpApplySignatureBundle(raporPreviewState.report,sig);renderRaporPreview();return true;
+    if(!current())return false;const sig=await rpFetchReportSignatures(classId);if(!current())return false;raporPreviewState.report=d.report;rpApplySignatureBundle(raporPreviewState.report,sig);renderRaporPreview();return true;
   }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Preview gagal dimuat.')}</div></div>`;return false}
   finally{if(btn){btn.disabled=false;btn.textContent='Preview Siswa'}}
 }
@@ -3705,7 +3738,7 @@ async function rpPrintStudentPdf(){
   try{
     const selected=document.getElementById('rpv-student')?.value||raporPreviewState.studentId||'';
     const loaded=String(raporPreviewState.report?.student?.id||'');
-    if(!raporPreviewState.report||!selected||selected!==loaded){const ok=await rpLoadPreview();if(!ok)return}
+    if(!raporPreviewState.report||!selected||selected!==loaded||raporPreviewState.report.academic_year!==raporPreviewState.academicYear||Number(raporPreviewState.report.semester_no)!==Number(raporPreviewState.semester)||raporPreviewState.report.report_type!==raporPreviewState.reportType){const ok=await rpLoadPreview();if(!ok)return}
     else if(!document.getElementById('rpv-preview'))renderRaporPreview();
     const el=document.getElementById('rpv-preview');if(!el)throw new Error('Preview PDF tidak ditemukan.');
     const blob=await rpElementPdfBlob(el);const name=rpSafeFilename(raporPreviewState.report?.student?.name||'Rapor')+'.pdf';rpDownloadBlob(blob,name);showToast('PDF rapor berhasil dibuat.');
@@ -3716,8 +3749,10 @@ async function rpLoadClassPreview(autoPrint=false){
   const classId=raporPreviewState.classId;if(!classId){showToast('Kelas Walas belum ditemukan.',true);return}
   raporPreviewState.reportType=document.getElementById('rpv-type')?.value||'PTS';raporPreviewState.startDate=document.getElementById('rpv-start')?.value||'';raporPreviewState.endDate=document.getElementById('rpv-end')?.value||'';raporPreviewState.printDate=document.getElementById('rpv-print-date')?.value||rpTodayYmd();raporPreviewState.hijriDate=(document.getElementById('rpv-hijri')?.value||'').trim();
   const btn=autoPrint?document.getElementById('rpv-print-btn'):document.getElementById('rpv-preview-btn'),area=document.getElementById('rpv-preview-area');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan...'}if(area)area.innerHTML='<div class="card"><span class="spinner"></span> Menyusun seluruh rapor kelas. Mohon tunggu...</div>';
-  try{const d=await reportPreviewRequest('class_reports',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},120000);const reports=Array.isArray(d.reports)?d.reports:[];if(!reports.length)throw new Error('Tidak ada siswa aktif pada kelas ini.');const sig=await rpFetchReportSignatures(classId);reports.forEach(x=>rpApplySignatureBundle(x,sig));raporPreviewState.classReports=reports;
-    if(autoPrint){await rpEnsurePdfLibs(true);const zip=new window.JSZip();const original=raporPreviewState.report;for(let i=0;i<reports.length;i++){raporPreviewState.report=reports[i];renderRaporPreview();const el=document.getElementById('rpv-preview');if(!el)continue;if(btn)btn.textContent=`PDF ${i+1}/${reports.length}`;const blob=await rpElementPdfBlob(el);zip.file(rpSafeFilename(reports[i]?.student?.name||`Siswa ${i+1}`)+'.pdf',blob)}raporPreviewState.report=original||reports[0];const cl=reports[0]?.class?.name||'Kelas';const label=raporPreviewState.reportType==='SEMESTER'?'Rapor Akhir Semester':'Rapor PTS';const zblob=await zip.generateAsync({type:'blob',compression:'STORE'});rpDownloadBlob(zblob,`${label} ${rpSafeFilename(cl)}.zip`);showToast('ZIP rapor per kelas berhasil dibuat.');return}
+  const periodKey=rpPeriodKey(),periodRoot=document.getElementById('rpv-root');
+  const current=()=>periodKey===rpPeriodKey()&&periodRoot===document.getElementById('rpv-root');
+  try{const d=await reportPreviewRequest('class_reports',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},120000);if(!current())return;const reports=Array.isArray(d.reports)?d.reports:[];if(!reports.length)throw new Error('Tidak ada siswa aktif pada kelas ini.');const sig=await rpFetchReportSignatures(classId);if(!current())return;reports.forEach(x=>rpApplySignatureBundle(x,sig));raporPreviewState.classReports=reports;
+    if(autoPrint){await rpEnsurePdfLibs(true);const zip=new window.JSZip();const original=raporPreviewState.report;for(let i=0;i<reports.length;i++){if(!current())return;raporPreviewState.report=reports[i];renderRaporPreview();const el=document.getElementById('rpv-preview');if(!el)continue;if(btn)btn.textContent=`PDF ${i+1}/${reports.length}`;const blob=await rpElementPdfBlob(el);if(!current())return;zip.file(rpSafeFilename(reports[i]?.student?.name||`Siswa ${i+1}`)+'.pdf',blob)}if(!current())return;raporPreviewState.report=original||reports[0];const cl=reports[0]?.class?.name||'Kelas';const label=raporPreviewState.reportType==='SEMESTER'?'Rapor Akhir Semester':'Rapor PTS';const zblob=await zip.generateAsync({type:'blob',compression:'STORE'});if(!current())return;rpDownloadBlob(zblob,`${label} ${rpSafeFilename(cl)}.zip`);showToast('ZIP rapor per kelas berhasil dibuat.');return}
     const first=reports[0];raporPreviewState.report=first;renderRaporPreview();
   }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuat rapor kelas.')}</div></div>`}finally{if(btn){btn.disabled=false;btn.textContent=autoPrint?'Cetak PDF Per Kelas':'Preview Rapor'}}
 }
@@ -4672,6 +4707,7 @@ async function academicGridRequest(action, payload = {}, timeoutMs = 30000){
         assignment_not_found:'Penugasan guru tidak ditemukan.',
         assignment_forbidden:'Anda tidak memiliki akses ke pembelajaran ini.',
         read_only:'Nilai hanya dapat diubah oleh guru pengampu.',
+        archive_read_only:'Periode ini tidak aktif. Arsip hanya dapat dilihat; muat ulang halaman untuk periode aktif.',
         scores_empty:'Tidak ada nilai yang dikirim.',
         assessment_type_invalid:'Komponen nilai tidak valid.',
         learning_objective_required:'Tujuan Pembelajaran belum dipilih.',
@@ -4735,13 +4771,15 @@ function renderLegger(content){
 async function academicGridBootstrap(useActivePeriod=false){
   const root=document.getElementById('academic-grid-root'); if(!root)return;
   const token=++academicGridState.loadToken;
+  academicGridState.canEdit=false;root.innerHTML='<div class="card">Memuat periode pembelajaran...</div>';
   try{
     const result=await academicGridRequest('bootstrap',useActivePeriod?{}:{academic_year:academicGridState.academicYear,semester_no:academicGridState.semester});
     if(token!==academicGridState.loadToken)return;
     academicGridState.assignments=Array.isArray(result.assignments)?result.assignments:[];
+    academicGridState.years=result.years||[];
     academicGridState.academicYear=result.academic_year||academicGridState.academicYear;
     academicGridState.semester=Number(result.semester_no??result.semester)||academicGridState.semester;
-    if(!academicGridState.assignments.length){root.innerHTML='<div class="empty-state"><div class="icon">—</div>Belum ada penugasan kelas/mapel pada periode ini.</div>';return;}
+    if(!academicGridState.assignments.length){academicGridState.assignmentId='';academicGridState.assignment=null;academicGridState.canEdit=false;renderAcademicGridFilters();const area=document.getElementById('academic-grid-table-area');if(area)area.innerHTML='<div class="empty-state">Belum ada penugasan kelas/mapel pada periode ini.</div>';return;}
     const oldId=academicGridState.assignmentId;
     academicGridState.assignmentId=academicGridState.assignments.some(a=>String(a.id)===String(oldId))?oldId:academicGridState.assignments[0].id;
     renderAcademicGridFilters();
@@ -4761,7 +4799,7 @@ function renderAcademicGridFilters(){
         <div id="ag-picker-menu" class="ag-picker-menu" style="display:none"><div class="ag-picker-search-wrap"><input id="ag-picker-search" class="ag-picker-search" placeholder="Cari kelas atau mata pelajaran..." oninput="academicFilterAssignmentOptions()" autocomplete="off"></div><div class="ag-picker-options" id="ag-picker-options">
           ${academicGridState.assignments.map(a=>`<button type="button" class="ag-picker-option ${String(a.id)===String(academicGridState.assignmentId)?'active':''}" data-search="${escapeHtml(`${a.class_name||''} ${a.subject_name||''}`.toLowerCase())}" onclick="academicChooseAssignment('${escapeHtml(a.id)}')"><span class="ag-picker-option-left"><span class="ag-picker-option-class">${escapeHtml(a.class_name||'-')}</span><span class="ag-picker-option-subject">${escapeHtml(a.subject_name||'-')}</span></span>${a.can_edit===false?'<span class="ag-view-badge">LIHAT</span>':''}</button>`).join('')}
         </div></div></div></div>
-      <div class="ag-field"><label>Tahun Ajaran</label><div class="ag-readonly">${escapeHtml(academicGridState.academicYear)}</div></div>
+      <div class="ag-field"><label>Tahun Ajaran</label><select id="ag-year" class="ag-select" onchange="academicYearChanged(this.value)">${(academicGridState.years?.length?academicGridState.years:[{name:academicGridState.academicYear}]).map(y=>`<option value="${escapeHtml(y.name)}" ${y.name===academicGridState.academicYear?'selected':''}>${escapeHtml(y.name)}${y.is_active?' · Aktif':''}</option>`).join('')}</select></div>
       <div class="ag-field"><label>Semester</label><select id="ag-semester" class="ag-select" onchange="academicSemesterChanged(this.value)"><option value="1" ${academicGridState.semester===1?'selected':''}>Semester 1</option><option value="2" ${academicGridState.semester===2?'selected':''}>Semester 2</option></select></div>
     </div></div><div id="academic-grid-table-area"></div>`;
 }
@@ -4770,6 +4808,7 @@ function academicToggleAssignmentPicker(event){event?.stopPropagation();const me
 function academicCloseAssignmentPicker(){academicGridState.pickerOpen=false;const menu=document.getElementById('ag-picker-menu'),button=document.getElementById('ag-picker-button');if(menu)menu.style.display='none';button?.classList.remove('open');}
 function academicFilterAssignmentOptions(){const q=(document.getElementById('ag-picker-search')?.value||'').trim().toLowerCase();document.querySelectorAll('#ag-picker-options .ag-picker-option').forEach(o=>o.style.display=!q||(o.dataset.search||'').includes(q)?'flex':'none');}
 async function academicChooseAssignment(id){academicCloseAssignmentPicker();if(String(id)===String(academicGridState.assignmentId))return;if(academicGridState.dirty.size&&!confirm('Ada perubahan nilai yang belum disimpan. Pindah pembelajaran tanpa menyimpan?'))return;academicGridState.assignmentId=id;academicGridState.dirty=new Map();renderAcademicGridFilters();await academicGridLoad();}
+async function academicYearChanged(value){if(value===academicGridState.academicYear)return;if(academicGridState.dirty.size&&!confirm('Ada perubahan nilai yang belum disimpan. Ganti tahun ajaran tanpa menyimpan?')){const el=document.getElementById('ag-year');if(el)el.value=academicGridState.academicYear;return;}academicGridState.academicYear=value;academicGridState.assignmentId='';academicGridState.dirty=new Map();await academicGridBootstrap();}
 async function academicSemesterChanged(value){const next=Number(value)||1;if(next===academicGridState.semester)return;if(academicGridState.dirty.size&&!confirm('Ada perubahan nilai yang belum disimpan. Ganti semester tanpa menyimpan?')){const el=document.getElementById('ag-semester');if(el)el.value=String(academicGridState.semester);return;}academicGridState.semester=next;academicGridState.assignmentId='';academicGridState.dirty=new Map();await academicGridBootstrap();}
 
 async function academicGridLoad(){

@@ -5,10 +5,10 @@
 (function(){
 const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
 const REPORT_URL=BASE+'/functions/v1/academic-teacher-report';
-const AY='2026/2027', SEM=1;
+let AY='',SEM=0;
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function headers(){const k=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';const token=typeof getAuthToken==='function'?getAuthToken():localStorage.getItem('cqlass_session_token');return {'Content-Type':'application/json','apikey':k,'Authorization':'Bearer '+k,'x-session-token':token||''}}
-async function request(){const r=await fetch(REPORT_URL,{method:'POST',headers:headers(),body:JSON.stringify({academic_year:AY,semester_no:SEM})});const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.message||d.detail||d.error||'Laporan per guru belum dapat dimuat');return d}
+async function request(){const period=await loadActiveAcademicPeriod();AY=period.academic_year;SEM=Number(period.semester_no);const r=await fetch(REPORT_URL,{method:'POST',headers:headers(),body:JSON.stringify({academic_year:AY,semester_no:SEM})});const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.message||d.detail||d.error||'Laporan per guru belum dapat dimuat');return d}
 function statusClass(s){return s==='Belum Input Sama Sekali'?'atr-bad':s==='Sudah Lengkap'?'atr-good':'atr-warn'}
 function statusKey(s){return s==='Belum Input Sama Sekali'?'none':s==='Sudah Lengkap'?'complete':'started'}
 function css(){if(document.getElementById('cq-ac-teacher-report-css'))return;const s=document.createElement('style');s.id='cq-ac-teacher-report-css';s.textContent=`

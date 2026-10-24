@@ -3,13 +3,13 @@
    Data faktual: academic-teacher-report + academic-kabid-ops.
 */
 (function(){'use strict';
-const AY='2026/2027',SEM=1,BASE=typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co';
+let AY='',SEM=0;const BASE=typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co';
 const REPORT=BASE+'/functions/v1/academic-teacher-report',OPS=BASE+'/functions/v1/academic-kabid-ops';
 let CACHE=null,AT=0,ACTIVE=null,TAB='nilai';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])),n=v=>Number.isFinite(+v)?+v:0,p=v=>Math.round(n(v)*10)/10+'%',cl=v=>Math.max(0,Math.min(100,n(v)));
 const H=()=>{const k=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'',t=typeof getAuthToken==='function'?getAuthToken():localStorage.getItem('cqlass_session_token')||'';return{'Content-Type':'application/json','apikey':k,'Authorization':'Bearer '+k,'x-session-token':t}};
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:H(),body:JSON.stringify(b||{})}),d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.message||d.detail||d.error||'Data belum dapat dimuat');return d}
-async function load(force=false){if(!force&&CACHE&&Date.now()-AT<45000)return CACHE;const [r,o]=await Promise.all([post(REPORT,{academic_year:AY,semester_no:SEM}),post(OPS,{action:'summary'}).catch(()=>({teachers:[]}))]);const m=new Map((o.teachers||[]).map(x=>[x.teacher_id,x]));CACHE=(r.teachers||[]).map(x=>({...x,extra:m.get(x.teacher_id)||{}}));AT=Date.now();return CACHE}
+async function load(force=false){const period=await loadActiveAcademicPeriod();const same=AY===period.academic_year&&SEM===Number(period.semester_no);AY=period.academic_year;SEM=Number(period.semester_no);if(!force&&same&&CACHE&&Date.now()-AT<45000)return CACHE;const [r,o]=await Promise.all([post(REPORT,{academic_year:AY,semester_no:SEM}),post(OPS,{action:'summary',academic_year:AY,semester_no:SEM}).catch(()=>({teachers:[]}))]);const m=new Map((o.teachers||[]).map(x=>[x.teacher_id,x]));CACHE=(r.teachers||[]).map(x=>({...x,extra:m.get(x.teacher_id)||{}}));AT=Date.now();return CACHE}
 const initials=x=>String(x||'?').trim().split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();
 const uniq=a=>[...new Set((a||[]).filter(Boolean))];
 function status(t){const q=n(t.progress),z=n(t.zero_assignments),lp=t.extra.lp_progress;if(q>=100&&!z&&(lp==null||n(lp)>=90))return['good','Data Akademik Lengkap'];if(q>=80)return['ok','Dalam Penyelesaian'];return['bad','Perlu Tindak Lanjut']}

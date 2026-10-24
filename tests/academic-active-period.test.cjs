@@ -11,7 +11,7 @@ function mock(rows){const queries=[];return {queries,from(table){const filters=[
  await assert.rejects(()=>context.resolveBootstrapPeriod(mock({school_units:{data:{id:'u'}},academic_years:{data:{id:'y'}}})),/active_semester_not_found/);
  const app=fs.readFileSync('app-core.js','utf8');const bootstrap=app.slice(app.indexOf('async function academicGridBootstrap('),app.indexOf('function academicSelectedAssignment('));
  const calls=[],state={academicYear:'2026/2027',semester:1,loadToken:0,assignments:[]};
- const c={academicGridState:state,document:{getElementById:()=>({innerHTML:''})},academicGridRequest:async(a,b)=>{calls.push(JSON.parse(JSON.stringify(b)));return {academic_year:'2031/2032',semester_no:2,assignments:[]}},escapeHtml:String};vm.createContext(c);vm.runInContext(bootstrap,c);
+ const c={academicGridState:state,document:{getElementById:()=>({innerHTML:''})},academicGridRequest:async(a,b)=>{calls.push(JSON.parse(JSON.stringify(b)));return {academic_year:'2031/2032',semester_no:2,assignments:[]}},escapeHtml:String,renderAcademicGridFilters:()=>{}};vm.createContext(c);vm.runInContext(bootstrap,c);
  await c.academicGridBootstrap(true);assert.deepEqual(calls[0],{});assert.equal(state.academicYear,'2031/2032');assert.equal(state.semester,2);
  state.academicYear='2025/2026';state.semester=1;await c.academicGridBootstrap();assert.deepEqual(calls[1],{academic_year:'2025/2026',semester_no:1});
  assert.match(app,/academicGridBootstrap\(true\);/);

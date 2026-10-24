@@ -46,7 +46,8 @@
     return {'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':token()};
   }
   async function request(){
-    const r=await fetch(ENDPOINT,{method:'POST',headers:headers(),body:JSON.stringify({action:'exam_schedule',scope:academicRole()?'all':'mine',academic_year:'2026/2027',semester_no:1,today:todayJakarta()})});
+    const period=await loadActiveAcademicPeriod();
+    const r=await fetch(ENDPOINT,{method:'POST',headers:headers(),body:JSON.stringify({action:'exam_schedule',scope:academicRole()?'all':'mine',academic_year:period.academic_year,semester_no:period.semester_no,today:todayJakarta()})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||d.success===false) throw new Error(typeof d.error==='string'?d.error:(typeof d.message==='string'?d.message:'Layanan jadwal ujian belum tersedia.'));
     if(!academicRole()&&d.can_browse_all)throw new Error('Data belum dibatasi sesuai penugasan. Hubungi admin.');

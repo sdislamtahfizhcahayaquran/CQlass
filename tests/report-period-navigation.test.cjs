@@ -1,0 +1,20 @@
+const {JSDOM}=require('jsdom'),fs=require('node:fs'),assert=require('node:assert/strict');
+const src=fs.readFileSync('app-core.js','utf8');
+const code=src.slice(src.indexOf('let rpPeriodSequence=0;'),src.indexOf('async function rpLoadPreview(){'));
+(async()=>{
+ const dom=new JSDOM('<div id="rpv-root"></div>',{runScripts:'outside-only'}),w=dom.window;let requests=[];
+ w.escapeHtml=String;w.showToast=()=>{};w.raporPreviewState={academicYear:'2026/2027',semester:1,reportType:'PTS',classId:'',startDate:'',endDate:'',printDate:''};
+ w.reportPreviewRequest=(action,payload)=>new Promise(resolve=>requests.push({action,payload,resolve}));w.eval(code);
+ const first=w.rpLoadPeriod({});assert.deepEqual(Object.keys(requests[0].payload),[]);
+ requests[0].resolve({academic_year:'2028/2029',semester_no:2,years:[{name:'2028/2029',is_active:true},{name:'2026/2027'}],classes:[]});await first;
+ assert.equal(w.document.getElementById('rpv-year').value,'2028/2029');assert.equal(w.document.getElementById('rpv-sem').value,'2');
+ const old=w.rpChangeYear('2026/2027');assert.equal(requests[1].payload.academic_year,'2026/2027');assert.equal(requests[1].payload.semester_no,2);
+ const recent=w.rpLoadPeriod({academic_year:'2028/2029',semester_no:1});
+ requests[2].resolve({academic_year:'2028/2029',semester_no:1,years:[{name:'2028/2029'}],classes:[]});await recent;
+ requests[1].resolve({academic_year:'2026/2027',semester_no:2,classes:[{id:'wrong'}]});await old;
+ assert.equal(w.raporPreviewState.academicYear,'2028/2029');assert.equal(w.raporPreviewState.semester,1);assert.equal(w.raporPreviewState.classes.length,0);
+ w.raporPreviewState.classId='c';const students=w.rpLoadStudents();const req=requests.at(-1);
+ w.document.getElementById('rpv-root').innerHTML='<p>Another period</p>';w.raporPreviewState.semester=2;req.resolve({students:[{id:'old',name:'Wrong'}]});await students;
+ assert.equal(w.raporPreviewState.students.length,0);
+ dom.window.close();console.log('PASS: report year selector; active defaults; explicit archive semester; stale bootstrap/student responses ignored.');
+})().catch(e=>{console.error(e);process.exitCode=1});

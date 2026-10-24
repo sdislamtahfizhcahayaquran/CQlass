@@ -42,7 +42,10 @@ Deno.serve(async(req:Request)=>{
     const raw=Array.isArray(body.items)?body.items:[];if(!raw.length)return json({success:false,error:"items_empty"},400);if(raw.length>5000)return json({success:false,error:"items_too_many"},400);
 
     const {data:unit,error:ue}=await sb.from("school_units").select("id").eq("code","SD").single();if(ue||!unit)throw ue||new Error("school_unit_not_found");
-    const {data:year,error:ye}=await sb.from("academic_years").select("id,name").eq("school_unit_id",unit.id).eq("name",yearName).single();if(ye||!year)throw ye||new Error("academic_year_not_found");
+    const {data:year,error:ye}=await sb.from("academic_years").select("id,name,is_active").eq("school_unit_id",unit.id).eq("name",yearName).single();if(ye||!year)throw ye||new Error("academic_year_not_found");
+    const {data:periodSemester,error:periodError}=await sb.from("semesters").select("is_active").eq("academic_year_id",year.id).eq("semester_no",sem).maybeSingle();
+    if(periodError)throw periodError;
+    if(!year.is_active||!periodSemester?.is_active)return json({success:false,error:"archive_read_only",message:"Periode ini tidak aktif. Muat ulang halaman; arsip hanya dapat dilihat."},409);
     const {data:asg,error:ae}=await sb.from("teacher_subject_assignments").select("id,teacher_id,class_id,subject_id,academic_year_id,semester_no,is_active").eq("id",assignmentId).eq("academic_year_id",year.id).eq("semester_no",sem).eq("is_active",true).maybeSingle();
     if(ae)throw ae;if(!asg||txt(asg.teacher_id)!==teacherId)return json({success:false,error:"assignment_forbidden"},403);
     const {data:cls,error:ce}=await sb.from("classes").select("id,grade_level").eq("id",asg.class_id).single();if(ce||!cls)throw ce||new Error("class_not_found");

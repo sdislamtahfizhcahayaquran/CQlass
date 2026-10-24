@@ -206,19 +206,19 @@
       add('./academic-sidebar-order.js?v=20260927-ranking7','__cqAcademicSidebarOrderRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','pimpinan','admin'].includes(r)){
-      add('./academic-teacher-report.js?v=20260924-rolelazy1','__cqAcademicTeacherReportRoleLazy',false);
+      add('./academic-teacher-report.js?v=20261025-period2','__cqAcademicTeacherReportRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','kegiatan'].includes(r)){
-      add('./kabid-role-scope-fix.js?v=20261004-kesisolate9','__cqKabidRoleScopeRoleLazy',false);
+      add('./kabid-role-scope-fix.js?v=20261025-period2','__cqKabidRoleScopeRoleLazy',false);
     }
 
     if(['akademik','kabid_akademik','academic'].includes(r)){
       // Kabid Akademik: pastikan renderer Badal Guru Mapel selalu tersedia.
       // Scope sengaja hanya loader UI; data/modul lain tidak diubah.
       add('./academic-badal-v2.js?v=20260929-restore1','__cqAcademicBadalV2RoleLazy',false);
-      add('./academic-teacher-report-v3.js?v=20260924-rolelazy1','__cqAcademicTeacherReportV3RoleLazy',false);
+      add('./academic-teacher-report-v3.js?v=20261025-period2','__cqAcademicTeacherReportV3RoleLazy',false);
       add('./academic-sidebar-clean-v1.js?v=20261005-akclean1','__cqAcademicSidebarCleanV1RoleLazy',false);
-      add('./academic-dashboard-standalone-v7.js?v=20260924-rolelazy1','__cqAcademicDashboardV7RoleLazy',false);
+      add('./academic-dashboard-standalone-v7.js?v=20261025-period2','__cqAcademicDashboardV7RoleLazy',false);
       add('./academic-header-shell-v8.js?v=20260924-rolelazy1','__cqAcademicHeaderV8RoleLazy',false);
     }
     if(r==='kegiatan'){
@@ -232,7 +232,7 @@
       add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
     }
     if(r==='partner'){
-      add('./guru-partner-tahfizh-menu.js?v=20260924-rolelazy1','__cqPartnerTahfizhMenuRoleLazy',false);
+      add('./guru-partner-tahfizh-menu.js?v=20261025-period2','__cqPartnerTahfizhMenuRoleLazy',false);
     }
     if(r==='kabid_quran'){
       add('./tahfizh-kabid-dashboard-layout.js?v=20260929-quran4','__cqTahfizhKabidDashboardLayoutV2',false);

@@ -9,9 +9,9 @@
   async function req(action,payload={}){
     const token=getAuthToken();
     if(!token) throw new Error('Sesi login tidak ditemukan.');
-    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,semester_no:1,...payload})});
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,...(action!=='bootstrap'&&boot?{academic_year_id:boot.academic_year_id,academic_year:boot.academic_year,semester_no:boot.semester_no}:{}),...payload})});
     const data=await res.json().catch(()=>({success:false,error:'invalid_response'}));
-    if(!res.ok||data.success===false) throw Object.assign(new Error(data.error||'Gagal memuat tugas.'),{status:res.status,code:data.error});
+    if(!res.ok||data.success===false) throw Object.assign(new Error((['period_changed','period_reload_required'].includes(data.error)?'Periode sekolah berubah. Buka ulang halaman sebelum menyimpan.':data.error)||'Gagal memuat tugas.'),{status:res.status,code:data.error});
     return data;
   }
 
@@ -55,7 +55,7 @@
     try{boot=await req('bootstrap')}catch(e){content.innerHTML=`<div class="empty-state">${escapeHtml(e.message)}</div>`;return}
     const st=boot.stats||{},att=`${st.attendance_done||0}/${st.attendance_total||0}`,pts=st.pts_total?Math.round((st.pts_filled||0)/st.pts_total*100):0;
     content.innerHTML=`<div class="page-title">Dashboard Guru Partner</div><div class="page-sub">Absensi kelas partner dan nilai Tahfizh sesuai halaqah Anda.</div>
-      <div class="gp-hero"><div><h2>${escapeHtml(boot.teacher_name||currentUser.nama)}</h2><p>${escapeHtml(boot.academic_year||'2026/2027')} · Semester 1</p></div><span class="gp-badge">${icon('user')} Guru Partner</span></div>
+      <div class="gp-hero"><div><h2>${escapeHtml(boot.teacher_name||currentUser.nama)}</h2><p>${escapeHtml(boot.academic_year||'—')} · Semester ${escapeHtml(boot.semester_no||'—')}</p></div><span class="gp-badge">${icon('user')} Guru Partner</span></div>
       <div class="gp-kpis"><div class="gp-kpi"><div class="i">${icon('home')}</div><strong>${st.partner_classes||0}</strong><span>Kelas Partner</span></div><div class="gp-kpi"><div class="i">${icon('calendar')}</div><strong>${att}</strong><span>Absensi Hari Ini</span></div><div class="gp-kpi"><div class="i">${icon('book')}</div><strong>${st.pts_total||0}</strong><span>Siswa Halaqah</span></div><div class="gp-kpi"><div class="i">${icon('chart')}</div><strong>${pts}%</strong><span>Kelengkapan Nilai Tahfizh</span></div></div>
       <div class="gp-actions"><button class="gp-action" onclick="setActiveModule('absensi')"><div class="gp-action-head">${icon('calendar')} Absensi</div><small>Isi Morning Talk dan kehadiran kelas partner. Data yang sudah diisi Walas langsung terbaca.</small></button><button class="gp-action" onclick="setActiveModule('partner-pts')"><div class="gp-action-head">${icon('book')} Nilai Tahfizh</div><small>Klik untuk langsung membuka siswa yang termasuk halaqah Anda. Tidak menampilkan seluruh siswa satu kelas.</small></button></div>`;
   }

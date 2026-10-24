@@ -21,9 +21,9 @@
     const s=document.createElement('script');s.src=src;s.defer=true;document.head.appendChild(s);
   }
   function loadPartnerModules(){
-    loadFresh('guru-partner-class-picker.js?v=20260918-material1');
+    loadFresh('guru-partner-class-picker.js?v=20261025-period2');
     loadFresh('guru-partner-pts-kuadran.js?v=20260918-materialonly2');
-    loadFresh('guru-partner-points.js?v=20260922-kesiswaan3');
+    loadFresh('guru-partner-points.js?v=20261025-period2');
   }
   function findItem(id){
     if(typeof MODULE_GROUPS==='undefined')return null;
@@ -68,7 +68,7 @@
     g.items=(g.items||[]).filter(x=>x&&['partner-pts','partner-monthly'].includes(x.id));
     const pts=g.items.find(x=>x.id==='partner-pts');if(pts){pts.label='Nilai PTS';pts.roles=[ROLE]}
     let monthly=g.items.find(x=>x.id==='partner-monthly');
-    if(!monthly){monthly={id:'partner-monthly',label:'Laporan Bulanan',roles:[ROLE],built:true,render:function(content){content.innerHTML='<div class="card"><span class="spinner"></span> Membuka Laporan Bulanan Tahfizh...</div>';setTimeout(()=>{window.location.href='tahfizh-monthly.html?v=20261007-autosave1'},30)}};g.items.push(monthly)}
+    if(!monthly){monthly={id:'partner-monthly',label:'Laporan Bulanan',roles:[ROLE],built:true,render:function(content){content.innerHTML='<div class="card"><span class="spinner"></span> Membuka Laporan Bulanan Tahfizh...</div>';setTimeout(()=>{window.location.href='tahfizh-monthly.html?v=20261025-period2'},30)}};g.items.push(monthly)}
     monthly.roles=[ROLE];
   }
 

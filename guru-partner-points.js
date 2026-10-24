@@ -6,10 +6,11 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 let boot=null,state={kind:'violation',scope:'halaqah',classId:'',students:[],viewStudent:'',snapshot:null};
 
 async function req(action,payload={}){
+  if(action==='bootstrap'){const period=await loadActiveAcademicPeriod();payload={academic_year:period.academic_year,semester_no:period.semester_no,...payload}}
   const token=getAuthToken?.();if(!token)throw Error('Sesi login tidak ditemukan. Silakan login ulang.');
   const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),15000);
   try{
-    const r=await fetch(API(),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,semester_no:1,...payload})});
+    const r=await fetch(API(),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,...(boot?{academic_year:boot.academic_year,semester_no:boot.semester_no}:{}),...payload})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||d.success===false)throw Object.assign(Error(d.message||d.error||`HTTP ${r.status}`),{code:d.error,status:r.status,data:d});
     return d;

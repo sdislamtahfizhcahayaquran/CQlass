@@ -5,8 +5,8 @@
 // ==========================================================
 (function(){
   const RPP_ENDPOINT = `${SUPABASE_URL}/functions/v1/rpp-lp-manager`;
-  const AY = '2026/2027';
-  const SEM = 1;
+  let AY = '';
+  let SEM = 0;
   const REVIEW_ROLES = new Set(['admin','pimpinan','akademik']);
   const SHIFTED = new Set(['carryover','shifted','postponed','no_meeting']);
   let state = { mode:'teacher', assignments:[], targets:[], tracking:[], submissions:[], reportRows:[], assignmentId:'', filter:'active' };
@@ -55,7 +55,7 @@
   async function loadTeacher(){
     const box=document.getElementById('rpp-body'); if(box) box.innerHTML='<div class="rpp-empty">Memuat target LP dan RPP...</div>';
     try{
-      const d=await api('bootstrap'); state.assignments=d.assignments||[]; state.targets=d.targets||[]; state.tracking=d.tracking||[]; state.submissions=d.submissions||[];
+      const period=await loadActiveAcademicPeriod();AY=period.academic_year;SEM=Number(period.semester_no);const d=await api('bootstrap'); state.assignments=d.assignments||[]; state.targets=d.targets||[]; state.tracking=d.tracking||[]; state.submissions=d.submissions||[];
       if(!state.assignmentId && state.assignments[0]) state.assignmentId=state.assignments[0].id;
       renderTeacherBody();
     }catch(e){ if(box) box.innerHTML=`<div class="rpp-empty">Gagal memuat: ${esc(e.message)}</div>`; }
@@ -113,7 +113,7 @@
 
   async function loadReport(){
     const box=document.getElementById('rpp-body'); if(box)box.innerHTML='<div class="rpp-empty">Menyiapkan monitoring RPP seluruh guru...</div>';
-    try{ const d=await api('report',{through_date:today()}); state.reportRows=d.rows||[]; renderReport(d.summary||{}); }catch(e){if(box)box.innerHTML=`<div class="rpp-empty">Gagal memuat laporan: ${esc(e.message)}</div>`;}
+    try{ const period=await loadActiveAcademicPeriod();AY=period.academic_year;SEM=Number(period.semester_no);const d=await api('report',{through_date:today()}); state.reportRows=d.rows||[]; renderReport(d.summary||{}); }catch(e){if(box)box.innerHTML=`<div class="rpp-empty">Gagal memuat laporan: ${esc(e.message)}</div>`;}
   }
   function renderReport(summary){
     const box=document.getElementById('rpp-body'); if(!box)return;

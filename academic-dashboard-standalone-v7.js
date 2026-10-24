@@ -6,8 +6,7 @@
   'use strict';
   if(window.__CQ_AK_STANDALONE_V7__) return;
 
-  const AY='2026/2027';
-  const SEM=1;
+  let AY='',SEM=0;
   const BASE=(typeof SUPABASE_URL!=='undefined'&&SUPABASE_URL)||'https://lmglkxzemtvxcgktiord.supabase.co';
   const APIKEY=(typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'&&SUPABASE_PUBLISHABLE_KEY)||'sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
   const EP={
@@ -140,11 +139,12 @@
   }
 
   async function load(force){
+    const period=await loadActiveAcademicPeriod();if(AY!==period.academic_year||SEM!==Number(period.semester_no))state.lastData=null;AY=period.academic_year;SEM=Number(period.semester_no);
     if(!force&&state.lastData&&Date.now()-state.lastAt<12000) return state.lastData;
     const results=await Promise.allSettled([
       post(EP.report,{academic_year:AY,semester_no:SEM}),
       post(EP.analytics,{academic_year:AY,semester_no:SEM}),
-      post(EP.ops,{action:'summary'})
+      post(EP.ops,{action:'summary',academic_year:AY,semester_no:SEM})
     ]);
     const data={report:{},analytics:{},ops:{teachers:[],badal_today:[]},errors:[]};
     if(results[0].status==='fulfilled') data.report=results[0].value; else data.errors.push('Laporan guru: '+(results[0].reason?.message||'gagal dimuat'));

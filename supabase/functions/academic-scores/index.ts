@@ -276,6 +276,12 @@ async function resolvePeriod(
   return { unit, year, semesterNo };
 }
 
+async function scorePeriodActive(s:any,yearId:string,semesterNo:number){
+ const {data:year,error:ye}=await s.from("academic_years").select("is_active").eq("id",yearId).single();if(ye)throw ye;
+ const {data:semester,error:se}=await s.from("semesters").select("is_active").eq("academic_year_id",yearId).eq("semester_no",semesterNo).maybeSingle();if(se)throw se;
+ return year?.is_active===true&&semester?.is_active===true;
+}
+
 async function loadAssignments(
   supabase: any,
   account: any,
@@ -860,6 +866,7 @@ Deno.serve(async (req: Request) => {
           txt(body.academic_year) || DEFAULT_ACADEMIC_YEAR,
           Number(body.semester_no ?? body.semester ?? DEFAULT_SEMESTER));
     const semesterNo = period.semesterNo;
+    const periodEditable=await scorePeriodActive(supabase,period.year.id,semesterNo);
 
     // ------------------------------------------------------------------------
     // BOOTSTRAP
@@ -873,8 +880,12 @@ Deno.serve(async (req: Request) => {
         semesterNo,
       );
 
+      const {data:years,error:yearsError}=await supabase.from("academic_years").select("id,name,is_active").eq("school_unit_id",period.unit.id).order("name",{ascending:false});
+      if(yearsError)throw yearsError;
+      if(!periodEditable)for(const a of assignments)a.can_edit=false;
       return json({
         success: true,
+        years:years||[],
         academic_year: period.year.name,
         academic_year_id: period.year.id,
         semester_no: semesterNo,
@@ -901,6 +912,11 @@ Deno.serve(async (req: Request) => {
     if (!assignment) {
       return json({ success: false, error: "assignment_forbidden" }, 403);
     }
+    if(!periodEditable){
+      assignment.can_edit=false;
+      if(["save_component","save_tp"].includes(action))return json({success:false,error:"archive_read_only"},409);
+    }
+
 
     // ------------------------------------------------------------------------
     // LOAD

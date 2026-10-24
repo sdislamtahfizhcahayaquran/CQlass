@@ -94,7 +94,7 @@ window.openCleanAdminReportPeriod=function(){
   if(open()!==false)return;
   if(c)c.innerHTML='<div class="card"><span class="spinner"></span> Memuat Pengaturan Rapor...</div>';
   if(!document.querySelector('script[data-cq-report-period-direct]')){
-    const s=document.createElement('script');s.src='report-period-control.js?v=20260923-reportperiod2';s.dataset.cqReportPeriodDirect='1';document.head.appendChild(s);
+    const s=document.createElement('script');s.src='report-period-control.js?v=20261025-period2';s.dataset.cqReportPeriodDirect='1';document.head.appendChild(s);
   }
   let n=0;const t=setInterval(()=>{n++;if(open()!==false||n>=20){clearInterval(t);if(n>=20&&c)c.innerHTML='<div class="card">Pengaturan Rapor belum dapat dimuat. Silakan muat ulang halaman.</div>'}},100)
 };
@@ -121,4 +121,4 @@ setTimeout(takeAdminOwnership,250);
 
 window.__cqAdminSidebarClean=true
 })();
-[['admin-class-partners.js?v=20261005-partners3','cq-admin-class-partners'],['admin-assignments.js?v=20261006-compact3','cq-admin-assignments'],['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20260916-schedule2','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20260921-layout1','cq-input-access-layout-fix'],['report-period-control.js?v=20260923-reportperiod2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});
+[['admin-class-partners.js?v=20261005-partners3','cq-admin-class-partners'],['admin-assignments.js?v=20261006-compact3','cq-admin-assignments'],['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20260916-schedule2','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20260921-layout1','cq-input-access-layout-fix'],['report-period-control.js?v=20261025-period2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});

@@ -15,7 +15,7 @@
     6:'Az-Zukhruf s.d. Asy-Syura'
   };
   let state={boot:null,classId:'',students:[],reports:new Map(),dirty:false,undo:[],redo:[],applying:false,fill:null};
-  let autoSaveTimer=null,saving=false,saveAgain=false;
+  let autoSaveTimer=null,saving=false,saveAgain=false,periodBlocked=false;
 
   async function call(action,payload={}){
     const token=getAuthToken?.();
@@ -23,9 +23,10 @@
     const ctrl=new AbortController();
     const timer=setTimeout(()=>ctrl.abort(),12000);
     try{
-      const res=await fetch(API(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,...payload})});
+      const res=await fetch(API(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,'x-session-token':token},body:JSON.stringify({action,...(action!=='bootstrap'&&state.boot?{academic_year_id:state.boot.academic_year_id,academic_year:state.boot.academic_year,semester_no:state.boot.semester_no}:{}),...payload})});
       const data=await res.json().catch(()=>({success:false,error:'Respons sistem tidak valid'}));
-      if(!res.ok||data.success===false) throw new Error(data.error||`Gagal memuat data (${res.status})`);
+      if(['period_changed','period_reload_required'].includes(data.error))periodBlocked=true;
+      if(!res.ok||data.success===false) throw new Error((['period_changed','period_reload_required'].includes(data.error)?'Periode sekolah berubah. Buka ulang halaman sebelum menyimpan.':data.error)||`Gagal memuat data (${res.status})`);
       return data;
     }catch(e){
       if(e?.name==='AbortError') throw new Error('Waktu memuat data habis. Silakan coba lagi.');
@@ -101,7 +102,7 @@
   async function render(content){
     content.innerHTML='<div class="card"><span class="spinner"></span>Memuat kelas Tahfizh...</div>';
     try{
-      state.boot=await call('bootstrap');const classes=state.boot.classes||[];
+      state.boot=await call('bootstrap');periodBlocked=false;const classes=state.boot.classes||[];
       if(!classes.length){content.innerHTML='<div class="empty-state">Belum ada kelas halaqah Tahfizh pada akun ini.</div>';return}
       state.classId='';state.students=[];state.reports=new Map();state.dirty=false;state.undo=[];state.redo=[];
       content.innerHTML=`<style>
@@ -137,10 +138,11 @@
   }
 
   async function save(silent=false){
+    if(periodBlocked)return;
     const btn=document.getElementById('gpt2-save'),st=document.getElementById('gpt2-status');if(!state.classId||!state.students.length||!state.dirty)return;if(saving){saveAgain=true;return}saving=true;saveAgain=false;if(autoSaveTimer){clearTimeout(autoSaveTimer);autoSaveTimer=null;}commitFocused(document.activeElement);
     const map=new Map(state.students.map(s=>[s.id,{student_id:s.id}]));document.querySelectorAll('#gpt2-body .gp-cell').forEach(el=>{const r=map.get(el.dataset.student);if(r)r[el.dataset.key]=el.value.trim()});
     btn.disabled=true;const old=btn.textContent;btn.textContent='Menyimpan...';
-    try{const d=await call('save',{class_id:state.classId,items:[...map.values()]});state.dirty=false;st.textContent=`Tersimpan (${d.saved||state.students.length} siswa) · ${classMaterial()}`;if(!silent&&window.showToast)showToast('Nilai PTS Tahfizh tersimpan.','success');if(!silent)await loadClass(state.classId)}catch(e){st.textContent='Gagal menyimpan';if(!silent){if(window.showToast)showToast(e.message,'error');else alert(e.message)}}finally{saving=false;btn.disabled=false;btn.textContent=old;if(saveAgain||state.dirty){saveAgain=false;scheduleAutoSave()}}
+    try{const d=await call('save',{class_id:state.classId,items:[...map.values()]});state.dirty=false;st.textContent=`Tersimpan (${d.saved||state.students.length} siswa) · ${classMaterial()}`;if(!silent&&window.showToast)showToast('Nilai PTS Tahfizh tersimpan.','success');if(!silent)await loadClass(state.classId)}catch(e){st.textContent=e.message||'Gagal menyimpan';if(!silent){if(window.showToast)showToast(e.message,'error');else alert(e.message)}}finally{saving=false;btn.disabled=false;btn.textContent=old;if(!periodBlocked&&(saveAgain||state.dirty)){saveAgain=false;scheduleAutoSave()}}
   }
 
   if(!install()){const obs=new MutationObserver(()=>{if(install())obs.disconnect()});obs.observe(document.documentElement,{childList:true,subtree:true});setTimeout(install,700)}
