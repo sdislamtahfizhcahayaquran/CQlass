@@ -34,7 +34,7 @@ function inRange(date){
   return !!d&&(!S.rangeFrom||d>=S.rangeFrom)&&(!S.rangeTo||d<=S.rangeTo);
 }
 function rows(){
-  if(S.recapMode==='gaps')return gapRows().filter(x=>inRange(x.date));
+  if(S.recapMode==='gaps'&&S.profile!=='tahfizh')return gapRows().filter(x=>inRange(x.date));
   const a=[];
   S.standard.filter(x=>(x.display!==false||['snack_time','friday_activity','ishoma','class_teaching'].includes(String(x.activity_code||'')))&&!(S.profile==='tahfizh'&&S.activities.some(y=>y.source!=='saturday_override'&&y.work_date===x.work_date&&y.start_time===x.start_time&&y.end_time===x.end_time))).forEach(x=>a.push({date:x.work_date,start:x.start_time,end:x.end_time,type:String(x.activity_code||'')==='class_teaching'?'Mengajar':'Jadwal Kerja',title:String(x.activity_code||'')==='class_teaching'?(x.subject_name||x.activity):x.activity,detail:String(x.activity_code||'')==='class_teaching'?(x.class_name||''):'',source:'jadwal-kerja',note:x.note||'',raw:x}));
   S.teaching.filter(x=>x.source==='badal'||x.source==='digantikan').forEach(x=>a.push({date:x.work_date,start:x.start_time,end:x.end_time,type:x.source==='badal'?'Badal':'Digantikan',title:x.subject_name,detail:x.class_name||'',source:x.source,note:x.note||'',raw:x}));
