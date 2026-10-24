@@ -175,7 +175,8 @@ window.tsv2FlexAdd=()=>{
   const rows=flexCollect();const last=rows[rows.length-1]||{};FLEX.rows=rows;FLEX.rows.push({start:last.end||'',end:'',mid:'',note:''});flexRender();
 };
 window.tsv2FlexRemove=i=>{const rows=flexCollect();if(rows.length<=1)return;rows.splice(Number(i),1);FLEX.rows=rows;flexRender()};
-window.tsv2FlexSaveAll=async()=>{
+let tsv2FlexSaving=false;
+window.tsv2FlexSaveAll=async()=>{if(tsv2FlexSaving){toast('Penyimpanan sebelumnya masih diproses.');return}
   const rows=flexCollect();
   if(!FLEX.date||!FLEX.start||!FLEX.end||!rows.length){toast('Pilih dulu rentang Jumat/Sabtu.',true);return}
   for(const r of rows){
@@ -186,6 +187,7 @@ window.tsv2FlexSaveAll=async()=>{
   const sorted=rows.map((r,i)=>({...r,i})).sort((a,b)=>a.start.localeCompare(b.start)||a.end.localeCompare(b.end));
   for(let i=1;i<sorted.length;i++){if(sorted[i].start<sorted[i-1].end){toast('Jam kegiatan tidak boleh tumpang tindih.',true);return}}
   const created=[];
+  tsv2FlexSaving=true;
   try{
     for(const r of rows){
       const out=await api('save_activity',{work_date:FLEX.date,start_time:r.start,end_time:r.end,activity_master_id:r.mid,note:r.note});
@@ -198,7 +200,7 @@ window.tsv2FlexSaveAll=async()=>{
     for(const id of created.reverse()){try{await api('delete_activity',{id})}catch(_){}}
     toast('Penyimpanan dibatalkan: '+(e.message||String(e)),true);
     await load();setTimeout(()=>window.tsv2OpenCard(1),0);
-  }
+  }finally{tsv2FlexSaving=false}
 };
 let tsv2Saving=false;
 window.tsv2Save=async(silent=false)=>{if(tsv2Saving){if(!silent)toast('Penyimpanan sebelumnya masih diproses.');return}const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsManualWeekendAllowed(date,start,end)&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}try{tsv2Saving=true;await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Aktivitas tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message,true)}finally{tsv2Saving=false}};
