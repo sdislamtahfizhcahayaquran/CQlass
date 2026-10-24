@@ -25,7 +25,7 @@
 
   const KR = {
     boot:null, bootAt:0, month:'', detail:null, exkul:null, exkulRows:[], exkulState:'unknown',
-    filter:{month:'',program:'ALL',status:'ALL',scope:'ALL'}, languageStats:new Map()
+    filter:{date:'',program:'ALL',status:'ALL',scope:'ALL'}, languageStats:new Map()
   };
 
   function esc(v){ return escapeHtml(String(v == null ? '' : v)); }
@@ -115,7 +115,7 @@
     KR.boot=await act('bootstrap'); KR.bootAt=Date.now();
     const months=[...new Set((KR.boot.events||[]).map(e=>String(e.planned_date||'').slice(0,7)).filter(Boolean))].sort();
     if(!KR.month)KR.month=months.includes(currentYM())?currentYM():(months[0]||currentYM());
-    if(!KR.filter.month)KR.filter.month=KR.month;
+    
     return KR.boot;
   }
   async function loadExkul(force=false){
@@ -180,7 +180,7 @@
   }
   window.kv2DashboardMonth=function(v){KR.month=v;renderDashboardBody();};
   window.kv2GoRinci=function(program='ALL'){
-    KR.filter.month=KR.month||currentYM();KR.filter.program=program||'ALL';KR.filter.status='ALL';KR.filter.scope='ALL';
+    KR.filter.date='';KR.filter.program=program||'ALL';KR.filter.status='ALL';KR.filter.scope='ALL';
     if(typeof setActiveModule==='function')setActiveModule('kegiatan-rinci');
   };
   window.kv2Print=function(){document.body.classList.add('kv2-printing');window.print();setTimeout(()=>document.body.classList.remove('kv2-printing'),300);};
@@ -221,7 +221,7 @@
   };
   function filteredEvents(){
     const ev=KR.boot?.events||[];return ev.filter(e=>{
-      if(KR.filter.month&&String(e.planned_date||'').slice(0,7)!==KR.filter.month)return false;
+      if(KR.filter.date&&String(e.planned_date||'')!==KR.filter.date)return false;
       if(KR.filter.program!=='ALL'){
         const p=PROGRAMS.find(x=>x.key===KR.filter.program);if(p&&!p.cats.includes(e.category))return false;
       }
@@ -237,7 +237,7 @@
     const scopes=[...new Set(events.map(e=>String(e.scope_label||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
     root.innerHTML=`<div class="kv2-head"><div><h2>${isLanguagePIC()?'Pekan Bahasa':isTasmiPIC()&&!isKabid()?"Tasmi' Syahriyyah":'Laporan Rinci Kegiatan'}</h2><p>Satu kegiatan hanya memiliki satu record. Setelah diisi, pengguna lain hanya dapat melihat atau mengedit record yang sama.</p></div>${isKabid()?'<div class="kv2-actions"><button class="kv2-btn ghost" onclick="setActiveModule(\'dashboard\')">Kembali ke Dashboard</button></div>':''}</div>
     <div class="kv2-card" style="margin-bottom:12px"><div class="kv2-filters">
-      <select class="kv2-select" onchange="kv2Filter('month',this.value)">${monthOptions(events,KR.filter.month)}</select>
+      <label class="kv2-date-filter">Tanggal kegiatan <input class="kv2-input" type="date" value="${esc(KR.filter.date||'')}" onchange="kv2Filter('date',this.value)" aria-label="Pilih tanggal kegiatan"></label><button class="kv2-btn ghost" onclick="kv2Filter('date','')">Semua Tanggal</button>
       ${isKabid()||isPimpinan()?`<select class="kv2-select" onchange="kv2Filter('program',this.value)"><option value="ALL">Semua Kegiatan</option>${PROGRAMS.map(p=>`<option value="${p.key}" ${KR.filter.program===p.key?'selected':''}>${esc(p.label)}</option>`).join('')}</select>`:''}
       <select class="kv2-select" onchange="kv2Filter('status',this.value)"><option value="ALL">Semua Status</option><option value="TERLAKSANA" ${KR.filter.status==='TERLAKSANA'?'selected':''}>Terlaksana</option><option value="BELUM_DILAPORKAN" ${KR.filter.status==='BELUM_DILAPORKAN'?'selected':''}>Belum Dilaporkan</option><option value="TERJADWAL" ${KR.filter.status==='TERJADWAL'?'selected':''}>Terjadwal</option><option value="DITUNDA" ${KR.filter.status==='DITUNDA'?'selected':''}>Ditunda</option><option value="DIJADWALKAN_ULANG" ${KR.filter.status==='DIJADWALKAN_ULANG'?'selected':''}>Dijadwalkan Ulang</option><option value="BATAL" ${KR.filter.status==='BATAL'?'selected':''}>Batal</option></select>
       <select class="kv2-select" onchange="kv2Filter('scope',this.value)"><option value="ALL">Semua Kelas/Sasaran</option>${scopes.map(s=>`<option value="${esc(s)}" ${KR.filter.scope===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
