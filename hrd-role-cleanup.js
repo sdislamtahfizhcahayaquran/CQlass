@@ -327,7 +327,7 @@ function hrdIsTeachingStaff(t){
   });
 }
 function hrdFixedSeptemberMark(t,keys,normalMarkup){
-  const isSep=state.month==='2026-09',fixed=isSep&&hrdIsTeachingStaff(t);
+  const isSep=state.completenessStart==='2026-09-01'&&state.completenessEnd==='2026-09-30',fixed=isSep&&hrdIsTeachingStaff(t);
   if(!fixed)return normalMarkup;
   const realKeys=['promotion','promosi_sekolah','promo_socmed','badal','substitute','uks','uks_duty'];
   const norm=keys.map(x=>low(x).replace(/[\s-]+/g,'_'));
