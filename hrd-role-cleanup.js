@@ -337,7 +337,7 @@ function hrdFixedSeptemberMark(t,keys,normalMarkup){
 function hrdOverallMark(t,isTah){
   const required=isTah
     ? [[['timesheet'],true],[['promotion','promosi_sekolah','promo_socmed'],true]]
-    : [[['timesheet'],true],[['attendance','student_attendance','absensi_siswa'],null],[['academic','nilai','scores'],null],[['pjbl','pbl_market_day'],null],[['student_affairs','kesiswaan','discipline_reward'],null],[['uks','uks_duty'],null],[['badal','substitute'],null],[['promotion','promosi_sekolah','promo_socmed'],true]];
+    : [[['timesheet'],true],[['student_attendance','absensi_siswa'],null],[['academic','nilai','scores'],null],[['pjbl','pbl_market_day'],null],[['student_affairs','kesiswaan','discipline_reward'],null],[['uks','uks_duty'],null],[['badal','substitute'],null],[['promotion','promosi_sekolah','promo_socmed'],true]];
   let any=false,bad=false;
   for(const [keys,force] of required){
     const cat=hrdCat(t,keys);
@@ -355,16 +355,30 @@ async function renderCompleteness(){
     const end=state.completenessEnd||today;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)throw new Error('Rentang tanggal tidak valid.');
     state.completenessStart=start;state.completenessEnd=end;
-    const d=await api('hrd-live-report',{action:'administration',start,end});
+    const [d,attendanceData]=await Promise.all([
+      api('hrd-live-report',{action:'administration',start,end}),
+      api('hrd-live-report',{action:'student_attendance_recap',start,end})
+    ]);
     if(sequence!==state.completenessSeq||state.active!=='completeness')return;
+    const attendanceByTeacher=new Map((attendanceData.rows||[]).map(x=>[String(x.teacher_id),x]));
+    for(const teacher of d.teachers||[]){
+      const item=attendanceByTeacher.get(String(teacher.teacher_id));
+      const cat={key:'student_attendance',label:'Absensi Siswa',applicable:!!item,
+        status:!item?'na':item.has_attendance?'present':'missing',item_count:Number(item?.session_days||0),
+        note:'Jumlah hari absensi terisi dalam periode yang dipilih; kelengkapan harian diverifikasi oleh HRD.'};
+      teacher.context_categories=(teacher.context_categories||[]).filter(x=>x.key!=='student_attendance');
+      teacher.context_categories.push(cat);
+    }
     const septemberFull=start==='2026-09-01'&&end==='2026-09-30';
     const rows=[...(d?.teachers||[])].sort((a,b)=>teacherName(a).localeCompare(teacherName(b),'id')),c=content();if(!c)return;
     const body=rows.map((t,i)=>{
       const tah=hrdIsTahfizhPartner(t);
       const mark=(keys,force)=>septemberFull?hrdFixedSeptemberMark(t,keys,hrdMark(hrdCat(t,keys),force)):hrdMark(hrdCat(t,keys),force);
+      const absence=attendanceByTeacher.get(String(t.teacher_id));
+      const attendanceMark=absence?(absence.has_attendance?'<b class="cq-hrd-check" title="Absensi terisi '+Number(absence.session_days||0)+' hari dalam rentang ini">✓</b>':'<b class="cq-hrd-cross" title="Belum ada sesi absensi siswa dalam rentang ini">✕</b>'):'<span title="Tidak tercatat sebagai Wali Kelas">–</span>';
       return '<tr><td>'+(i+1)+'</td><td><b>'+esc(teacherName(t))+'</b></td><td>'+esc(rolesText(t))+'</td>'+
         '<td class="cq-hrd-center">'+mark(['timesheet'],true)+'</td>'+
-        '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['attendance','student_attendance','absensi_siswa']):(tah?'–':mark(['attendance','student_attendance','absensi_siswa'])))+'</td>'+
+        '<td class="cq-hrd-center">'+attendanceMark+'</td>'+
         '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['academic','nilai','scores']):(tah?'–':mark(['academic','nilai','scores'])))+'</td>'+
         '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['pjbl','pbl_market_day']):(tah?'–':mark(['pjbl','pbl_market_day'])))+'</td>'+
         '<td class="cq-hrd-center">'+((septemberFull&&hrdIsTeachingStaff(t))?mark(['student_affairs','kesiswaan','discipline_reward']):(tah?'–':mark(['student_affairs','kesiswaan','discipline_reward'])))+'</td>'+
