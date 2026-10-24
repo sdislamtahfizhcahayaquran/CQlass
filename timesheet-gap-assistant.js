@@ -67,7 +67,6 @@ async function load(){
     const [core,work,special]=await Promise.all([
       call(EP.core,{action:'bootstrap',...base}),
       call(EP.work,base),
-
       call(EP.special,base)
     ]);
     const spSet=specialDates(special.items);
