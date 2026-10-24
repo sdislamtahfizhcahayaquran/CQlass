@@ -8,7 +8,7 @@ const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY
 const EP={
   core:BASE+'/functions/v1/teacher-timesheet',
   work:BASE+'/functions/v1/teacher-work-schedule',
-  recurring:BASE+'/functions/v1/teacher-recurring-schedule',
+
   special:BASE+'/functions/v1/teacher-timesheet-special-overlay'
 };
 const token=()=>typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'');
@@ -64,10 +64,10 @@ async function load(){
   G.loading=true;G.key=c.key;
   try{
     const base={month:c.month,teacher_id:c.teacherId||undefined};
-    const [core,work,rec,special]=await Promise.all([
+    const [core,work,special]=await Promise.all([
       call(EP.core,{action:'bootstrap',...base}),
       call(EP.work,base),
-      call(EP.recurring,{action:'bootstrap',...base}),
+
       call(EP.special,base)
     ]);
     const spSet=specialDates(special.items);
