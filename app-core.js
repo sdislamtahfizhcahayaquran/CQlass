@@ -4667,6 +4667,8 @@ async function academicGridRequest(action, payload = {}, timeoutMs = 30000){
         unknown_action:'Versi halaman nilai tidak sesuai dengan backend Academic V7.2.',
         session_invalid:'Sesi login sudah tidak berlaku.',
         session_expired:'Sesi login telah berakhir.',
+        active_academic_year_not_found:'Tahun ajaran aktif belum ditetapkan Admin.',
+        active_semester_not_found:'Semester aktif belum ditetapkan Admin.',
         assignment_not_found:'Penugasan guru tidak ditemukan.',
         assignment_forbidden:'Anda tidak memiliki akses ke pembelajaran ini.',
         read_only:'Nilai hanya dapat diubah oleh guru pengampu.',
@@ -4727,14 +4729,14 @@ function renderLegger(content){
   content.innerHTML=`
     <div class="ag-head"><div><div class="page-title">Nilai</div><div class="page-sub">Pilih kelas dan mata pelajaran yang Anda ajar, lalu isi Tugas, TP, WWP, dan ASAS.</div></div></div>
     <div id="academic-grid-root"><div class="card"><div class="ag-loading"><span class="spinner" style="border-top-color:var(--primary);border-color:rgba(10,110,110,.25)"></span>Menyiapkan pembelajaran...</div></div></div>`;
-  academicGridBootstrap();
+  academicGridBootstrap(true);
 }
 
-async function academicGridBootstrap(){
+async function academicGridBootstrap(useActivePeriod=false){
   const root=document.getElementById('academic-grid-root'); if(!root)return;
   const token=++academicGridState.loadToken;
   try{
-    const result=await academicGridRequest('bootstrap',{academic_year:academicGridState.academicYear,semester_no:academicGridState.semester});
+    const result=await academicGridRequest('bootstrap',useActivePeriod?{}:{academic_year:academicGridState.academicYear,semester_no:academicGridState.semester});
     if(token!==academicGridState.loadToken)return;
     academicGridState.assignments=Array.isArray(result.assignments)?result.assignments:[];
     academicGridState.academicYear=result.academic_year||academicGridState.academicYear;
