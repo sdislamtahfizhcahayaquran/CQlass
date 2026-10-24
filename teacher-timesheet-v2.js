@@ -71,7 +71,7 @@ function body(){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const modeHelp=S.recapMode==='gaps'
     ? 'Menampilkan jam kerja yang belum memiliki aktivitas tercatat.'
-    : 'Menampilkan seluruh aktivitas Senin–Jumat 07.00–16.00 dan Sabtu 07.30–12.00 pada rentang tanggal yang dipilih.';
+    : S.profile==='tahfizh' ? 'Rekap Senin–Sabtu: Senin–Kamis terjadwal otomatis, Jumat–Sabtu diisi manual atau pola berulang.' : 'Menampilkan seluruh aktivitas Senin–Jumat 07.00–16.00 dan Sabtu 07.30–12.00 pada rentang tanggal yang dipilih.';
   b.innerHTML=`
   <div class="tsv2-card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
