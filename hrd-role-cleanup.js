@@ -402,6 +402,14 @@ async function renderCompleteness(){
 }
 
 
+function hrdAttendanceMissingDates(dates,start,end){
+ const recorded=new Set(dates||[]),missing=[];
+ for(let d=new Date(start+'T12:00:00Z'),last=new Date(end+'T12:00:00Z');d<=last;d.setUTCDate(d.getUTCDate()+1)){
+   const wd=d.getUTCDay(),date=d.toISOString().slice(0,10);
+   if(wd>=1&&wd<=5&&!recorded.has(date))missing.push(date);
+ }
+ return missing;
+}
 function hrdCompletenessDetailCategory(t,label,keys,notRequired=false){
  const cat=hrdCat(t,keys),noDuty=notRequired||cat?.applicable===false;
  const mark=noDuty||!cat?'–':hrdMark(cat).includes('cq-hrd-check')?'✓':'✕';
@@ -417,7 +425,7 @@ window.openHrdCompletenessTeacher=teacherId=>{
  const t=(state.completenessRows||[]).find(x=>String(x.teacher_id)===String(teacherId)),c=content();
  if(!t||!c)return;
  const a=state.completenessAttendance[String(teacherId)],tah=hrdIsTahfizhPartner(t);
- const abs=a?'<details open style="border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;padding:12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;font-weight:700"><span>Absensi Siswa</span><span class="'+(a.has_attendance?'cq-hrd-check':'cq-hrd-cross')+'">'+(a.has_attendance?'✓':'✕')+'</span></summary><div style="margin-top:12px"><p>'+Number(a.session_days||0)+' hari-kelas memiliki laporan pada periode ini.</p><ul>'+(a.classes||[]).map(x=>'<li>'+esc(x.class_name||x.class_id)+' — '+Number(x.days||0)+' hari</li>').join('')+'</ul><p>✓ menandakan sudah ada isian, belum tentu seluruh hari wajib terisi. Pemeriksaan kalender sekolah tetap dilakukan HRD.</p></div></details>':'<details style="border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;padding:12px"><summary>Absensi Siswa —</summary><p>Tidak tercatat sebagai Wali Kelas.</p></details>';
+ const abs=a?'<details open style="border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;padding:12px"><summary style="cursor:pointer;display:flex;justify-content:space-between;font-weight:700"><span>Absensi Siswa</span><span class="'+(a.has_attendance?'cq-hrd-check':'cq-hrd-cross')+'">'+(a.has_attendance?'✓':'✕')+'</span></summary><div style="margin-top:12px"><p>'+Number(a.session_days||0)+' hari-kelas memiliki laporan pada periode ini.</p><ul>'+(a.classes||[]).map(x=>'<li><b>Kelas '+esc(x.class_name||x.class_id)+'</b> — '+Number(x.days||0)+' hari tercatat.<div style="color:#64748b">Sudah: '+esc((x.dates||[]).join(', ')||'Belum ada')+'</div><div style="color:#b45309">Perlu diperiksa: '+esc(hrdAttendanceMissingDates(x.dates,state.completenessStart,state.completenessEnd).join(', ')||'Tidak ada tanggal Senin–Jumat yang kosong')+'</div></li>').join('')+'</ul><p>Daftar tanggal kosong memakai hari Senin–Jumat, belum mengecualikan libur atau PJJ; HRD perlu memverifikasi hari wajib. ✓ pada tabel hanya berarti sudah ada isian.</p></div></details>':'<details style="border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;padding:12px"><summary>Absensi Siswa —</summary><p>Tidak tercatat sebagai Wali Kelas.</p></details>';
  const sections=[
  hrdCompletenessDetailCategory(t,'Timesheet',['timesheet']),abs,
  hrdCompletenessDetailCategory(t,'Nilai',['academic','nilai','scores'],tah),
