@@ -107,6 +107,8 @@ async function validateFreeSlot(req:Request,body:any){
   for(const x of tahR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"KBM Tahfizh",start:x.start_time,end:x.end_time});
   for(const x of routineR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Rutinitas sekolah",start:x.start_time,end:x.end_time});
   for(const x of workR.data||[]){
+    // Friday/Saturday Tahfizh entries are teacher-entered; generic teaching placeholders must not block saving.
+    if(isTahfizh&&day>=5&&x.activity_code==="timesheet_teaching")continue;
     if(x.activity_code==="administration_eduhub"&&!isTahfizh)continue;
     const ws=x.activity_code==="administration_eduhub"&&isTahfizh?"14:50:00":x.start_time;
     const we=x.activity_code==="administration_eduhub"&&isTahfizh?"16:00:00":x.end_time;
