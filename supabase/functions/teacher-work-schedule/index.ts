@@ -89,7 +89,7 @@ Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{head
     const dow=new Date(`${date}T12:00:00Z`).getUTCDay();if(dow<1||dow>6)continue;
     // Dedicated Tahfizh default schedule. Existing daily edits remain in the Timesheet activity layer.
     // Friday and Saturday are intentionally left to manual/recurring activities.
-    if(isTahfizh&&dow>=1&&dow<=4){
+    if((tahRes.data||[]).length>0&&dow>=1&&dow<=4){
       const fixed=[
         ["08:00:00","11:50:00","Mengajar Tahfizh","tahfizh_teaching"],
         ["11:50:00","12:50:00","Ishoma","tahfizh_ishoma"],
