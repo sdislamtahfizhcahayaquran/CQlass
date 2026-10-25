@@ -7,17 +7,31 @@ function key(){const p=Deno.env.get("SUPABASE_SECRET_KEYS");if(p){try{const o=JS
 function db(){const u=Deno.env.get("SUPABASE_URL");if(!u)throw Error("supabase_url_missing");return createClient(u,key(),{auth:{persistSession:false,autoRefreshToken:false}})}
 async function hash(v:string){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return[...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,"0")).join("")}
 async function account(s:any,req:Request,b:any){const tok=T(req.headers.get("x-session-token")||b.session_token);if(!tok)return null;const{data:ss}=await s.from("user_sessions").select("id,user_account_id,expires_at,revoked_at").eq("token_hash",await hash(tok)).maybeSingle();if(!ss||ss.revoked_at||!ss.expires_at||new Date(ss.expires_at).getTime()<=Date.now())return null;const{data:a}=await s.from("user_accounts").select("id,username,teacher_id,status").eq("id",ss.user_account_id).maybeSingle();if(!a||["inactive","nonaktif","disabled","blocked"].includes(L(a.status)))return null;try{await s.from("user_sessions").update({last_used_at:new Date().toISOString()}).eq("id",ss.id)}catch{}return a}
-function nr(v:any){const x=L(v).replace(/[-\s]+/g,"_");if(x==="admin")return"admin";if(x.includes("pimpinan")||x.includes("kepala_sekolah")||x==="kepsek")return"pimpinan";if(x.includes("kesiswaan"))return"kesiswaan";if(x.includes("walas")||x.includes("wali_kelas"))return"walas";return"other"}
-async function ctx(s:any,a:any){const roles:string[]=[];if(L(a.username)==="admin")roles.push("admin");if(a.teacher_id){const{data:ur}=await s.from("user_roles").select("role_code").eq("teacher_id",a.teacher_id).eq("is_active",true);for(const x of ur||[]){const r=nr(x.role_code);if(r!=="other")roles.push(r)}const{data:tr}=await s.from("teachers").select("position").eq("id",a.teacher_id).maybeSingle();const rp=nr(tr?.position);if(rp!=="other")roles.push(rp)}const ids:string[]=[];if(a.teacher_id){
-  const [reportQ,partnerQ]=await Promise.all([
-    s.from("report_class_assignments").select("class_id,homeroom_teacher_id,partner_teacher_id"),
-    s.from("class_partner_assignments").select("class_id,teacher_id,is_active").eq("teacher_id",a.teacher_id).eq("is_active",true)
-  ]);
-  if(reportQ.error)throw reportQ.error;if(partnerQ.error)throw partnerQ.error;
-  for(const x of reportQ.data||[])if(T(x.homeroom_teacher_id)===T(a.teacher_id)||T(x.partner_teacher_id)===T(a.teacher_id))ids.push(T(x.class_id));
-  for(const x of partnerQ.data||[])ids.push(T(x.class_id));
-  if(ids.length)roles.push("walas")
-}const rr=[...new Set(roles)],e=rr.some(x=>["admin","pimpinan","kesiswaan"].includes(x));return{roles:rr,elevated:e,allowed:e||rr.includes("walas"),classIds:[...new Set(ids)]}}
+function nr(v:any){const x=L(v).replace(/[-\s]+/g,"_");const aliases:Record<string,string>={administrator:"admin",kepsek:"pimpinan",kepala_sekolah:"pimpinan",kabid_akademik:"akademik",academic:"akademik",kabid_kegiatan:"kegiatan",kabid_kesiswaan:"kesiswaan",student_affair:"kesiswaan",wali_kelas:"walas",homeroom:"walas",teacher:"guru",pengajar:"guru",kabid_tahfizh:"kabid_quran",guru_tahfizh:"tahfizh"};return aliases[x]||x}
+async function ctx(s:any,a:any){
+  const grant=await s.from("user_account_roles").select("role_code").eq("user_account_id",a.id).eq("is_active",true);
+  if(grant.error)throw grant.error;
+  const roles=(grant.data||[]).map((x:any)=>nr(x.role_code));
+  const year=await s.from("academic_years").select("id").eq("is_active",true).single();
+  if(year.error||!year.data)throw Error("active_period_missing");
+  const sem=await s.from("semesters").select("semester_no").eq("academic_year_id",year.data.id).eq("is_active",true).single();
+  if(sem.error||![1,2].includes(Number(sem.data?.semester_no)))throw Error("active_period_missing");
+  const ids:string[]=[];
+  if(a.teacher_id){
+    const [reportQ,partnerQ]=await Promise.all([
+      s.from("report_class_assignments").select("class_id,homeroom_teacher_id,partner_teacher_id").eq("academic_year_id",year.data.id).eq("semester_no",sem.data.semester_no),
+      s.from("class_partner_assignments").select("class_id").eq("teacher_id",a.teacher_id).eq("is_active",true).eq("academic_year_id",year.data.id).eq("semester_no",sem.data.semester_no)
+    ]);
+    if(reportQ.error)throw reportQ.error;if(partnerQ.error)throw partnerQ.error;
+    for(const x of reportQ.data||[]){
+      if(T(x.homeroom_teacher_id)===T(a.teacher_id)){ids.push(T(x.class_id));roles.push("walas")}
+      if(T(x.partner_teacher_id)===T(a.teacher_id)){ids.push(T(x.class_id));roles.push("guru_partner")}
+    }
+    for(const x of partnerQ.data||[]){ids.push(T(x.class_id));roles.push("guru_partner")}
+  }
+  const rr=[...new Set(roles)],e=rr.some(x=>["admin","pimpinan","kesiswaan"].includes(x));
+  return{roles:rr,elevated:e,allowed:e||ids.length>0,classIds:[...new Set(ids)]};
+}
 function today(){const f=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"});const p=Object.fromEntries(f.formatToParts(new Date()).map(x=>[x.type,x.value]));return`${p.year}-${p.month}-${p.day}`}
 function diff(a:string,b:string){return Math.floor((new Date(b+"T00:00:00+07:00").getTime()-new Date(a+"T00:00:00+07:00").getTime())/86400000)}
 function editable(date:string,c:any){if(date>today())return{ok:false,msg:"Tanggal tidak boleh melebihi hari ini."};if(c.elevated)return{ok:true,msg:""};if(diff(date,today())>EDIT)return{ok:false,msg:`Batas koreksi wali kelas adalah ${EDIT} hari.`};return{ok:true,msg:""}}

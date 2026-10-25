@@ -62,7 +62,15 @@ window.openCleanAdminPlanning=function(){
       <button class="cq-admin-nav" onclick="openCleanAdminSchedule()">Jadwal Mengajar — Admin &amp; Akademik</button>
       <button class="cq-admin-nav" onclick="openCleanAdminHalaqahRoute()">Pembagian Siswa Halaqah</button>
       <button class="cq-admin-nav" onclick="openCleanAdminClassPartners()">Partner Kelas</button>
+      <button class="cq-admin-nav" onclick="openCleanAdminExtracurricular()">Data Ekskul — Admin &amp; Kegiatan</button>
     </div><p>Penugasan menentukan guru mengampu mapel dan kelas apa. Jadwal mengajar menentukan hari dan jamnya. Menu Jadwal Mengajar di Akademik memakai data yang sama.</p><p>Pengaturan Tahfizh tetap melalui Kabid Quran, sedangkan jadwal kerja melalui HRD.</p></div>`;
+};
+window.openCleanAdminExtracurricular=function(){
+  if(!isAdmin())return;set('penugasan-jadwal');
+  try{if(typeof activeModule!=='undefined')activeModule='kegiatan-ekskul'}catch(_){}
+  const c=document.getElementById('content');if(!c)return;
+  if(typeof window.renderKegiatanEkskul==='function')return window.renderKegiatanEkskul(c);
+  c.innerHTML='<div class="card">Data Ekskul belum dapat dimuat. Silakan muat ulang halaman.</div>';
 };
 window.openCleanAdminDashboard=function(){
   if(!isAdmin())return;

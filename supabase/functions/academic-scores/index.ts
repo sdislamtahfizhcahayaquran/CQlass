@@ -65,19 +65,7 @@ function upper(value: unknown): string {
   return txt(value).toUpperCase();
 }
 
-function normalizeRole(value: unknown): string {
-  const s = low(value)
-    .replace(/[-\s]+/g, "_")
-    .replace(/[^a-z0-9_]/g, "");
-
-  if (!s) return "";
-  if (s === "admin" || s.includes("administrator")) return "admin";
-  if (s.includes("pimpinan") || s.includes("kepala_sekolah") || s === "kepsek") return "pimpinan";
-  if (s.includes("kabid_akademik") || s === "akademik" || s.includes("academic")) return "akademik";
-  if (s.includes("walas") || s.includes("wali_kelas") || s.includes("homeroom")) return "walas";
-  if (s === "guru" || s.includes("teacher") || s.includes("pengajar")) return "guru";
-  return s;
-}
+function normalizeRole(v:any){const x=low(v).replace(/[-\s]+/g,"_");const aliases:Record<string,string>={administrator:"admin",kepsek:"pimpinan",kepala_sekolah:"pimpinan",kabid_akademik:"akademik",academic:"akademik",kabid_kegiatan:"kegiatan",kabid_kesiswaan:"kesiswaan",student_affair:"kesiswaan",wali_kelas:"walas",homeroom:"walas",teacher:"guru",pengajar:"guru",kabid_tahfizh:"kabid_quran",guru_tahfizh:"tahfizh"};return aliases[x]||x}
 
 function isAccountActive(status: unknown): boolean {
   const s = low(status);
@@ -205,7 +193,7 @@ async function validateSession(supabase: any, req: Request, body: any) {
 async function getRoles(supabase: any, account: any): Promise<string[]> {
   const roles: string[] = [];
 
-  if (low(account.username) === "admin") roles.push("admin");
+
 
   const teacherId = txt(account.teacher_id);
   if (teacherId) {
