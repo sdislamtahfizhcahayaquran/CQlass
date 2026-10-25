@@ -236,7 +236,7 @@
 (function(){
   if(document.querySelector('script[data-cq-walas-attendance-recap-current]')) return;
   const s=document.createElement('script');
-  s.src='attendance-recap-mode.js?v=20260923-dualrecap2';
+  s.src='attendance-recap-mode.js?v=20261026-clean1';
   s.dataset.cqWalasAttendanceRecapCurrent='1';
   document.head.appendChild(s);
 })();

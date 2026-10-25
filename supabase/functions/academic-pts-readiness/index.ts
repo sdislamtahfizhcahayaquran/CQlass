@@ -112,7 +112,7 @@ Deno.serve(async(req:Request)=>{
     const cid=T(cl.id),rs=roster.get(cid)||new Set<string>(),as=academicByClass.get(cid)||[],academicDone=as.length>0&&as.every(x=>x.done),rc=rewardCount.get(cid)||0,dc=disciplineCount.get(cid)||0;
     const used=[...(actUsed.get(cid)||new Set<string>())],activityDone=used.length>=1;
     const sel:any=latestSelection.get(cid),source=L(sel?.source_mode)==="editable"?"editable":"system";
-    let validated=rs.size,attendanceDone=true,attendanceLast:T(sel?.selected_at)||null;
+    let validated=rs.size,attendanceDone=true,attendanceLast=T(sel?.selected_at)||null;
     if(source==="editable"){
       const g=attGroups.get(`${cid}|${T(sel?.period_start)}|${T(sel?.period_end)}`);validated=g?.students.size||0;attendanceDone=rs.size>0&&validated>=rs.size;attendanceLast=latest(attendanceLast,g?.last)||attendanceLast;
     }

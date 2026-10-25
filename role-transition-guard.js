@@ -18,8 +18,8 @@
       let tries=0;
       const reveal=()=>{
         tries++;
-        const ready=typeof window.cqStabilizeKabidTahfizh==='function';
-        if(ready){try{window.cqStabilizeKabidTahfizh(true)}catch(_){}}
+        const ready=typeof window.cqQuranFinalUI==='function';
+        if(ready){try{window.cqQuranFinalUI()}catch(_){}}
         if(ready||tries>=20){
           if(sidebar)sidebar.style.visibility='';
           if(content)content.style.visibility='';

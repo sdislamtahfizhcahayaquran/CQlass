@@ -203,7 +203,7 @@
     primeDashboardRole(r);
 
     if(['guru','walas','partner','guru_partner','pengabdian','akademik','kabid_akademik','academic','pimpinan'].includes(r)){
-      add('./academic-sidebar-order.js?v=20260927-ranking7','__cqAcademicSidebarOrderRoleLazy',false);
+      add('./academic-sidebar-order.js?v=20261026-clean1','__cqAcademicSidebarOrderRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','pimpinan','admin'].includes(r)){
       add('./academic-teacher-report.js?v=20261025-period2','__cqAcademicTeacherReportRoleLazy',false);
@@ -215,9 +215,7 @@
     if(['akademik','kabid_akademik','academic'].includes(r)){
       // Kabid Akademik: pastikan renderer Badal Guru Mapel selalu tersedia.
       // Scope sengaja hanya loader UI; data/modul lain tidak diubah.
-      add('./academic-badal-v2.js?v=20260929-restore1','__cqAcademicBadalV2RoleLazy',false);
       add('./academic-teacher-report-v3.js?v=20261025-period2','__cqAcademicTeacherReportV3RoleLazy',false);
-      add('./academic-sidebar-clean-v1.js?v=20261005-akclean1','__cqAcademicSidebarCleanV1RoleLazy',false);
       add('./academic-dashboard-standalone-v7.js?v=20261025-period2','__cqAcademicDashboardV7RoleLazy',false);
       add('./academic-header-shell-v8.js?v=20260924-rolelazy1','__cqAcademicHeaderV8RoleLazy',false);
     }
@@ -231,18 +229,8 @@
       add('./kegiatan-exkul-attendance-live.js?v=20261003-liveatt1','__cqKegiatanEkskulAttendanceLiveLoaderInstalled',false);
       add('./kegiatan-exkul-settings.js?v=20260921-target1','__cqKegiatanExkulSettingsLoaderV1Installed',false);
     }
-    if(r==='partner'){
-      add('./guru-partner-tahfizh-menu.js?v=20261025-period2','__cqPartnerTahfizhMenuRoleLazy',false);
-    }
-    if(r==='kabid_quran'){
-      add('./tahfizh-kabid-dashboard-layout.js?v=20260929-quran4','__cqTahfizhKabidDashboardLayoutV2',false);
-      add('./tahfizh-kabid-shell-fix.js?v=20260929-quran4','__cqTahfizhKabidShellFixLoaderV12Installed',false);
-      add('./tahfizh-kabid-input-live.js?v=20260929-quran4','__cqTahfizhKabidInputLiveLoaderV2Installed',false);
-    }
     if(r==='tahfizh'){
       add('./tahfizh-kesiswaan-sidebar-clean.js?v=20260924-rolelazy1','__cqTahfizhKesiswaanSidebarRoleLazy',false);
-    }
-    if(['kesiswaan','kabid_kesiswaan'].includes(r)){
     }
   }
 
@@ -261,7 +249,7 @@
       loadForRole();
       const out=oldEnter.apply(this,arguments);
       setTimeout(loadForRole,0);
-      if(r==='kabid_quran')setTimeout(()=>{try{window.cqStabilizeKabidTahfizh?.(true)}catch(_){}},80);
+      if(r==='kabid_quran')setTimeout(()=>{try{window.cqQuranFinalUI?.()}catch(_){}},80);
       return out;
     };
     wrapped.__cqRoleLazyLoaderV2=true;

@@ -16,7 +16,7 @@
       if(window.__cqTeacherWalasSidebarClean) return true;
       if(document.querySelector('script[data-cq-teacher-walas-clean]')) return true;
       const s=document.createElement('script');
-      s.src='teacher-walas-sidebar-clean.js?v=20260927-ranking6';
+      s.src='teacher-walas-sidebar-clean.js?v=20261026-clean1';
       s.dataset.cqTeacherWalasClean='1';
       s.onload=function(){
         try{if(typeof renderSidebar==='function')renderSidebar()}catch(_){}
