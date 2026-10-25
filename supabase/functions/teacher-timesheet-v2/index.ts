@@ -72,7 +72,7 @@ async function bootstrapWithTahfizhBadal(req:Request,body:any){
 async function validateFreeSlot(req:Request,body:any){
   const me=await account(req);if(!me)return null;
   const teacherId=T(body.teacher_id||me.teacher_id),date=T(body.work_date),start=T(body.start_time),end=T(body.end_time);
-  if(!teacherId||!mayTarget(me,teacherId))throw Error("forbidden");
+  if(!teacherId||(!mayTarget(me,teacherId)&&!(me.roles||[]).some((r:string)=>["kegiatan","kabid_kegiatan"].includes(L(r)))))throw Error("forbidden");
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||mins(start)===null||mins(end)===null)return null;
   const{data:teacher}=await sb.from("teachers").select("school_unit_id").eq("id",teacherId).maybeSingle();
   let yq=sb.from("academic_years").select("id,start_date,end_date").eq("is_active",true).limit(1);if(teacher?.school_unit_id)yq=yq.eq("school_unit_id",teacher.school_unit_id);const{data:years}=await yq;const year=years?.[0];if(!year)throw Error("active_academic_year_not_found");if((year.start_date&&date<year.start_date)||(year.end_date&&date>year.end_date))throw Error("date_outside_active_period");
