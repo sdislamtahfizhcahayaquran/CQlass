@@ -56,19 +56,8 @@ function isActiveStatus(status: unknown): boolean {
 function roleFromText(value: unknown): string | null {
   const s = lower(value).replace(/[-\s]+/g, "_").replace(/[^a-z0-9_]/g, "");
   if (!s) return null;
-  if (s === "admin" || s.includes("administrator")) return "admin";
-  if (s.includes("pimpinan") || s.includes("kepala_sekolah") || s === "kepsek") return "pimpinan";
-  if (s === "hrd" || s.includes("human_resource")) return "hrd";
-  if (s.includes("kabid_kesiswaan") || s === "kesiswaan" || s.includes("student_affair")) return "kesiswaan";
-  if (s.includes("kabid_akademik") || s === "akademik") return "akademik";
-  // Kabid Tahfizh harus tetap menjadi role struktural tersendiri.
-  // Jangan collapse ke role operasional `tahfizh`, karena frontend CQlass
-  // membedakan dashboard/menu Kabid dengan Guru Tahfizh biasa.
-  if (s.includes("kabid_tahfizh")) return "kabid_tahfizh";
-  if (s === "tahfizh") return "tahfizh";
-  if (s.includes("kabid_kegiatan") || s === "kegiatan") return "kegiatan";
-  if (s.includes("walas") || s.includes("wali_kelas") || s.includes("homeroom")) return "walas";
-  if (s === "guru" || s.includes("teacher") || s.includes("pengajar")) return "guru";
+  const aliases:Record<string,string>={administrator:"admin",kepsek:"pimpinan",kepala_sekolah:"pimpinan",human_resources:"hrd",human_resource:"hrd",kabid_kesiswaan:"kesiswaan",student_affair:"kesiswaan",kabid_akademik:"akademik",kabid_kegiatan:"kegiatan",wali_kelas:"walas",homeroom:"walas",teacher:"guru",pengajar:"guru"};
+  if(aliases[s])return aliases[s];
   return s;
 }
 function rolePriority(role: string): number {
@@ -82,11 +71,7 @@ function choosePrimaryRole(roles: string[]): string {
 }
 function detectRoleFromRow(row: any): string | null {
   if (!row || typeof row !== "object") return null;
-  for (const k of ["role","role_code","role_name","nama_role","kode_role","name","code","access_role"]) {
-    if (k in row) { const r=roleFromText(row[k]); if (r) return r; }
-  }
-  for (const v of Object.values(row)) if (typeof v === "string") { const r=roleFromText(v); if (r) return r; }
-  return null;
+  return roleFromText(row.role_code || row.role);
 }
 function teacherMatchesAssignment(row:any, teacherId:string):boolean {
   return ["homeroom_teacher_id","walas_teacher_id","wali_kelas_teacher_id","class_teacher_id","teacher_id"]
@@ -104,27 +89,32 @@ function classDisplayName(row:any):string {
 async function buildUserProfile(supabase:any, account:any):Promise<any> {
   const teacherId=text(account?.teacher_id);
   const username=text(account?.username);
+  const yearRes=await supabase.from("academic_years").select("id").eq("is_active",true).single();
+  if(yearRes.error||!yearRes.data)throw new Error("active_academic_year_not_found");
+  const semRes=await supabase.from("semesters").select("semester_no").eq("academic_year_id",yearRes.data.id).eq("is_active",true).single();
+  if(semRes.error||!semRes.data)throw new Error("active_semester_not_found");
+  const yearId=yearRes.data.id,semesterNo=semRes.data.semester_no;
   const teacherPromise = teacherId
     ? supabase.from("teachers").select("*").eq("id", teacherId).maybeSingle()
     : Promise.resolve({data:null,error:null});
   const rolesPromise = supabase.from("user_account_roles").select("*").eq("user_account_id", account.id);
   const assignmentsPromise = teacherId
-    ? supabase.from("report_class_assignments").select("*")
+    ? supabase.from("report_class_assignments").select("*").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("homeroom_teacher_id",teacherId)
     : Promise.resolve({data:[],error:null});
   const partnerPromise = teacherId
-    ? supabase.from("class_partner_assignments").select("class_id,teacher_id,is_active").eq("teacher_id",teacherId).eq("is_active",true)
+    ? supabase.from("class_partner_assignments").select("class_id,teacher_id,is_active").eq("teacher_id",teacherId).eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("is_active",true)
     : Promise.resolve({data:[],error:null});
   const tahfizhPromise = teacherId
-    ? supabase.from("tahfizh_teacher_assignments").select("class_id,teacher_id,is_active").eq("teacher_id",teacherId).eq("is_active",true)
+    ? supabase.from("tahfizh_teacher_assignments").select("class_id,teacher_id,is_active").eq("teacher_id",teacherId).eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("is_active",true)
     : Promise.resolve({data:[],error:null});
   const [teacherRes, roleRes, assignmentRes, partnerRes, tahfizhRes] = await Promise.all([teacherPromise, rolesPromise, assignmentsPromise, partnerPromise, tahfizhPromise]);
+  for(const result of [teacherRes,roleRes,assignmentRes,partnerRes,tahfizhRes])if(result.error)throw result.error;
   const teacher=teacherRes?.data || null;
   const nama=text(teacher?.full_name || teacher?.name || teacher?.nama_guru || teacher?.nama) || username || "Pengguna";
   const roles:string[]=[];
   if (!roleRes?.error && Array.isArray(roleRes?.data)) {
     for (const row of roleRes.data) { const r=detectRoleFromRow(row); if (r) roles.push(r); }
   }
-  if (lower(username)==="admin" || lower(nama)==="admin") roles.push("admin");
   let kelas="";
   let walasDetected=false;
   let partnerDetected=false;
