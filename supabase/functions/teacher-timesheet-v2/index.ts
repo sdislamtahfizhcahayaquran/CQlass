@@ -32,7 +32,13 @@ async function bootstrapWithTahfizhBadal(req:Request,body:any){
   const cq=classIds.length?await sb.from("classes").select("id,name").in("id",classIds):{data:[],error:null};
   if((cq as any).error)console.error("timesheet tahfizh classes",(cq as any).error);
   const cm=new Map((((cq as any).data)||[]).map((c:any)=>[T(c.id),T(c.name)]));
-  const current=Array.isArray(data.teaching)?data.teaching:[];
+  const profileQueries=await Promise.all([
+    sb.from("tahfizh_teacher_assignments").select("id").eq("teacher_id",teacherId).eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("is_active",true).limit(1),
+    sb.from("partner_tahfizh_halaqah_roster").select("id").eq("partner_teacher_id",teacherId).eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("is_active",true).limit(1)
+  ]);
+  for(const result of profileQueries)if(result.error)throw result.error;
+  const fridayManual=profileQueries.some(result=>(result.data||[]).length>0);
+  const current=(Array.isArray(data.teaching)?data.teaching:[]).filter((row:any)=>!(fridayManual&&dow(row.work_date)===5&&row.source==="jadwal"));
   const existing=new Set(current.map((r:any)=>T(r.id)));
   for(const r of rows){
     const id=`badal-tahfizh:${r.id}`;
@@ -108,17 +114,18 @@ async function validateFreeSlot(req:Request,body:any){
   const tahBadalQ=sb.from("tahfizh_substitution_assignments").select("start_time,end_time,reason").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("work_date",date).eq("substitute_teacher_id",teacherId).eq("status","active");
   const [ownR,tahR,routineR,workR,uksR,manualR,badalR,tahBadalR]=await Promise.all([ownQ,tahQ,routineQ,workQ,uksQ,manualQ,badalQ,tahBadalQ]);
   for(const result of [ownR,tahR,routineR,workR,uksR,manualR,badalR,tahBadalR])if(result.error)throw result.error;
+  const fridayManual=isTahfizh&&day===5;
   const conflicts:any[]=[];
-  for(const x of ownR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Jadwal mengajar",start:x.start_time,end:x.end_time});
-  for(const x of tahR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"KBM Tahfizh",start:x.start_time,end:x.end_time});
-  for(const x of routineR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Rutinitas sekolah",start:x.start_time,end:x.end_time});
-  for(const x of workR.data||[]){
+  for(const x of (fridayManual?[]:ownR.data||[]))if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Jadwal mengajar",start:x.start_time,end:x.end_time});
+  for(const x of (fridayManual?[]:tahR.data||[]))if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"KBM Tahfizh",start:x.start_time,end:x.end_time});
+  for(const x of (fridayManual?[]:routineR.data||[]))if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Rutinitas sekolah",start:x.start_time,end:x.end_time});
+  for(const x of (fridayManual?[]:workR.data||[])){
     if(x.activity_code==="administration_eduhub"&&!isTahfizh)continue;
     const ws=x.activity_code==="administration_eduhub"&&isTahfizh?"14:50:00":x.start_time;
     const we=x.activity_code==="administration_eduhub"&&isTahfizh?"16:00:00":x.end_time;
     if(!(day===6&&["saturday_work","saturday_role_work"].includes(T(x.activity_code)))&&overlap(start,end,ws,we))conflicts.push({label:x.activity_code==="administration_eduhub"?"Administrasi Eduhub":T(x.activity_name)||"Jadwal kerja rutin",start:ws,end:we});
   }
-  for(const x of uksR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:`Jaga UKS shift ${Number(x.shift_no)||""}`.trim(),start:x.start_time,end:x.end_time});
+  for(const x of (fridayManual?[]:uksR.data||[]))if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:`Jaga UKS shift ${Number(x.shift_no)||""}`.trim(),start:x.start_time,end:x.end_time});
   for(const x of manualR.data||[])if(T(x.id)!==T(body.id)&&overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.activity)||"Timesheet yang sudah diisi",start:x.start_time,end:x.end_time});
   for(const x of badalR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"Badal guru umum",start:x.start_time,end:x.end_time});
   for(const x of tahBadalR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"Badal Tahfizh",start:x.start_time,end:x.end_time});

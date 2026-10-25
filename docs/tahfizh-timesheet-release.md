@@ -11,3 +11,7 @@ Timesheet menu registration retains Tahfizh/Partner access even when the menu it
 Eleven regression suites pass, including a dedicated behavioral test for null period dates, semester 2, mixed jobs, Partner-only separation, visible KBM, overlap rejection, and query-error handling. Tests use mocked Edge dependencies; no real teacher reports are created or modified. The live HRD reader uses teacher_timesheet_activities, the same table written by manual timesheet saves. Preflight contains 1,330 records, including six records for currently assigned Tahfizh teachers.
 
 No schema migration or report-data rewrite. Actual authenticated walkthrough and submission with a school account has not been performed. Restore the preceding baseline function sources and frontend together if rollback is required.
+
+## Friday correction
+
+User-confirmed rule: Guru Tahfizh fills Friday manually and may create a weekly pattern. Friday 07:00–16:00 therefore has no generated routine/KBM/Eduhub/class-work blocks for teachers with explicit Tahfizh/halaqah assignments. Existing recorded activities, recurring patterns and dated badal/special events remain separate recorded commitments. Other teachers retain their prior Friday rules. The work schedule, manual validation, bootstrap teaching rows, gap UI and recurring projection are aligned. Twelve regression suites now include Friday manual slots, weekly pattern projection and existing-record subtraction. No report or pattern data is rewritten.
