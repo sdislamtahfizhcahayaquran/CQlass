@@ -44,7 +44,7 @@
 
   (async function(){
     await add('timesheet-access-fix.js?v=20260922-access1','cq-ts-access-fix');
-    await add('teacher-timesheet-v2.js?v=20261007-certificate1','cq-ts-v2');
+    await add('teacher-timesheet-v2.js?v=20261025-tahfizh1','cq-ts-v2');
     await add('teacher-autosave-safe.js?v=20261006-safe1','cq-teacher-autosave-safe');
     await add('timesheet-recurring.js?v=20261013-saturday2','cq-ts-recurring');
     await add('timesheet-gap-assistant.js?v=20261013-saturday2','cq-ts-gap-assistant');

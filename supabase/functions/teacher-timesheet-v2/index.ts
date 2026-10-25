@@ -19,13 +19,14 @@ function monthBounds(month:string){if(!/^\d{4}-\d{2}$/.test(month))return null;c
 async function bootstrapWithTahfizhBadal(req:Request,body:any){
   const x=await legacy(req,body);
   if(!x.r.ok||!x.data||x.data.success===false)return new Response(x.txt,{status:x.r.status,headers:{...CORS,"Cache-Control":"no-store"}});
-  const data=x.data,teacherId=T(data.teacher?.id),yearId=T(data.context?.academic_year_id),month=T(data.month||body.month);
+  const data=x.data,teacherId=T(data.teacher?.id),yearId=T(data.context?.academic_year_id),month=T(data.month||body.month),semesterNo=Number(data.context?.semester_no);
   const range=monthBounds(month);
   const mq=await sb.from("non_teaching_activity_master").select("id,code,name,category,counts_as_work,requires_note,sort_order,is_active").eq("is_active",true).order("sort_order").order("name");
   if(!mq.error)data.activity_master=mq.data||[];
   else console.error("timesheet activity master",mq.error);
   if(!teacherId||!yearId||!range)return J(data,x.r.status);
-  const q=await sb.from("tahfizh_substitution_assignments").select("id,work_date,class_id,substitute_teacher_id,start_time,end_time,reason,status,substitute_name,substitute_type").eq("academic_year_id",yearId).eq("semester_no",1).eq("substitute_teacher_id",teacherId).eq("status","active").gte("work_date",range.start).lte("work_date",range.end).order("work_date").order("start_time");
+  if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");
+  const q=await sb.from("tahfizh_substitution_assignments").select("id,work_date,class_id,substitute_teacher_id,start_time,end_time,reason,status,substitute_name,substitute_type").eq("academic_year_id",yearId).eq("semester_no",semesterNo).eq("substitute_teacher_id",teacherId).eq("status","active").gte("work_date",range.start).lte("work_date",range.end).order("work_date").order("start_time");
   if(q.error){console.error("timesheet tahfizh badal",q.error);return J(data,x.r.status)}
   const rows=q.data||[],classIds=[...new Set(rows.map((r:any)=>T(r.class_id)).filter(Boolean))];
   const cq=classIds.length?await sb.from("classes").select("id,name").in("id",classIds):{data:[],error:null};
@@ -71,17 +72,20 @@ async function bootstrapWithTahfizhBadal(req:Request,body:any){
 async function validateFreeSlot(req:Request,body:any){
   const me=await account(req);if(!me)return null;
   const teacherId=T(body.teacher_id||me.teacher_id),date=T(body.work_date),start=T(body.start_time),end=T(body.end_time);
-  if(!teacherId||!/^\d{4}-\d{2}-\d{2}$/.test(date)||mins(start)===null||mins(end)===null)return null;
+  if(!teacherId||!mayTarget(me,teacherId))throw Error("forbidden");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||mins(start)===null||mins(end)===null)return null;
   const{data:teacher}=await sb.from("teachers").select("school_unit_id").eq("id",teacherId).maybeSingle();
-  let yq=sb.from("academic_years").select("id").lte("start_date",date).gte("end_date",date).order("created_at",{ascending:false}).limit(1);if(teacher?.school_unit_id)yq=yq.eq("school_unit_id",teacher.school_unit_id);const{data:years}=await yq;const year=years?.[0];if(!year)return null;
-  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no||1),day=dow(date);
-  const[{data:asg},{data:hom},{data:tahAsg},{data:partnerRows},{data:classPartners}]=await Promise.all([
+  let yq=sb.from("academic_years").select("id,start_date,end_date").eq("is_active",true).limit(1);if(teacher?.school_unit_id)yq=yq.eq("school_unit_id",teacher.school_unit_id);const{data:years}=await yq;const year=years?.[0];if(!year)throw Error("active_academic_year_not_found");if((year.start_date&&date<year.start_date)||(year.end_date&&date>year.end_date))throw Error("date_outside_active_period");
+  const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no),day=dow(date);if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");
+  const assignmentResults=await Promise.all([
     sb.from("teacher_subject_assignments").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true),
     sb.from("report_class_assignments").select("class_id,homeroom_teacher_id,partner_teacher_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).or(`homeroom_teacher_id.eq.${teacherId},partner_teacher_id.eq.${teacherId}`),
     sb.from("tahfizh_teacher_assignments").select("class_id,team_name").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true),
     sb.from("partner_tahfizh_halaqah_roster").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("partner_teacher_id",teacherId).eq("is_active",true),
     sb.from("class_partner_assignments").select("class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("is_active",true)
   ]);
+  for(const result of assignmentResults)if(result.error)throw result.error;
+  const[{data:asg},{data:hom},{data:tahAsg},{data:partnerRows},{data:classPartners}]=assignmentResults;
   // Tahfizh hanya ditentukan dari assignment Tahfizh yang eksplisit.
   // class_partner_assignments adalah partner kelas umum dan tidak boleh
   // mengubah profil guru menjadi Tahfizh.
@@ -94,7 +98,8 @@ async function validateFreeSlot(req:Request,body:any){
     ...(classPartners||[]).map((x:any)=>T(x.class_id))
   ].filter(Boolean))];
   const ownQ=sb.from("class_schedule_entries").select("start_time,end_time,subject_name_raw,class_id").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("teacher_id",teacherId).eq("day_of_week",day).eq("is_active",true).eq("activity_type","teaching").not("start_time","is",null).not("end_time","is",null);
-  const tahQ=Promise.resolve({data:[],error:null});
+  const tahClassIds=[...new Set([...(tahAsg||[]),...(partnerRows||[])].map((x:any)=>T(x.class_id)).filter(Boolean))];
+  const tahQ=tahClassIds.length?sb.from("tahfizh_kbm_schedules").select("start_time,end_time").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("day_of_week",day).eq("is_active",true).in("class_id",tahClassIds):Promise.resolve({data:[],error:null});
   const routineQ=classIds.length?sb.from("class_schedule_entries").select("start_time,end_time,activity_type,subject_name_raw").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("day_of_week",day).eq("is_active",true).in("activity_type",["break","school_routine"]).in("class_id",classIds).not("start_time","is",null).not("end_time","is",null):Promise.resolve({data:[],error:null});
   const workQ=sb.from("teacher_work_schedule_templates").select("start_time,end_time,activity_name,activity_code").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("day_of_week",day).eq("is_active",true).or(`applies_to_all.eq.true,teacher_id.eq.${teacherId}`);
   const uksQ=isTahfizh?Promise.resolve({data:[],error:null}):sb.from("uks_duty_schedule").select("start_time,end_time,shift_no").eq("teacher_id",teacherId).eq("weekday",day).eq("is_active",true);
@@ -102,6 +107,7 @@ async function validateFreeSlot(req:Request,body:any){
   const badalQ=sb.from("teacher_substitution_assignments").select("start_time,end_time,reason").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("work_date",date).eq("substitute_teacher_id",teacherId).eq("status","active");
   const tahBadalQ=sb.from("tahfizh_substitution_assignments").select("start_time,end_time,reason").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("work_date",date).eq("substitute_teacher_id",teacherId).eq("status","active");
   const [ownR,tahR,routineR,workR,uksR,manualR,badalR,tahBadalR]=await Promise.all([ownQ,tahQ,routineQ,workQ,uksQ,manualQ,badalQ,tahBadalQ]);
+  for(const result of [ownR,tahR,routineR,workR,uksR,manualR,badalR,tahBadalR])if(result.error)throw result.error;
   const conflicts:any[]=[];
   for(const x of ownR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Jadwal mengajar",start:x.start_time,end:x.end_time});
   for(const x of tahR.data||[])if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"KBM Tahfizh",start:x.start_time,end:x.end_time});
@@ -121,7 +127,7 @@ async function validateFreeSlot(req:Request,body:any){
   return `Jam ini bukan Timesheet karena bertabrakan dengan ${c.label}${range?` (${range})`:""}. Pilih waktu di luar mengajar dan rutinitas sekolah.`;
 }
 
-const REVIEW_ROLES=new Set(["admin","hrd","akademik","pimpinan"]);
+const REVIEW_ROLES=new Set(["admin","hrd","akademik","kabid_akademik","pimpinan"]);
 function mayTarget(me:any,target:string){return !!target&&(T(me.teacher_id)===target||(me.roles||[]).some((r:string)=>REVIEW_ROLES.has(L(r))))}
 async function updateActivity(req:Request,b:any){
   const me=await account(req);if(!me)return J({success:false,error:"session_expired"},401);
