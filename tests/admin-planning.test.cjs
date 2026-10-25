@@ -1,0 +1,20 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),{stripTypeScriptTypes}=require('node:module'),{JSDOM}=require('jsdom');
+(async()=>{
+ const dom=new JSDOM('<div id="sidebar"></div><div id="content"></div>',{runScripts:'outside-only'}),w=dom.window;
+ w.currentUser={role:'admin'};w.eval(fs.readFileSync('admin-sidebar-clean.js','utf8'));w.__cqRenderAdminSidebar();
+ assert.equal([...w.document.querySelectorAll('.cq-admin-nav')].filter(x=>x.textContent==='Penugasan & Jadwal').length,1);
+ w.openCleanAdminPlanning();let called=0;w.renderAdminAssignments=()=>called++;w.openCleanAdminAssignments();assert.equal(called,1);assert(w.document.querySelector('.cq-admin-nav.active').textContent.includes('Penugasan & Jadwal'));
+ let requests=[];w.SUPABASE_PUBLISHABLE_KEY='key';w.getAuthToken=()=> 'test';w.fetch=async(url,o)=>{requests.push(JSON.parse(o.body));return{ok:true,json:async()=>({success:true,academic_year_id:'y',academic_year:'2026/2027',semester_no:2,classes:[],teachers:[],subjects:[]})}};
+ w.eval(fs.readFileSync('admin-schedule-editor.js','utf8'));w.currentUser.role='akademik';await w.renderAdminScheduleEditor(w.document.getElementById('content'));assert(w.document.getElementById('content').textContent.includes('Semester 2'));assert(requests.some(x=>x.action==='bootstrap'));
+ requests=[];w.currentUser.role='guru';await w.renderAdminScheduleEditor(w.document.getElementById('content'));assert.equal(requests.length,0);dom.window.close();
+ const ctx={createClient:()=>({}),Request,Response,TextEncoder,crypto:require('node:crypto').webcrypto,console,Deno:{env:{get:()=> 'mock'},serve:()=>{}}};vm.createContext(ctx);vm.runInContext(stripTypeScriptTypes(fs.readFileSync('supabase/functions/admin-schedule-editor/index.ts','utf8').replace(/^import .*;$/gm,'')),ctx);
+ let role='akademik',error=null,seen=[];
+ ctx.s={from(table){const f=[];seen.push([table,f]);const q={select:()=>q,eq:(k,v)=>(f.push([k,v]),q),maybeSingle:()=>q,then:(a,b)=>Promise.resolve({error:table==='user_account_roles'?error:null,data:table==='user_sessions'?{user_account_id:'u',expires_at:'2099-01-01'}:table==='user_accounts'?{id:'u',username:'admin',status:'AKTIF'}:table==='user_account_roles'?[{role_code:role}]:table==='school_units'?{id:'unit'}:table==='academic_years'?{id:'y',name:'Year'}:{semester_no:2}}).then(a,b)};return q}};
+ ctx.req=new Request('https://example.invalid',{headers:{'x-session-token':'test'}});
+ for(role of ['akademik','kabid_akademik','admin'])assert(await vm.runInContext('authAdmin(s,req,{})',ctx));
+ for(role of ['guru','custom_admin','tahfizh'])assert.equal(await vm.runInContext('authAdmin(s,req,{})',ctx),null);
+ role='admin';error={message:'failed'};assert.equal(await vm.runInContext('authAdmin(s,req,{})',ctx),null);error=null;
+ const c=await vm.runInContext('context(s)',ctx);assert.equal(c.semesterNo,2);assert(seen.find(([t,f])=>t==='semesters'&&f.some(([k,v])=>k==='academic_year_id'&&v==='y')));
+ await assert.rejects(vm.runInContext("saveSchedule(s,{yearId:'y',semesterNo:2},{},{academic_year_id:'old',semester_no:1})",ctx),/active_period_changed/);
+ console.log('PASS: shared admin/academic editor, admin hub links, teacher denied, no username escalation, fail-closed roles, year-scoped semester and stale-period save rejected.');
+})().catch(e=>{console.error(e);process.exitCode=1});

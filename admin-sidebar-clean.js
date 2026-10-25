@@ -35,9 +35,7 @@ function draw(active){
     <div class="cq-admin-section">Administrasi</div>
     ${button('data-master','Data Master',I.master,'openCleanAdminMaster()')}
     ${button('master-tp','Master TP',I.tp,'openCleanAdminMasterTP()')}
-    ${button('halaqah','Pembagian Halaqah',I.halaqah,'openCleanAdminHalaqahRoute()')}
-    ${button('partner-kelas','Partner Kelas',I.halaqah,'openCleanAdminClassPartners()')}\n    ${button('penugasan','Penugasan',I.users,'openCleanAdminAssignments()')}
-    ${button('edit-jadwal','Edit Jadwal',I.schedule,'openCleanAdminSchedule()')}
+    ${button('penugasan-jadwal','Penugasan & Jadwal',I.schedule,'openCleanAdminPlanning()')}
     ${button('users','Guru & Pengguna',I.users,'openCleanAdminUsers()')}
     ${button('roles','Kelola Role',I.roles,'openCleanAdminRoles()')}
     ${button('academic-period','Tahun Ajaran & Hari Efektif',I.period,'openCleanAdminAcademicPeriod()')}
@@ -51,7 +49,21 @@ function draw(active){
   </div>`;
   return true
 }
-function set(id){window.__cqAdminActive=id;const s=document.getElementById('sidebar');if(!s||!s.querySelector('.cq-admin-side')){draw(id);return}const map={dashboard:'openCleanAdminDashboard', 'data-master':'openCleanAdminMaster', 'master-tp':'openCleanAdminMasterTP',halaqah:'openCleanAdminHalaqahRoute','partner-kelas':'openCleanAdminClassPartners',penugasan:'openCleanAdminAssignments','edit-jadwal':'openCleanAdminSchedule',users:'openCleanAdminUsers',roles:'openCleanAdminRoles','academic-period':'openCleanAdminAcademicPeriod','report-period':'openCleanAdminReportPeriod','rapor-readiness':'openCleanAdminRaporReadiness','input-access':'openCleanAdminInputAccess',students:'openCleanAdminStudents',uks:'openCleanAdminUks','kegiatan-khusus':'openCleanAdminSpecialActivity'};s.querySelectorAll('.cq-admin-nav').forEach(function(b){b.classList.toggle('active',String(b.getAttribute('onclick')||'').includes(map[id]||'__none__'))})}
+function set(id){if(['penugasan','edit-jadwal','halaqah','partner-kelas'].includes(id))id='penugasan-jadwal';window.__cqAdminActive=id;const s=document.getElementById('sidebar');if(!s||!s.querySelector('.cq-admin-side')){draw(id);return}const map={'penugasan-jadwal':'openCleanAdminPlanning',dashboard:'openCleanAdminDashboard', 'data-master':'openCleanAdminMaster', 'master-tp':'openCleanAdminMasterTP',halaqah:'openCleanAdminHalaqahRoute','partner-kelas':'openCleanAdminClassPartners',penugasan:'openCleanAdminAssignments','edit-jadwal':'openCleanAdminSchedule',users:'openCleanAdminUsers',roles:'openCleanAdminRoles','academic-period':'openCleanAdminAcademicPeriod','report-period':'openCleanAdminReportPeriod','rapor-readiness':'openCleanAdminRaporReadiness','input-access':'openCleanAdminInputAccess',students:'openCleanAdminStudents',uks:'openCleanAdminUks','kegiatan-khusus':'openCleanAdminSpecialActivity'};s.querySelectorAll('.cq-admin-nav').forEach(function(b){b.classList.toggle('active',String(b.getAttribute('onclick')||'').includes(map[id]||'__none__'))})}
+window.openCleanAdminPlanning=function(){
+  if(!isAdmin())return;
+  set('penugasan-jadwal');
+  try{if(typeof activeModule!=='undefined')activeModule='penugasan-jadwal'}catch(_){}
+  const c=document.getElementById('content');if(!c)return;
+  c.innerHTML=`<div class="card"><h2>Penugasan &amp; Jadwal</h2><p>Mulai dari periode aktif, tentukan tugas guru, lalu atur jadwal mengajar. Guru dapat memiliki beberapa tugas, mapel, dan kelas.</p>
+    <div class="cq-admin-side">
+      <button class="cq-admin-nav" onclick="openCleanAdminAcademicPeriod()">Tahun Ajaran &amp; Semester</button>
+      <button class="cq-admin-nav" onclick="openCleanAdminAssignments()">Penugasan Guru — Walas, Mapel, Tahfizh, Partner</button>
+      <button class="cq-admin-nav" onclick="openCleanAdminSchedule()">Jadwal Mengajar — Admin &amp; Akademik</button>
+      <button class="cq-admin-nav" onclick="openCleanAdminHalaqahRoute()">Pembagian Siswa Halaqah</button>
+      <button class="cq-admin-nav" onclick="openCleanAdminClassPartners()">Partner Kelas</button>
+    </div><p>Penugasan menentukan guru mengampu mapel dan kelas apa. Jadwal mengajar menentukan hari dan jamnya. Menu Jadwal Mengajar di Akademik memakai data yang sama.</p><p>Pengaturan Tahfizh tetap melalui Kabid Quran, sedangkan jadwal kerja melalui HRD.</p></div>`;
+};
 window.openCleanAdminDashboard=function(){
   if(!isAdmin())return;
   set('dashboard');
@@ -121,4 +133,4 @@ setTimeout(takeAdminOwnership,250);
 
 window.__cqAdminSidebarClean=true
 })();
-[['admin-class-partners.js?v=20261005-partners3','cq-admin-class-partners'],['admin-assignments.js?v=20261025-role1','cq-admin-assignments'],['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20260916-schedule2','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20260921-layout1','cq-input-access-layout-fix'],['report-period-control.js?v=20261025-period2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});
+[['admin-class-partners.js?v=20261005-partners3','cq-admin-class-partners'],['admin-assignments.js?v=20261025-role1','cq-admin-assignments'],['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20261025-planning1','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20260921-layout1','cq-input-access-layout-fix'],['report-period-control.js?v=20261025-period2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});

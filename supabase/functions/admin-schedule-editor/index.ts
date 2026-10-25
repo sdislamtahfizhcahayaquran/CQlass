@@ -28,22 +28,20 @@ async function authAdmin(s:any,req:Request,b:any){
   if(!ss||ss.revoked_at||!ss.expires_at||new Date(ss.expires_at).getTime()<=Date.now())return null;
   const {data:a}=await s.from('user_accounts').select('id,teacher_id,username,status').eq('id',ss.user_account_id).maybeSingle();
   if(!a||!active(a.status))return null;
-  let ok=L(a.username)==='admin';
-  if(a.teacher_id){
-    const {data:r}=await s.from('user_roles').select('role_code,is_active').eq('teacher_id',a.teacher_id).eq('is_active',true);
-    ok=ok||(r||[]).some((x:any)=>L(x.role_code)==='admin');
-  }
+  const roles=await s.from('user_account_roles').select('role_code,is_active').eq('user_account_id',a.id).eq('is_active',true);
+  if(roles.error)return null;
+  const ok=(roles.data||[]).some((x:any)=>['admin','akademik','kabid_akademik'].includes(L(x.role_code)));
   return ok?a:null;
 }
 async function context(s:any){
-  const [{data:unit},{data:year},{data:sem}]=await Promise.all([
-    s.from('school_units').select('id,code,name').eq('code','SD').maybeSingle(),
-    s.from('academic_years').select('id,name').eq('is_active',true).order('start_date',{ascending:false}).limit(1).maybeSingle(),
-    s.from('semesters').select('semester_no').eq('is_active',true).maybeSingle()
-  ]);
-  if(!unit||!year)throw new Error('active_context_not_found');
-  return {unitId:unit.id,yearId:year.id,yearName:year.name,semesterNo:Number(sem?.semester_no||1)};
+  const unit=await s.from('school_units').select('id,code,name').eq('code','SD').maybeSingle();
+  const year=await s.from('academic_years').select('id,name').eq('is_active',true).maybeSingle();
+  if(unit.error||year.error||!unit.data||!year.data)throw new Error('active_context_not_found');
+  const sem=await s.from('semesters').select('semester_no').eq('academic_year_id',year.data.id).eq('is_active',true).maybeSingle();
+  if(sem.error||![1,2].includes(Number(sem.data?.semester_no)))throw new Error('active_context_not_found');
+  return {unitId:unit.data.id,yearId:year.data.id,yearName:year.data.name,semesterNo:Number(sem.data.semester_no)};
 }
+
 function minutes(v:unknown){const x=T(v).slice(0,5);if(!/^\d{2}:\d{2}$/.test(x))return null;const [h,m]=x.split(':').map(Number);return h*60+m}
 function overlap(a1:unknown,a2:unknown,b1:unknown,b2:unknown){const x1=minutes(a1),x2=minutes(a2),y1=minutes(b1),y2=minutes(b2);if([x1,x2,y1,y2].some(v=>v===null))return false;return (x1 as number)<(y2 as number)&&(y1 as number)<(x2 as number)}
 function validTime(v:unknown){return /^([01]\d|2[0-3]):[0-5]\d$/.test(T(v).slice(0,5))}
@@ -88,7 +86,7 @@ async function bootstrap(s:any,c:any){
     detectConflicts(s,c)
   ]);
   if(classesQ.error)throw classesQ.error;if(teachersQ.error)throw teachersQ.error;if(subjectsQ.error)throw subjectsQ.error;
-  return {academic_year:c.yearName,semester_no:c.semesterNo,classes:classesQ.data||[],teachers:(teachersQ.data||[]).filter((x:any)=>active(x.status)).map((x:any)=>({id:x.id,name:x.full_name})),subjects:subjectsQ.data||[],conflict_summary:conflicts.summary};
+  return {academic_year_id:c.yearId,academic_year:c.yearName,semester_no:c.semesterNo,classes:classesQ.data||[],teachers:(teachersQ.data||[]).filter((x:any)=>active(x.status)).map((x:any)=>({id:x.id,name:x.full_name})),subjects:subjectsQ.data||[],conflict_summary:conflicts.summary};
 }
 async function listSchedule(s:any,c:any,b:any){
   let q=s.from('class_schedule_entries').select('id,class_id,day_of_week,start_time,end_time,subject_id,subject_name_raw,teacher_id,teacher_name_raw,activity_type,slot_label,notes,classes(name,grade_level),subjects(name,grade_level),teachers(full_name)').eq('academic_year_id',c.yearId).eq('semester_no',c.semesterNo).eq('is_active',true).eq('activity_type','teaching').order('day_of_week').order('start_time',{ascending:true,nullsFirst:false});
@@ -97,11 +95,12 @@ async function listSchedule(s:any,c:any,b:any){
   const r=await q.limit(1500);if(r.error)throw r.error;return r.data||[];
 }
 async function saveSchedule(s:any,c:any,a:any,b:any){
+  if(T(b.academic_year_id)!==String(c.yearId)||Number(b.semester_no)!==c.semesterNo)throw new Error('active_period_changed');
   const id=T(b.id),classId=T(b.class_id),subjectId=T(b.subject_id),teacherId=T(b.teacher_id),day=Number(b.day_of_week),start=T(b.start_time).slice(0,5),end=T(b.end_time).slice(0,5),reason=T(b.reason).slice(0,500);
-  if(!id||!classId||!subjectId||!teacherId||day<1||day>7||!validTime(start)||!validTime(end))throw new Error('invalid_input');
+  if(!id||!classId||!subjectId||!teacherId||!Number.isInteger(day)||day<1||day>7||!validTime(start)||!validTime(end))throw new Error('invalid_input');
   if((minutes(end) as number)<=(minutes(start) as number))throw new Error('invalid_time_range');
   const [oldQ,classQ,subjectQ,teacherQ]=await Promise.all([
-    s.from('class_schedule_entries').select('*').eq('id',id).eq('academic_year_id',c.yearId).eq('semester_no',c.semesterNo).eq('is_active',true).maybeSingle(),
+    s.from('class_schedule_entries').select('*').eq('id',id).eq('academic_year_id',c.yearId).eq('semester_no',c.semesterNo).eq('is_active',true).eq('activity_type','teaching').maybeSingle(),
     s.from('classes').select('id,name,grade_level').eq('id',classId).eq('academic_year_id',c.yearId).eq('is_active',true).maybeSingle(),
     s.from('subjects').select('id,name,grade_level').eq('id',subjectId).eq('school_unit_id',c.unitId).eq('is_active',true).maybeSingle(),
     s.from('teachers').select('id,full_name,status').eq('id',teacherId).maybeSingle()
@@ -119,8 +118,8 @@ async function saveSchedule(s:any,c:any,a:any,b:any){
   if(classConflict)return {ok:false,error:'class_conflict',conflict:classConflict};
   const teacherConflict=(teacherSlotsQ.data||[]).find((x:any)=>overlap(start,end,x.start_time,x.end_time));
   if(teacherConflict)return {ok:false,error:'teacher_conflict',conflict:teacherConflict};
-  const patch={class_id:classId,day_of_week:day,start_time:start+':00',end_time:end+':00',subject_id:subjectId,subject_name_raw:subjectQ.data.name,teacher_id:teacherId,teacher_name_raw:teacherQ.data.full_name,slot_label:`${start}-${end}`,notes:reason?`Koreksi Admin: ${reason}`:oldQ.data.notes,updated_at:now()};
-  const upd=await s.from('class_schedule_entries').update(patch).eq('id',id).select('*').single();
+  const patch={class_id:classId,day_of_week:day,start_time:start+':00',end_time:end+':00',subject_id:subjectId,subject_name_raw:subjectQ.data.name,teacher_id:teacherId,teacher_name_raw:teacherQ.data.full_name,slot_label:`${start}-${end}`,notes:reason?`Koreksi jadwal: ${reason}`:oldQ.data.notes,updated_at:now()};
+  const upd=await s.from('class_schedule_entries').update(patch).eq('id',id).eq('academic_year_id',c.yearId).eq('semester_no',c.semesterNo).eq('is_active',true).eq('activity_type','teaching').select('*').single();
   if(upd.error){const m=T(upd.error.message);if(m.includes('teacher_schedule_conflict'))return {ok:false,error:'teacher_conflict',conflict:null};if(m.includes('class_schedule_conflict'))return {ok:false,error:'class_conflict',conflict:null};throw upd.error}
   const log=await s.from('class_schedule_change_log').insert({schedule_entry_id:id,changed_by_account_id:a.id,change_type:'update',before_data:oldQ.data,after_data:upd.data,reason:reason||null});
   if(log.error)console.warn('schedule_audit_failed',log.error.message);
@@ -133,7 +132,7 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=='POST')return J({success:false,error:'method_not_allowed'},405);
   let body:any={};try{body=await req.json()}catch{return J({success:false,error:'invalid_json'},400)}
   try{
-    const s=db(),admin=await authAdmin(s,req,body);if(!admin)return J({success:false,error:'admin_only'},403);
+    const s=db(),admin=await authAdmin(s,req,body);if(!admin)return J({success:false,error:'schedule_access_denied'},403);
     const c=await context(s),action=T(body.action)||'bootstrap';
     if(action==='bootstrap')return J({success:true,...await bootstrap(s,c)});
     if(action==='list_conflicts')return J({success:true,...await detectConflicts(s,c)});

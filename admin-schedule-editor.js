@@ -1,5 +1,5 @@
 /* CQlass — Admin Schedule Editor
-   Satu pintu perubahan master jadwal: Admin + deteksi bentrok. */
+   Editor bersama Admin dan Akademik dengan deteksi bentrok. */
 (function(){
   'use strict';
   if(window.__CQ_ADMIN_SCHEDULE_EDITOR__) return;
@@ -11,6 +11,7 @@
   const t5=v=>String(v||'').slice(0,5);
 
   function isAdmin(){try{return String(currentUser?.role||'').toLowerCase()==='admin'}catch(_){return false}}
+  function canSchedule(){try{return ['admin','akademik','kabid_akademik'].includes(String(currentUser?.role||'').toLowerCase())}catch(_){return false}}
   function token(){try{return typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){return''}}
   async function api(action,p={}){
     const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';
@@ -22,7 +23,10 @@
   function msg(e){
     const m=String(e?.message||e||'');
     const map={
-      admin_only:'Akses perubahan jadwal hanya untuk Admin.',
+      admin_only:'Akses jadwal hanya untuk Admin dan Akademik.',
+      schedule_access_denied:'Akses jadwal hanya untuk Admin dan Akademik.',
+      active_period_changed:'Periode aktif berubah. Buka kembali Jadwal Mengajar sebelum menyimpan.',
+      active_context_not_found:'Tahun ajaran atau semester aktif belum valid. Hubungi Admin.',
       invalid_input:'Lengkapi semua data jadwal.',
       invalid_time_range:'Jam selesai harus lebih besar dari jam mulai.',
       schedule_not_found:'Slot jadwal tidak ditemukan.',
@@ -52,7 +56,7 @@
     const arr=S.conflicts||[];
     if(!arr.length)return '<div class="aseok">✓ Tidak ada bentrok guru pada jadwal aktif.</div>';
     const rows=arr.map((x,i)=>`<tr><td>${i+1}</td><td><b>${esc(x.teacher_name||'—')}</b></td><td>${esc(DAYS[x.day_of_week]||x.day_of_week)}</td><td>${esc(t5(x.a?.start_time))}–${esc(t5(x.a?.end_time))}</td><td><b>${esc(x.a?.class_name||'—')}</b><br>${esc(x.a?.subject_name||'—')}</td><td><b>${esc(x.b?.class_name||'—')}</b><br>${esc(x.b?.subject_name||'—')}</td><td><button class="asebtn danger" onclick="adminScheduleOpenConflict('${esc(x.a?.id)}','${esc(x.a?.class_id)}','${esc(x.day_of_week)}')">Perbaiki A</button> <button class="asebtn danger" onclick="adminScheduleOpenConflict('${esc(x.b?.id)}','${esc(x.b?.class_id)}','${esc(x.day_of_week)}')">Perbaiki B</button></td></tr>`).join('');
-    return `<div class="aseconf"><div class="aseconf-head"><div><div class="aseconf-title">Bentrok jadwal harus diperbaiki Admin</div><div class="aseconf-sub">Satu guru tercatat mengajar di dua kelas pada waktu yang sama/overlap. Sistem sekarang menolak bentrok baru.</div></div><div class="aseconf-count">${arr.length}</div></div><div style="overflow:auto"><table><thead><tr><th>#</th><th>Guru</th><th>Hari</th><th>Jam</th><th>Slot A</th><th>Slot B</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<div class="aseconf"><div class="aseconf-head"><div><div class="aseconf-title">Bentrok jadwal perlu diperbaiki</div><div class="aseconf-sub">Satu guru tercatat mengajar di dua kelas pada waktu yang sama/overlap. Sistem sekarang menolak bentrok baru.</div></div><div class="aseconf-count">${arr.length}</div></div><div style="overflow:auto"><table><thead><tr><th>#</th><th>Guru</th><th>Hari</th><th>Jam</th><th>Slot A</th><th>Slot B</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
   function editor(){
     const x=S.editing;if(!x)return'';
@@ -74,7 +78,7 @@
   }
   function draw(){
     const c=document.getElementById('content');if(!c)return;
-    c.innerHTML=`<div class="ase"><div class="aseh"><h2>Edit <span>Jadwal Pelajaran</span></h2><p>Satu pintu perubahan master jadwal melalui Admin. Bentrok lama ditampilkan sampai diperbaiki; bentrok baru ditolak otomatis.</p></div>${conflictPanel()}<div class="asecard"><div class="asefilters"><div class="asefield"><label>Kelas</label><select id="ase-class"><option value="">Pilih kelas...</option>${classOptions(S.classId)}</select></div><div class="asefield"><label>Hari</label><select id="ase-day"><option value="">Semua hari</option>${Object.entries(DAYS).slice(0,5).map(([k,v])=>`<option value="${k}" ${String(k)===String(S.day)?'selected':''}>${v}</option>`).join('')}</select></div><button class="asebtn" id="ase-load">Muat Jadwal</button></div><div class="asehint">Sistem menolak penyimpanan dan impor yang membuat guru atau kelas bentrok pada waktu yang sama.</div>${editor()}<div class="asewrap"><table class="asetable"><thead><tr><th>Hari</th><th>Jam</th><th>Kelas</th><th>Mapel</th><th>Guru</th><th>Slot</th><th>Aksi</th></tr></thead><tbody>${rows()}</tbody></table></div></div></div>`;
+    c.innerHTML=`<div class="ase"><div class="aseh"><h2>Jadwal <span>Mengajar</span></h2><p>${esc(S.boot?.academic_year||'')} · Semester ${esc(S.boot?.semester_no||'')}. Admin dan Akademik mengelola jadwal yang sama. Penugasan mapel dan kelas tetap dikelola Admin melalui Penugasan Guru.</p></div>${conflictPanel()}<div class="asecard"><div class="asefilters"><div class="asefield"><label>Kelas</label><select id="ase-class"><option value="">Pilih kelas...</option>${classOptions(S.classId)}</select></div><div class="asefield"><label>Hari</label><select id="ase-day"><option value="">Semua hari</option>${Object.entries(DAYS).slice(0,5).map(([k,v])=>`<option value="${k}" ${String(k)===String(S.day)?'selected':''}>${v}</option>`).join('')}</select></div><button class="asebtn" id="ase-load">Muat Jadwal</button></div><div class="asehint">Sistem menolak penyimpanan dan impor yang membuat guru atau kelas bentrok pada waktu yang sama.</div>${editor()}<div class="asewrap"><table class="asetable"><thead><tr><th>Hari</th><th>Jam</th><th>Kelas</th><th>Mapel</th><th>Guru</th><th>Slot</th><th>Aksi</th></tr></thead><tbody>${rows()}</tbody></table></div></div></div>`;
     wire();
   }
   function wire(){
@@ -92,7 +96,7 @@
     try{const d=await api('list_schedule',{class_id:S.classId,day_of_week:S.day});S.items=d.items||[];draw()}catch(e){if(c)c.innerHTML=`<div class="ase"><div class="asecard aseempty">${esc(msg(e))}</div></div>`}
   }
   async function render(c){
-    if(!isAdmin()){c.innerHTML='<div class="card">Akses hanya untuk Admin.</div>';return}
+    if(!canSchedule()){c.innerHTML='<div class="card">Akses hanya untuk Admin dan Akademik.</div>';return}
     css();c.innerHTML='<div class="ase"><div class="asecard aseempty">Memuat editor jadwal...</div></div>';
     try{const [boot]=await Promise.all([api('bootstrap'),refreshConflicts()]);S.boot=boot;draw()}catch(e){c.innerHTML=`<div class="ase"><div class="asecard aseempty">${esc(msg(e))}</div></div>`}
   }
@@ -103,7 +107,7 @@
   window.adminScheduleSave=async()=>{
     if(!S.editing)return;
     const c=document.getElementById('content'),m=c?.querySelector('#ase-msg');
-    const payload={id:S.editing.id,class_id:c?.querySelector('#ase-e-class')?.value||'',day_of_week:Number(c?.querySelector('#ase-e-day')?.value||0),start_time:c?.querySelector('#ase-e-start')?.value||'',end_time:c?.querySelector('#ase-e-end')?.value||'',subject_id:c?.querySelector('#ase-e-subject')?.value||'',teacher_id:c?.querySelector('#ase-e-teacher')?.value||'',reason:c?.querySelector('#ase-e-reason')?.value||''};
+    const payload={academic_year_id:S.boot?.academic_year_id,semester_no:S.boot?.semester_no,id:S.editing.id,class_id:c?.querySelector('#ase-e-class')?.value||'',day_of_week:Number(c?.querySelector('#ase-e-day')?.value||0),start_time:c?.querySelector('#ase-e-start')?.value||'',end_time:c?.querySelector('#ase-e-end')?.value||'',subject_id:c?.querySelector('#ase-e-subject')?.value||'',teacher_id:c?.querySelector('#ase-e-teacher')?.value||'',reason:c?.querySelector('#ase-e-reason')?.value||''};
     try{
       await api('save_schedule',payload);
       if(typeof showToast==='function')showToast('Jadwal berhasil diperbarui.');

@@ -776,6 +776,10 @@ const MODULE_GROUPS = [
   {
     id: 'akademik', label: 'Akademik', roles: ['guru','walas','akademik','pimpinan'],
     items: [
+      { id: 'jadwal-mengajar', label: 'Jadwal Mengajar', roles: ['akademik','kabid_akademik'], built: true, render: (c)=>{
+          if(typeof window.renderAdminScheduleEditor==='function') return window.renderAdminScheduleEditor(c);
+          c.innerHTML='<div class="card">Editor jadwal sedang dimuat. Silakan buka kembali menu ini.</div>';
+        } },
       { id: 'leger',      label: 'Nilai', roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderLegger },
       { id: 'bilingual',  label: 'Bilingual', roles: ['guru','walas','akademik','pimpinan'], built: true, render: renderVocabularyBulanan },
       { id: 'pjbl',       label: 'PjBL',        roles: ['guru','walas','akademik','pimpinan'], built: true,  render: renderPjBL },
