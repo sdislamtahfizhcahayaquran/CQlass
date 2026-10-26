@@ -830,6 +830,10 @@ const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas',
 
 function findModuleByIdV2(id) {
   if (id === 'dashboard') return DASHBOARD_MODULE;
+  const academicGroups=window.cqAcademicMenuGroups?.();
+  if(academicGroups){
+    for(const g of academicGroups){const found=g.items.find(m=>m.id===id);if(found)return found;}
+  }
   for (const g of MODULE_GROUPS) {
     const found = g.items.find(m => m.id === id);
     if (found) return found;
@@ -863,7 +867,7 @@ function enterApp(){
     }
   }else{
     const entryRole=String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
-    activeModule = (entryRole==='sapras'||['kesiswaan','kabid_kesiswaan'].includes(entryRole)) ? 'dashboard' : (DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi');
+    activeModule = (entryRole==='sapras'||['kesiswaan','kabid_kesiswaan','akademik','kabid_akademik','academic'].includes(entryRole)) ? 'dashboard' : (DASHBOARD_MODULE.roles.includes(currentUser.role) ? 'dashboard' : 'absensi');
     renderSidebar();
     setActiveModule(activeModule);
   }
@@ -938,7 +942,8 @@ function renderSidebar(){
     sidebar.appendChild(dashItem);
   }
 
-  MODULE_GROUPS.filter(g => g.roles.includes(sidebarRole)).forEach(group => {
+  const sidebarGroups=window.cqAcademicMenuGroups?.()||MODULE_GROUPS;
+  sidebarGroups.filter(g => g.roles.includes(sidebarRole)).forEach(group => {
     const visibleItems = group.items.filter(m => m.roles.includes(sidebarRole));
     if (!visibleItems.length) return;
 
@@ -993,7 +998,8 @@ function setActiveModule(id){
   activeModule = id;
   const mod = findModuleByIdV2(id);
   if (mod) {
-    const parentGroup = MODULE_GROUPS.find(g => g.items.some(i => i.id === id));
+    const routeGroups=window.cqAcademicMenuGroups?.()||MODULE_GROUPS;
+    const parentGroup = routeGroups.find(g => g.items.some(i => i.id === id));
     if (parentGroup) openGroupId = parentGroup.id;
   }
   renderSidebar();

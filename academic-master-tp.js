@@ -121,12 +121,6 @@
 
   function install(){
     enforceScope();
-    if(typeof renderSidebar==='function'&&!renderSidebar.__cqAcademicTpScope){
-      const old=renderSidebar;renderSidebar=function(){enforceScope();return old.apply(this,arguments)};renderSidebar.__cqAcademicTpScope=true;
-    }
-    if(typeof setActiveModule==='function'&&!setActiveModule.__cqAcademicTp){
-      const old=setActiveModule;setActiveModule=function(id){if(isAcademic()&&String(id)==='master-tp-akademik'){try{activeModule='master-tp-akademik'}catch(_){};if(typeof renderSidebar==='function')renderSidebar();return window.renderAcademicMasterTP(document.getElementById('content'))}return old.apply(this,arguments)};setActiveModule.__cqAcademicTp=true;
-    }
     if(isAcademic()&&typeof renderSidebar==='function')setTimeout(()=>{enforceScope();renderSidebar()},50);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();

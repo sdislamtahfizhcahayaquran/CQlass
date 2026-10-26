@@ -149,22 +149,21 @@
     if(!r)return;
     primeDashboardRole(r);
 
-    if(['guru','walas','partner','guru_partner','pengabdian','akademik','kabid_akademik','academic','pimpinan'].includes(r)){
+    if(['guru','walas','partner','guru_partner','pengabdian','pimpinan'].includes(r)){
       add('./academic-sidebar-order.js?v=20261026-clean1','__cqAcademicSidebarOrderRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','pimpinan','admin'].includes(r)){
       add('./academic-teacher-report.js?v=20261025-period2','__cqAcademicTeacherReportRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','kegiatan'].includes(r)){
-      add('./kabid-role-scope-fix.js?v=20261025-period2','__cqKabidRoleScopeRoleLazy',false);
+      add('./kabid-role-scope-fix.js?v=20261026-owner1','__cqKabidRoleScopeRoleLazy',false);
     }
 
     if(['akademik','kabid_akademik','academic'].includes(r)){
       // Kabid Akademik: pastikan renderer Badal Guru Mapel selalu tersedia.
       // Scope sengaja hanya loader UI; data/modul lain tidak diubah.
-      add('./academic-teacher-report-v3.js?v=20261025-period2','__cqAcademicTeacherReportV3RoleLazy',false);
-      add('./academic-dashboard-standalone-v7.js?v=20261025-period2','__cqAcademicDashboardV7RoleLazy',false);
-      add('./academic-header-shell-v8.js?v=20260924-rolelazy1','__cqAcademicHeaderV8RoleLazy',false);
+      add('./academic-dashboard-standalone-v7.js?v=20261026-owner1','__cqAcademicDashboardV7RoleLazy',false);
+      add('./academic-header-shell-v8.js?v=20261026-owner1','__cqAcademicHeaderV8RoleLazy',false);
     }
     if(r==='kegiatan'){
       add('./kegiatan-role-polish.js?v=20260915-kegiatan-polish1','__cqKegiatanPolishLoaderInstalled',true);

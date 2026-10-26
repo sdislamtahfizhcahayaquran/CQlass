@@ -14,7 +14,7 @@
     analytics:BASE+'/functions/v1/academic-analytics',
     ops:BASE+'/functions/v1/academic-kabid-ops'
   };
-  const state={active:true,loading:false,lastData:null,lastAt:0,repairTimer:null};
+  const state={loading:false,lastData:null,lastAt:0,repairTimer:null};
 
   function norm(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');}
   function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
@@ -28,26 +28,16 @@
     }catch(_){ }
     try{return JSON.parse(localStorage.getItem('cqlass_user')||'null')||{};}catch(_){return {};}
   }
-  function roleValues(){
-    const u=readUser()||{};
-    return [u.role,u.role_code,u.primary_role].concat(Array.isArray(u.roles)?u.roles:[]).map(norm).filter(Boolean);
-  }
   function isAcademic(){
-    return roleValues().some(r=>r==='akademik'||r==='kabid_akademik'||r==='academic'||r.includes('kabid_akademik')||r.includes('academic'));
+    const u=readUser()||{};
+    return ['akademik','kabid_akademik','academic'].includes(norm(u.role||u.role_code||u.primary_role));
   }
   function userName(){
     const u=readUser()||{};
     return u.nama||u.full_name||u.name||u.teacher_name||u.display_name||u.username||'Kabid Akademik';
   }
   function dashboardActive(){
-    if(!state.active) return false;
-    try{if(typeof activeModule!=='undefined'&&activeModule!=null)return String(activeModule)==='dashboard';}catch(_){ }
-    const sb=document.getElementById('sidebar');
-    if(sb){
-      const active=[...sb.querySelectorAll('.active,[aria-current="page"]')].find(el=>String(el.textContent||'').trim()==='Dashboard');
-      if(active) return true;
-    }
-    return state.active;
+    return typeof activeModule!=='undefined'&&String(activeModule)==='dashboard';
   }
   function appVisible(){
     const app=document.getElementById('app-screen');
@@ -205,7 +195,7 @@
     if(!mount()) return;
     if(state.loading) return;
     state.loading=true;
-    try{paintData(await load(force));}
+    try{const data=await load(force);if(isAcademic()&&dashboardActive()&&appVisible())paintData(data);}
     catch(err){
       const note=document.getElementById('ak7-note');if(note){note.textContent='Dashboard tetap aktif, tetapi data belum dapat dimuat: '+(err?.message||'Terjadi kendala.');note.classList.add('show');}
     }finally{state.loading=false;}
@@ -218,56 +208,14 @@
 
   try{
     if(typeof DASHBOARD_MODULE!=='undefined'){
-      if(Array.isArray(DASHBOARD_MODULE.roles)&&!DASHBOARD_MODULE.roles.includes('akademik'))DASHBOARD_MODULE.roles.push('akademik');
+      if(Array.isArray(DASHBOARD_MODULE.roles))for(const role of ['akademik','kabid_akademik','academic'])if(!DASHBOARD_MODULE.roles.includes(role))DASHBOARD_MODULE.roles.push(role);
       const base=DASHBOARD_MODULE.render;
       DASHBOARD_MODULE.render=function(c){
-        if(isAcademic()){state.active=true;try{if(typeof activeModule!=='undefined')activeModule='dashboard';}catch(_){ }schedule(true);return;}
+        if(isAcademic()){schedule(true);return;}
         return typeof base==='function'?base.apply(this,arguments):undefined;
       };
     }
   }catch(e){console.warn('AK7 dashboard module:',e);}
-
-  try{
-    if(typeof setActiveModule==='function'){
-      const base=setActiveModule;
-      setActiveModule=function(id){
-        if(isAcademic()&&String(id)==='dashboard'){
-          state.active=true;
-          try{if(typeof activeModule!=='undefined')activeModule='dashboard';}catch(_){ }
-          try{if(typeof renderSidebar==='function')renderSidebar();}catch(_){ }
-          schedule(true);
-          return;
-        }
-        if(isAcademic()) state.active=false;
-        return base.apply(this,arguments);
-      };
-    }
-  }catch(e){console.warn('AK7 navigation:',e);}
-
-  try{
-    if(typeof enterApp==='function'){
-      const base=enterApp;
-      enterApp=function(){
-        const out=base.apply(this,arguments);
-        if(isAcademic()){
-          state.active=true;
-          setTimeout(()=>schedule(true),0);
-          setTimeout(()=>schedule(false),300);
-          setTimeout(()=>schedule(false),1200);
-        }
-        return out;
-      };
-    }
-  }catch(e){console.warn('AK7 enterApp:',e);}
-
-  document.addEventListener('click',function(ev){
-    const target=ev.target?.closest?.('#sidebar button,#sidebar a');
-    if(!target||!isAcademic()) return;
-    if(target.closest('.nav-group-head')) return;
-    const label=String(target.textContent||'').trim();
-    if(label==='Dashboard'){state.active=true;setTimeout(()=>schedule(true),0);}
-    else if(target.classList.contains('nav-item')||/setActiveModule/.test(target.getAttribute('onclick')||'')) state.active=false;
-  },true);
 
   function watchContent(){
     const c=document.getElementById('content');if(!c)return;
@@ -294,6 +242,6 @@
     if(document.visibilityState==='visible'&&isAcademic()&&dashboardActive()&&appVisible()) schedule(true);
   });
 
-  window.renderAcademicDashboardV7=function(force){state.active=true;return render(force!==false);};
+  window.renderAcademicDashboardV7=function(force){return render(force!==false);};
   window.__CQ_AK_STANDALONE_V7__=true;
 })();

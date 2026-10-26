@@ -14,8 +14,7 @@
   }
   function isAcademic(){
     var u=readUser()||{};
-    var vals=[u.role,u.role_code,u.primary_role].concat(Array.isArray(u.roles)?u.roles:[]).map(norm).filter(Boolean);
-    return vals.some(function(r){return r==='akademik'||r==='kabid_akademik'||r==='academic'||r.indexOf('kabid_akademik')>=0||r.indexOf('academic')>=0;});
+    return ['akademik','kabid_akademik','academic'].includes(norm(u.role||u.role_code||u.primary_role));
   }
   function displayName(){
     var u=readUser()||{};
@@ -107,19 +106,6 @@
     if(layout) layout.style.display='flex';
   }
 
-  function ensureDashboard(){
-    var c=document.getElementById('content');
-    if(!c) return;
-    var empty=!String(c.innerHTML||'').trim();
-    var academicDash=!!document.getElementById('cq-ak7');
-    if((empty||!academicDash)&&typeof window.renderAcademicDashboardV7==='function'){
-      try{
-        if(typeof activeModule!=='undefined'&&(activeModule==null||String(activeModule)===''||String(activeModule)==='dashboard')) activeModule='dashboard';
-      }catch(_){ }
-      try{window.renderAcademicDashboardV7(true);}catch(e){console.error('AK Header V9 dashboard:',e);}
-    }
-  }
-
   var rebuilding=false;
   function repair(force){
     if(!isAcademic()) return false;
@@ -136,7 +122,6 @@
       var nm=document.getElementById('user-name');if(nm)nm.textContent=displayName();
       var rb=document.getElementById('user-role');if(rb)rb.textContent='Kabid Akademik';
     }
-    ensureDashboard();
     return true;
   }
 
