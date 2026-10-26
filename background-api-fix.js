@@ -48,10 +48,9 @@
   window.__cqBackgroundApiFixInstalled=true;
 })();
 
-/* HRD fast path.
-   Dashboard HRD tidak lagi menunggu rantai hrd-live-report -> fungsi lain.
-   Administrasi dibaca langsung dari hrd-administration, sementara Promosi Socmed
-   dibaca dari endpoint ringan dan digabung di browser. */
+/* HRD RPP file route and cache.
+   Only rpp_file is redirected to hrd-administration.
+   All other actions remain with their original endpoint. */
 (function(){
   'use strict';
   if(window.__cqHrdFastFetchInstalled || typeof window.fetch!=='function') return;
@@ -84,61 +83,9 @@
       if(data&&data.success!==false)cache.set(key,{body:text,at:Date.now()});
     }catch(_){ }
   }
-  function asResponse(data,status=200,source='hrd-fast'){
-    return new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','X-CQ-Source':source}});
-  }
-  function recalcTeacher(t){
-    const cats=(t.categories||[]).filter(c=>c&&c.applicable);
-    const done=cats.filter(c=>c.status==='present').length;
-    const partial=cats.filter(c=>c.status==='partial').length;
-    const missing=cats.filter(c=>c.status==='missing').length;
-    t.required_count=cats.length;
-    t.completed_count=done;
-    t.partial_count=partial;
-    t.missing_count=missing;
-    t.issue_units=missing+partial;
-    t.missing_categories=cats.filter(c=>c.status==='missing').map(c=>c.label);
-    t.partial_categories=cats.filter(c=>c.status==='partial').map(c=>c.label);
-    t.completeness_index=cats.length?Math.round(((done+partial*.5)/cats.length)*100):0;
-  }
-  function mergePromotion(admin,promo){
-    if(!admin||admin.success===false)return admin;
-    const by=promo?.by_teacher||{};
-    let complete=0,missing=0;
-    for(const t of (admin.teachers||[])){
-      const p=by[String(t.teacher_id)]||{item_count:0,last_created_at:null};
-      const count=Number(p.item_count||0);
-      if(count)complete++;else missing++;
-      const cat={key:'promotion',label:'Promosi Sekolah',applicable:true,status:count?'present':'missing',item_count:count,last_created_at:p.last_created_at||null,items:[],granularity:'period',lazy_items:true,note:'Minimal 1 foto Promosi Socmed pada periode yang dipilih HRD.'};
-      const idx=(t.categories||[]).findIndex(c=>c&&c.key==='promotion');
-      if(idx>=0)t.categories[idx]=cat;else (t.categories||(t.categories=[])).push(cat);
-      recalcTeacher(t);
-    }
-    admin.summary=admin.summary||{};
-    admin.summary.promotion_complete=complete;
-    admin.summary.promotion_missing=missing;
-    admin.summary.with_issues=(admin.teachers||[]).filter(t=>Number(t.missing_count||0)>0||Number(t.partial_count||0)>0).length;
-    admin.summary.clean=(admin.teachers||[]).length-admin.summary.with_issues;
-    admin.fast_path=true;
-    return admin;
-  }
   async function directHrd(init,info){
     const adminUrl=info.url.replace('/functions/v1/hrd-live-report','/functions/v1/hrd-administration');
-    const baseInit={...(init||{})};
-    if(info.action==='rpp_file')return nativeFetch(adminUrl,baseInit);
-
-    const promoUrl=info.url.replace('/functions/v1/hrd-live-report','/functions/v1/hrd-promotion-monitor');
-    const promoInit={...(init||{}),body:JSON.stringify({action:'summary',start:info.payload.start,end:info.payload.end})};
-    const [adminRes,promoRes]=await Promise.all([
-      nativeFetch(adminUrl,baseInit),
-      nativeFetch(promoUrl,promoInit).catch(()=>null)
-    ]);
-    const raw=await adminRes.text();let admin={};
-    try{admin=raw?JSON.parse(raw):{}}catch(_){return new Response(raw,{status:adminRes.status,headers:{'Content-Type':'text/plain'}})}
-    if(!adminRes.ok||admin.success===false)return asResponse(admin,adminRes.status,'hrd-administration');
-    let promo={};
-    if(promoRes?.ok){try{promo=await promoRes.json()}catch(_){promo={}}}
-    return asResponse(mergePromotion(admin,promo),200,'hrd-fast-direct');
+    return nativeFetch(adminUrl,{...(init||{})});
   }
 
   window.fetch=async function(input,init){

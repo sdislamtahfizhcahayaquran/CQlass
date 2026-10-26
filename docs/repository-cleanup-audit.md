@@ -5,7 +5,7 @@ Baseline: `b5b0d11885e6eec5b5f601677791c7696e522a56`. All 223 tracked files inve
 ## Changes
 
 - Remove `tahfizh-kabid-shell-fix.js`: the old shell has a parse error and overlaps the native `quran-role-final-ui.js`. Login reveal and role entry now call the native owner. Seven Quran routes are preserved.
-- Stop requesting `academic-pts-attendance-fix.js`: retired no-op exists only in the local checkout, not the tracked baseline. No server feature is removed.
+- Stop requesting `academic-pts-attendance-fix.js`: retired no-op was still tracked; the follow-up below removes it. No server feature is removed.
 - Eager scripts are owned by index.html: academic sidebar organizer, Quran dashboard/input, admin class partners, icons, UI refinement and PjBL. Remove their redundant secondary load calls.
 - Partner/Tahfizh menu loading stays in final-integration; Badal Mapel loads on demand through academic-badal-sidebar-restore.
 - Delete duplicate legacy score export calculations and fixed 2026/2027 semester-1 requests from academic-download-data. Its Nilai button opens existing Monitoring Nilai with its current-period export. RPP/LP and Bilingual exports remain.
@@ -49,7 +49,7 @@ References below include comments and documentation and are a conservative signa
 | `academic-legger-live.js` | Retain: referenced asset / runtime dependency | 1 |
 | `academic-master-tp.js` | Retain: referenced asset / runtime dependency | 1 |
 | `academic-pjbl-report.js` | Retain: referenced asset / runtime dependency | 1 |
-| `academic-pts-attendance-fix.js` | Retain: referenced asset / runtime dependency | 1 |
+| `academic-pts-attendance-fix.js` | Removed in follow-up: no runtime references; only sets an unused flag | 0 |
 | `academic-ranking-report.js` | Retain: referenced asset / runtime dependency | 1 |
 | `academic-sidebar-clean-v1.js` | Retain: referenced asset / runtime dependency | 3 |
 | `academic-sidebar-order.js` | Retain; targeted cleanup / syntax correction | 1 |
@@ -258,3 +258,14 @@ References below include comments and documentation and are a conservative signa
 | `uks-duty.js` | Retain: referenced asset / runtime dependency | 3 |
 | `walas-daily-monitoring.js` | Retain: referenced asset / runtime dependency | 1 |
 | `walas-guru-role-restore.js` | Retain; targeted cleanup / syntax correction | 1 |
+
+## Follow-up verification — 26 October 2026
+
+Baseline: `96486a515030ff31c28ceee2f69eff6fce76dd9b`. Re-inventoried all 224 tracked files: 117 JS, 35 TS, 21 SQL, 15 CJS tests, 14 HTML, 8 CSS, 7 Markdown, 2 workflows, 4 images, 1 manifest. No byte-identical duplicates. All root JS/CSS/image assets have an inbound runtime filename reference except the retired attendance no-op and `gedung.png`; the institutional image remains available. Filename references are conservative evidence, not a complete dynamic call graph.
+
+- Delete `academic-pts-attendance-fix.js`: no HTML/JS/CSS/manifest/workflow references; its only effect was setting a flag that no other file reads.
+- Remove unreachable HRD promotion merging and summary calculations from `background-api-fix.js`. `requestInfo` admits only `rpp_file`, which already returned before this branch. Preserve request headers/body, response cache, error handling, retry and original fallback. Other actions continue to the original fetch untouched. Bump the script URL version in `index.html`.
+- Retain active role wrappers, direct-entry pages, database migrations/rollback, service sources and tests. Similar filenames alone do not establish redundancy. No database, Edge Function or school-record mutation.
+- Add five isolated fetch-routing regression cases, run against both the original and cleaned implementation: RPP route/cache, other-action passthrough, failed-response cache exclusion, retry/fallback and abort propagation.
+
+Validation: all 15 existing test files passed before edits. After edits, rerun all 16 test files (20 reported tests), including JS/TS/inline-script syntax, local reference existence and 15-role loader simulation. Authenticated end-to-end submissions and SQL database tests are not part of this local audit; one-action/one-handler across every workflow is not claimed.
