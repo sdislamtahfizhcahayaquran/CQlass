@@ -8,7 +8,7 @@ const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY
 const EP={
   core:BASE+'/functions/v1/teacher-timesheet',
   work:BASE+'/functions/v1/teacher-work-schedule',
-  recurring:BASE+'/functions/v1/teacher-recurring-schedule',
+
   special:BASE+'/functions/v1/teacher-timesheet-special-overlay'
 };
 const token=()=>typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'');
@@ -64,10 +64,9 @@ async function load(){
   G.loading=true;G.key=c.key;
   try{
     const base={month:c.month,teacher_id:c.teacherId||undefined};
-    const [core,work,rec,special]=await Promise.all([
+    const [core,work,special]=await Promise.all([
       call(EP.core,{action:'bootstrap',...base}),
       call(EP.work,base),
-      call(EP.recurring,{action:'bootstrap',...base}),
       call(EP.special,base)
     ]);
     const spSet=specialDates(special.items);
@@ -117,7 +116,9 @@ async function load(){
       if(day===6&&date<'2026-10-17')(core.saturdays||[]).filter(x=>x.event_date===date&&x.configured!==false).forEach(x=>busy.push({start_time:x.start_time,end_time:x.end_time}));
       if(isSpecial)(special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       (core.activities||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
-      (rec.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
+      // Pola mingguan hanya rencana, bukan bukti aktivitas sudah dilaksanakan.
+      // Jangan tutup jam kosong sebelum guru benar-benar menyimpan kegiatan manual.
+      // Baris pola tetap ditampilkan terpisah oleh timesheet-recurring.js.
       // Sabtu selalu dihitung dalam jam kerja 07.30–12.00.
       // Agenda HRD yang masih tercatat tetap menjadi blocker; selain itu Sabtu dapat diisi mandiri dan dijadikan pola.
       const ws=day===6?450:420,we=workEnd;

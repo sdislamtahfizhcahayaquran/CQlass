@@ -150,7 +150,8 @@ window.tsv2ActivityDateChanged=date=>{
 function openCardRaw(n){[1,2,3].forEach(i=>{const el=document.getElementById('tsv2-card'+i);if(el)el.hidden=i!==Number(n)});document.querySelectorAll('.tsv2-cardpick').forEach(b=>b.classList.toggle('active',Number(b.dataset.tsCard)===Number(n)))}
 window.tsv2OpenCard=n=>{n=Number(n);if(n===3){body();setTimeout(()=>openCardRaw(3),0);return}openCardRaw(n)};
 window.tsv2RecapMode=m=>{S.recapMode=m==='full'?'full':'gaps';body()};
-window.tsv2SaveFixed=async(silent=false)=>{const form=document.querySelector('#tsv2-card1 .tsv2-form'),date=document.getElementById('tsv2-fixed-date')?.value||'',start=document.getElementById('tsv2-fixed-start')?.value||'',end=document.getElementById('tsv2-fixed-end')?.value||'',mid=document.getElementById('tsv2-fixed-act')?.value||'',note=document.getElementById('tsv2-fixed-note')?.value||'';if(form?.dataset.fixedSelected!=='1'){toast('Pilih dulu slot terjadwal.',true);return}if(!date||!start||!end||!mid||end<=start){toast('Pilih slot dan jenis aktivitas.',true);return}try{await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Slot terjadwal tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(1),0)}catch(e){toast(e.message,true)}};
+let tsv2FixedSaving=false;
+window.tsv2SaveFixed=async(silent=false)=>{if(tsv2FixedSaving){if(!silent)toast('Penyimpanan sebelumnya masih diproses.');return}const form=document.querySelector('#tsv2-card1 .tsv2-form'),date=document.getElementById('tsv2-fixed-date')?.value||'',start=document.getElementById('tsv2-fixed-start')?.value||'',end=document.getElementById('tsv2-fixed-end')?.value||'',mid=document.getElementById('tsv2-fixed-act')?.value||'',note=document.getElementById('tsv2-fixed-note')?.value||'';if(form?.dataset.fixedSelected!=='1'){toast('Pilih dulu slot terjadwal.',true);return}if(!date||!start||!end||!mid||end<=start){toast('Pilih slot dan jenis aktivitas.',true);return}try{tsv2FixedSaving=true;await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Slot terjadwal tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(1),0)}catch(e){toast(e.message,true)}finally{tsv2FixedSaving=false}};
 
 function flexCollect(){
   return [...document.querySelectorAll('#tsv2-flex-rows .tsv2-flex-row')].map(r=>({
@@ -174,7 +175,8 @@ window.tsv2FlexAdd=()=>{
   const rows=flexCollect();const last=rows[rows.length-1]||{};FLEX.rows=rows;FLEX.rows.push({start:last.end||'',end:'',mid:'',note:''});flexRender();
 };
 window.tsv2FlexRemove=i=>{const rows=flexCollect();if(rows.length<=1)return;rows.splice(Number(i),1);FLEX.rows=rows;flexRender()};
-window.tsv2FlexSaveAll=async()=>{
+let tsv2FlexSaving=false;
+window.tsv2FlexSaveAll=async()=>{if(tsv2FlexSaving){toast('Penyimpanan sebelumnya masih diproses.');return}
   const rows=flexCollect();
   if(!FLEX.date||!FLEX.start||!FLEX.end||!rows.length){toast('Pilih dulu rentang Jumat/Sabtu.',true);return}
   for(const r of rows){
@@ -185,6 +187,7 @@ window.tsv2FlexSaveAll=async()=>{
   const sorted=rows.map((r,i)=>({...r,i})).sort((a,b)=>a.start.localeCompare(b.start)||a.end.localeCompare(b.end));
   for(let i=1;i<sorted.length;i++){if(sorted[i].start<sorted[i-1].end){toast('Jam kegiatan tidak boleh tumpang tindih.',true);return}}
   const created=[];
+  tsv2FlexSaving=true;
   try{
     for(const r of rows){
       const out=await api('save_activity',{work_date:FLEX.date,start_time:r.start,end_time:r.end,activity_master_id:r.mid,note:r.note});
@@ -197,10 +200,19 @@ window.tsv2FlexSaveAll=async()=>{
     for(const id of created.reverse()){try{await api('delete_activity',{id})}catch(_){}}
     toast('Penyimpanan dibatalkan: '+(e.message||String(e)),true);
     await load();setTimeout(()=>window.tsv2OpenCard(1),0);
-  }
+  }finally{tsv2FlexSaving=false}
 };
-window.tsv2Save=async(silent=false)=>{const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}try{await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Aktivitas tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message,true)}};
-window.tsv2SavePattern=async()=>{const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}const item=S.master.find(x=>String(x.id)===String(mid));if(!item){toast('Aktivitas tidak tersedia.',true);return}try{if(typeof window.cqRecurringSaveFromGap!=='function')throw Error('Pola mingguan belum siap. Muat ulang Timesheet.');await window.cqRecurringSaveFromGap({date,start,end,activity_name:item.name,note});toast('Pola mingguan tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message||String(e),true)}};
+let tsv2Saving=false;
+window.tsv2Save=async(silent=false)=>{if(tsv2Saving){if(!silent)toast('Penyimpanan sebelumnya masih diproses.');return}const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsManualWeekendAllowed(date,start,end)&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}try{tsv2Saving=true;await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Aktivitas tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message,true)}finally{tsv2Saving=false}};
+
+// Jumat dan Sabtu dapat diisi mandiri tanpa harus memilih slot kosong.
+// Pemeriksaan benturan tetap dilakukan oleh API saat penyimpanan.
+window.cqTsManualWeekendAllowed=(date,start,end)=>{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date||''))||!/^\d{2}:\d{2}$/.test(String(start||''))||!/^\d{2}:\d{2}$/.test(String(end||''))||end<=start)return false;
+  const day=new Date(date+'T12:00:00Z').getUTCDay();
+  return day===5?start>='07:00'&&end<='16:00':day===6&&start>='07:30'&&end<='12:00';
+};
+window.tsv2SavePattern=async()=>{const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsManualWeekendAllowed(date,start,end)&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}const item=S.master.find(x=>String(x.id)===String(mid));if(!item){toast('Aktivitas tidak tersedia.',true);return}try{if(typeof window.cqRecurringSaveFromGap!=='function')throw Error('Pola mingguan belum siap. Muat ulang Timesheet.');await window.cqRecurringSaveFromGap({date,start,end,activity_name:item.name,note});toast('Pola mingguan tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message||String(e),true)}};
 window.tsv2SaveRecapRow=async(kind,id,silent=false)=>{const tr=document.querySelector('[data-edit-key="'+kind+'-'+id+'"]');if(!tr)return;const val=n=>tr.querySelector('[data-er="'+n+'"]')?.value||'',work_date=val('date'),start_time=val('start'),end_time=val('end'),activity=val('activity'),note=val('note');if(!work_date||!start_time||!end_time||!activity||end_time<=start_time){toast('Lengkapi tanggal, jam, dan kegiatan.',true);return}try{if(kind==='saturday')await api('save_saturday_override',{saturday_schedule_id:id,work_date,start_time,end_time,activity,note});else await api('update_activity',{id,work_date,start_time,end_time,activity,note});if(!silent)toast('Perubahan Timesheet tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(3),0)}catch(e){toast(e.message||String(e),true)}};
 window.tsv2Delete=async id=>{if(!confirm('Hapus aktivitas ini?'))return;try{await api('delete_activity',{id});toast('Aktivitas dihapus.');await load()}catch(e){toast(e.message,true)}};
 window.tsv2Upload=async id=>{const f=document.getElementById('tsv2-cert-'+id)?.files?.[0];if(!f){toast('Pilih file sertifikat.',true);return}if(f.size>8*1024*1024){toast('Ukuran sertifikat maksimal 8 MB.',true);return}try{const b64=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result||'').split(',')[1]||'');r.onerror=no;r.readAsDataURL(f)});await api('upload_certificate',{saturday_schedule_id:id,file_name:f.name,mime_type:f.type,base64:b64});toast('Sertifikat tersimpan.');await load()}catch(e){toast(e.message,true)}};
