@@ -1,3 +1,4 @@
+import { reportExport } from "./report-export.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 
 const CORS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization,apikey,content-type,x-session-token","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json; charset=utf-8"};
@@ -260,6 +261,7 @@ Deno.serve(async(req:Request)=>{
       }
       return J({success:true,confirmed:true,date,kind,class_id:cid});
     }
+    if(action==="report_export"){if(!has(a,"kesiswaan","pimpinan","admin"))return J({success:false,error:"forbidden"},403);return J(await reportExport(sb,b))}
     if(action==="report"){if(!has(a,"kesiswaan","pimpinan","admin"))return J({success:false,error:"forbidden"},403);return J(await reportData(b))}
     if(action==="list"){
       const type=L(b.kind)==="achievement"?"achievement":"affairs",from=T(b.start_date),to=T(b.end_date);
