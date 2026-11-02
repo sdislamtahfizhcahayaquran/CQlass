@@ -73,7 +73,7 @@ async function load(){
     const spSet=specialDates(special.items);
     const all=[];
     const today=todayLocal();
-    for(const date of dates(c.month)){if(c.month===today.slice(0,7)&&date>today)continue;
+    for(const date of dates(c.month)){if(work.profile!=='tahfizh'&&c.month===today.slice(0,7)&&date>today)continue;
       const day=new Date(date+'T12:00:00Z').getUTCDay();if(day===0)continue;
       const busy=[];
       const isSpecial=spSet.has(date);

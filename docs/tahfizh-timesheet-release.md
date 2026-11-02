@@ -23,3 +23,7 @@ The active Add Activity form uses a text field for teachers with explicit Tahfiz
 Saturday, like Friday, has no generated routine/KBM blocks for this profile. The HRD projection includes explicit Tahfizh/halaqah teachers, preserves manual records and weekly patterns, and omits Friday/Saturday automatic routines. Fallback HRD reports also receive these projections. Removed unreachable split-activity/fixed-slot form handlers and the corresponding unused autosave binder. No existing reports, patterns, assignments, or roles are rewritten or deleted.
 
 Validation: mocked backend save/deny scenarios, Friday/Saturday pattern projection, typed form and weekly payloads, HRD manual/pattern projection, existing Friday UI, HRD fetch routes, repository dependency/syntax and role-loader regression suites. No real teacher input is submitted by these tests.
+
+### Future-date validation correction
+
+Reproduced the reported 6 November 2026 07:30–08:00 rejection with the client date fixed to 2 November. The gap calculator omitted future dates in the current month, so the form incorrectly reported an overlap before calling the server. Explicit Tahfizh profiles now calculate future slots too, retaining saved activity/pattern blockers and work-hour boundaries. Non-Tahfizh future-date policy is unchanged. Regression covers future Friday and Saturday plus pattern overlap and non-Tahfizh blockers.
