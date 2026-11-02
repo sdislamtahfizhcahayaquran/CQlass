@@ -1,75 +1,100 @@
-/* CQlass — Download Data Kabid Akademik
-   Satu page resmi: Nilai, RPP & LP, Bilingual. */
-(function(){
+/* CQlass: academic reports. Read-only requests; preview and Excel share one snapshot. */
+(function(root){
 'use strict';
-if(window.__CQ_ACADEMIC_DOWNLOAD_DATA__)return;
-const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function css(){if(document.getElementById('cq-ak-download-css'))return;const s=document.createElement('style');s.id='cq-ak-download-css';s.textContent=`
-.akdl{max-width:1250px;margin:auto}.akdl-head{margin-bottom:16px}.akdl-head h1{margin:0;color:#123f3d;font-size:26px}.akdl-head p{color:#6d817e;font-size:12px;margin:5px 0 0}
-.akdl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.akdl-card{background:#fff;border:1px solid #dce9e6;border-radius:16px;padding:18px;display:flex;flex-direction:column;min-height:245px}
-.akdl-card h2{font-size:17px;margin:0 0 6px;color:#154b46}.akdl-card p{font-size:11px;color:#71817f;line-height:1.55;margin:0}.akdl-list{margin:14px 0 18px;padding:0;list-style:none;font-size:11px;color:#405d58}.akdl-list li{padding:5px 0;border-bottom:1px solid #eef3f2}
-.akdl-actions{margin-top:auto;display:flex;gap:7px;flex-wrap:wrap}.akdl-btn{border:1px solid #c9dfdb;border-radius:9px;padding:9px 12px;background:#fff;color:#0d7168;font-weight:800;font-size:11px;cursor:pointer}.akdl-btn.primary{background:#0c7b70;color:#fff;border-color:#0c7b70}.akdl-note{margin-top:14px;background:#eef7f5;border-radius:12px;padding:12px;font-size:10.5px;color:#58716d}
-@media(max-width:850px){.akdl-grid{grid-template-columns:1fr}}
-`;document.head.appendChild(s)}
-function go(id){if(typeof setActiveModule==='function')setActiveModule(id)}
-
-const CLASSES=['1A Banin','1B Banin','1A Banat','1B Banat','2A Banin','2B Banin','2A Banat','2B Banat','3A Banin','3B Banin','3A Banat','3B Banat','4A Banin','4B Banin','4A Banat','4B Banat','5A Banin','5B Banin','5A Banat','5B Banat','6 Banin','6 Banat'];
-function toast(m,e){if(typeof showToast==='function')showToast(m,!!e)}
-function isAcademic(){
- let u=null;
- try{u=(typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')||{}}catch(_){u={}}
- const norm=v=>String(v||'').trim().toLowerCase().replace(/[\\s-]+/g,'_');
- return [u.role,u.role_code,u.primary_role].concat(Array.isArray(u.roles)?u.roles:[]).map(norm).some(r=>r==='akademik'||r==='kabid_akademik'||r==='academic');
+const MONTHS=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const CATEGORIES={nilai:'Leger Nilai',tp:'Monitoring TP',prioritas:'Prioritas Siswa',guru:'Progres Guru',ranking:'Ranking',rpp:'Dokumen RPP',lp:'Target & Pelaksanaan LP',bilingual:'Bilingual',pjbl:'Laporan PjBL'};
+const E=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const num=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);
+const avg=v=>{const a=v.map(num).filter(x=>x!==null);return a.length?a.reduce((s,x)=>s+x,0)/a.length:null};
+const round=v=>v===null?null:Math.round(v*100)/100;
+const pred=v=>v===null?'':v>=89?'A':v>=82?'B':v>=75?'C':'D';
+function sheet(name,headers,rows){return {name,headers,rows};}
+function normalized(load){
+ const objectives=load.objectives||load.components?.tp||[];
+ const students=(load.students||[]).map(s=>{
+  const tasks=[1,2,3,4,5].map(i=>num(s.components?.['TUGAS_'+i]?.score));
+  const tp=objectives.map(o=>num((s.tp||[]).find(t=>String(t.learning_objective_id)===String(o.id))?.score));
+  const wwp=num(s.components?.WWP?.score),asas=num(s.components?.ASAS?.score),values=[...tasks,...tp,wwp,asas];
+  const missing=values.filter(v=>v===null).length;
+  const final=missing===0&&tp.length?avg(tasks)*.1+avg(tp)*.3+wwp*.1+asas*.5:null;
+  return {...s,tasks,tp,wwp,asas,missing,final};
+ });return {...load,objectives,students};
 }
-let xlsxPromise=null;
-function loadXlsx(){if(window.XLSX)return Promise.resolve(window.XLSX);if(xlsxPromise)return xlsxPromise;xlsxPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.async=true;s.dataset.cqAcademicDownload='xlsx';s.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('Mesin Excel gagal dimuat.'));s.onerror=()=>reject(new Error('Mesin Excel gagal dimuat. Periksa koneksi internet.'));document.head.appendChild(s)});return xlsxPromise}
-function needXlsx(){if(!window.XLSX)throw new Error('Mesin Excel belum termuat.');return window.XLSX}
-function aoaSheet(rows,widths){const X=needXlsx(),ws=X.utils.aoa_to_sheet(rows);if(widths)ws['!cols']=widths.map(w=>({wch:w}));return ws}
-function saveBook(wb,name){needXlsx().writeFile(wb,name,{compression:true})}
-function dateId(v){if(!v)return '';try{return new Date(v).toLocaleDateString('id-ID')}catch(_){return String(v)}}
-function authHeaders(){const key=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';let tok='';try{tok=typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'')}catch(_){}return {'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-session-token':tok}}
-async function rppReq(action){const base=(typeof SUPABASE_URL!=='undefined'&&SUPABASE_URL)||'https://lmglkxzemtvxcgktiord.supabase.co';const r=await fetch(base+'/functions/v1/rpp-lp-manager',{method:'POST',headers:authHeaders(),body:JSON.stringify({action})});const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw new Error(d.error||'Data RPP & LP gagal dimuat.');return d}
-async function exportRppLp(btn){
- if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}
- const old=btn.textContent;btn.disabled=true;btn.textContent='Menyiapkan...';
- try{await loadXlsx();
-  const [rpp,lp]=await Promise.all([rppReq('archive_report'),rppReq('report')]),X=needXlsx(),wb=X.utils.book_new();
-  const rr=rpp.rows||[],ll=lp.rows||[],teachers=new Set([...rr.map(x=>x.teacher_name),...ll.map(x=>x.teacher_name)].filter(Boolean));
-  const summary=[['RINGKASAN RPP & LP'],['Tahun Ajaran',rpp.academic_year||lp.academic_year||''],['Semester',rpp.semester_no||lp.semester_no||1],[],['Indikator','Jumlah'],['Total RPP',rr.length],['Total Target LP',ll.length],['Guru Tercatat',teachers.size],['RPP Perlu Ditinjau',Number(rpp.summary?.pending_review||0)],['LP RPP Masuk',Number(lp.summary?.submitted||0)],['LP Belum Upload',Number(lp.summary?.missing||0)]];
-  X.utils.book_append_sheet(wb,aoaSheet(summary,[28,18]),'RINGKASAN');
-  const graph=[['GRAFIK PROGRES'],['Status','Jumlah'],['RPP Masuk',Number(lp.summary?.submitted||0)],['Belum Upload',Number(lp.summary?.missing||0)],['Perlu Ditinjau',Number(rpp.summary?.pending_review||0)]];
-  X.utils.book_append_sheet(wb,aoaSheet(graph,[24,16]),'GRAFIK');
-  X.utils.book_append_sheet(wb,aoaSheet([['No','File','Guru','Kelas','Mapel','Tanggal Upload','Status'],...rr.map((x,i)=>[i+1,x.original_filename||'',x.teacher_name||'',x.class_name||'',x.subject_name||'',dateId(x.uploaded_at||x.created_at),x.content_status||''])],[6,36,26,18,24,18,20]),'DETAIL RPP');
-  X.utils.book_append_sheet(wb,aoaSheet([['No','Guru','Kelas','Mapel','Periode','Target LP','Progres %','Status RPP','Pelaksanaan'],...ll.map((x,i)=>[i+1,x.teacher_name||'',x.class_name||'',x.subject_name||'',x.period_label||('Minggu '+(x.week_no||'')),x.target_text||'',Number(x.progress_percent||0),x.rpp_status||'',x.execution_status||''])],[6,26,18,24,18,45,12,18,18]),'DETAIL LP');
-  saveBook(wb,'Rekap_RPP_LP_SDCQ.xlsx');toast('RPP & LP berhasil diunduh.');
- }catch(e){toast(e.message||'Gagal membuat Excel RPP & LP.',true)}finally{btn.disabled=false;btn.textContent=old}
+function scoreSheets(kind,loads){
+ const models=loads.map(normalized),summary=[],tpRows=[],priority=[],teachers=[],details=[];
+ for(const m of models){
+  const a=m.assignment||{},base=[a.class_name||'',a.subject_name||'',a.teacher_name||''];
+  const finals=m.students.map(s=>s.final).filter(v=>v!==null),complete=m.students.filter(s=>s.final!==null).length;
+  summary.push([...base,m.students.length,complete,m.students.length-complete,round(avg(finals)),finals.length?round(finals.filter(v=>v>=75).length/finals.length*100):null]);
+  m.objectives.forEach((o,i)=>{const values=m.students.map(s=>s.tp[i]).filter(v=>v!==null);tpRows.push([...base,o.code||'TP'+(i+1),o.description||o.topic||'',values.length,m.students.length-values.length,round(avg(values)),values.length?Math.max(...values):null,values.length?Math.min(...values):null,values.length?round(values.filter(v=>v>=75).length/values.length*100):null]);});
+  teachers.push([...base,m.students.length,complete,m.students.length-complete,m.objectives.filter((o,i)=>m.students.some(s=>s.tp[i]===null)).length,complete===m.students.length&&m.objectives.length?'Lengkap':'Perlu dilengkapi']);
+  for(const s of m.students){const low=s.tp.filter(v=>v!==null&&v<75).length;if(s.missing||low||(s.final!==null&&s.final<75)||!m.objectives.length)priority.push([...base,s.nis||'',s.name||'',s.missing,low,round(s.final),!m.objectives.length?'TP belum tersedia':s.missing?'Lengkapi nilai':'Remedial / tindak lanjut']);}
+  details.push(sheet((a.class_name||'Kelas')+' '+(a.subject_name||'Mapel'),['No','NIS','Nama Siswa','T1','T2','T3','T4','T5','Rata Tugas',...m.objectives.map((o,i)=>o.code||'TP'+(i+1)),'Rata TP','WWP','ASAS','Nilai Akhir','Predikat','Status'],m.students.map((s,i)=>[i+1,String(s.nis||''),s.name||'',...s.tasks,round(avg(s.tasks)),...s.tp,round(avg(s.tp)),s.wwp,s.asas,round(s.final),pred(s.final),s.final===null?'Belum lengkap':s.final>=75?'Tuntas':'Belum tuntas'])));
+ }
+ const sum=sheet('Ringkasan',['Kelas','Mapel','Guru','Siswa','Nilai Lengkap','Belum Lengkap','Rata-rata NA','Ketuntasan (%)'],summary);
+ if(kind==='nilai'){
+  const groups=new Map();models.forEach((m,i)=>{const name=m.assignment?.class_name||'Kelas';if(!groups.has(name))groups.set(name,[]);groups.get(name).push({m,detail:details[i]});});
+  const classes=[];for(const [name,parts] of groups){const roster=new Map();for(const {m} of parts)for(const s of m.students)roster.set(String(s.id||s.student_id||s.nis||s.name),s);const headers=['No','NIS','Nama Siswa',...parts.flatMap(({m,detail})=>detail.headers.slice(3).map(h=>(m.assignment?.subject_name||'Mapel')+' · '+h))];const rows=[...roster.entries()].sort((a,b)=>String(a[1].name).localeCompare(String(b[1].name),'id')).map(([id,s],i)=>[i+1,String(s.nis||''),s.name||'',...parts.flatMap(({m,detail})=>{const ix=m.students.findIndex(x=>String(x.id||x.student_id||x.nis||x.name)===id);return ix<0?Array(detail.headers.length-3).fill(null):detail.rows[ix].slice(3);})]);classes.push(sheet(name,headers,rows));}return [sum,...classes];
+ }
+ if(kind==='tp')return [sheet('Monitoring TP',['Kelas','Mapel','Guru','TP','Tujuan Pembelajaran','Terisi','Kosong','Rata-rata','Tertinggi','Terendah','Ketuntasan (%)'],tpRows)];
+ if(kind==='prioritas')return [sheet('Prioritas Siswa',['Kelas','Mapel','Guru','NIS','Nama Siswa','Komponen Kosong','TP di Bawah 75','Nilai Akhir','Tindak Lanjut'],priority)];
+ return [sheet('Progres Guru',['Kelas','Mapel','Guru','Siswa','Lengkap','Belum Lengkap','TP Belum Penuh','Status'],teachers)];
 }
-async function exportBilingual(btn){
- if(!isAcademic()){toast('Download Data hanya untuk Kabid Akademik.',true);return}
- const old=btn.textContent;btn.disabled=true;btn.textContent='Mengumpulkan 22 kelas...';
- try{await loadXlsx();
-  const all=[];let categories=[];
-  for(let i=0;i<CLASSES.length;i++){btn.textContent='Kelas '+(i+1)+'/22';const d=await callApi('getVocabularyBulanan',{kelas:CLASSES[i],tahunAjaran:'2026/2027',semester:1});if(!d||d.success===false)continue;categories=d.categories||categories;for(const s of (d.students||[])){const vals=(d.categories||[]).map(cat=>d.values?.[String(s.nis)+'|'+Number(cat.urutan)]??'');const total=vals.reduce((a,v)=>a+(Number(v)||0),0);all.push({kelas:CLASSES[i],nis:s.nis,nama:s.nama,vals,total,target:(d.categories||[]).reduce((a,x)=>a+(Number(x.target)||0),0)})}}
-  const X=needXlsx(),wb=X.utils.book_new(),by={};all.forEach(x=>{(by[x.kelas]||(by[x.kelas]=[])).push(x)});
-  const sum=[['RINGKASAN BILINGUAL'],['Tahun Ajaran','2026/2027'],['Semester',1],[],['Kelas','Siswa','Rata-rata Capaian %'],...CLASSES.map(k=>{const a=by[k]||[];const pct=a.length?a.reduce((z,x)=>z+(x.target?x.total/x.target*100:0),0)/a.length:0;return[k,a.length,Math.round(pct*10)/10]})];
-  X.utils.book_append_sheet(wb,aoaSheet(sum,[20,12,22]),'RINGKASAN');
-  X.utils.book_append_sheet(wb,aoaSheet([['GRAFIK CAPAIAN PER KELAS'],['Kelas','Capaian %'],...sum.slice(5).map(r=>[r[0],r[2]])],[20,16]),'GRAFIK');
-  const heads=['No','Kelas','NIS','Nama',...categories.map(x=>x.label||('Kategori '+x.urutan)),'Total','Target','Capaian %'];
-  X.utils.book_append_sheet(wb,aoaSheet([heads,...all.map((x,i)=>[i+1,x.kelas,x.nis,x.nama,...x.vals,x.total,x.target,x.target?Math.round(x.total/x.target*1000)/10:0])],[6,18,16,30,...categories.map(()=>16),12,12,14]),'DETAIL');
-  saveBook(wb,'Rekap_Bilingual_SDCQ.xlsx');toast('Bilingual berhasil diunduh.');
- }catch(e){toast(e.message||'Gagal membuat Excel Bilingual.',true)}finally{btn.disabled=false;btn.textContent=old}
-}
-function runDownload(kind,btn){if(kind==='RPP & LP')return exportRppLp(btn);if(kind==='Bilingual')return exportBilingual(btn);return go('legger-live')}
-
-window.renderAcademicDownloadData=function(c){if(!isAcademic()){c.innerHTML='<div class="card">Menu ini khusus Kabid Akademik.</div>';return}css();c.innerHTML=`
-<div class="akdl"><div class="akdl-head"><h1>Download Data Akademik</h1><p>Unduh data akademik siap laporan. Setiap workbook memuat Ringkasan, Grafik, dan data detail.</p></div>
-<div class="akdl-grid">
-<section class="akdl-card"><h2>Nilai</h2><p>Unduhan nilai memakai periode aktif pada Monitoring Nilai.</p><ul class="akdl-list"><li>Sheet Ringkasan</li><li>Grafik capaian nilai</li><li>1 sheet = 1 kelas</li><li>Detail nilai siswa per mata pelajaran</li></ul><div class="akdl-actions"><button class="akdl-btn" data-go="leger">Buka Nilai</button><button class="akdl-btn primary" data-dl="Nilai">Buka Unduhan Nilai</button></div></section>
-<section class="akdl-card"><h2>RPP &amp; LP</h2><p>Rekap kelengkapan dokumen pembelajaran guru.</p><ul class="akdl-list"><li>Sheet Ringkasan</li><li>Grafik progres kelengkapan</li><li>Detail guru · mapel · kelas</li><li>Status dan kesesuaian RPP ↔ LP</li></ul><div class="akdl-actions"><button class="akdl-btn" data-go="rpp-lp-akademik">Buka RPP &amp; LP</button><button class="akdl-btn primary" data-dl="RPP & LP">Download Excel</button></div></section>
-<section class="akdl-card"><h2>Bilingual</h2><p>Rekap perkembangan program vocabulary bilingual.</p><ul class="akdl-list"><li>Sheet Ringkasan</li><li>Grafik progres/capaian</li><li>Detail per kelas dan periode</li><li>Perbandingan target dan capaian</li></ul><div class="akdl-actions"><button class="akdl-btn" data-go="bilingual">Buka Bilingual</button><button class="akdl-btn primary" data-dl="Bilingual">Download Excel</button></div></section>
-</div><div class="akdl-note"><b>Format wajib:</b> seluruh hasil download memiliki Ringkasan + Grafik + Detail. Nilai menggunakan struktur Legger dengan satu sheet untuk setiap kelas.</div></div>`;
-c.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
-c.querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>runDownload(b.dataset.dl,b));
+function rankingSheets(d,className){const rows=(d.rows||[]).filter(x=>!className||x.class_name===className);return [sheet('Ranking',['Kelas','Nama Siswa','Jumlah Nilai','Rata-rata','Ranking Kelas','Ranking Angkatan','Mapel Belum Lengkap','Academic Star'],rows.map(x=>[x.class_name,x.student_name,num(x.total),num(x.average),x.class_rank,x.grade_rank,(x.missing_subjects||[]).join(', '),x.is_academic_star?'Ya':''])) ,sheet('Nilai per Mapel',['Kelas','Nama Siswa','Mapel','Nilai'],rows.flatMap(x=>(x.subject_scores||[]).map(s=>[x.class_name,x.student_name,s.subject_name,num(s.score)])))];}
+function bilingualSheets(classes){return [sheet('Ringkasan',['Kelas','Siswa','Rata-rata Capaian (%)'],classes.map(c=>[c.name,(c.data.students||[]).length,round(avg((c.data.students||[]).map(s=>{const cat=c.data.categories||[],target=cat.reduce((n,x)=>n+(num(x.target)||0),0);const vals=cat.map(x=>num(c.data.values?.[String(s.nis)+'|'+Number(x.urutan)]));return target&&vals.every(v=>v!==null)?vals.reduce((a,b)=>a+b,0)/target*100:null})))])),...classes.map(c=>{const d=c.data,cat=d.categories||[],target=cat.reduce((n,x)=>n+(num(x.target)||0),0);return sheet(c.name,['NIS','Nama Siswa',...cat.map(x=>x.label||'Kategori '+x.urutan),'Total Terisi','Target','Capaian (%)','Status'],(d.students||[]).map(s=>{const vals=cat.map(x=>num(d.values?.[String(s.nis)+'|'+Number(x.urutan)])),total=vals.filter(v=>v!==null).reduce((a,b)=>a+b,0),complete=cat.length>0&&vals.every(v=>v!==null);return [String(s.nis||''),s.nama||s.name||'',...vals,total,target,complete&&target?round(total/target*100):null,complete?'Lengkap':'Belum lengkap'];}));})];}
+const pure={CATEGORIES,num,avg,normalized,scoreSheets,rankingSheets,bilingualSheets};
+if(typeof module!=='undefined'&&module.exports){module.exports=pure;return;}
+if(root.__CQ_ACADEMIC_DOWNLOAD_PREVIEW__)return;root.__CQ_ACADEMIC_DOWNLOAD_PREVIEW__=true;
+function authorized(){let u;try{u=(typeof currentUser!=='undefined'&&currentUser)||JSON.parse(localStorage.getItem('cqlass_user')||'{}')}catch(_){return false}return [u.role,u.role_code,u.primary_role,...(Array.isArray(u.roles)?u.roles:[])].some(r=>['akademik','kabid_akademik','academic'].includes(String(r||'').trim().toLowerCase().replace(/[\s-]+/g,'_')));}
+function headers(){const k=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';return {'Content-Type':'application/json',apikey:k,Authorization:'Bearer '+k,'x-session-token':getAuthToken()};}
+async function req(service,action,p={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);try{const r=await fetch(SUPABASE_URL+'/functions/v1/'+service,{method:'POST',headers:headers(),body:JSON.stringify({action,...p}),signal:controller.signal}),d=await r.json();if(!r.ok||d.success===false)throw Error(d.message||d.error||'Data gagal dimuat.');return d;}finally{clearTimeout(timer);}}
+function periodCheck(d,p){if(d.academic_year&&d.academic_year!==p.academic_year||d.semester_no&&Number(d.semester_no)!==Number(p.semester_no))throw Error('Periode respons berbeda. Muat ulang preview.');}
+let excelPromise;
+async function excel(){if(root.ExcelJS)return root.ExcelJS;if(!excelPromise)excelPromise=new Promise((ok,bad)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';s.onload=()=>root.ExcelJS?ok(root.ExcelJS):bad(Error('Mesin Excel gagal dimuat.'));s.onerror=()=>{excelPromise=null;s.remove();bad(Error('Mesin Excel gagal dimuat. Coba lagi.'));};document.head.appendChild(s);});return excelPromise;}
+function css(){if(document.getElementById('akdl-preview-css'))return;const s=document.createElement('style');s.id='akdl-preview-css';s.textContent=`.akdl{max-width:1450px;margin:auto;color:#17343a}.akdl [hidden]{display:none!important}.akdl h1{font-size:24px;margin:0 0 6px}.akdl p{font-size:12px;color:#647b80}.akdl-panel{background:white;border:1px solid #dce6eb;border-radius:15px;padding:18px;margin:16px 0}.akdl-tools{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.akdl-tools label{display:grid;gap:6px;font-size:11px;font-weight:700}.akdl select,.akdl input{border:1px solid #cad9df;border-radius:9px;padding:10px;background:white;min-height:40px}.akdl button{border:1px solid #cad9df;border-radius:9px;padding:10px 14px;cursor:pointer;background:white;color:#174963;font-weight:800}.akdl button.primary{background:#087e82;color:white;border-color:#087e82}.akdl button:disabled{opacity:.45;cursor:not-allowed}.akdl-status{font-size:12px;line-height:1.6;margin-top:12px;white-space:pre-wrap}.akdl-table{overflow:auto;max-height:560px;border:1px solid #dae6eb;border-radius:10px;margin:12px 0}.akdl table{border-collapse:collapse;width:100%;font-size:11px;min-width:700px}.akdl th,.akdl td{padding:10px;border-bottom:1px solid #e1eaf0;text-align:left;white-space:pre-wrap;min-width:90px}.akdl th{background:#173f63;color:white;position:sticky;top:0}.akdl tbody tr:nth-child(even){background:#f3f8fa}.akdl-pages{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px}.akdl-error{color:#a52f2f}.akdl-note{padding:10px;background:#eef7f6;border-radius:9px;font-size:11px;line-height:1.6}.akdl-count{font-size:12px;color:#647b80}@media(max-width:650px){.akdl-tools label{width:100%}.akdl-tools select,.akdl-tools input{width:100%}}`;document.head.appendChild(s);}
+function filterRows(rows,f,dateField){return rows.filter(x=>(!f.className||(x.class_name||'')===f.className)&&(!f.start||String(x[dateField]||(dateField==='uploaded_at'?x.created_at:'')||'').slice(0,10)>=f.start)&&(!f.end||String(x[dateField]||(dateField==='uploaded_at'?x.created_at:'')||'').slice(0,10)<=f.end));}
+root.renderAcademicDownloadData=async function(c){
+ if(!authorized()){c.innerHTML='<div class="card">Menu ini khusus Kabid Akademik.</div>';return;}
+ css();let state={period:null,boot:null,snapshot:null,token:0,busy:false,page:0,sheet:0};
+ c.innerHTML=`<div class="akdl"><h1>Download Data Akademik</h1><p>Pilih kategori, periksa preview, lalu unduh data yang sama ke Excel.</p><div class="akdl-panel"><div class="akdl-tools"><label>Kategori<select id="ad-kind">${Object.entries(CATEGORIES).map(([k,v])=>`<option value="${k}">${E(v)}</option>`).join('')}</select></label><label>Kelas<select id="ad-class"><option value="">Semua kelas</option></select></label><label id="ad-month-wrap" hidden>Bulan<select id="ad-month">${Array.from({length:12},(_,i)=>`<option value="${i+1}">${MONTHS[i]}</option>`).join('')}</select></label><label id="ad-start-wrap" hidden>Dari tanggal<input id="ad-start" type="date"></label><label id="ad-end-wrap" hidden>Sampai tanggal<input id="ad-end" type="date"></label><button class="primary" id="ad-preview" disabled>Tampilkan Preview</button><button id="ad-download" disabled>Download Excel</button></div><div id="ad-period" class="akdl-status">Memuat periode aktif...</div><div id="ad-note" class="akdl-note"></div><div id="ad-status" class="akdl-status" role="status" aria-live="polite"></div></div><div id="ad-result"></div></div>`;
+ const kindElement=c.querySelector('#ad-kind'),alive=()=>c.querySelector('#ad-kind')===kindElement;
+ const $=id=>c.querySelector('#'+id),status=(msg,error=false)=>{if(!alive())return;$('ad-status').textContent=msg;$('ad-status').classList.toggle('akdl-error',error);};
+ function invalidate(){state.token++;state.snapshot=null;$('ad-download').disabled=true;$('ad-result').innerHTML='';const kind=$('ad-kind').value;for(const id of ['ad-start-wrap','ad-end-wrap'])$(id).hidden=!['rpp','pjbl'].includes(kind);$('ad-month-wrap').hidden=kind!=='bilingual';$('ad-note').textContent=kind==='pjbl'?'Tanggal menyaring tanggal pencatatan log PjBL. Riwayat mengikuti cakupan layanan PjBL; tidak diasumsikan sebagai periode nilai.':kind==='rpp'?'Tanggal menyaring tanggal unggah RPP.':kind==='bilingual'?'Bulan mengikuti semester aktif. Nilai kosong tetap kosong dan ditandai belum lengkap.':'Data mengikuti tahun ajaran dan semester aktif. Filter tanggal tidak diterapkan pada rekap nilai atau target LP.';status('Klik Tampilkan Preview setelah memilih filter.');}
+ for(const id of ['ad-kind','ad-class','ad-month','ad-start','ad-end'])$(id).onchange=invalidate;
+ function paint(){const snap=state.snapshot;if(!snap)return;const data=snap.sheets[state.sheet],size=50,pages=Math.max(1,Math.ceil(data.rows.length/size));state.page=Math.min(state.page,pages-1);const shown=data.rows.slice(state.page*size,(state.page+1)*size);$('ad-result').innerHTML=`<div class="akdl-panel"><div class="akdl-tools"><label>Bagian laporan<select id="ad-sheet">${snap.sheets.map((s,i)=>`<option value="${i}" ${i===state.sheet?'selected':''}>${E(s.name)} (${s.rows.length})</option>`).join('')}</select></label><span class="akdl-count">${data.rows.length} baris · dimuat ${E(snap.loaded)} · Excel memuat seluruh baris dan bagian laporan.</span></div><div class="akdl-table"><table><thead><tr>${data.headers.map(h=>`<th>${E(h)}</th>`).join('')}</tr></thead><tbody>${shown.length?shown.map(r=>`<tr>${data.headers.map((_,i)=>`<td>${r[i]===null||r[i]===undefined?'—':E(r[i])}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${data.headers.length}">Tidak ada data pada filter ini.</td></tr>`}</tbody></table></div><div class="akdl-pages"><button id="ad-prev" ${state.page===0?'disabled':''}>Sebelumnya</button><span>Halaman ${state.page+1} / ${pages}</span><button id="ad-next" ${state.page+1>=pages?'disabled':''}>Berikutnya</button></div></div>`;$('ad-sheet').onchange=()=>{state.sheet=Number($('ad-sheet').value);state.page=0;paint();};$('ad-prev').onclick=()=>{state.page--;paint();};$('ad-next').onclick=()=>{state.page++;paint();};}
+ async function collect(f,progress){
+  const p=state.period,classes=(state.boot.classes||[]).map(x=>({id:x.id,name:x.name||x.class_name}));
+  const assignments=(state.boot.assignments||[]).filter(a=>!f.className||a.class_name===f.className);
+  if(['nilai','tp','prioritas','guru'].includes(f.kind)){
+   const loads=[];for(const [i,a] of assignments.entries()){progress(`Memuat ${i+1}/${assignments.length}: ${a.class_name} · ${a.subject_name}`);const d=await req('academic-scores','load',{...p,assignment_id:a.id});periodCheck(d,p);loads.push({...d,assignment:{...a,...d.assignment}});}return scoreSheets(f.kind,loads);
+  }
+  if(f.kind==='ranking'){const d=await req('academic-ranking-report','list');periodCheck(d,p);return rankingSheets(d,f.className);}
+  if(f.kind==='rpp'){const d=await req('rpp-lp-manager','archive_report',p);periodCheck(d,p);return [sheet('Dokumen RPP',['File','Guru','Kelas','Mapel','Tanggal Upload','Status'],filterRows(d.rows||[],f,'uploaded_at').map(x=>[x.original_filename||'',x.teacher_name||'',x.class_name||'',x.subject_name||'',x.uploaded_at||x.created_at||'',x.content_status||'']))];}
+  if(f.kind==='lp'){const d=await req('rpp-lp-manager','report',p);periodCheck(d,p);return [sheet('Target & Pelaksanaan LP',['Guru','Kelas','Mapel','Periode','Target LP','Progres (%)','Status RPP','Pelaksanaan'],filterRows(d.rows||[],f,'').map(x=>[x.teacher_name||'',x.class_name||'',x.subject_name||'',x.period_label||'Minggu '+(x.week_no||''),x.target_text||'',num(x.progress_percent),x.rpp_status||'',x.execution_status||'']))];}
+  if(f.kind==='bilingual'){
+   const selected=classes.filter(x=>!f.className||x.name===f.className),all=[];
+   for(const [i,cl] of selected.entries()){progress(`Memuat Bilingual ${i+1}/${selected.length}: ${cl.name}`);const d=await callApi('getVocabularyBulanan',{kelas:cl.name,tahunAjaran:p.academic_year,semester:p.semester_no,bulan:MONTHS[f.month-1]});if(!d||d.success===false)throw Error(cl.name+': '+(d?.error||'Data gagal dimuat'));if(d.tahunAjaran&&d.tahunAjaran!==p.academic_year||d.semester&&Number(d.semester)!==p.semester_no||d.bulan&&String(d.bulan)!==MONTHS[f.month-1])throw Error(cl.name+': periode Bilingual berbeda.');all.push({name:cl.name,data:d});}return bilingualSheets(all);
+  }
+  const d=await req('pjbl','history');return [sheet('Log PjBL',['Tanggal Pencatatan','Kelas','Pekan','Realisasi','Kendala','Tindak Lanjut','Pencatat','Status'],filterRows(d.rows||[],f,'logged_at').map(x=>[x.logged_at||'',x.class_name||'',x.week_no||'',x.actual_activity||'',x.obstacle||'',x.suggestion||'',x.recorded_by_name||'',x.actual_activity?'Tercatat':'Belum lengkap']))];
+ }
+ $('ad-preview').onclick=async()=>{
+  if(state.busy||!authorized())return;invalidate();const token=state.token;
+  const f={kind:$('ad-kind').value,className:$('ad-class').value,month:Number($('ad-month').value),start:$('ad-start-wrap').hidden?'':$('ad-start').value,end:$('ad-end-wrap').hidden?'':$('ad-end').value};
+  if(f.start&&f.end&&f.start>f.end){status('Tanggal awal tidak boleh melewati tanggal akhir.',true);return;}
+  state.busy=true;$('ad-preview').disabled=true;
+  try{const sheets=await collect(f,msg=>{if(token===state.token)status(msg);});if(token!==state.token||!alive()||!authorized())return;if(!sheets.length)sheets.push(sheet('Detail',['Keterangan'],[]));state.snapshot={sheets,filter:f,period:{...state.period},loaded:new Date().toLocaleString('id-ID')};state.sheet=0;state.page=0;paint();$('ad-download').disabled=false;status('Preview siap. Download Excel memakai seluruh data pada preview ini.');}
+  catch(e){if(token===state.token)status('Preview gagal: '+e.message+'. Tidak ada file parsial yang diunduh.',true);}
+  finally{state.busy=false;if(alive())$('ad-preview').disabled=false;}
+ };
+ $('ad-download').onclick=async()=>{
+  const snap=state.snapshot;if(!snap||!authorized())return;const b=$('ad-download');b.disabled=true;
+  try{status('Membuat Excel dari data preview...');const X=await excel();if(state.snapshot!==snap||!alive()||!authorized())return;const wb=new X.Workbook(),used=new Set();wb.creator='CQlass';
+   const info=wb.addWorksheet('Informasi');info.columns=[{width:26},{width:65}];const f=snap.filter;[['LAPORAN AKADEMIK CQLASS',CATEGORIES[f.kind]],['Tahun Ajaran',f.kind==='pjbl'?'Mengikuti riwayat layanan PjBL':snap.period.academic_year],['Semester',f.kind==='pjbl'?'—':snap.period.semester_no],['Kelas',f.className||'Semua kelas'],['Bulan',f.kind==='bilingual'?MONTHS[f.month-1]:'—'],['Dari tanggal',f.start||'—'],['Sampai tanggal',f.end||'—'],['Preview dimuat',snap.loaded],['Catatan','Nilai kosong tetap kosong. Data sesuai snapshot preview; tanpa mengambil ulang data.']].forEach(r=>info.addRow(r));used.add('informasi');
+   for(const data of snap.sheets){let name=data.name.replace(/[\\/*?:\[\]]/g,' ').slice(0,31)||'Detail',base=name,n=2;while(used.has(name.toLowerCase()))name=(base.slice(0,26)+' '+n++).slice(0,31);used.add(name.toLowerCase());const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1,showGridLines:false}]});ws.columns=data.headers.map(h=>({width:/nama|guru|tujuan|kendala|tindak|target|realisasi|file/i.test(h)?34:19}));ws.addRow(data.headers);data.rows.forEach(r=>ws.addRow(r.map(v=>v===null||v===undefined?'':v)));ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,ws.rowCount),column:data.headers.length}};ws.eachRow((row,i)=>{row.eachCell({includeEmpty:true},cell=>{cell.font={name:'Tahoma',size:10,bold:i===1,color:{argb:i===1?'FFFFFFFF':'FF233746'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:i===1?'FF173F63':i%2?'FFFFFFFF':'FFF0F6F8'}};cell.alignment={vertical:'top',wrapText:true};cell.border={bottom:{style:'hair',color:{argb:'FFDCE6EB'}}};if(typeof cell.value==='number')cell.numFmt='0.##';});});ws.getRow(1).height=32;ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};}
+   const bytes=await wb.xlsx.writeBuffer();if(state.snapshot!==snap||!alive()||!authorized())return;const url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');a.href=url;a.download='Akademik_'+f.kind+'_'+(f.kind==='pjbl'?'Riwayat':snap.period.academic_year.replace('/','-')+'_S'+snap.period.semester_no)+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),15000);status('Excel berhasil dibuat sesuai preview.');
+  }catch(e){status('Download gagal: '+e.message,true);}finally{b.disabled=!state.snapshot;}
+ };
+ try{state.period=await loadActiveAcademicPeriod();state.period={academic_year:state.period.academic_year,semester_no:Number(state.period.semester_no)};state.boot=await req('academic-scores','bootstrap',state.period);if(!alive()||!authorized())return;periodCheck(state.boot,state.period);const map=new Map((state.boot.classes||[]).map(x=>[x.id,x.name||x.class_name]));for(const a of state.boot.assignments||[])map.set(a.class_id,a.class_name);state.boot.classes=[...map].map(([id,name])=>({id,name})).sort((a,b)=>String(a.name).localeCompare(String(b.name),'id',{numeric:true}));$('ad-class').innerHTML='<option value="">Semua kelas</option>'+state.boot.classes.map(x=>`<option value="${E(x.name)}">${E(x.name)}</option>`).join('');const months=state.period.semester_no===1?[7,8,9,10,11,12]:[1,2,3,4,5,6];for(const o of $('ad-month').options)o.disabled=!months.includes(Number(o.value));const now=Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Jakarta',month:'numeric'}).format(new Date()));$('ad-month').value=String(months.includes(now)?now:months[0]);$('ad-period').textContent='Tahun Ajaran '+state.period.academic_year+' · Semester '+state.period.semester_no;$('ad-preview').disabled=false;invalidate();}
+ catch(e){status('Gagal memuat laporan: '+e.message,true);}
 };
-window.__CQ_ACADEMIC_DOWNLOAD_DATA__=true;
-})();
+})(typeof window!=='undefined'?window:globalThis);
