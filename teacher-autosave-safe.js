@@ -55,24 +55,6 @@
     }
   }
 
-  function bindFixed(root){
-    var card=root.querySelector('#tsv2-card1 .tsv2-fixed-slot-editor');
-    if(!card||card.dataset.cqAutosave==='1')return;
-    card.dataset.cqAutosave='1';
-    card.addEventListener('input',schedule);
-    card.addEventListener('change',schedule);
-    function schedule(e){
-      if(!enabled())return;
-      if(!e.target.matches('#tsv2-fixed-act,#tsv2-fixed-note'))return;
-      debounce(card,async function(){
-        var form=root.querySelector('#tsv2-card1 .tsv2-form');
-        if(!form||form.dataset.fixedSelected!=='1')return;
-        if(!complete(['tsv2-fixed-date','tsv2-fixed-start','tsv2-fixed-end','tsv2-fixed-act'])||!validRange('tsv2-fixed-start','tsv2-fixed-end'))return;
-        if(typeof window.tsv2SaveFixed==='function')await runOnce(card,function(){return window.tsv2SaveFixed(true)});
-      },3000);
-    }
-  }
-
   function bindRecap(root){
     root.querySelectorAll('[data-edit-key]').forEach(function(tr){
       if(tr.dataset.cqAutosave==='1')return;
@@ -100,7 +82,6 @@
     var root=document.getElementById('content');
     if(!root)return;
     bindCard2(root);
-    bindFixed(root);
     bindRecap(root);
   }
 

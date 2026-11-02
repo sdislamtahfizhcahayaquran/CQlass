@@ -38,7 +38,7 @@ async function bootstrapWithTahfizhBadal(req:Request,body:any){
   ]);
   for(const result of profileQueries)if(result.error)throw result.error;
   const fridayManual=profileQueries.some(result=>(result.data||[]).length>0);
-  const current=(Array.isArray(data.teaching)?data.teaching:[]).filter((row:any)=>!(fridayManual&&dow(row.work_date)===5&&row.source==="jadwal"));
+  const current=(Array.isArray(data.teaching)?data.teaching:[]).filter((row:any)=>!(fridayManual&&[5,6].includes(dow(row.work_date))&&row.source==="jadwal"));
   const existing=new Set(current.map((r:any)=>T(r.id)));
   for(const r of rows){
     const id=`badal-tahfizh:${r.id}`;
@@ -79,7 +79,9 @@ async function validateFreeSlot(req:Request,body:any){
   const me=await account(req);if(!me)return null;
   const teacherId=T(body.teacher_id||me.teacher_id),date=T(body.work_date),start=T(body.start_time),end=T(body.end_time);
   if(!teacherId||(!mayTarget(me,teacherId)&&!(me.roles||[]).some((r:string)=>["kegiatan","kabid_kegiatan"].includes(L(r)))))throw Error("forbidden");
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||mins(start)===null||mins(end)===null)return null;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||mins(start)===null||mins(end)===null)throw Error("invalid_input");
+  const dayNo=dow(date),sm=Number(mins(start)),em=Number(mins(end));
+  if(dayNo===7||em<=sm||sm<(dayNo===6?450:420)||em>(dayNo===6?720:960))throw Error("outside_work_hours");
   const{data:teacher}=await sb.from("teachers").select("school_unit_id").eq("id",teacherId).maybeSingle();
   let yq=sb.from("academic_years").select("id,start_date,end_date").eq("is_active",true).limit(1);if(teacher?.school_unit_id)yq=yq.eq("school_unit_id",teacher.school_unit_id);const{data:years}=await yq;const year=years?.[0];if(!year)throw Error("active_academic_year_not_found");if((year.start_date&&date<year.start_date)||(year.end_date&&date>year.end_date))throw Error("date_outside_active_period");
   const{data:sem}=await sb.from("semesters").select("semester_no").eq("academic_year_id",year.id).eq("is_active",true).maybeSingle();const semesterNo=Number(sem?.semester_no),day=dow(date);if(![1,2].includes(semesterNo))throw Error("active_semester_not_found");
@@ -114,8 +116,12 @@ async function validateFreeSlot(req:Request,body:any){
   const tahBadalQ=sb.from("tahfizh_substitution_assignments").select("start_time,end_time,reason").eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("work_date",date).eq("substitute_teacher_id",teacherId).eq("status","active");
   const [ownR,tahR,routineR,workR,uksR,manualR,badalR,tahBadalR]=await Promise.all([ownQ,tahQ,routineQ,workQ,uksQ,manualQ,badalQ,tahBadalQ]);
   for(const result of [ownR,tahR,routineR,workR,uksR,manualR,badalR,tahBadalR])if(result.error)throw result.error;
-  const fridayManual=isTahfizh&&day===5;
+  const fridayManual=isTahfizh&&[5,6].includes(day);
+  if(T(body.action)==="save_activity"&&T(body.activity)&&(!isTahfizh||![5,6].includes(day)))throw Error("typed_activity_not_allowed");
+  const recurringR=isTahfizh&&T(body.action)==="save_activity"?await sb.from("teacher_recurring_activities").select("id,days_of_week,start_time,end_time,activity_name").eq("teacher_id",teacherId).eq("academic_year_id",year.id).eq("semester_no",semesterNo).eq("is_active",true):{data:[],error:null};
+  if(recurringR.error)throw recurringR.error;
   const conflicts:any[]=[];
+  for(const x of recurringR.data||[])if((x.days_of_week||[]).map(Number).includes(day)&&overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.activity_name)||"Pola mingguan",start:x.start_time,end:x.end_time});
   for(const x of (fridayManual?[]:ownR.data||[]))if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Jadwal mengajar",start:x.start_time,end:x.end_time});
   for(const x of (fridayManual?[]:tahR.data||[]))if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:"KBM Tahfizh",start:x.start_time,end:x.end_time});
   for(const x of (fridayManual?[]:routineR.data||[]))if(overlap(start,end,x.start_time,x.end_time))conflicts.push({label:T(x.subject_name_raw)||"Rutinitas sekolah",start:x.start_time,end:x.end_time});
@@ -190,4 +196,11 @@ async function uploadCertificate(req:Request,b:any){
   return J({success:true,certificate:{...uq.data,url:su.error?"":T(su.data?.signedUrl)},required:!!m?.requires_certificate});
 }
 
-Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));const action=T(body.action);if(action==="bootstrap"){try{return await bootstrapWithTahfizhBadal(req,body)}catch(e){console.error("timesheet bootstrap v2",e);return J({success:false,error:"Timesheet belum dapat dimuat. Coba muat ulang."},400)}}if(action==="update_activity"){try{return await updateActivity(req,body)}catch(e){console.error("update activity",e);return J({success:false,error:"update_failed"},400)}}if(action==="save_saturday_override"){try{return await saveSaturdayOverride(req,body)}catch(e){console.error("saturday override",e);return J({success:false,error:"update_failed"},400)}}if(action==="upload_certificate"){try{return await uploadCertificate(req,body)}catch(e){console.error("upload certificate",e);return J({success:false,error:"certificate_upload_failed"},400)}}if(action==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal Timesheet belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}return proxy(req,body)});
+Deno.serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);const body=await req.json().catch(()=>({}));const action=T(body.action);if(action==="bootstrap"){try{return await bootstrapWithTahfizhBadal(req,body)}catch(e){console.error("timesheet bootstrap v2",e);return J({success:false,error:"Timesheet belum dapat dimuat. Coba muat ulang."},400)}}if(action==="update_activity"){try{return await updateActivity(req,body)}catch(e){console.error("update activity",e);return J({success:false,error:"update_failed"},400)}}if(action==="save_saturday_override"){try{return await saveSaturdayOverride(req,body)}catch(e){console.error("saturday override",e);return J({success:false,error:"update_failed"},400)}}if(action==="upload_certificate"){try{return await uploadCertificate(req,body)}catch(e){console.error("upload certificate",e);return J({success:false,error:"certificate_upload_failed"},400)}}if(action==="save_activity"){try{const conflict=await validateFreeSlot(req,body);if(conflict)return J({success:false,error:conflict},400)}catch(e){console.error("free-slot validation",e);return J({success:false,error:"Jadwal Timesheet belum dapat divalidasi. Coba muat ulang Timesheet."},400)}}if(action==="save_activity"&&T(body.activity)){
+  const me=await account(req);if(!me)return J({success:false,error:"session_expired"},401);
+  const activity=T(body.activity);if(activity.length>500)return J({success:false,error:"activity_too_long"},400);
+  const teacherId=T(body.teacher_id||me.teacher_id);
+  if(!mayTarget(me,teacherId))return J({success:false,error:"forbidden"},403);
+  const {data,error}=await sb.from("teacher_timesheet_activities").insert({teacher_id:teacherId,work_date:T(body.work_date),start_time:T(body.start_time),end_time:T(body.end_time),activity,note:T(body.note)||null,source:"manual",source_ref:null,created_by_account_id:me.id,updated_at:new Date().toISOString()}).select("*").single();
+  if(error)return J({success:false,error:"save_failed"},400);return J({success:true,row:data});
+}return proxy(req,body)});

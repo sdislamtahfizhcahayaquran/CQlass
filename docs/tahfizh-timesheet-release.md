@@ -15,3 +15,11 @@ No schema migration or report-data rewrite. Actual authenticated walkthrough and
 ## Friday correction
 
 User-confirmed rule: Guru Tahfizh fills Friday manually and may create a weekly pattern. Friday 07:00–16:00 therefore has no generated routine/KBM/Eduhub/class-work blocks for teachers with explicit Tahfizh/halaqah assignments. Existing recorded activities, recurring patterns and dated badal/special events remain separate recorded commitments. Other teachers retain their prior Friday rules. The work schedule, manual validation, bootstrap teaching rows, gap UI and recurring projection are aligned. Twelve regression suites now include Friday manual slots, weekly pattern projection and existing-record subtraction. No report or pattern data is rewritten.
+
+## Friday and Saturday typed entry — 2 November 2026
+
+The active Add Activity form uses a text field for teachers with explicit Tahfizh/halaqah assignments on Friday and Saturday. Save records a manual activity; Repeat Weekly uses the typed name. Other weekdays and teachers retain the activity-master selector. Friday is 07:00–16:00 and Saturday is 07:30–12:00. Server validation rejects overlapping saved activities/patterns, unauthorized teacher targets, and input outside working hours. Recorded badal stays reserved.
+
+Saturday, like Friday, has no generated routine/KBM blocks for this profile. The HRD projection includes explicit Tahfizh/halaqah teachers, preserves manual records and weekly patterns, and omits Friday/Saturday automatic routines. Fallback HRD reports also receive these projections. Removed unreachable split-activity/fixed-slot form handlers and the corresponding unused autosave binder. No existing reports, patterns, assignments, or roles are rewritten or deleted.
+
+Validation: mocked backend save/deny scenarios, Friday/Saturday pattern projection, typed form and weekly payloads, HRD manual/pattern projection, existing Friday UI, HRD fetch routes, repository dependency/syntax and role-loader regression suites. No real teacher input is submitted by these tests.

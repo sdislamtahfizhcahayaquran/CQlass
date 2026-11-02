@@ -6,7 +6,6 @@ const KEY=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY
 const REVIEW=new Set(['akademik','kegiatan','pimpinan','hrd']);
 const SPECIAL_ENDPOINT=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/teacher-timesheet-special-overlay';
 let S={month:new Date().toISOString().slice(0,7),teacherId:'',teacher:null,teachers:[],teaching:[],saturdays:[],activities:[],standard:[],master:[],special:[],showAll:false,recapMode:'gaps',rangeFrom:'',rangeTo:'',profile:'mapel'};
-let FLEX={date:'',start:'',end:'',rows:[]};
 const esc=v=>typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const role=()=>String(window.currentUser?.role||'').toLowerCase();
 const token=()=>typeof getAuthToken==='function'?getAuthToken():(localStorage.getItem('cqlass_session_token')||'');
@@ -29,6 +28,9 @@ function activityOptions(date){
   const list=S.master.filter(x=>isSat||String(x.category||'').toLowerCase()!=='saturday');
   return '<option value="">Pilih kegiatan</option>'+list.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}${String(x.category||'').toLowerCase()==='saturday'?' · Sabtu':''}</option>`).join('');
 }
+function typedDay(date){return S.profile==='tahfizh'&&[5,6].includes(new Date(String(date)+'T12:00:00Z').getUTCDay())}
+function activityField(date){return typedDay(date)?'<input id="tsv2-act" class="tsv2-in" maxlength="160" placeholder="Ketik kegiatan yang dilakukan">':'<select id="tsv2-act" class="tsv2-sel">'+activityOptions(date)+'</select>'}
+function activityValue(date){const value=document.getElementById('tsv2-act')?.value.trim()||'';return typedDay(date)?{activity:value}:{activity_master_id:value}}
 function inRange(date){
   const d=String(date||'').slice(0,10);
   return !!d&&(!S.rangeFrom||d>=S.rangeFrom)&&(!S.rangeTo||d<=S.rangeTo);
@@ -94,7 +96,7 @@ function body(){
       <div class="tsv2-field"><label>Tanggal</label><input id="tsv2-date" class="tsv2-in" type="date" value="${esc(today)}" onchange="tsv2ActivityDateChanged(this.value)"></div>
       <div class="tsv2-field"><label>Mulai</label><input id="tsv2-start" class="tsv2-in" type="time"></div>
       <div class="tsv2-field"><label>Selesai</label><input id="tsv2-end" class="tsv2-in" type="time"></div>
-      <div class="tsv2-field"><label>Kegiatan</label><select id="tsv2-act" class="tsv2-sel">${activityOptions(today)}</select></div>
+      <div class="tsv2-field"><label>Kegiatan</label>${activityField(today)}</div>
       <div class="tsv2-field"><label>Catatan (opsional)</label><input id="tsv2-note" class="tsv2-in" placeholder="Keterangan singkat bila perlu"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="tsv2-btn" onclick="tsv2Save()">Simpan</button>
@@ -122,7 +124,7 @@ function body(){
   </div>`;
 }
 async function load(){const b=document.getElementById('tsv2-body');if(b)b.innerHTML='<div class="tsv2-card tsv2-empty">Memuat Timesheet...</div>';try{const d=await api('bootstrap');S.teacher=d.teacher||null;S.teachers=d.teachers||[];S.teaching=d.teaching||[];S.saturdays=d.saturdays||[];S.activities=d.activities||[];S.master=d.activity_master||[];if(!S.teacherId&&S.teacher)S.teacherId=S.teacher.id;const [w,sp]=await Promise.all([workSchedule(),specialOverlay()]);S.standard=w.items||[];S.profile=w.profile||'mapel';S.special=sp||[];shell(false);body();setTimeout(()=>window.cqTsGapRefresh?.(),0)}catch(e){if(b)b.innerHTML=`<div class="tsv2-card tsv2-empty">${esc(e.message)}</div>`}}
-function shell(fetch=true){style();const c=document.getElementById('content');if(!c)return;const select=REVIEW.has(role())&&S.teachers.length?`<select class="tsv2-sel" onchange="tsv2Teacher(this.value)">${S.teachers.map(t=>`<option value="${esc(t.id)}" ${String(t.id)===String(S.teacherId)?'selected':''}>${esc(t.full_name)}</option>`).join('')}</select>`:'';c.innerHTML=`<div class="tsv2"><div class="tsv2-head"><div><div class="tsv2-title">Timesheet</div><div class="tsv2-sub">${S.profile==='tahfizh'?'Guru Tahfizh — Jumat diisi manual dan bisa dijadikan pola mingguan. Jadwal otomatis berlaku pada hari lainnya.':'Guru Mapel/Walas — jadwal mengajar, rutinitas, UKS, dan tugas otomatis sudah diperhitungkan.'} Guru cukup menambahkan aktivitas yang belum tercatat; jadwal rutin masuk otomatis.</div></div><div class="tsv2-tools">${select}<input class="tsv2-in" type="month" value="${esc(S.month)}" onchange="tsv2Month(this.value)"><button class="tsv2-btn alt" onclick="tsv2Reload()">Muat ulang</button></div></div><div id="tsv2-body"></div></div>`;if(fetch)load()}
+function shell(fetch=true){style();const c=document.getElementById('content');if(!c)return;const select=REVIEW.has(role())&&S.teachers.length?`<select class="tsv2-sel" onchange="tsv2Teacher(this.value)">${S.teachers.map(t=>`<option value="${esc(t.id)}" ${String(t.id)===String(S.teacherId)?'selected':''}>${esc(t.full_name)}</option>`).join('')}</select>`:'';c.innerHTML=`<div class="tsv2"><div class="tsv2-head"><div><div class="tsv2-title">Timesheet</div><div class="tsv2-sub">${S.profile==='tahfizh'?'Guru Tahfizh — kegiatan Jumat dan Sabtu diketik manual atau dijadikan pola mingguan.':'Guru Mapel/Walas — jadwal mengajar, rutinitas, UKS, dan tugas otomatis sudah diperhitungkan.'} Guru cukup menambahkan aktivitas yang belum tercatat; jadwal rutin masuk otomatis.</div></div><div class="tsv2-tools">${select}<input class="tsv2-in" type="month" value="${esc(S.month)}" onchange="tsv2Month(this.value)"><button class="tsv2-btn alt" onclick="tsv2Reload()">Muat ulang</button></div></div><div id="tsv2-body"></div></div>`;if(fetch)load()}
 window.addEventListener('cq-timesheet-gap-updated',()=>{try{if(S.recapMode==='gaps'&&document.getElementById('tsv2-body'))body()}catch(_){}});
 window.renderTeacherTimesheet=()=>shell(true);
 window.cqTsStandardItems=()=>Array.isArray(S.standard)?S.standard.slice():[];
@@ -144,63 +146,15 @@ window.tsv2UseGap=(date,start,end)=>{
   document.querySelector('.tsv2-entry-card')?.scrollIntoView({behavior:'smooth',block:'center'});
 };
 window.tsv2ActivityDateChanged=date=>{
-  const sel=document.getElementById('tsv2-act');if(sel)sel.innerHTML=activityOptions(date);
+  const sel=document.getElementById('tsv2-act');if(sel)sel.outerHTML=activityField(date);
 };
 
 function openCardRaw(n){[1,2,3].forEach(i=>{const el=document.getElementById('tsv2-card'+i);if(el)el.hidden=i!==Number(n)});document.querySelectorAll('.tsv2-cardpick').forEach(b=>b.classList.toggle('active',Number(b.dataset.tsCard)===Number(n)))}
 window.tsv2OpenCard=n=>{n=Number(n);if(n===3){body();setTimeout(()=>openCardRaw(3),0);return}openCardRaw(n)};
 window.tsv2RecapMode=m=>{S.recapMode=m==='full'?'full':'gaps';body()};
-window.tsv2SaveFixed=async(silent=false)=>{const form=document.querySelector('#tsv2-card1 .tsv2-form'),date=document.getElementById('tsv2-fixed-date')?.value||'',start=document.getElementById('tsv2-fixed-start')?.value||'',end=document.getElementById('tsv2-fixed-end')?.value||'',mid=document.getElementById('tsv2-fixed-act')?.value||'',note=document.getElementById('tsv2-fixed-note')?.value||'';if(form?.dataset.fixedSelected!=='1'){toast('Pilih dulu slot terjadwal.',true);return}if(!date||!start||!end||!mid||end<=start){toast('Pilih slot dan jenis aktivitas.',true);return}try{await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Slot terjadwal tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(1),0)}catch(e){toast(e.message,true)}};
 
-function flexCollect(){
-  return [...document.querySelectorAll('#tsv2-flex-rows .tsv2-flex-row')].map(r=>({
-    start:r.querySelector('[data-flex="start"]')?.value||'',
-    end:r.querySelector('[data-flex="end"]')?.value||'',
-    mid:r.querySelector('[data-flex="mid"]')?.value||'',
-    note:r.querySelector('[data-flex="note"]')?.value||''
-  }));
-}
-function flexRender(){
-  const host=document.getElementById('tsv2-flex-rows'),range=document.getElementById('tsv2-flex-range');if(!host)return;
-  if(range)range.textContent=(FLEX.date?fd(FLEX.date)+' · ':'')+FLEX.start+'–'+FLEX.end;
-  host.innerHTML=FLEX.rows.map((r,i)=>`<div class="tsv2-flex-row" data-flex-row="${i}"><div class="tsv2-field"><label>Mulai</label><input class="tsv2-in" data-flex="start" type="time" min="${esc(FLEX.start)}" max="${esc(FLEX.end)}" value="${esc(r.start||'')}"></div><div class="tsv2-field"><label>Selesai</label><input class="tsv2-in" data-flex="end" type="time" min="${esc(FLEX.start)}" max="${esc(FLEX.end)}" value="${esc(r.end||'')}"></div><div class="tsv2-field"><label>Kegiatan</label><select class="tsv2-sel" data-flex="mid"><option value="">Pilih kegiatan</option>${S.master.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===String(r.mid||'')?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div><div class="tsv2-field"><label>Catatan (opsional)</label><input class="tsv2-in" data-flex="note" value="${esc(r.note||'')}" placeholder="Contoh: administrasi kelas"></div><button class="tsv2-btn danger" type="button" onclick="tsv2FlexRemove(${i})" ${FLEX.rows.length===1?'disabled':''}>Hapus</button></div>`).join('');
-}
-window.tsv2FlexStart=(date,start,end)=>{
-  FLEX={date,start,end,rows:[{start,end:'',mid:'',note:''}]};
-  const card=document.querySelector('#tsv2-card1 .tsv2-flex-slot-editor'),fixed=document.querySelector('#tsv2-card1 .tsv2-fixed-slot-editor');
-  if(fixed)fixed.hidden=true;if(card)card.hidden=false;flexRender();card?.scrollIntoView({behavior:'smooth',block:'center'});
-};
-window.tsv2FlexAdd=()=>{
-  const rows=flexCollect();const last=rows[rows.length-1]||{};FLEX.rows=rows;FLEX.rows.push({start:last.end||'',end:'',mid:'',note:''});flexRender();
-};
-window.tsv2FlexRemove=i=>{const rows=flexCollect();if(rows.length<=1)return;rows.splice(Number(i),1);FLEX.rows=rows;flexRender()};
-window.tsv2FlexSaveAll=async()=>{
-  const rows=flexCollect();
-  if(!FLEX.date||!FLEX.start||!FLEX.end||!rows.length){toast('Pilih dulu rentang Jumat/Sabtu.',true);return}
-  for(const r of rows){
-    if(!r.start||!r.end||!r.mid||r.end<=r.start){toast('Lengkapi jam mulai, selesai, dan kegiatan pada semua baris.',true);return}
-    if(r.start<FLEX.start||r.end>FLEX.end){toast('Semua kegiatan harus berada di dalam rentang '+FLEX.start+'–'+FLEX.end+'.',true);return}
-    if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsRangeIsGap(FLEX.date,r.start,r.end)){toast('Ada jam yang keluar dari slot kosong atau bertabrakan dengan jadwal otomatis.',true);return}
-  }
-  const sorted=rows.map((r,i)=>({...r,i})).sort((a,b)=>a.start.localeCompare(b.start)||a.end.localeCompare(b.end));
-  for(let i=1;i<sorted.length;i++){if(sorted[i].start<sorted[i-1].end){toast('Jam kegiatan tidak boleh tumpang tindih.',true);return}}
-  const created=[];
-  try{
-    for(const r of rows){
-      const out=await api('save_activity',{work_date:FLEX.date,start_time:r.start,end_time:r.end,activity_master_id:r.mid,note:r.note});
-      if(out?.row?.id)created.push(out.row.id);
-    }
-    toast(rows.length+' kegiatan tersimpan.');
-    FLEX={date:'',start:'',end:'',rows:[]};
-    await load();setTimeout(()=>window.tsv2OpenCard(1),0);
-  }catch(e){
-    for(const id of created.reverse()){try{await api('delete_activity',{id})}catch(_){}}
-    toast('Penyimpanan dibatalkan: '+(e.message||String(e)),true);
-    await load();setTimeout(()=>window.tsv2OpenCard(1),0);
-  }
-};
-window.tsv2Save=async(silent=false)=>{const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}try{await api('save_activity',{work_date:date,start_time:start,end_time:end,activity_master_id:mid,note});if(!silent)toast('Aktivitas tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message,true)}};
-window.tsv2SavePattern=async()=>{const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}const item=S.master.find(x=>String(x.id)===String(mid));if(!item){toast('Aktivitas tidak tersedia.',true);return}try{if(typeof window.cqRecurringSaveFromGap!=='function')throw Error('Pola mingguan belum siap. Muat ulang Timesheet.');await window.cqRecurringSaveFromGap({date,start,end,activity_name:item.name,note});toast('Pola mingguan tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message||String(e),true)}};
+window.tsv2Save=async(silent=false)=>{const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}try{await api('save_activity',{work_date:date,start_time:start,end_time:end,...activityValue(date),note});if(!silent)toast('Aktivitas tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message,true)}};
+window.tsv2SavePattern=async()=>{const date=document.getElementById('tsv2-date')?.value||'',start=document.getElementById('tsv2-start')?.value||'',end=document.getElementById('tsv2-end')?.value||'',mid=document.getElementById('tsv2-act')?.value||'',note=document.getElementById('tsv2-note')?.value||'';if(!date||!start||!end||!mid||end<=start){toast('Lengkapi tanggal, jam, dan jenis aktivitas.',true);return}if(typeof window.cqTsRangeIsGap==='function'&&!window.cqTsRangeIsGap(date,start,end)){toast('Jam tersebut bukan jam kosong atau bertabrakan dengan jadwal otomatis.',true);return}const item=typedDay(date)?{name:mid}:S.master.find(x=>String(x.id)===String(mid));if(!item){toast('Aktivitas tidak tersedia.',true);return}try{if(typeof window.cqRecurringSaveFromGap!=='function')throw Error('Pola mingguan belum siap. Muat ulang Timesheet.');await window.cqRecurringSaveFromGap({date,start,end,activity_name:item.name,note});toast('Pola mingguan tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(2),0)}catch(e){toast(e.message||String(e),true)}};
 window.tsv2SaveRecapRow=async(kind,id,silent=false)=>{const tr=document.querySelector('[data-edit-key="'+kind+'-'+id+'"]');if(!tr)return;const val=n=>tr.querySelector('[data-er="'+n+'"]')?.value||'',work_date=val('date'),start_time=val('start'),end_time=val('end'),activity=val('activity'),note=val('note');if(!work_date||!start_time||!end_time||!activity||end_time<=start_time){toast('Lengkapi tanggal, jam, dan kegiatan.',true);return}try{if(kind==='saturday')await api('save_saturday_override',{saturday_schedule_id:id,work_date,start_time,end_time,activity,note});else await api('update_activity',{id,work_date,start_time,end_time,activity,note});if(!silent)toast('Perubahan Timesheet tersimpan.');await load();setTimeout(()=>window.tsv2OpenCard(3),0)}catch(e){toast(e.message||String(e),true)}};
 window.tsv2Delete=async id=>{if(!confirm('Hapus aktivitas ini?'))return;try{await api('delete_activity',{id});toast('Aktivitas dihapus.');await load()}catch(e){toast(e.message,true)}};
 window.tsv2Upload=async id=>{const f=document.getElementById('tsv2-cert-'+id)?.files?.[0];if(!f){toast('Pilih file sertifikat.',true);return}if(f.size>8*1024*1024){toast('Ukuran sertifikat maksimal 8 MB.',true);return}try{const b64=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result||'').split(',')[1]||'');r.onerror=no;r.readAsDataURL(f)});await api('upload_certificate',{saturday_schedule_id:id,file_name:f.name,mime_type:f.type,base64:b64});toast('Sertifikat tersimpan.');await load()}catch(e){toast(e.message,true)}};

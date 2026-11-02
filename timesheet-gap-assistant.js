@@ -78,7 +78,6 @@ async function load(){
       const busy=[];
       const isSpecial=spSet.has(date);
       const workEnd=day===6?720:960;
-      const grades=(work.grades||[]).map(Number).filter(Boolean);
       // Fallback rutinitas inti sekolah. Ini sengaja hanya menjadi blocker,
       // tidak tampil sebagai baris Timesheet dan mencegah jeda palsu.
       if(day>=1&&day<=4){
@@ -112,8 +111,8 @@ async function load(){
       const authoritative=typeof window.cqTsStandardItems==='function'?window.cqTsStandardItems():[];
       const workItems=[...(work.items||[]),...(authoritative||[])];
       const seenWork=new Set();
-      workItems.filter(x=>!(day===5&&work.profile==='tahfizh')&&x.work_date===date&&!(day===6&&['saturday_work','saturday_role_work'].includes(String(x.activity_code||'')))).forEach(x=>{const k=[x.work_date,x.start_time,x.end_time,x.activity_code,x.activity].join('|');if(seenWork.has(k))return;seenWork.add(k);busy.push(x)});
-      (core.teaching||[]).filter(x=>x.work_date===date&&x.source!=='digantikan'&&!(day===5&&work.profile==='tahfizh'&&x.source==='jadwal')).forEach(x=>busy.push(x));
+      workItems.filter(x=>!([5,6].includes(day)&&work.profile==='tahfizh')&&x.work_date===date&&!(day===6&&['saturday_work','saturday_role_work'].includes(String(x.activity_code||'')))).forEach(x=>{const k=[x.work_date,x.start_time,x.end_time,x.activity_code,x.activity].join('|');if(seenWork.has(k))return;seenWork.add(k);busy.push(x)});
+      (core.teaching||[]).filter(x=>x.work_date===date&&x.source!=='digantikan'&&!([5,6].includes(day)&&work.profile==='tahfizh'&&x.source==='jadwal')).forEach(x=>busy.push(x));
       if(day===6&&date<'2026-10-17')(core.saturdays||[]).filter(x=>x.event_date===date&&x.configured!==false).forEach(x=>busy.push({start_time:x.start_time,end_time:x.end_time}));
       if(isSpecial)(special.items||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
       (core.activities||[]).filter(x=>x.work_date===date).forEach(x=>busy.push(x));
@@ -133,25 +132,7 @@ function lockPatternInputs(){
   if(rs){rs.readOnly=true;rs.setAttribute('aria-readonly','true')}
   if(re){re.readOnly=true;re.setAttribute('aria-readonly','true')}
 }
-function fixedPick(d,s,e){
-  window.tsv2OpenCard?.(1);
-  const day=new Date(d+'T12:00:00Z').getUTCDay(),flex=day===5||day===6;
-  const fixedCard=document.querySelector('#tsv2-card1 .tsv2-fixed-slot-editor');
-  const flexCard=document.querySelector('#tsv2-card1 .tsv2-flex-slot-editor');
-  if(flex){
-    if(fixedCard)fixedCard.hidden=true;
-    window.tsv2FlexStart?.(d,s,e);
-    return;
-  }
-  if(flexCard)flexCard.hidden=true;
-  const a=document.getElementById('tsv2-fixed-date'),b=document.getElementById('tsv2-fixed-start'),z=document.getElementById('tsv2-fixed-end'),form=document.querySelector('#tsv2-card1 .tsv2-form');
-  if(a)a.value=d;
-  if(b){b.value=s;b.readOnly=true;b.setAttribute('aria-readonly','true')}
-  if(z){z.value=e;z.readOnly=true;z.setAttribute('aria-readonly','true')}
-  if(form){form.dataset.fixedSelected='1';form.dataset.flexible='0';form.dataset.gapStart=s;form.dataset.gapEnd=e}
-  if(fixedCard)fixedCard.hidden=false;
-  fixedCard?.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('tsv2-fixed-act')?.focus();
-}
+function fixedPick(d,s,e){pick(d,s,e)}
 function pick(d,s,e){
   window.tsv2OpenCard?.(2);
   const a=document.getElementById('tsv2-date'),b=document.getElementById('tsv2-start'),z=document.getElementById('tsv2-end'),form=document.querySelector('#tsv2-card2 .tsv2-form'),card=document.querySelector('#tsv2-card2 .tsv2-slot-editor');
