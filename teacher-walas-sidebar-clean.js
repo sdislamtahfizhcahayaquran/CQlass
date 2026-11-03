@@ -103,10 +103,6 @@
         if(dis)ordered.push({...dis,label:'Kedisiplinan',roles:[...new Set([...(dis.roles||[]),...TEACHER_ROLES])]});
         if(rew)ordered.push({...rew,label:'Reward',roles:[...new Set([...(rew.roles||[]),...TEACHER_ROLES])]});
         if(mas)ordered.push({...mas,roles:[...new Set([...(mas.roles||[]),'walas'])]});
-        ordered.push({id:'market-day',label:'Penilaian Market Day',roles:['walas'],built:true,render:function(content){
-          if(typeof window.renderMarketDayWalas==='function')return window.renderMarketDayWalas(content);
-          content.textContent='Modul Market Day belum termuat. Silakan muat ulang halaman.';
-        }});
         student.items=ordered;
       }
       if(reports&&Array.isArray(reports.items)){
@@ -129,9 +125,24 @@
         rapor.roles=without(rapor.roles,['walas']);
         MODULE_GROUPS.push({
           id:'akademik-walas',
-          label:'Akademik',
+          label:'Rapor & Penilaian',
           roles:['walas'],
-          items:[activityItem(['walas']),cloneItem(rapor,['walas'],'Cetak Rapor')]
+          items:[activityItem(['walas']),{id:'market-day',label:'Penilaian Market Day',roles:['walas'],built:true,render:async function(content){
+            content.innerHTML='<div class="card"><span class="spinner"></span> Memuat Penilaian Market Day...</div>';
+            const mount=content.firstElementChild;
+            try{
+              if(typeof window.renderMarketDayWalas!=='function'){
+                if(!window.__cqMarketDayLoad)window.__cqMarketDayLoad=new Promise(function(resolve,reject){
+                  const script=document.createElement('script');script.src='market-day-walas.js?v=20261103-md2';
+                  script.onload=function(){if(typeof window.renderMarketDayWalas==='function')resolve();else reject(Error('Modul Market Day belum siap.'))};
+                  script.onerror=function(){script.remove();reject(Error('Modul Market Day gagal dimuat. Periksa koneksi lalu klik menu kembali.'))};
+                  document.head.appendChild(script);
+                }).catch(function(err){window.__cqMarketDayLoad=null;throw err});
+                await window.__cqMarketDayLoad;
+              }
+              if(content.firstElementChild===mount&&currentUser?.role==='walas')await window.renderMarketDayWalas(content);
+            }catch(err){if(content.firstElementChild===mount)content.textContent=err.message||'Market Day gagal dimuat.'}
+          }},cloneItem(rapor,['walas'],'Cetak Rapor')]
         });
       }
 

@@ -3,10 +3,11 @@
 'use strict';
 const indicators=['Aktif / cekatan menawarkan produk','Berani dan percaya diri saat berjualan','Tetap berjualan meskipun sepi','Kreatif dalam promosi produk','Menjaga dan menghitung uang / produk','Bekerja sama dengan teman','Penerapan bahasa Inggris / Arab'];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function api(action,payload={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);try{const r=await fetch(`${SUPABASE_URL}/functions/v1/admin-academic-period/market-day`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,'x-session-token':getAuthToken()},body:JSON.stringify({action,...payload}),signal:controller.signal});const j=await r.json();if(!r.ok||!j.success)throw Error(j.error||'Gagal memproses laporan.');return j}finally{clearTimeout(timer)}}
+async function api(action,payload={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);try{const r=await fetch(`${SUPABASE_URL}/functions/v1/admin-academic-period/market-day`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':getAuthToken()},body:JSON.stringify({action,...payload}),signal:controller.signal});const j=await r.json();if(!r.ok||!j.success)throw Error(j.error||'Gagal memproses laporan.');return j}finally{clearTimeout(timer)}}
 window.renderMarketDayWalas=async function(content){
  if(typeof currentUser==='undefined'||currentUser?.role!=='walas'){content.textContent='Akses khusus wali kelas.';return}
- const identity=currentUser.username;const alive=()=>content.isConnected&&currentUser?.role==='walas'&&currentUser.username===identity&&activeModule==='market-day';
+ const mountId=String(Date.now())+Math.random();content.dataset.marketDayMount=mountId;
+ const identity=currentUser.username;const alive=()=>content.isConnected&&currentUser?.role==='walas'&&currentUser.username===identity&&content.dataset.marketDayMount===mountId&&activeModule==='market-day';
  content.innerHTML='<div class="card"><span class="spinner"></span> Memuat Penilaian Market Day…</div>';
  let boot,students=[],report=null,data,step=0,busy=false,dirty=false;
  try{boot=await api('bootstrap');if(!alive())return}catch(e){if(alive())content.textContent=e.message;return}
