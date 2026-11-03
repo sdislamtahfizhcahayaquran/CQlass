@@ -133,7 +133,7 @@
             try{
               if(typeof window.renderMarketDayWalas!=='function'){
                 if(!window.__cqMarketDayLoad)window.__cqMarketDayLoad=new Promise(function(resolve,reject){
-                  const script=document.createElement('script');script.src='market-day-walas.js?v=20261103-md4';
+                  const script=document.createElement('script');script.src='market-day-walas.js?v=20261103-md5';
                   script.onload=function(){if(typeof window.renderMarketDayWalas==='function')resolve();else reject(Error('Modul Market Day belum siap.'))};
                   script.onerror=function(){script.remove();reject(Error('Modul Market Day gagal dimuat. Periksa koneksi lalu klik menu kembali.'))};
                   document.head.appendChild(script);
