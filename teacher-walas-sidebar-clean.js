@@ -103,6 +103,10 @@
         if(dis)ordered.push({...dis,label:'Kedisiplinan',roles:[...new Set([...(dis.roles||[]),...TEACHER_ROLES])]});
         if(rew)ordered.push({...rew,label:'Reward',roles:[...new Set([...(rew.roles||[]),...TEACHER_ROLES])]});
         if(mas)ordered.push({...mas,roles:[...new Set([...(mas.roles||[]),'walas'])]});
+        ordered.push({id:'market-day',label:'Penilaian Market Day',roles:['walas'],built:true,render:function(content){
+          if(typeof window.renderMarketDayWalas==='function')return window.renderMarketDayWalas(content);
+          content.textContent='Modul Market Day belum termuat. Silakan muat ulang halaman.';
+        }});
         student.items=ordered;
       }
       if(reports&&Array.isArray(reports.items)){
@@ -167,7 +171,6 @@
       }
 
       // Final invariant: Walas/Guru tidak boleh punya grup Kesiswaan duplikat.
-      let seenStudent=false;
       for(let i=MODULE_GROUPS.length-1;i>=0;i--){
         const g=MODULE_GROUPS[i];if(!g)continue;
         const isStudent=(g.id==='kesiswaan'||g.id==='kesiswaan-input-center');
