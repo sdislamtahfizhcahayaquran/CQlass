@@ -35,7 +35,7 @@
  function isWalas(){try{return currentUser?.role==='walas'}catch{return false}}
  let last=null,loading=false,refreshAt=0,refreshAgain=false,reportDate='',reportedAccount='';
  const reportModules=[['Absensi','absensi'],['Kedisiplinan','kedisiplinan'],['Reward','reward'],['Timesheet','timesheet']];
- let reportMount=null,extraStatus=null,extraRequest=0;
+ let reportMount=null,reportBody=null,extraStatus=null,extraRequest=0;
  function reportDateToday(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
   return ['year','month','day'].map(part=>parts.find(item=>item.type===part).value).join('-');
@@ -53,7 +53,7 @@
    '<div class="rd-task '+(status===true?'done':status===false?'pending':'')+'"><div class="rd-task-main"><div class="rd-task-name">'+label+'</div><div class="rd-task-meta">'+
    (status===true?'✓ Sudah diisi':status===false?'Belum diisi':'Status belum tersedia')+
    '</div></div>'+(status===false?`<button type="button" class="btn btn-sm" onclick="setActiveModule('${module}')">Isi sekarang</button>`:'')+'</div>').join('');
-  if(reportMount.__reportHtml!==html){reportMount.__reportHtml=html;reportMount.innerHTML=html}
+  if(reportMount.__reportHtml!==html){reportMount.__reportHtml=html;reportBody.innerHTML=html}
  }
  async function refreshReportStatus(){
   if(!isWalas()||!reportMount?.isConnected||document.hidden)return;
@@ -75,15 +75,25 @@
   drawReportStatus();
  }
  function mountReportStatus(){
-  const card=isWalas()&&document.querySelector('#content .walas-grid-bottom > .walas-card:first-child');
-  if(card&&reportMount?.parentElement===card)return;
-  if(!card&&!reportMount)return;
+  const dashboard=isWalas()&&typeof activeModule!=='undefined'&&activeModule==='dashboard'
+   ? document.querySelector('#content #rd-root'):null;
+  const taskHeader=dashboard?.querySelector('.walas-grid-bottom > .walas-card:first-child > .walas-card-head');
+  // Dashboard V10 renders the generic shell for Walas, without the legacy task card.
+  const anchor=taskHeader||dashboard?.querySelector(':scope > .rd-kpis');
+  if(anchor&&reportMount?.previousElementSibling===anchor)return;
+  if(!anchor&&!reportMount)return;
   reportMount?.remove();
-  reportMount=null;extraStatus=null;extraRequest++;
-  if(!card)return;
+  reportMount=null;reportBody=null;extraStatus=null;extraRequest++;
+  if(!anchor)return;
   reportMount=document.createElement('section');
   reportMount.setAttribute('aria-label','Status pengisian laporan hari ini');
-  card.querySelector('.walas-card-head')?.after(reportMount);
+  reportBody=reportMount;
+  if(!taskHeader){
+   reportMount.className='rd-card';
+   reportMount.innerHTML='<h2 class="rd-card-title">Tugas Hari Ini</h2><div></div>';
+   reportBody=reportMount.lastElementChild;
+  }
+  anchor.after(reportMount);
   drawReportStatus();
   refresh(true);
   refreshReportStatus();
