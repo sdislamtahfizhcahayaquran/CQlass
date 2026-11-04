@@ -2,12 +2,12 @@
 (function(){
  'use strict';
  if(window.__cqDailyPointsUI)return;window.__cqDailyPointsUI=true;
- const URL='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/student-point-input-audit';
+ const API_BASE='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/';
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let chosenClass='',loaded=null,root=null;
- async function api(payload){
+ async function api(payload,url=API_BASE+'student-point-input-audit'){
   const token=typeof getAuthToken==='function'?getAuthToken():localStorage.getItem('cqlass_session_token')||'';
-  const resp=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify(payload)});
+  const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify(payload)});
   let data={};try{data=await resp.json()}catch(e){throw Error('Respons server tidak valid');}
   if(!resp.ok||data.success===false)throw Error(data.error==='status_conflicts_with_records'?'Pilihan tidak cocok dengan catatan yang sudah tersimpan. Periksa data kedisiplinan, keterlambatan, dan reward.':(data.message||data.error||'Gagal menghubungi server'));
   return data;
@@ -34,6 +34,60 @@
  // Single source of truth: existing per-category confirmation and actual saved input.
  function isWalas(){try{return currentUser?.role==='walas'}catch{return false}}
  let last=null,loading=false,refreshAt=0,refreshAgain=false,reportDate='',reportedAccount='';
+ const reportModules=[['Absensi','absensi'],['Kedisiplinan','kedisiplinan'],['Reward','reward'],['Timesheet','timesheet']];
+ let reportMount=null,extraStatus=null,extraRequest=0;
+ function reportDateToday(){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  return ['year','month','day'].map(part=>parts.find(item=>item.type===part).value).join('-');
+ }
+ function drawReportStatus(){
+  if(!isWalas()||!reportMount?.isConnected)return;
+  const rows=reportModules.map(([label,module])=>[label,module,module==='timesheet'?extraStatus?.timesheet:last?.[module]]);
+  if(extraStatus?.uks!==undefined)rows.push(['UKS','uks-duty-report',extraStatus.uks]);
+  const known=rows.filter(([, ,status])=>typeof status==='boolean');
+  const done=known.filter(([, ,status])=>status).length;
+  const summary=!extraStatus?.uksAvailable||known.length!==rows.length
+   ? 'Status sedang diperiksa atau belum tersedia.'
+   : done===rows.length?'✓ Semua laporan hari ini sudah lengkap':done+' dari '+rows.length+' laporan sudah diisi';
+  const html='<div class="walas-card-sub" role="status">'+summary+'</div>'+rows.map(([label,module,status])=>
+   '<div class="rd-task '+(status===true?'done':status===false?'pending':'')+'"><div class="rd-task-main"><div class="rd-task-name">'+label+'</div><div class="rd-task-meta">'+
+   (status===true?'✓ Sudah diisi':status===false?'Belum diisi':'Status belum tersedia')+
+   '</div></div>'+(status===false?`<button type="button" class="btn btn-sm" onclick="setActiveModule('${module}')">Isi sekarang</button>`:'')+'</div>').join('');
+  if(reportMount.__reportHtml!==html){reportMount.__reportHtml=html;reportMount.innerHTML=html}
+ }
+ async function refreshReportStatus(){
+  if(!isWalas()||!reportMount?.isConnected||document.hidden)return;
+  const mount=reportMount,account=currentUser,date=reportDateToday(),request=++extraRequest;
+  const endpoint=name=>API_BASE+name;
+  const [timesheet,uks]=await Promise.allSettled([
+   api({action:'bootstrap',month:date.slice(0,7)},endpoint('teacher-timesheet-v2')),
+   api({action:'bootstrap'},endpoint('uks-duty'))
+  ]);
+  if(request!==extraRequest||!isWalas()||currentUser!==account||reportMount!==mount||!mount.isConnected||date!==reportDateToday())return;
+  const ts=timesheet.status==='fulfilled'?timesheet.value:null;
+  const duty=uks.status==='fulfilled'?uks.value:null;
+  const shifts=duty?.today_schedule||[];
+  extraStatus={
+   timesheet:ts?.teacher&&Array.isArray(ts.activities)?ts.activities.some(row=>row.work_date===date):undefined,
+   uks:shifts.length?shifts.every(shift=>(duty.today_reports||[]).some(report=>Number(report.shift_no)===Number(shift.shift_no))):undefined,
+   uksAvailable:!!duty
+  };
+  drawReportStatus();
+ }
+ function mountReportStatus(){
+  const card=isWalas()&&document.querySelector('#content .walas-grid-bottom > .walas-card:first-child');
+  if(card&&reportMount?.parentElement===card)return;
+  if(!card&&!reportMount)return;
+  reportMount?.remove();
+  reportMount=null;extraStatus=null;extraRequest++;
+  if(!card)return;
+  reportMount=document.createElement('section');
+  reportMount.setAttribute('aria-label','Status pengisian laporan hari ini');
+  card.querySelector('.walas-card-head')?.after(reportMount);
+  drawReportStatus();
+  refresh(true);
+  refreshReportStatus();
+ }
  function draw(){
   if(!isWalas()||!last)return;
   const sidebar=document.getElementById('sidebar');if(!sidebar)return;
@@ -50,14 +104,16 @@
  }
  async function refresh(force=false){
   if(!isWalas()||document.hidden)return;
-  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const today=reportDateToday();
   const account=String(currentUser?.id||currentUser?.username||'');
   if(today!==reportDate||account!==reportedAccount){last=null;delete window.__cqWalasDailyCompleted;refreshAt=0;reportDate=today;reportedAccount=account;force=true}
   if(loading){if(force)refreshAgain=true;return}
   if(!force&&Date.now()-refreshAt<45000){draw();return}
+  const user=currentUser;
   loading=true;refreshAt=Date.now();
   try{
    const out=await api({action:'daily_get'});
+   if(!isWalas()||currentUser!==user||today!==reportDateToday())return;
    const c=out.completion;
    if(c){
     last={absensi:!!c.attendance,kedisiplinan:!!c.discipline,reward:!!c.reward};
@@ -65,7 +121,7 @@
     draw();
    }
   }catch(e){last=null;refreshAt=0;console.warn('Notifikasi Walas: status tidak tersedia',e)}
-  finally{loading=false;if(refreshAgain){refreshAgain=false;refresh(true)}}
+  finally{drawReportStatus();loading=false;if(refreshAgain){refreshAgain=false;refresh(true)}}
  }
  window.cqWalasConfirmEmpty=async function(kind,cid,day,output){
   if(!isWalas())return;
@@ -90,11 +146,14 @@
   // Observe sidebar redraws; do not poll DOM every five seconds or rewrite global routing.
   const side=document.getElementById('sidebar');
   if(side){const observer=new MutationObserver(()=>{if(isWalas())draw()});observer.observe(side,{childList:true,subtree:true})}
-  window.addEventListener('focus',()=>refresh(true));
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh(true)});
+  const content=document.getElementById('content');
+  if(content)new MutationObserver(mountReportStatus).observe(content,{childList:true,subtree:true});
+  mountReportStatus();
+  window.addEventListener('focus',()=>{refresh(true);refreshReportStatus()});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh(true);refreshReportStatus()}});
   window.addEventListener('cq-walas-kesiswaan-saved',()=>refresh(true));
   // One lightweight refresh cadence, not repeated DOM polling.
-  window.setInterval(()=>refresh(false),60000);
+  window.setInterval(()=>{if(reportMount?.isConnected&&reportDate!==reportDateToday()){extraStatus=null;refreshReportStatus()}refresh(false)},60000);
   refresh(true);
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startMarkers,{once:true});else startMarkers();
