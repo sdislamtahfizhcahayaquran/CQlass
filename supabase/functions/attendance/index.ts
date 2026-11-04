@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const C={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization,x-client-info,apikey,content-type,x-session-token","Access-Control-Allow-Methods":"POST,OPTIONS"};
-const STAT=new Set(["Hadir","Sakit","Izin","Alfa","Terlambat"]),FAC=new Set(["","Rusak","Hilang","Perlu Ditambah"]),BUCKET="morning-talk",MAX=4*1024*1024,EDIT=7;
+const STAT=new Set(["Hadir","Sakit","Izin","Alfa","Terlambat"]),FAC=new Set(["","Rusak","Hilang","Perlu Ditambah"]),BUCKET="morning-talk",MAX=4*1024*1024;
 const T=(v:any)=>String(v??"").trim(),L=(v:any)=>T(v).toLowerCase();
 const J=(b:any,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{...C,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function key(){const p=Deno.env.get("SUPABASE_SECRET_KEYS");if(p){try{const o=JSON.parse(p);if(o?.default)return String(o.default)}catch{}}const k=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||Deno.env.get("SUPABASE_SECRET_KEY");if(!k)throw Error("service_key_missing");return k}
@@ -33,8 +33,7 @@ async function ctx(s:any,a:any){
   return{roles:rr,elevated:e,allowed:e||ids.length>0,classIds:[...new Set(ids)]};
 }
 function today(){const f=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"});const p=Object.fromEntries(f.formatToParts(new Date()).map(x=>[x.type,x.value]));return`${p.year}-${p.month}-${p.day}`}
-function diff(a:string,b:string){return Math.floor((new Date(b+"T00:00:00+07:00").getTime()-new Date(a+"T00:00:00+07:00").getTime())/86400000)}
-function editable(date:string,c:any){if(date>today())return{ok:false,msg:"Tanggal tidak boleh melebihi hari ini."};if(c.elevated)return{ok:true,msg:""};if(diff(date,today())>EDIT)return{ok:false,msg:`Batas koreksi wali kelas adalah ${EDIT} hari.`};return{ok:true,msg:""}}
+function editable(date:string,c:any){if(date>today())return{ok:false,msg:"Tanggal tidak boleh melebihi hari ini."};return{ok:true,msg:""}}
 function access(id:string,c:any){return c.elevated||c.classIds.includes(id)}
 async function classes(s:any,c:any){const{data,error}=await s.from("classes").select("id,name,code,grade_level").eq("is_active",true);if(error)throw error;let r=data||[];if(!c.elevated)r=r.filter((x:any)=>c.classIds.includes(T(x.id)));return r.map((x:any)=>({id:T(x.id),name:T(x.name)||T(x.code),grade_level:x.grade_level})).sort((a:any,b:any)=>a.name.localeCompare(b.name,"id",{numeric:true}))}
 async function students(s:any,classId:string){const{data:e,error}=await s.from("student_enrollments").select("student_id").eq("class_id",classId).eq("is_active",true);if(error)throw error;const ids=[...new Set((e||[]).map((x:any)=>x.student_id).filter(Boolean))];if(!ids.length)return[];const{data:st,error:se}=await s.from("students").select("id,nis,nisn,full_name").in("id",ids);if(se)throw se;return(st||[]).map((x:any)=>({id:T(x.id),nis:T(x.nis),nisn:T(x.nisn),name:T(x.full_name)})).sort((a:any,b:any)=>a.name.localeCompare(b.name,"id"))}
