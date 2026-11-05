@@ -817,6 +817,37 @@ async function saveTpScores(
 // MAIN
 // ============================================================================
 
+async function loadScoreHistory(sb:any,body:any) {
+  const period=await resolvePeriod(sb,txt(body.academic_year),Number(body.semester_no));
+  const offset=Number(body.offset || 0);
+  if(!Number.isSafeInteger(offset)||offset<0) return json({success:false,error:"offset_invalid"},400);
+  let maxId=body.max_id||null;
+  if(!offset&&!maxId){
+   const latest=await sb.from("academic_score_history").select("id").order("id",{ascending:false}).limit(1);
+   if(latest.error) throw latest.error;
+   maxId=latest.data?.[0]?.id||0;
+  }
+  let query=sb.from("academic_score_history_report").select("*")
+    .eq("academic_year_id",period.year.id).eq("semester_no",period.semesterNo)
+    .order("id",{ascending:true}).range(offset,offset+499);
+  if(body.class_name) query=query.eq("class_name",txt(body.class_name));
+  for(const field of ["start","end"]) {
+   if(body[field] && (!/^\d{4}-\d{2}-\d{2}$/.test(body[field])||!Number.isFinite(Date.parse(body[field]))))
+    return json({success:false,error:"date_invalid"},400);
+  }
+  if(body.start) query=query.gte("changed_at",body.start+"T00:00:00+07:00");
+  if(body.end) {
+   const end=new Date(body.end+"T00:00:00+07:00");end.setUTCDate(end.getUTCDate()+1);
+   query=query.lt("changed_at",end.toISOString());
+  }
+  query=query.lte("id",maxId);
+  const {data,error}=await query;
+  if(error) throw error;
+  const rows=data||[];
+  return json({success:true,rows,max_id:maxId,has_more:rows.length===500,academic_year:period.year.name,semester_no:period.semesterNo});
+
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -844,6 +875,11 @@ Deno.serve(async (req: Request) => {
       )
     ) {
       return json({ success: false, error: "forbidden" }, 403);
+    }
+
+    if (action === "history") {
+      if (!roles.includes("akademik")) return json({success:false,error:"forbidden"},403);
+      return await loadScoreHistory(supabase,body);
     }
 
     const useActivePeriod = action === "bootstrap" &&
