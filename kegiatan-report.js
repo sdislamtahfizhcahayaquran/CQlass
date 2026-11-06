@@ -63,7 +63,7 @@
       },body:JSON.stringify({action,...payload})});
       const raw=await r.text(); let d={}; try{d=raw?JSON.parse(raw):{}}catch(_){throw new Error('Respons sistem kegiatan tidak valid.');}
       if(!r.ok||d.success===false){
-        const map={forbidden:'Akun ini tidak memiliki akses ke data tersebut.',session_invalid:'Sesi login sudah berakhir.',photo_limit:'Maksimal 10 foto per kegiatan.',image_too_large:'Foto masih terlalu besar setelah diproses.',readonly:'Data hanya dapat diubah Kabid Kegiatan.',student_internal:'Siswa sudah tercatat sebagai peserta ekskul internal.',invalid_status:'Status kegiatan tidak valid.'};
+        const map={forbidden:'Akun ini tidak memiliki akses ke data tersebut.',session_invalid:'Sesi login sudah berakhir.',photo_limit:'Maksimal 10 foto per kegiatan.',image_too_large:'Foto masih terlalu besar setelah diproses.',readonly:'Data hanya dapat diubah Kabid Kegiatan.',invalid_scope:'Pilih kelas atau sasaran yang tersedia.',invalid_pic:'Nama PIC maksimal 300 karakter.',student_internal:'Siswa sudah tercatat sebagai peserta ekskul internal.',invalid_status:'Status kegiatan tidak valid.'};
         throw new Error(map[d.error]||d.error||'Data belum berhasil diproses.');
       }
       return d;
@@ -248,31 +248,61 @@
 
   window.kv2OpenEvent=async function(id){
     ensureModal();const o=document.getElementById('kv2-overlay'),m=document.getElementById('kv2-modal');o.classList.add('open');m.innerHTML='<div class="kv2-mbody"><span class="spinner"></span> Memuat detail kegiatan...</div>';
-    try{KR.detail=await act('detail',{event_id:id});renderEventModal();}catch(e){m.innerHTML='<div class="kv2-mbody kv2-empty">'+esc(e.message)+'</div>';}
+    try{KR.detail=await act('detail',{event_id:id});KR.detail.scopePending=false;KR.detail.participantDraft=new Map();renderEventModal();}catch(e){m.innerHTML='<div class="kv2-mbody kv2-empty">'+esc(e.message)+'</div>';}
   };
   window.kv2CloseModal=function(){document.getElementById('kv2-overlay')?.classList.remove('open');KR.detail=null;};
 
   function renderEventModal(){
     const d=KR.detail,e=d.event,a=d.attendance||{},edit=!!e.permission?.edit;
     const selected=new Map((d.participants||[]).map(x=>[String(x.student_id),x]));
+    const scheduleEdit=edit&&e.category==='PEKAN_BAHASA';
+    const scopes=[...new Set([e.scope_label,...(d.scope_options||[])].filter(Boolean))];
     const opts=['TERJADWAL','TERLAKSANA','DITUNDA','DIJADWALKAN_ULANG','BATAL'];
     document.getElementById('kv2-modal').innerHTML=`<div class="kv2-mhead"><div><div class="kv2-mtitle">${esc(e.title)}</div><div class="kv2-note">${e.report_filled_at?'Data sudah pernah diisi. Perubahan berikutnya adalah Edit pada record yang sama.':'Belum ada realisasi. Penyimpanan pertama akan mengisi record kegiatan ini.'}</div></div><button class="kv2-close" onclick="kv2CloseModal()">×</button></div><div class="kv2-mbody">
       <div class="kv2-form">
         <div class="kv2-field"><label>Jadwal Target</label><div class="kv2-read">${esc(fmtDate(e.planned_date))}</div></div>
         <div class="kv2-field"><label>Tanggal Realisasi</label><input id="kv2-actual" class="kv2-input" type="date" value="${esc(e.actual_date||'')}" ${edit?'':'disabled'}></div>
         <div class="kv2-field"><label>Status</label><select id="kv2-status" class="kv2-select" ${edit?'':'disabled'}>${opts.map(s=>`<option value="${s}" ${s===e.status?'selected':''}>${esc(STATUS[s])}</option>`).join('')}</select></div>
-        <div class="kv2-field"><label>Kelas / Sasaran</label><div class="kv2-read">${esc(e.scope_label||'—')}</div></div>
-        <div class="kv2-field"><label>PIC Jadwal</label><div class="kv2-read">${esc(e.pic_text||'—')}</div></div>
-        <div class="kv2-field"><label>Tanggal Absensi</label><input id="kv2-attdate" class="kv2-input" type="date" value="${esc(e.attendance_date||e.actual_date||e.planned_date)}" ${edit?'':'disabled'}></div>
-        <div class="kv2-field kv2-span3"><label>Absensi Peserta</label>${a.available?`<div class="kv2-att"><b>${a.present||0} hadir / ${a.total||0} siswa</b><span>Diambil otomatis dari absensi ${esc((a.classes||[]).join(', '))} tanggal ${esc(fmtDate(a.date))}. Ubah Tanggal Absensi jika pelaksanaan berbeda.</span></div>`:`<div class="kv2-att"><b>Absensi belum tersedia</b><span>Sistem belum menemukan absensi pada tanggal yang dipilih. Input manual hanya muncul sebagai cadangan.</span></div>`}</div>
-        ${!a.available?`<div class="kv2-field"><label>Jumlah Peserta Hadir</label><input id="kv2-manual" class="kv2-input" type="number" min="0" value="${e.manual_participant_count??''}" ${edit?'':'disabled'}></div>`:''}
+        <div class="kv2-field"><label>Kelas / Sasaran</label>${scheduleEdit?`<select id="kv2-scope" class="kv2-select" onchange="kv2PreviewScope()">${scopes.map(v=>`<option value="${esc(v)}" ${v===e.scope_label?'selected':''}>${esc(v)}</option>`).join('')}</select><div class="kv2-note">Absensi dan daftar peserta mengikuti sasaran pilihan. Perubahan tersimpan setelah menekan Simpan.</div>`:`<div class="kv2-read">${esc(e.scope_label||'—')}</div>`}</div>
+        <div class="kv2-field"><label>PIC Jadwal</label>${scheduleEdit?`<input id="kv2-pic" class="kv2-input" maxlength="300" value="${esc(e.pic_text||'')}" placeholder="Nama guru / penanggung jawab">`:`<div class="kv2-read">${esc(e.pic_text||'—')}</div>`}</div>
+        <div class="kv2-field"><label>Tanggal Absensi</label><input id="kv2-attdate" class="kv2-input" type="date" onchange="kv2PreviewScope()" value="${esc(e.attendance_date||e.actual_date||e.planned_date)}" ${edit?'':'disabled'}></div>
+        <div id="kv2-attendance" class="kv2-span3">${renderEventAttendance(e,a,edit)}</div>
         <div class="kv2-field kv2-span3"><label>Catatan Singkat</label><textarea id="kv2-notes" class="kv2-textarea" ${edit?'':'disabled'} placeholder="Hasil kegiatan, kendala, atau evaluasi singkat...">${esc(e.notes||'')}</textarea></div>
       </div>
-      ${e.category==='PEKAN_BAHASA'?renderLanguage(d.roster||[],selected,edit):''}
+      <div id="kv2-language">${e.category==='PEKAN_BAHASA'?renderLanguage(d.roster||[],selected,edit):''}</div>
       <div class="kv2-card" style="margin-top:12px"><div class="kv2-title">Dokumentasi Foto</div><div class="kv2-sub">Foto asli dari kamera boleh langsung dipilih. Sistem otomatis mengecilkan foto sebelum disimpan.</div>${renderPhotos(d.photos||[])}${edit?`<div class="kv2-upload"><input type="file" accept="image/*" multiple onchange="kv2UploadPhotos(event)"><div class="kv2-note">Maksimal 10 foto per kegiatan.</div></div>`:''}</div>
       <div class="kv2-actions" style="justify-content:flex-end;margin-top:13px"><button class="kv2-btn ghost" onclick="kv2CloseModal()">Tutup</button>${edit?'<button class="kv2-btn" id="kv2-save" onclick="kv2SaveEvent()">Simpan</button>':''}</div>
     </div>`;
   }
+  function renderEventAttendance(e,a,edit){
+    return `<div class="kv2-form"><div class="kv2-field kv2-span3"><label>Absensi Peserta</label>${a.available?`<div class="kv2-att"><b>${a.present||0} hadir / ${a.total||0} siswa</b><span>Diambil otomatis dari absensi ${esc((a.classes||[]).join(', '))} tanggal ${esc(fmtDate(a.date))}.</span></div>`:'<div class="kv2-att"><b>Absensi belum tersedia</b><span>Input manual tersedia sebagai cadangan.</span></div>'}</div>${!a.available?`<div class="kv2-field"><label>Jumlah Peserta Hadir</label><input id="kv2-manual" class="kv2-input" type="number" min="0" value="${e.manual_participant_count??''}" ${edit?'':'disabled'}></div>`:''}</div>`;
+  }
+  function languageSelection(){
+    const rows=[];document.querySelectorAll('.kv2-langrow').forEach(row=>{const ck=row.querySelector('.kv2-langcheck');rows.push({student_id:ck.dataset.studentId,checked:ck.checked,performance_category:row.querySelector('.kv2-langcat')?.value||'',placement:row.querySelector('.kv2-langplace')?.value||null});});return rows;
+  }
+  window.kv2PreviewScope=async function(){
+    const d=KR.detail;if(!d||d.event.category!=='PEKAN_BAHASA'||!d.event.permission?.edit)return;
+    const seq=d.previewSeq=(d.previewSeq||0)+1;
+    if(!d.scopePending){
+      d.participantDraft=d.participantDraft||new Map();
+      languageSelection().forEach(x=>d.participantDraft.set(String(x.student_id),x));
+      d.manualDraft=document.getElementById('kv2-manual')?.value??d.manualDraft??d.event.manual_participant_count;
+    }
+    d.scopePending=true;
+    const save=document.getElementById('kv2-save');if(save)save.disabled=true;
+    const language=document.getElementById('kv2-language');if(language)language.innerHTML='<div class="kv2-note">Memuat peserta sesuai sasaran...</div>';
+    const att=document.getElementById('kv2-attendance');if(att)att.innerHTML='<div class="kv2-note">Memuat absensi...</div>';
+    try{
+      const r=await act('preview_scope',{event_id:d.event.id,scope_label:document.getElementById('kv2-scope')?.value||d.event.scope_label,attendance_date:document.getElementById('kv2-attdate')?.value||''});
+      if(KR.detail!==d||d.previewSeq!==seq)return;
+      d.attendance=r.attendance;d.roster=r.roster||[];
+      const selected=new Map((d.participants||[]).map(x=>[String(x.student_id),x]));
+      for(const [id,x] of d.participantDraft){if(x.checked)selected.set(id,x);else selected.delete(id);}
+      if(att)att.innerHTML=renderEventAttendance({...d.event,manual_participant_count:d.manualDraft},r.attendance||{},true);
+      if(language)language.innerHTML=renderLanguage(d.roster,selected,true);
+      d.scopePending=false;if(save)save.disabled=false;
+    }catch(err){if(KR.detail!==d||d.previewSeq!==seq)return;if(att)att.innerHTML='<div class="kv2-note">'+esc(err.message)+' Pilih ulang sasaran untuk mencoba lagi.</div>';showToast(err.message,true);}
+  };
   function renderPhotos(rows){return rows.length?`<div class="kv2-photos">${rows.map(p=>`<a class="kv2-photo" href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.url)}" loading="lazy" alt="Dokumentasi kegiatan"></a>`).join('')}</div>`:'<div class="kv2-empty">Belum ada foto dokumentasi.</div>';}
   function renderLanguage(roster,selected,edit){
     return `<div class="kv2-card" style="margin-top:12px"><div class="kv2-title">Peserta & Pemenang Pekan Bahasa</div><div class="kv2-sub">Pemenang berlaku hanya untuk pelaksanaan ini dan tidak diakumulasi dengan Jumat sebelumnya.</div><input id="kv2-langsearch" class="kv2-input" placeholder="Cari nama / kelas..." oninput="kv2FilterLanguage()" style="margin-bottom:8px"><div class="kv2-langwrap"><table class="kv2-lang"><thead><tr><th>Ikut</th><th>Nama</th><th>Kelas</th><th>Penampilan / Kategori</th><th>Hasil</th></tr></thead><tbody>${roster.map(r=>{const old=selected.get(String(r.id));return`<tr class="kv2-langrow" data-search="${esc((r.name+' '+r.class_name).toLowerCase())}"><td><input class="kv2-langcheck" data-student-id="${esc(r.id)}" type="checkbox" ${old?'checked':''} ${edit?'':'disabled'}></td><td><b>${esc(r.name)}</b></td><td>${esc(r.class_name)}</td><td><input class="kv2-langcat" type="text" value="${esc(old?.performance_category||'')}" ${edit?'':'disabled'}></td><td><select class="kv2-langplace" ${edit?'':'disabled'}><option value="">Tidak Juara</option>${[1,2,3].map(n=>`<option value="${n}" ${Number(old?.placement)===n?'selected':''}>Juara ${n}</option>`).join('')}</select></td></tr>`}).join('')}</tbody></table></div></div>`;
@@ -280,9 +310,10 @@
   window.kv2FilterLanguage=function(){const q=(document.getElementById('kv2-langsearch')?.value||'').toLowerCase().trim();document.querySelectorAll('.kv2-langrow').forEach(r=>r.style.display=!q||(r.dataset.search||'').includes(q)?'':'none');};
 
   window.kv2SaveEvent=async function(){
-    const e=KR.detail?.event;if(!e)return;const b=document.getElementById('kv2-save');if(b){b.disabled=true;b.innerHTML='<span class="spinner"></span>Menyimpan...';}
+    const e=KR.detail?.event;if(!e||KR.detail.scopePending)return;const b=document.getElementById('kv2-save');if(b){b.disabled=true;b.innerHTML='<span class="spinner"></span>Menyimpan...';}
     try{
-      const mainResult=await act('save_event',{event_id:e.id,status:document.getElementById('kv2-status')?.value||e.status,actual_date:document.getElementById('kv2-actual')?.value||'',attendance_date:document.getElementById('kv2-attdate')?.value||'',manual_participant_count:document.getElementById('kv2-manual')?.value??null,notes:document.getElementById('kv2-notes')?.value||''});
+      const schedule=e.category==='PEKAN_BAHASA'?{scope_label:document.getElementById('kv2-scope')?.value||e.scope_label,pic_text:document.getElementById('kv2-pic')?.value??e.pic_text??''}:{};
+      const mainResult=await act('save_event',{event_id:e.id,...schedule,status:document.getElementById('kv2-status')?.value||e.status,actual_date:document.getElementById('kv2-actual')?.value||'',attendance_date:document.getElementById('kv2-attdate')?.value||'',manual_participant_count:document.getElementById('kv2-manual')?.value??null,notes:document.getElementById('kv2-notes')?.value||''});
       if(!mainResult?.success)throw new Error('Laporan utama belum berhasil disimpan.');
       if(e.category==='PEKAN_BAHASA'){
         const participants=[];document.querySelectorAll('.kv2-langrow').forEach(row=>{const ck=row.querySelector('.kv2-langcheck');if(!ck?.checked)return;participants.push({student_id:ck.dataset.studentId,performance_category:row.querySelector('.kv2-langcat')?.value||'',placement:row.querySelector('.kv2-langplace')?.value||null});});
