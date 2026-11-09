@@ -5,8 +5,6 @@
   if(window.__cqKesiswaanRekapanV11)return;
   window.__cqKesiswaanRekapanV11=true;
 
-  const MODULE_ID='kesiswaan-rekapan';
-  const GROUP_ID='kesiswaan-rekapan-group';
   const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
   const API=BASE+'/functions/v1/student-affairs-center';
   const UKS_API=BASE+'/functions/v1/uks-duty';
@@ -34,7 +32,7 @@
     '2272ba1a-9a4e-447a-9996-8a4232b4d792':'Dila Nur Azizah, S.Pd.',
     '4fa0f6ad-e5b2-4a13-bf64-fd798c8e4da5':'Abdurrokhman, M.Pd.'
   };
-  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],timesheet:[],dailyMode:false,weeklyMode:false,previousRange:null};
+  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],timesheet:[],loadId:0};
 
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const N=v=>String(v??'').trim().toLowerCase().replace(/[\s.,]/g,'');
@@ -135,63 +133,11 @@
       String(z.class_id)===String(classId)&&z.kind===kind&&
       String(z.date||'').slice(0,10)>=from&&String(z.date||'').slice(0,10)<=to);
   }
-  function pointDone(row,kind,from=S.from,to=S.to){
-    const entries=kind==='discipline'?row.v:row.r;
-    return entries.length>0||hasPointConfirmation(row.id,kind,from,to);
-  }
-  function pointStatus(row,kind,from=S.from,to=S.to){
-    const entries=kind==='discipline'?row.v:row.r;
-    if(entries.length)return status(kind,entries.length);
-    if(hasPointConfirmation(row.id,kind,from,to))return '<span class="krek-status done">Sudah Diperiksa (Nihil)</span>';
-    return status(kind,0);
-  }
-  // Daily report must visibly distinguish a checked zero-event day from an actual incident.
-  function pointDailyCell(row,kind,date){
-    const entries=kind==='discipline'?row.v:row.r;
-    if(entries.length)return mini(true);
-    if(hasPointConfirmation(row.id,kind,date,date))return '<span class="krek-mini ok" title="Diperiksa guru; tidak ada kejadian">Nihil</span>';
-    return mini(false);
-  }
-  function status(kind,count){
-    return Number(count)>0?'<span class="krek-status done">Sudah</span>':'<span class="krek-status pending">Belum</span>';
-  }
-  const DAY={1:'Senin',2:'Selasa',3:'Rabu',4:'Kamis',5:'Jumat',6:'Sabtu',7:'Ahad'};
   function isoDow(date){const x=new Date(date+'T12:00:00Z').getUTCDay();return x===0?7:x}
   function dateSeq(start,end){
     const out=[];let d=new Date(start+'T00:00:00Z'),z=new Date(end+'T00:00:00Z');
     while(d<=z){out.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}
     return out;
-  }
-  function uksCell(row){
-    if(!(Number(row.grade_level)>=1&&Number(row.grade_level)<=3))return '<span class="krek-status na">—</span>';
-    const slots=(S.uksSchedule||[]).filter(x=>N(x.teacher_name)===N(row.walas));
-    if(!slots.length)return '<span class="krek-status na">Tidak dijadwalkan</span>';
-    const t=today(),dueEnd=S.to<t?S.to:t,dates=S.from<=dueEnd?dateSeq(S.from,dueEnd):[];
-    let expected=0,submitted=0;
-    const reports=row.uks||[];
-    for(const slot of slots){
-      for(const d of dates){
-        if(isoDow(d)!==Number(slot.weekday))continue;
-        expected++;
-        if(reports.some(r=>String(r.teacher_id)===String(slot.teacher_id)&&String(r.duty_date||r.date).slice(0,10)===d&&Number(r.shift_no)===Number(slot.shift_no)))submitted++;
-      }
-    }
-    const schedule=slots.map(s=>(DAY[Number(s.weekday)]||'Hari')+' · S'+(Number(s.shift_no)||'-')).join(', ');
-    const time=slots.map(s=>String(s.start_time||'').slice(0,5).replace(':','.')+'–'+String(s.end_time||'').slice(0,5).replace(':','.')).join(', ');
-    let state='';
-    if(expected===0)state='<span class="krek-status na">Terjadwal</span>';
-    else if(submitted>=expected)state='<span class="krek-status done">Sudah '+submitted+'/'+expected+'</span>';
-    else state='<span class="krek-status pending">Belum '+submitted+'/'+expected+'</span>';
-    return '<div class="krek-uks"><div class="krek-uks-main">'+E(schedule)+'</div><div class="krek-uks-time">'+E(time)+'</div><div class="krek-uks-state">'+state+'</div></div>';
-  }
-
-  function fmtDateID(v){
-    try{return new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(v+'T12:00:00Z'))}
-    catch(_){return v}
-  }
-  function fmtClock(){
-    try{return new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()).replace('.',':')+' WIB'}
-    catch(_){return ''}
   }
   function uksDailyState(row,date){
     if(!(Number(row.grade_level)>=1&&Number(row.grade_level)<=3))return{applicable:false,label:'—',done:null};
@@ -202,121 +148,6 @@
     const submitted=slots.filter(slot=>reports.some(r=>String(r.teacher_id)===String(slot.teacher_id)&&String(r.duty_date||r.date).slice(0,10)===date&&Number(r.shift_no)===Number(slot.shift_no))).length;
     return{applicable:true,label:submitted>=slots.length?'Sudah':'Belum',done:submitted>=slots.length,submitted,total:slots.length};
   }
-  function mini(done,na=false,label=''){
-    if(na)return '<span class="krek-mini na">'+E(label||'—')+'</span>';
-    return '<span class="krek-mini '+(done?'ok':'no')+'">'+(done?'Sudah':'Belum')+'</span>';
-  }
-  function renderDailyReport(){
-    const body=document.getElementById('krek-body');if(!body)return;
-    const rows=classRows(),date=S.to||today();
-    const attDone=rows.filter(x=>x.a.length>0).length;
-    const disDone=rows.filter(x=>pointDone(x,'discipline',date,date)).length;
-    const rewDone=rows.filter(x=>pointDone(x,'reward',date,date)).length;
-    const uksRows=rows.map(x=>({row:x,state:uksDailyState(x,date)})).filter(x=>x.state.applicable);
-    const uksDone=uksRows.filter(x=>x.state.done).length;
-    const tsDone=rows.filter(x=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t&&Number(t.days_filled)>0}).length;
-    const missAtt=rows.filter(x=>!x.a.length).map(x=>x.name);
-    const missDis=rows.filter(x=>!pointDone(x,'discipline',date,date)).map(x=>x.name);
-    const missRew=rows.filter(x=>!pointDone(x,'reward',date,date)).map(x=>x.name);
-    const missUks=uksRows.filter(x=>!x.state.done).map(x=>x.row.name);
-    const missTs=rows.filter(x=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return !t||Number(t.days_filled)<=0}).map(x=>x.name);
-    body.innerHTML=`
-      <div class="krek-report-head">
-        <div><div class="krek-report-title">LAPORAN HARIAN KESISWAAN</div><div class="krek-report-school">SD Islam Tahfizh Cahaya Qur'an</div><div class="krek-report-date">${E(fmtDateID(date))}</div><div class="krek-report-stamp">Data CQlass · ${E(fmtClock())}</div></div>
-        <button type="button" class="krek-btn secondary" id="krek-exit-report">Kembali ke Rekapan</button>
-      </div>
-      <div class="krek-summary">
-        <div class="krek-sum"><b>${rows.length}</b><span>Kelas</span></div>
-        <div class="krek-sum"><b>${attDone}/${rows.length}</b><span>Kehadiran</span></div>
-        <div class="krek-sum"><b>${disDone}/${rows.length}</b><span>Kedisiplinan</span></div>
-        <div class="krek-sum"><b>${rewDone}/${rows.length}</b><span>Reward</span></div>
-        <div class="krek-sum"><b>${uksDone}/${uksRows.length||0}</b><span>UKS Hari Ini</span></div>
-        <div class="krek-sum"><b>${tsDone}/${rows.length}</b><span>Timesheet Walas</span></div>
-      </div>
-      <div class="krek-daily-table"><div class="krek-wrap"><table><thead><tr><th>No</th><th>Kelas</th><th>Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th></tr></thead><tbody>
-        ${rows.map((x,i)=>{const u=uksDailyState(x,date);return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${mini(x.a.length>0)}</td><td>${pointDailyCell(x,'discipline',date)}</td><td>${pointDailyCell(x,'reward',date)}</td><td>${u.applicable?mini(u.done):mini(null,true,'—')}</td><td>${(()=>{const t=(S.timesheet||[]).find(r=>String(r.class_id)===String(x.id));return t?mini(Number(t.days_filled)>0):mini(null,true,'—')})()}</td></tr>`}).join('')}
-      </tbody></table></div></div>
-      <div class="krek-missing"><h3>Belum lengkap hari ini</h3>
-        <div class="krek-missing-line"><b>Kehadiran:</b> ${E(missAtt.length?missAtt.join(', '):'Semua kelas sudah terisi')}</div>
-        <div class="krek-missing-line"><b>Kedisiplinan:</b> ${E(missDis.length?missDis.join(', '):'Semua kelas sudah terisi')}</div>
-        <div class="krek-missing-line"><b>Reward:</b> ${E(missRew.length?missRew.join(', '):'Semua kelas sudah terisi')}</div>
-        <div class="krek-missing-line"><b>UKS:</b> ${E(missUks.length?missUks.join(', '):(uksRows.length?'Semua petugas terjadwal sudah melapor':'Tidak ada jadwal UKS hari ini'))}</div>
-        <div class="krek-missing-line"><b>Timesheet:</b> ${E(missTs.length?missTs.join(', '):'Semua wali kelas sudah mengisi')}</div>
-      </div>`;
-    document.getElementById('krek-exit-report')?.addEventListener('click',exitDailyMode);
-  }
-  function enterDailyMode(){
-    const d=today();S.weeklyMode=false;S.previousRange=null;S.dailyMode=true;S.from=d;S.to=d;document.body.classList.add('krek-shot-mode');
-    const f=document.getElementById('krek-from'),t=document.getElementById('krek-to');if(f)f.value=d;if(t)t.value=d;
-    load();
-  }
-  function exitDailyMode(){
-    S.dailyMode=false;document.body.classList.remove('krek-shot-mode');renderTable();
-  }
-  function mondayOf(date){
-    const d=new Date(date+'T12:00:00Z');
-    const dow=d.getUTCDay()||7;
-    d.setUTCDate(d.getUTCDate()-dow+1);
-    return d.toISOString().slice(0,10);
-  }
-  function addDays(date,n){
-    const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);
-    return d.toISOString().slice(0,10);
-  }
-  function weeklyMark(value,reason){
-    const cls=value===null?'unknown':value>0?'missing':'ok';
-    const label=value===null?'—':value>0?String(value):'✓';
-    return '<span class="krek-weekmark '+cls+'" title="'+E(reason||'')+'">'+label+'</span>';
-  }
-  function renderWeeklyReport(){
-    const body=document.getElementById('krek-body');if(!body)return;
-    const todayISO=today(),end=S.to<todayISO?S.to:todayISO;
-    const days=S.from<=end?dateSeq(S.from,end).filter(d=>isoDow(d)<=5):[];
-    const rows=classRows();
-    body.innerHTML=`<div class="krek-weekly-report">
-      <div class="krek-report-head">
-        <div><div class="krek-report-title">REKAPAN MINGGUAN KESISWAAN</div>
-        <div class="krek-report-school">SD Islam Tahfizh Cahaya Qur'an</div>
-        <div class="krek-report-date">${E(S.from)} s.d. ${E(S.to)}</div></div>
-        <button type="button" class="krek-btn secondary" id="krek-exit-weekly">Kembali ke Rekapan</button>
-      </div>
-      <div class="krek-weekly-table"><div class="krek-wrap">
-      <table aria-label="Rekapan mingguan Kesiswaan"><thead><tr><th>No</th><th>Kelas</th><th>Nama Guru</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th></tr></thead><tbody>
-      ${rows.map((x,i)=>{
-        const submittedDays=new Set((S.data.attendance_days||[]).filter(z=>String(z.class_id)===String(x.id)).map(z=>String(z.date||'').slice(0,10)));
-        const missingAttendance=days.filter(d=>!submittedDays.has(d)).length;
-        const attendanceReason=missingAttendance?'Hari belum diisi: '+days.filter(d=>!submittedDays.has(d)).join(', '):'Absensi telah tersimpan pada semua hari efektif';
-        const confirmed=S.data.point_confirmations||[];
-        const disciplineDates=new Set([
-          ...(x.v||[]).map(z=>String(z.incident_date||z.date||'').slice(0,10)),
-          ...confirmed.filter(z=>String(z.class_id)===String(x.id)&&z.kind==='discipline').map(z=>String(z.date||'').slice(0,10))
-        ]);
-        const rewardDates=new Set([
-          ...(x.r||[]).map(z=>String(z.reward_date||z.date||'').slice(0,10)),
-          ...confirmed.filter(z=>String(z.class_id)===String(x.id)&&z.kind==='reward').map(z=>String(z.date||'').slice(0,10))
-        ]);
-        const disciplineValue=days.filter(d=>!disciplineDates.has(d)).length;
-        const rewardValue=days.filter(d=>!rewardDates.has(d)).length;
-        return `<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td><b>${E(x.walas)}</b></td><td>${weeklyMark(missingAttendance,attendanceReason)}</td><td>${weeklyMark(disciplineValue,'Hari tanpa catatan kejadian maupun konfirmasi pemeriksaan')}</td><td>${weeklyMark(rewardValue,'Hari tanpa catatan reward maupun konfirmasi pemeriksaan')}</td></tr>`;
-      }).join('')}
-      </tbody></table></div></div>
-      <div class="krek-weeknote">Angka merah = jumlah hari Senin–Jumat tanpa pencatatan atau konfirmasi pemeriksaan. ✓ = seluruh hari yang diwajibkan sudah tercatat atau dikonfirmasi. Sabtu, Ahad, dan tanggal mendatang tidak dihitung. Timesheet tidak termasuk laporan ini.</div>
-    </div>`;
-    document.getElementById('krek-exit-weekly')?.addEventListener('click',exitWeeklyMode);
-  }
-  function enterWeeklyMode(){
-    if(!S.weeklyMode)S.previousRange={from:S.from,to:S.to};
-    S.weeklyMode=true;S.dailyMode=false;
-    const start=mondayOf(today());S.from=start;S.to=addDays(start,4);
-    document.body.classList.add('krek-shot-mode');load();
-  }
-  function exitWeeklyMode(){
-    S.weeklyMode=false;document.body.classList.remove('krek-shot-mode');
-    if(S.previousRange){S.from=S.previousRange.from;S.to=S.previousRange.to;S.previousRange=null}
-    const f=document.getElementById('krek-from'),t=document.getElementById('krek-to');
-    if(f)f.value=S.from;if(t)t.value=S.to;
-    load();
-  }
   function classRows(){
     const d=S.data||{},classes=d.classes||[],roster=d.roster||[],att=d.attendance||[],rw=d.rewards||[],vi=d.violations||[],uks=d.uks||[];
     return classes.map(c=>{
@@ -324,16 +155,42 @@
       return{...c,walas:WALAS[cid]||'Belum ditetapkan',students,a,r,v,uks};
     }).sort((a,b)=>Number(a.grade_level)-Number(b.grade_level)||String(a.name).localeCompare(String(b.name),'id',{numeric:true}));
   }
-  function timesheetCell(classId){
-    const x=(S.timesheet||[]).find(r=>String(r.class_id)===String(classId));
-    if(!x)return '<span class="krek-status na">—</span>';
-    if(Number(x.days_filled)>0)return '<span class="krek-status done">Lengkap '+Number(x.days_filled||0)+' hari</span>';
-    return '<span class="krek-status pending">Belum</span>';
+  function dateKey(value){return String(value||'').slice(0,10)}
+  function coverageCell(dates,missing){
+    if(!dates.length)return '<span class="krek-status na">Tidak ada hari yang dihitung</span>';
+    if(!missing.length)return '<span class="krek-status done">Lengkap</span>';
+    return '<span class="krek-status pending">Belum lengkap · '+missing.length+' hari</span>'+
+      '<div style="margin-top:4px">Tanggal belum lengkap: '+E(missing.map(d=>d.split('-').reverse().join('/')).join(', '))+'</div>';
+  }
+  function pointCoverage(row,kind,days){
+    const entries=kind==='discipline'?row.v:row.r;
+    const recorded=new Set(entries.map(z=>dateKey(z.incident_date||z.reward_date||z.date)));
+    const missing=days.filter(d=>!recorded.has(d)&&!hasPointConfirmation(row.id,kind,d,d));
+    return coverageCell(days,missing);
+  }
+  function attendanceCoverage(row,days){
+    const recorded=new Set((S.data.attendance_days||[])
+      .filter(z=>String(z.class_id)===String(row.id)).map(z=>dateKey(z.date)));
+    return coverageCell(days,days.filter(d=>!recorded.has(d)));
+  }
+  function uksCoverage(row,days){
+    const duties=days.map(date=>({date,...uksDailyState(row,date)})).filter(day=>day.applicable);
+    if(!duties.length)return '<span class="krek-status na">Tidak ada jadwal</span>';
+    return coverageCell(duties,duties.filter(day=>!day.done).map(day=>day.date));
+  }
+  function timesheetCoverage(row,days){
+    const recap=S.timesheet.find(r=>String(r.class_id)===String(row.id)&&r.teacher_id);
+    if(!Array.isArray(recap?.complete_days))return '<span class="krek-status na">Data belum tersedia</span>';
+    const complete=new Set(recap.complete_days.map(dateKey));
+    return coverageCell(days,days.filter(d=>!complete.has(d)));
   }
   function renderTable(){
     const body=document.getElementById('krek-body');if(!body)return;
     const rows=classRows();
-    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${status('attendance',x.a.length)}</td><td>${pointStatus(x,'discipline')}</td><td>${pointStatus(x,'reward')}</td><td>${uksCell(x)}</td><td>${timesheetCell(x.id)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
+    const end=S.to<today()?S.to:today();
+    const workdays=dateSeq(S.from,end).filter(d=>isoDow(d)<=6);
+    const schooldays=workdays.filter(d=>isoDow(d)<=5);
+    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${attendanceCoverage(x,schooldays)}</td><td>${pointCoverage(x,'discipline',schooldays)}</td><td>${pointCoverage(x,'reward',schooldays)}</td><td>${uksCoverage(x,workdays)}</td><td>${timesheetCoverage(x,workdays)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
     body.querySelectorAll('.krek-detail').forEach(btn=>btn.addEventListener('click',()=>openDetail(btn.dataset.class||'')));
   }
   function countsBy(arr,key,labeler){
@@ -372,20 +229,31 @@
   }
   async function load(){
     const body=document.getElementById('krek-body');if(!body)return;
+    const loadId=++S.loadId;
     body.innerHTML='<div class="krek-loading">Memuat rekapan Kesiswaan…</div>';
-    try{if(S.weeklyMode){S.data=await post({action:'report',start_date:S.from,end_date:S.to});renderWeeklyReport();return}const [report,schedule,timesheet]=await Promise.all([post({action:'report',start_date:S.from,end_date:S.to}),postUks({action:'schedule'}),post({action:'timesheet_recap',start_date:S.from,end_date:S.to})]);S.data=report;S.uksSchedule=schedule.schedule||[];S.timesheet=timesheet.rows||[];if(S.dailyMode)renderDailyReport();else renderTable()}
-    catch(e){body.innerHTML='<div class="krek-error"><b>Rekapan belum dapat dimuat.</b><br>'+E(e.message||'Gagal memuat data.')+'</div>'}
+    try{
+      const range={start_date:S.from,end_date:S.to};
+      const [report,schedule,timesheet]=await Promise.all([
+        post({action:'report',...range}),
+        postUks({action:'schedule'}),
+        post({action:'timesheet_recap',...range})
+      ]);
+      if(loadId!==S.loadId)return;
+      S.data=report;
+      S.uksSchedule=schedule.schedule||[];
+      S.timesheet=timesheet.rows||[];
+      renderTable();
+    }catch(e){
+      if(loadId!==S.loadId)return;
+      body.innerHTML='<div class="krek-error"><b>Rekapan belum dapat dimuat.</b><br>'+E(e.message||'Gagal memuat data.')+'</div>';
+    }
   }
   function render(content){
     if(!isKesiswaan()){content.innerHTML='<div class="krek-error">Menu ini khusus Kabid Kesiswaan.</div>';return}
     css();ensureModal();const t=today();if(!S.to){S.to=t;S.from=t.slice(0,8)+'01'}
-    document.body.classList.toggle('krek-shot-mode',!!(S.dailyMode||S.weeklyMode));
-    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Monitoring input Kehadiran, Kedisiplinan, Reward, Jaga UKS, dan Timesheet Walas. UKS ditampilkan untuk kelas 1–3.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button><div class="krek-actions"><button type="button" class="krek-btn report" id="krek-daily">Laporan Hari Ini</button><button type="button" class="krek-btn report" id="krek-weekly">Rekapan Mingguan (SS)</button></div></div><div id="krek-body"></div></div>`;
-    document.getElementById('krek-apply').addEventListener('click',()=>{const f=document.getElementById('krek-from').value,t2=document.getElementById('krek-to').value;if(!f||!t2||f>t2){document.getElementById('krek-body').innerHTML='<div class="krek-error">Rentang tanggal tidak valid.</div>';return}S.dailyMode=false;S.weeklyMode=false;S.previousRange=null;document.body.classList.remove('krek-shot-mode');S.from=f;S.to=t2;load()});
-    document.getElementById('krek-daily')?.addEventListener('click',enterDailyMode);
-    document.getElementById('krek-weekly')?.addEventListener('click',enterWeeklyMode);
+    content.innerHTML=`<div class="krek"><h1>REKAPAN</h1><div class="krek-sub">Pilih rentang tanggal untuk melihat kelengkapan setiap tugas. Kehadiran, Kedisiplinan, dan Reward dihitung Senin–Jumat. Timesheet dihitung Senin–Sabtu. UKS mengikuti jadwal petugas kelas 1–3. Tanggal mendatang tidak dihitung.</div><div class="krek-filter"><div class="krek-field"><label>Dari tanggal</label><input id="krek-from" type="date" value="${E(S.from)}"></div><div class="krek-field"><label>Sampai tanggal</label><input id="krek-to" type="date" value="${E(S.to)}"></div><button type="button" class="krek-btn" id="krek-apply">Tampilkan</button></div><div id="krek-body"></div></div>`;
+    document.getElementById('krek-apply').addEventListener('click',()=>{const f=document.getElementById('krek-from').value,t2=document.getElementById('krek-to').value;if(!f||!t2||f>t2){S.loadId++;document.getElementById('krek-body').innerHTML='<div class="krek-error">Rentang tanggal tidak valid.</div>';return}S.from=f;S.to=t2;load()});
     load();
   }
   window.renderKesiswaanRekapan=render;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
   })();
