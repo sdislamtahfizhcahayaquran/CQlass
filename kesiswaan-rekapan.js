@@ -32,7 +32,7 @@
     '2272ba1a-9a4e-447a-9996-8a4232b4d792':'Dila Nur Azizah, S.Pd.',
     '4fa0f6ad-e5b2-4a13-bf64-fd798c8e4da5':'Abdurrokhman, M.Pd.'
   };
-  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],timesheet:[],loadId:0};
+  const S={from:'',to:'',data:null,selected:null,uksSchedule:[],uksStatuses:[],timesheet:[],loadId:0};
 
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const N=v=>String(v??'').trim().toLowerCase().replace(/[\s.,]/g,'');
@@ -145,8 +145,14 @@
     const slots=(S.uksSchedule||[]).filter(x=>N(x.teacher_name)===N(row.walas)&&Number(x.weekday)===dow);
     if(!slots.length)return{applicable:false,label:'—',done:null};
     const reports=row.uks||[];
-    const submitted=slots.filter(slot=>reports.some(r=>String(r.teacher_id)===String(slot.teacher_id)&&String(r.duty_date||r.date).slice(0,10)===date&&Number(r.shift_no)===Number(slot.shift_no))).length;
-    return{applicable:true,label:submitted>=slots.length?'Sudah':'Belum',done:submitted>=slots.length,submitted,total:slots.length};
+    const notes=[];
+    const pending=slots.some(slot=>!reports.some(r=>String(r.teacher_id)===String(slot.teacher_id)&&String(r.duty_date||r.date).slice(0,10)===date&&Number(r.shift_no)===Number(slot.shift_no))&&
+      !S.uksStatuses.some(r=>String(r.teacher_id)===String(slot.teacher_id)&&r.duty_date===date&&Number(r.shift_no)===Number(slot.shift_no)));
+    for(const slot of slots){
+      const recorded=S.uksStatuses.find(r=>String(r.teacher_id)===String(slot.teacher_id)&&r.duty_date===date&&Number(r.shift_no)===Number(slot.shift_no));
+      if(recorded)notes.push('Shift '+slot.shift_no+' · '+({sakit:'Sakit',izin:'Izin',badal:'Badal — '+recorded.badal_name}[recorded.status]));
+    }
+    return {applicable:true,done:!pending,notes};
   }
   function classRows(){
     const d=S.data||{},classes=d.classes||[],roster=d.roster||[],att=d.attendance||[],rw=d.rewards||[],vi=d.violations||[],uks=d.uks||[];
@@ -176,7 +182,10 @@
   function uksCoverage(row,days){
     const duties=days.map(date=>({date,...uksDailyState(row,date)})).filter(day=>day.applicable);
     if(!duties.length)return '<span class="krek-status na">Tidak ada jadwal</span>';
-    return coverageCell(duties,duties.filter(day=>!day.done).map(day=>day.date),'Tanggal laporan piket belum lengkap');
+    const missing=duties.filter(day=>!day.done).map(day=>day.date);
+    const notes=duties.flatMap(day=>day.notes.map(note=>day.date.split('-').reverse().join('/')+' · '+note));
+    const summary=!missing.length&&notes.length?'<span class="krek-status na">Ada perubahan piket</span>':coverageCell(duties,missing,'Tanggal laporan piket belum lengkap');
+    return summary+notes.map(note=>'<div class="krek-uks-note">'+E(note)+'</div>').join('');
   }
   function timesheetCoverage(row,days){
     const recap=S.timesheet.find(r=>String(r.class_id)===String(row.id)&&r.teacher_id);
@@ -214,7 +223,9 @@
         const dateText=pending?status.nextElementSibling?.textContent.split(': ').slice(1).join(': '):'';
         const font=index===0||column===1||pending||done?'bold 15px Tahoma, sans-serif':'15px Tahoma, sans-serif';
         ctx.font=font;
-        const lines=wrapImageText(ctx,dateText||cell.textContent,widths[column]-18);
+        const notes=Array.from(cell.querySelectorAll('.krek-uks-note'),note=>note.textContent);
+        const primary=dateText||(notes.length?status.textContent:cell.textContent);
+        const lines=[primary,...notes].flatMap(line=>wrapImageText(ctx,line,widths[column]-18));
         return {lines,font,pending,done};
       });
       return {cells,height:Math.max(36,Math.max(...cells.map(cell=>cell.lines.length))*lineHeight+14)};
@@ -332,12 +343,13 @@
       const range={start_date:S.from,end_date:S.to};
       const [report,schedule,timesheet]=await Promise.all([
         post({action:'report',...range}),
-        postUks({action:'schedule'}),
+        postUks({action:'schedule',...range}),
         post({action:'timesheet_recap',...range})
       ]);
       if(loadId!==S.loadId)return;
       S.data=report;
       S.uksSchedule=schedule.schedule||[];
+      S.uksStatuses=schedule.duty_statuses||[];
       S.timesheet=timesheet.rows||[];
       renderTable();
     }catch(e){
