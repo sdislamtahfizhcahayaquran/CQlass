@@ -152,6 +152,7 @@
         <form data-shift="${esc(slot.shift_no)}">
           <label>Status <select name="status" required>
             <option value="">Pilih status</option>
+            <option value="hadir">Hadir</option>
             ${Object.entries(labels).map(([key,label])=>`<option value="${key}" ${key===value?'selected':''}>${label}</option>`).join('')}
           </select></label>
           <label data-badal-name ${value==='badal'?'':'hidden'}>Nama guru pengganti
@@ -176,7 +177,7 @@
       try{
         const data=await req('duty_status_date',{duty_date:selected});
         if(id!==requestId)return;
-        const view={today_schedule:data.schedule,duty_statuses:data.duty_statuses,server:{date:selected}};
+        const view={today_schedule:data.schedule,duty_statuses:data.duty_statuses,server:{date:selected},active_shift:selected===b.server.date?b.active_shift:null};
         panel.innerHTML=dutyStatusForms(view)||'Tidak ada shift terjadwal pada tanggal ini.';
         bindDutyStatusForms(panel,view);
       }catch(e){
@@ -195,9 +196,23 @@
         form.querySelector('[data-badal-name]').hidden=!badal;
         name.disabled=!badal;
         name.required=badal;
+        const present=status.value==='hadir';
+        form.querySelector('button[type="submit"]').hidden=present;
+        const feedback=form.querySelector('[role="status"]');
+        feedback.textContent='';
+        if(!present)return;
+        const liveStatus=form.closest('.cq-uks')?.querySelector('[data-uks-active-status]');
+        if(liveStatus&&Number(b.active_shift?.shift_no)===Number(form.dataset.shift)){
+          liveStatus.value='hadir';
+          liveStatus.dispatchEvent(new Event('change'));
+          form.closest('.cq-uks').querySelector('[data-uks-live-photo] button')?.focus();
+        }else{
+          feedback.textContent='Foto hanya bisa diambil langsung saat shift ini aktif. Foto dari galeri dan pengisian foto tanggal sebelumnya tidak tersedia.';
+        }
       });
       form.addEventListener('submit',async event=>{
         event.preventDefault();
+        if(status.value==='hadir')return;
         const button=form.querySelector('button');
         const feedback=form.querySelector('[role="status"]');
         button.disabled=true;
