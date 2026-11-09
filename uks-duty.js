@@ -142,6 +142,60 @@
     return `<div class="cq-uks-card"><div class="cq-uks-proof">${src?`<img src="${src}" alt="Foto laporan UKS">`:'<div></div>'}<div><span class="cq-uks-pill done">Sudah terkirim</span><div style="margin-top:8px"><strong>Laporan Shift ${Number(report.shift_no)}</strong><p>${fmtCaptured(report.captured_at||report.created_at)}<br>Foto tersimpan otomatis sebagai bukti piket UKS.</p></div></div></div></div>`;
   }
 
+  function dutyStatusForms(b){
+    const labels={sakit:'Sakit',izin:'Izin',badal:'Badal'};
+    return (b.today_schedule||[]).map(slot=>{
+      const saved=(b.duty_statuses||[]).find(row=>Number(row.shift_no)===Number(slot.shift_no));
+      const value=saved?.status||'';
+      const current=saved?' · '+labels[value]+(value==='badal'?' — '+saved.badal_name:''):'';
+      return `<details class="cq-uks-card" data-uks-status><summary>Status piket Shift ${esc(slot.shift_no)}${esc(current)}</summary>
+        <form data-shift="${esc(slot.shift_no)}">
+          <label>Status <select name="status" required>
+            <option value="">Pilih status</option>
+            ${Object.entries(labels).map(([key,label])=>`<option value="${key}" ${key===value?'selected':''}>${label}</option>`).join('')}
+          </select></label>
+          <label data-badal-name ${value==='badal'?'':'hidden'}>Nama guru pengganti
+            <input name="badal_name" maxlength="120" value="${esc(saved?.badal_name||'')}" ${value==='badal'?'required':'disabled'}>
+          </label>
+          <button class="cq-uks-btn primary" type="submit">Simpan status</button>
+          <div role="status"></div>
+        </form></details>`;
+    }).join('');
+  }
+
+  function bindDutyStatusForms(content,b){
+    content.querySelectorAll('[data-uks-status] form').forEach(form=>{
+      const status=form.elements.namedItem('status');
+      const name=form.elements.namedItem('badal_name');
+      status.addEventListener('change',()=>{
+        const badal=status.value==='badal';
+        form.querySelector('[data-badal-name]').hidden=!badal;
+        name.disabled=!badal;
+        name.required=badal;
+      });
+      form.addEventListener('submit',async event=>{
+        event.preventDefault();
+        const button=form.querySelector('button');
+        const feedback=form.querySelector('[role="status"]');
+        button.disabled=true;
+        feedback.textContent='Menyimpan…';
+        try{
+          await req('save_duty_status',{shift_no:Number(form.dataset.shift),duty_date:b.server.date,status:status.value,badal_name:name.value.trim()});
+          const statuses=b.duty_statuses||(b.duty_statuses=[]);
+          const shiftNo=Number(form.dataset.shift);
+          const index=statuses.findIndex(row=>Number(row.shift_no)===shiftNo);
+          const saved={shift_no:shiftNo,status:status.value,badal_name:status.value==='badal'?name.value.trim():null};
+          if(index<0)statuses.push(saved);else statuses[index]=saved;
+          await renderUksPage(content,{skipRefresh:true});
+        }catch(e){
+          feedback.textContent=e.message||'Status gagal disimpan.';
+        }finally{
+          button.disabled=false;
+        }
+      });
+    });
+  }
+
   async function renderUksPage(content,opts={}){
     injectCss();stopCamera();state.captured='';state.captureShiftNo=null;
     content.innerHTML=`<div class="cq-uks"><div class="cq-uks-card"><span class="spinner"></span> Memuat jadwal UKS...</div></div>`;
@@ -161,7 +215,9 @@
       <div class="cq-uks-hero"><div><div class="cq-uks-eyebrow">Piket UKS</div><h1>Laporan</h1><p>Foto realtime dari kamera perangkat · tanggal dan jam tercatat otomatis.</p></div><div class="cq-uks-shift">${esc(scheduleInfo)}</div></div>
       <div class="cq-uks-card"><div class="cq-uks-status"><div><div class="cq-uks-status-main">${esc(b.teacher?.name||u.nama||'Guru')}</div><div class="cq-uks-status-sub">${esc(statusText)}${todayScheduleHtml()}</div></div><span class="cq-uks-pill ${statusClass}">${report?'Terkirim':active?'Aktif':'Menunggu'}</span></div></div>
       ${report?proofHtml(report):active?`<div class="cq-uks-card"><div class="cq-uks-camera" id="cq-uks-camera">${cameraPlaceholder(true)}</div><div class="cq-uks-actions" id="cq-uks-actions"><button type="button" class="cq-uks-btn primary" onclick="cqUksStartCamera()">Buka Kamera</button></div><div class="cq-uks-error" id="cq-uks-error"></div><div class="cq-uks-note">Foto diambil langsung dari kamera. Galeri/file upload tidak tersedia.</div></div>`:(latest?proofHtml(latest):`<div class="cq-uks-card"><div class="cq-uks-camera">${cameraPlaceholder(false)}</div><div class="cq-uks-note">${(b.today_schedule||[]).length?'Silakan kembali pada jam shift yang tertera.':'Tidak ada laporan yang perlu dikirim hari ini.'}</div></div>`)}
+      ${dutyStatusForms(b)}
     </div>`;
+    bindDutyStatusForms(content,b);
   }
 
   function showCameraError(msg){
@@ -253,7 +309,7 @@
       wrapped.__cqUksDuty=true;logout=wrapped;
     }
     if(state.timer)clearInterval(state.timer);
-    state.timer=setInterval(()=>{if(getUser()&&token())bootstrap({rerender:isModuleActive()})},60000);
+    state.timer=setInterval(()=>{if(getUser()&&token()&&!document.querySelector('[data-uks-status][open]'))bootstrap({rerender:isModuleActive()})},60000);
     if(getUser()&&token())setTimeout(()=>bootstrap({redraw:true}),80);
   }
 
