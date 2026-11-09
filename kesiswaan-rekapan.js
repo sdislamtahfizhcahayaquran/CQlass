@@ -156,11 +156,11 @@
     }).sort((a,b)=>Number(a.grade_level)-Number(b.grade_level)||String(a.name).localeCompare(String(b.name),'id',{numeric:true}));
   }
   function dateKey(value){return String(value||'').slice(0,10)}
-  function coverageCell(dates,missing){
+  function coverageCell(dates,missing,label='Tanggal tidak diisi'){
     if(!dates.length)return '<span class="krek-status na">Tidak ada hari yang dihitung</span>';
     if(!missing.length)return '<span class="krek-status done">Lengkap</span>';
     return '<span class="krek-status pending">Belum lengkap · '+missing.length+' hari</span>'+
-      '<div style="margin-top:4px">Tanggal belum lengkap: '+E(missing.map(d=>d.split('-').reverse().join('/')).join(', '))+'</div>';
+      '<div style="margin-top:4px">'+E(label)+': '+E(missing.map(d=>d.split('-').reverse().join('/')).join(', '))+'</div>';
   }
   function pointCoverage(row,kind,days){
     const entries=kind==='discipline'?row.v:row.r;
@@ -176,13 +176,85 @@
   function uksCoverage(row,days){
     const duties=days.map(date=>({date,...uksDailyState(row,date)})).filter(day=>day.applicable);
     if(!duties.length)return '<span class="krek-status na">Tidak ada jadwal</span>';
-    return coverageCell(duties,duties.filter(day=>!day.done).map(day=>day.date));
+    return coverageCell(duties,duties.filter(day=>!day.done).map(day=>day.date),'Tanggal laporan piket belum lengkap');
   }
   function timesheetCoverage(row,days){
     const recap=S.timesheet.find(r=>String(r.class_id)===String(row.id)&&r.teacher_id);
     if(!Array.isArray(recap?.complete_days))return '<span class="krek-status na">Data belum tersedia</span>';
     const complete=new Set(recap.complete_days.map(dateKey));
-    return coverageCell(days,days.filter(d=>!complete.has(d)));
+    return coverageCell(days,days.filter(d=>!complete.has(d)),'Tanggal timesheet belum lengkap');
+  }
+  function wrapImageText(ctx,text,width){
+    const lines=[];
+    let line='';
+    for(const word of text.trim().split(/\s+/)){
+      const next=line?line+' '+word:word;
+      if(line&&ctx.measureText(next).width>width){
+        lines.push(line);
+        line=word;
+      }else{
+        line=next;
+      }
+    }
+    lines.push(line);
+    return lines;
+  }
+  function downloadRecapImage(table,from,to){
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    if(!ctx)throw Error('Browser belum dapat membuat gambar.');
+    const widths=[48,114,220,190,190,190,190,190];
+    const margin=24,lineHeight=19,top=108;
+    const width=widths.reduce((sum,value)=>sum+value,2*margin);
+    const rows=Array.from(table.rows,(row,index)=>{
+      ctx.font=index===0?'bold 14px Tahoma, sans-serif':'14px Tahoma, sans-serif';
+      const cells=Array.from(row.cells).slice(0,widths.length).map((cell,column)=>{
+        const lines=Array.from(cell.children).map(child=>child.textContent);
+        return (lines.length?lines:[cell.textContent]).flatMap(line=>wrapImageText(ctx,line,widths[column]-20));
+      });
+      return {cells,height:Math.max(...cells.map(lines=>lines.length))*lineHeight+20};
+    });
+    const height=rows.reduce((sum,row)=>sum+row.height,top+margin);
+    const scale=Math.min(2,8192/Math.max(width,height));
+    canvas.width=Math.ceil(width*scale);
+    canvas.height=Math.ceil(height*scale);
+    ctx.scale(scale,scale);
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,width,height);
+    ctx.fillStyle='#17324a';
+    ctx.font='bold 25px Tahoma, sans-serif';
+    ctx.fillText('REKAPAN KESISWAAN',margin,37);
+    ctx.font='16px Tahoma, sans-serif';
+    ctx.fillText("SD Islam Tahfizh Cahaya Qur’an",margin,62);
+    ctx.fillText('Periode '+from+' s.d. '+to,margin,85);
+    let y=top;
+    rows.forEach(({cells,height},index)=>{
+      let x=margin;
+      ctx.font=index===0?'bold 14px Tahoma, sans-serif':'14px Tahoma, sans-serif';
+      cells.forEach((lines,column)=>{
+        const cellWidth=widths[column];
+        ctx.fillStyle=index===0?'#17324a':index%2?'#f2f6fa':'#fff';
+        ctx.fillRect(x,y,cellWidth,height);
+        ctx.strokeStyle='#dbe4ed';
+        ctx.strokeRect(x,y,cellWidth,height);
+        ctx.fillStyle=index===0?'#fff':'#17324a';
+        lines.forEach((line,i)=>ctx.fillText(line,x+10,y+23+i*lineHeight));
+        x+=cellWidth;
+      });
+      y+=height;
+    });
+    return new Promise((resolve,reject)=>canvas.toBlob(blob=>{
+      if(!blob){reject(Error('Gambar rekap gagal dibuat.'));return}
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download='Rekapan-Kesiswaan_'+from+'_'+to+'.png';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      resolve();
+    },'image/png'));
   }
   function renderTable(){
     const body=document.getElementById('krek-body');if(!body)return;
@@ -190,7 +262,17 @@
     const end=S.to<today()?S.to:today();
     const workdays=dateSeq(S.from,end).filter(d=>isoDow(d)<=6);
     const schooldays=workdays.filter(d=>isoDow(d)<=5);
-    body.innerHTML=rows.length?`<div class="krek-card"><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${attendanceCoverage(x,schooldays)}</td><td>${pointCoverage(x,'discipline',schooldays)}</td><td>${pointCoverage(x,'reward',schooldays)}</td><td>${uksCoverage(x,workdays)}</td><td>${timesheetCoverage(x,workdays)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
+    body.innerHTML=rows.length?`<div class="krek-card"><div style="padding:12px"><b>Periode ${E(S.from)} s.d. ${E(S.to)}</b> <button type="button" class="krek-btn" id="krek-png">Unduh Gambar (PNG)</button><div id="krek-png-error" role="alert"></div></div><div class="krek-wrap"><table><thead><tr><th>No.</th><th>Kelas</th><th>Nama Walas</th><th>Kehadiran</th><th>Kedisiplinan</th><th>Reward</th><th>UKS</th><th>Timesheet</th><th>Detail</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${E(x.name)}</b></td><td>${E(x.walas)}</td><td>${attendanceCoverage(x,schooldays)}</td><td>${pointCoverage(x,'discipline',schooldays)}</td><td>${pointCoverage(x,'reward',schooldays)}</td><td>${uksCoverage(x,workdays)}</td><td>${timesheetCoverage(x,workdays)}</td><td><button class="krek-detail" data-class="${E(x.id)}">Lihat</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="krek-empty">Belum ada data kelas.</div>';
+    const download=body.querySelector('#krek-png');
+    const {from,to}=S;
+    download?.addEventListener('click',async()=>{
+      download.disabled=true;
+      const error=body.querySelector('#krek-png-error');
+      error.textContent='';
+      try{await downloadRecapImage(body.querySelector('table'),from,to)}
+      catch(e){error.textContent=e.message||'Gambar rekap gagal dibuat.'}
+      finally{download.disabled=false}
+    });
     body.querySelectorAll('.krek-detail').forEach(btn=>btn.addEventListener('click',()=>openDetail(btn.dataset.class||'')));
   }
   function countsBy(arr,key,labeler){
