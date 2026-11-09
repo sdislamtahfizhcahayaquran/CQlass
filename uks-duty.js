@@ -239,13 +239,37 @@
     content.innerHTML=`<div class="cq-uks">
       <div class="cq-uks-hero"><div><div class="cq-uks-eyebrow">Piket UKS</div><h1>Laporan</h1><p>Foto realtime dari kamera perangkat · tanggal dan jam tercatat otomatis.</p></div><div class="cq-uks-shift">${esc(scheduleInfo)}</div></div>
       <div class="cq-uks-card"><div class="cq-uks-status"><div><div class="cq-uks-status-main">${esc(b.teacher?.name||u.nama||'Guru')}</div><div class="cq-uks-status-sub">${esc(statusText)}${todayScheduleHtml()}</div></div><span class="cq-uks-pill ${statusClass}">${report?'Terkirim':active?'Aktif':'Menunggu'}</span></div></div>
-      ${report?proofHtml(report):active?`<div class="cq-uks-card"><div class="cq-uks-camera" id="cq-uks-camera">${cameraPlaceholder(true)}</div><div class="cq-uks-actions" id="cq-uks-actions"><button type="button" class="cq-uks-btn primary" onclick="cqUksStartCamera()">Buka Kamera</button></div><div class="cq-uks-error" id="cq-uks-error"></div><div class="cq-uks-note">Foto diambil langsung dari kamera. Galeri/file upload tidak tersedia.</div></div>`:(latest?proofHtml(latest):`<div class="cq-uks-card"><div class="cq-uks-camera">${cameraPlaceholder(false)}</div><div class="cq-uks-note">${(b.today_schedule||[]).length?'Silakan kembali pada jam shift yang tertera.':'Tidak ada laporan yang perlu dikirim hari ini.'}</div></div>`)}
+      ${report?proofHtml(report):active?`<div class="cq-uks-card"><label>Status piket <select data-uks-active-status><option value="">Pilih status</option><option value="hadir">Hadir</option><option value="sakit">Sakit</option><option value="izin">Izin</option><option value="badal">Badal</option></select></label><div data-uks-live-photo hidden><div class="cq-uks-camera" id="cq-uks-camera">${cameraPlaceholder(true)}</div><div class="cq-uks-actions" id="cq-uks-actions"><button type="button" class="cq-uks-btn primary" onclick="cqUksStartCamera()">Buka Kamera</button></div><div class="cq-uks-error" id="cq-uks-error"></div><div class="cq-uks-note">Foto diambil langsung dari kamera. Galeri/file upload tidak tersedia.</div></div></div>`:(latest?proofHtml(latest):`<div class="cq-uks-card"><div class="cq-uks-camera">${cameraPlaceholder(false)}</div><div class="cq-uks-note">${(b.today_schedule||[]).length?'Silakan kembali pada jam shift yang tertera.':'Tidak ada laporan yang perlu dikirim hari ini.'}</div></div>`)}
       <details class="cq-uks-card" data-uks-status><summary>Isi status piket hari ini atau tanggal sebelumnya</summary>
         <label>Tanggal piket <input type="date" data-uks-duty-date required value="${esc(b.server.date)}" max="${esc(b.server.date)}"></label>
         <div data-uks-duty-forms>${dutyStatusForms(b)||'Tidak ada shift terjadwal pada tanggal ini.'}</div>
       </details>
     </div>`;
     bindDutyStatusDate(content,b);
+    const activeStatus=content.querySelector('[data-uks-active-status]');
+    activeStatus?.addEventListener('change',()=>{
+      const photo=content.querySelector('[data-uks-live-photo]');
+      const present=activeStatus.value==='hadir';
+      if(!present&&!photo.hidden){resetCapture();closeCamera()}
+      photo.hidden=!present;
+      if(present||!activeStatus.value)return;
+      const date=content.querySelector('[data-uks-duty-date]');
+      const statusPanel=date.closest('details');
+      statusPanel.open=true;
+      if(date.value!==b.server.date){
+        date.value=b.server.date;
+        const forms=content.querySelector('[data-uks-duty-forms]');
+        forms.innerHTML=dutyStatusForms(b);
+        bindDutyStatusForms(forms,b);
+      }
+      const form=Array.from(statusPanel.querySelectorAll('form')).find(form=>Number(form.dataset.shift)===Number(active.shift_no));
+      if(!form)return;
+      form.closest('details').open=true;
+      const status=form.elements.namedItem('status');
+      status.value=activeStatus.value;
+      status.dispatchEvent(new Event('change'));
+      status.focus();
+    });
   }
 
   function showCameraError(msg){
@@ -337,7 +361,7 @@
       wrapped.__cqUksDuty=true;logout=wrapped;
     }
     if(state.timer)clearInterval(state.timer);
-    state.timer=setInterval(()=>{if(getUser()&&token()&&!document.querySelector('[data-uks-status][open]'))bootstrap({rerender:isModuleActive()})},60000);
+    state.timer=setInterval(()=>{if(getUser()&&token()&&!document.querySelector('[data-uks-status][open], [data-uks-live-photo]:not([hidden])'))bootstrap({rerender:isModuleActive()})},60000);
     if(getUser()&&token())setTimeout(()=>bootstrap({redraw:true}),80);
   }
 
