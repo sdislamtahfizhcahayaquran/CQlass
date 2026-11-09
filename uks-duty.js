@@ -163,6 +163,29 @@
     }).join('');
   }
 
+  function bindDutyStatusDate(content,b){
+    const date=content.querySelector('[data-uks-duty-date]');
+    const panel=content.querySelector('[data-uks-duty-forms]');
+    let requestId=0;
+    date.addEventListener('change',async()=>{
+      const id=++requestId;
+      const selected=date.value;
+      panel.textContent='';
+      if(!selected||!date.reportValidity())return;
+      panel.textContent='Memuat jadwal…';
+      try{
+        const data=await req('duty_status_date',{duty_date:selected});
+        if(id!==requestId)return;
+        const view={today_schedule:data.schedule,duty_statuses:data.duty_statuses,server:{date:selected}};
+        panel.innerHTML=dutyStatusForms(view)||'Tidak ada shift terjadwal pada tanggal ini.';
+        bindDutyStatusForms(panel,view);
+      }catch(e){
+        if(id===requestId)panel.textContent=e.message||'Jadwal gagal dimuat.';
+      }
+    });
+    bindDutyStatusForms(panel,b);
+  }
+
   function bindDutyStatusForms(content,b){
     content.querySelectorAll('[data-uks-status] form').forEach(form=>{
       const status=form.elements.namedItem('status');
@@ -186,7 +209,9 @@
           const index=statuses.findIndex(row=>Number(row.shift_no)===shiftNo);
           const saved={shift_no:shiftNo,status:status.value,badal_name:status.value==='badal'?name.value.trim():null};
           if(index<0)statuses.push(saved);else statuses[index]=saved;
-          await renderUksPage(content,{skipRefresh:true});
+          content.innerHTML=dutyStatusForms(b);
+          bindDutyStatusForms(content,b);
+          content.querySelector('details[data-uks-status]')?.focus();
         }catch(e){
           feedback.textContent=e.message||'Status gagal disimpan.';
         }finally{
@@ -215,9 +240,12 @@
       <div class="cq-uks-hero"><div><div class="cq-uks-eyebrow">Piket UKS</div><h1>Laporan</h1><p>Foto realtime dari kamera perangkat · tanggal dan jam tercatat otomatis.</p></div><div class="cq-uks-shift">${esc(scheduleInfo)}</div></div>
       <div class="cq-uks-card"><div class="cq-uks-status"><div><div class="cq-uks-status-main">${esc(b.teacher?.name||u.nama||'Guru')}</div><div class="cq-uks-status-sub">${esc(statusText)}${todayScheduleHtml()}</div></div><span class="cq-uks-pill ${statusClass}">${report?'Terkirim':active?'Aktif':'Menunggu'}</span></div></div>
       ${report?proofHtml(report):active?`<div class="cq-uks-card"><div class="cq-uks-camera" id="cq-uks-camera">${cameraPlaceholder(true)}</div><div class="cq-uks-actions" id="cq-uks-actions"><button type="button" class="cq-uks-btn primary" onclick="cqUksStartCamera()">Buka Kamera</button></div><div class="cq-uks-error" id="cq-uks-error"></div><div class="cq-uks-note">Foto diambil langsung dari kamera. Galeri/file upload tidak tersedia.</div></div>`:(latest?proofHtml(latest):`<div class="cq-uks-card"><div class="cq-uks-camera">${cameraPlaceholder(false)}</div><div class="cq-uks-note">${(b.today_schedule||[]).length?'Silakan kembali pada jam shift yang tertera.':'Tidak ada laporan yang perlu dikirim hari ini.'}</div></div>`)}
-      ${dutyStatusForms(b)}
+      <details class="cq-uks-card" data-uks-status><summary>Isi status piket hari ini atau tanggal sebelumnya</summary>
+        <label>Tanggal piket <input type="date" data-uks-duty-date required value="${esc(b.server.date)}" max="${esc(b.server.date)}"></label>
+        <div data-uks-duty-forms>${dutyStatusForms(b)||'Tidak ada shift terjadwal pada tanggal ini.'}</div>
+      </details>
     </div>`;
-    bindDutyStatusForms(content,b);
+    bindDutyStatusDate(content,b);
   }
 
   function showCameraError(msg){
