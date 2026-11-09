@@ -15,7 +15,7 @@
   function load(){
     const r=role();if(!ALLOWED.has(r)||window.__cqUksDutyRoleScriptRequested)return false;
     window.__cqUksDutyRoleScriptRequested=true;
-    const s=document.createElement('script');s.src='./uks-duty.js?v=20260924-rolelazy1';s.async=false;
+    const s=document.createElement('script');s.src='./uks-duty.js?v=20261109-status1';s.async=false;
     s.onerror=()=>console.warn('CQlass UKS duty script gagal dimuat.');document.head.appendChild(s);return true;
   }
   load();
