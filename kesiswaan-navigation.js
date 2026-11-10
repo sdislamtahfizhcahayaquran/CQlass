@@ -26,6 +26,7 @@
     'rekap-input-poin':c=>window.renderPointInputAudit?.(c),
     'kes-pemantauan-harian':c=>window.renderKesiswaanDailyMonitoring?.(c),
     'laporan-kesiswaan-super':c=>window.renderKesiswaanSuperReport?.(c),
+    'kes-rekap-keterlambatan':c=>window.renderKesiswaanLateLetters?.(c),
     'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c),
     'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c),
     'kes-laporan-kelas':c=>window.renderKesiswaanProblemRecap?.(c)
@@ -74,6 +75,7 @@
       ]},
       {id:'kes-rekap',label:'Rekap',items:[
         ['kesiswaan-rekapan','Rekap Kesiswaan'],
+        ['kes-rekap-keterlambatan','Rekap Keterlambatan'],
         ['kes-salam-rekap','Rekap SALAM CQ']
       ]}
     ];

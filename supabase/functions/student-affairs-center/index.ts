@@ -1,3 +1,4 @@
+import { lateLetters } from "./late-letters.ts";
 import { reportExport } from "./report-export.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 
@@ -149,6 +150,7 @@ Deno.serve(async(req:Request)=>{
       return J({success:true,rows:data||[]});
     }
     const a=await me(req);if(!a)return J({success:false,error:"unauthorized"},401);
+    if(action==="late_letters") return await lateLetters(sb,J,a,b);
     const canView=has(a,"kesiswaan","kegiatan","pimpinan","admin"),canAffairs=has(a,"kesiswaan","admin"),canAchievement=has(a,"kesiswaan","kegiatan","admin");
     if(!canView)return J({success:false,error:"forbidden"},403);
     if(action==="salam_list"){
