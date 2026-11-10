@@ -50,7 +50,7 @@
       ${agenda}${next ? `<p>${next}</p>` : ''}
       <p>Terima kasih atas perhatian dan kerja sama Bapak/Ibu.</p>
       <p>Wassalamu’alaikum warahmatullahi wabarakatuh.</p>
-      <div class="letter-sign"><p>${esc(dateLabel(letter.issued_on))}<br>Kepala Bidang Kesiswaan<br>SD Islam Tahfizh Cahaya Qur’an</p>
+      <div class="letter-sign"><p>Depok, ${esc(dateLabel(letter.issued_on))}<br>Kepala Bidang Kesiswaan<br>SD Islam Tahfizh Cahaya Qur’an</p>
       ${signature && /^[a-z0-9+/=]+$/i.test(signature) ? `<img class="signature" alt="Tanda tangan" src="data:image/png;base64,${signature}">` : '<div class="signature"></div>'}
       <strong>Khoerunnisa, S.Kom.</strong></div>`;
   }
@@ -66,15 +66,32 @@
       const footer = new URL('kesiswaan-kop-footer.png', location.href);
       page.document.open();
       page.document.write(`<!doctype html><html lang="id"><meta charset="utf-8"><title>${esc(numberLabel(letter))}</title>
-        <style>@page{size:A4;margin:11mm 18mm}body{font:11pt/1.4 Tahoma,Arial,sans-serif;color:#17202a;margin:auto;max-width:174mm}
-        table{width:100%;border-collapse:collapse}td{padding:0}.kop{display:block;max-width:100%;height:auto;margin:0 auto 5mm;width:140mm}
-        .footer{display:block;width:100%;height:auto;margin:5mm auto 0}h1{text-align:center;font-size:14pt;margin:0;text-transform:uppercase}
-        .letter-number{text-align:center;margin:1mm 0 6mm}.letter-sign{margin-left:55%;break-inside:avoid}.signature{display:block;height:14mm;width:auto;object-fit:contain}
-        @media screen{body{padding:8mm}.print{margin-bottom:5mm}}@media print{.print{display:none}}</style>
+        <style>
+        @page{size:A4;margin:44mm 18mm 29mm}
+        body{font:11pt/1.4 Tahoma,Arial,sans-serif;color:#17202a;margin:0 auto;max-width:174mm}
+        .kop,.footer{display:block;height:auto;margin-inline:auto}
+        .kop{width:140mm;max-width:100%}.footer{width:100%}
+        h1{text-align:center;font-size:14pt;margin:0;text-transform:uppercase}
+        .letter-number{text-align:center;margin:1mm 0 6mm}.letter-sign{margin-left:55%;break-inside:avoid}
+        .signature{display:block;height:14mm;width:auto;object-fit:contain}
+        @media screen{
+          body{padding:8mm}.print{margin-bottom:5mm}
+          .letter-sheet{box-sizing:border-box;min-height:275mm;display:flex;flex-direction:column}
+          .kop{margin-bottom:5mm}.footer{margin-top:auto;padding-top:5mm}
+        }
+        @media print{
+          .print{display:none}
+          /* Reserve body space on each A4 page. Anchor artwork 11 mm from both page edges. */
+          .kop,.footer{position:fixed;left:0;right:0}
+          .kop{top:-33mm}.footer{bottom:-18mm}
+        }
+        </style>
         <button type="button" class="print" id="print-letter">Cetak / Simpan PDF</button>
-        <table><thead><tr><td><img class="kop" alt="Kop sekolah" src="${esc(header.href)}"></td></tr></thead>
-        <tbody><tr><td>${content(letter, signature)}</td></tr></tbody>
-        <tfoot><tr><td><img class="footer" alt="Footer sekolah" src="${esc(footer.href)}"></td></tr></tfoot></table></html>`);
+        <div class="letter-sheet">
+          <img class="kop" alt="Kop sekolah" src="${esc(header.href)}">
+          <main>${content(letter, signature)}</main>
+          <img class="footer" alt="Footer sekolah" src="${esc(footer.href)}">
+        </div></html>`);
       page.document.close();
       page.document.getElementById('print-letter').onclick = () => page.print();
     } catch (error) {
