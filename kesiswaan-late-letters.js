@@ -55,6 +55,84 @@
       <strong>Khoerunnisa, S.Kom.</strong></div>`;
   }
 
+  async function downloadPdf(doc, filename) {
+    const { jsPDF } = await rpLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf');
+    const [header, footer, signature] = await Promise.all(
+      ['.kop', '.footer', 'img.signature'].map(async selector => {
+        const image = doc.querySelector(selector);
+        if (!image) return null;
+        const response = await fetch(image.src);
+        if (!response.ok) throw Error('Gambar surat belum dapat dimuat.');
+        return new Uint8Array(await response.arrayBuffer());
+      })
+    );
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    const width = pdf.internal.pageSize.getWidth();
+    const height = pdf.internal.pageSize.getHeight();
+    const margin = 18;
+    const edge = 11;
+    const textWidth = width - 2 * margin;
+    const bottom = height - 29;
+    let y;
+
+    function imageHeight(bytes, imageWidth) {
+      const size = pdf.getImageProperties(bytes);
+      return imageWidth * size.height / size.width;
+    }
+
+    function letterhead() {
+      const footerHeight = imageHeight(footer, textWidth);
+      pdf.addImage(header, 'PNG', (width - 140) / 2, edge, 140, imageHeight(header, 140), 'letterhead');
+      pdf.addImage(footer, 'PNG', margin, height - edge - footerHeight, textWidth, footerHeight, 'letterfooter');
+      y = 46;
+    }
+
+    function nextPage() {
+      pdf.addPage();
+      letterhead();
+    }
+
+    function lines(text, maxWidth, fontSize, weight = 'normal') {
+      pdf.setFont('helvetica', weight);
+      pdf.setFontSize(fontSize);
+      return pdf.splitTextToSize(text, maxWidth);
+    }
+
+    const lineHeight = 5.3;
+    letterhead();
+    for (const block of doc.querySelector('main').children) {
+      if (block.matches('.letter-sign')) {
+        const x = width * .56;
+        const signatureLines = lines(block.querySelector('p').innerText, width - margin - x, 11);
+        const name = block.querySelector('strong').textContent;
+        if (y + signatureLines.length * lineHeight + 22 > bottom) nextPage();
+        for (const line of signatureLines) {
+          pdf.text(line, x, y);
+          y += lineHeight;
+        }
+        if (signature) {
+          const props = pdf.getImageProperties(signature);
+          pdf.addImage(signature, 'PNG', x, y - 3, 14 * props.width / props.height, 14);
+        }
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(name, x, y + 14);
+        break;
+      }
+
+      const heading = block.matches('h1');
+      const centered = heading || block.matches('.letter-number');
+      const text = heading ? block.innerText.toUpperCase() : block.innerText;
+      for (const line of lines(text, textWidth, heading ? 14 : 11, heading ? 'bold' : 'normal')) {
+        if (y > bottom) nextPage();
+        pdf.text(line, centered ? width / 2 : margin, y, { align: centered ? 'center' : 'left' });
+        y += lineHeight;
+      }
+      y += centered && !heading ? 4 : 2;
+    }
+
+    pdf.save(filename.replaceAll('/', '_') + '.pdf');
+  }
+
   async function print(number) {
     const page = window.open('', '_blank');
     if (!page) throw Error('Izinkan tab baru untuk membuka surat.');
@@ -86,14 +164,27 @@
           .kop{top:-33mm}.footer{bottom:-18mm}
         }
         </style>
-        <button type="button" class="print" id="print-letter">Cetak / Simpan PDF</button>
+        <button type="button" class="print" id="print-letter">Unduh PDF</button><span id="pdf-status" role="status"></span>
         <div class="letter-sheet">
           <img class="kop" alt="Kop sekolah" src="${esc(header.href)}">
           <main>${content(letter, signature)}</main>
           <img class="footer" alt="Footer sekolah" src="${esc(footer.href)}">
         </div></html>`);
       page.document.close();
-      page.document.getElementById('print-letter').onclick = () => page.print();
+      const button = page.document.getElementById('print-letter');
+      const status = page.document.getElementById('pdf-status');
+      button.onclick = async () => {
+        button.disabled = true;
+        status.textContent = ' Menyiapkan PDF…';
+        try {
+          await downloadPdf(page.document, numberLabel(letter));
+          status.textContent = '';
+        } catch (error) {
+          status.textContent = ' ' + error.message;
+        } finally {
+          button.disabled = false;
+        }
+      };
     } catch (error) {
       page.close();
       throw error;
