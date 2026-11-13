@@ -104,50 +104,54 @@
 
     const lineHeight = 5.3;
     letterhead();
-    for (const block of doc.querySelector('main').children) {
-      if (block.matches('.letter-sign')) {
-        const x = width * .56;
-        const signatureLines = lines(block.querySelector('p').innerText, width - margin - x, 11);
-        const name = block.querySelector('strong').textContent;
-        if (y + signatureLines.length * lineHeight + 22 > bottom) nextPage();
-        for (const line of signatureLines) {
-          pdf.text(line, x, y);
+    for (const [index, main] of [...doc.querySelectorAll('main')].entries()) {
+      if (index) nextPage();
+      for (const block of main.children) {
+        if (block.matches('.letter-sign')) {
+          const x = width * .56;
+          const signatureLines = lines(block.querySelector('p').innerText, width - margin - x, 11);
+          const name = block.querySelector('strong').textContent;
+          if (y + signatureLines.length * lineHeight + 22 > bottom) nextPage();
+          for (const line of signatureLines) {
+            pdf.text(line, x, y);
+            y += lineHeight;
+          }
+          if (signature) {
+            const props = pdf.getImageProperties(signature);
+            pdf.addImage(signature, 'PNG', x, y - 3, 14 * props.width / props.height, 14);
+          }
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(name, x, y + 14);
+          break;
+        }
+
+        const heading = block.matches('h1');
+        const centered = heading || block.matches('.letter-number');
+        const text = heading ? block.innerText.toUpperCase() : block.innerText;
+        for (const line of lines(text, textWidth, heading ? 14 : 11, heading ? 'bold' : 'normal')) {
+          if (y > bottom) nextPage();
+          pdf.text(line, centered ? width / 2 : margin, y, { align: centered ? 'center' : 'left' });
           y += lineHeight;
         }
-        if (signature) {
-          const props = pdf.getImageProperties(signature);
-          pdf.addImage(signature, 'PNG', x, y - 3, 14 * props.width / props.height, 14);
-        }
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(name, x, y + 14);
-        break;
+        y += centered && !heading ? 4 : 2;
       }
-
-      const heading = block.matches('h1');
-      const centered = heading || block.matches('.letter-number');
-      const text = heading ? block.innerText.toUpperCase() : block.innerText;
-      for (const line of lines(text, textWidth, heading ? 14 : 11, heading ? 'bold' : 'normal')) {
-        if (y > bottom) nextPage();
-        pdf.text(line, centered ? width / 2 : margin, y, { align: centered ? 'center' : 'left' });
-        y += lineHeight;
-      }
-      y += centered && !heading ? 4 : 2;
     }
 
     pdf.save(filename.replaceAll('/', '_') + '.pdf');
   }
 
-  async function print(number) {
+  async function print(numbers, confirmed, download = false) {
     const page = window.open('', '_blank');
     if (!page) throw Error('Izinkan tab baru untuk membuka surat.');
     page.opener = null;
     page.document.body.textContent = 'Memuat surat…';
     try {
-      const { letter, signature } = await api({ action: 'print', number });
+      const { letters, signature } = await api({ action: 'print_batch', numbers });
+      const filename = letters.length === 1 ? numberLabel(letters[0]) : 'Surat_Keterlambatan_' + letters.length + '_Surat';
       const header = new URL('kesiswaan-kop-header.png', location.href);
       const footer = new URL('kesiswaan-kop-footer.png', location.href);
       page.document.open();
-      page.document.write(`<!doctype html><html lang="id"><meta charset="utf-8"><title>${esc(numberLabel(letter))}</title>
+      page.document.write(`<!doctype html><html lang="id"><meta charset="utf-8"><title>${esc(filename)}</title>
         <style>
         @page{size:A4;margin:44mm 18mm 29mm}
         body{font:11pt/1.4 Tahoma,Arial,sans-serif;color:#17202a;margin:0 auto;max-width:174mm}
@@ -163,34 +167,48 @@
           .kop{left:6.7mm;top:-1.46mm}.footer{left:18mm;bottom:.3mm}
         }
         @media print{
-          .print{display:none}
+          .print,.print-status{display:none}.letter-sheet + .letter-sheet{break-before:page}
           /* Body space is reserved by @page margins (44/29 mm); artwork is pinned to the A4 page edges
              exactly like KOP_SURAT.docx: header x 6.7 mm / y -1.46 mm, footer x 18 mm / 0.3 mm from bottom. */
           .kop,.footer{position:fixed}
           .kop{left:-11.3mm;top:-45.46mm}.footer{left:0;bottom:-28.7mm}
         }
         </style>
-        <button type="button" class="print" id="print-letter">Unduh PDF</button><span id="pdf-status" role="status"></span>
-        <div class="letter-sheet">
+        <button type="button" class="print" id="print-letter">Unduh PDF A4</button> <button type="button" class="print" id="confirm-print" disabled>Konfirmasi sudah dicetak</button><span class="print-status" id="pdf-status" role="status"></span>
+        ${letters.map(letter => `<div class="letter-sheet">
           <img class="kop" alt="Kop sekolah" src="${esc(header.href)}">
           <main>${content(letter, signature)}</main>
           <img class="footer" alt="Footer sekolah" src="${esc(footer.href)}">
-        </div></html>`);
+        </div>`).join('')}</html>`);
       page.document.close();
       const button = page.document.getElementById('print-letter');
       const status = page.document.getElementById('pdf-status');
+      const confirmButton = page.document.getElementById('confirm-print');
+      confirmButton.onclick = async () => {
+        confirmButton.disabled = true;
+        try {
+          await api({ action: 'confirm_print', numbers });
+          status.textContent = ' Status cetak tersimpan.';
+          confirmed();
+        } catch (error) {
+          status.textContent = ' ' + error.message;
+          confirmButton.disabled = false;
+        }
+      };
       button.onclick = async () => {
         button.disabled = true;
         status.textContent = ' Menyiapkan PDF…';
         try {
-          await downloadPdf(page.document, numberLabel(letter));
-          status.textContent = '';
+          await downloadPdf(page.document, filename);
+          confirmButton.disabled = false;
+          status.textContent = ' Buka PDF untuk mencetak. Konfirmasi setelah selesai.';
         } catch (error) {
           status.textContent = ' ' + error.message;
         } finally {
           button.disabled = false;
         }
       };
+      if (download) await button.onclick();
     } catch (error) {
       page.close();
       throw error;
@@ -236,77 +254,233 @@
     dialog.showModal();
   }
 
+  const shortKind = { sp1: 'SP 1', sp2: 'SP 2', sp3: 'SP 3', spo: 'Pemanggilan' };
+  const printDate = new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta'
+  });
+
   window.renderKesiswaanLateLetters = function (container) {
     if (!allowed()) return;
-    container.innerHTML = `<section class="card"><h1>Rekap Keterlambatan</h1>
-      <p>Surat mengikuti jumlah keterlambatan dalam satu semester. Peringatan I pada 5 kali, Peringatan II pada 10 kali, serta Peringatan III dan pemanggilan pada 15 kali.</p>
-      <button type="button" data-recap>Rekap Semester</button> <button type="button" data-history>Riwayat Surat</button>
-      <p role="status"></p><div data-body style="overflow:auto"></div></section>`;
-    const root = container.querySelector('section');
+    container.innerHTML = `<section class="card late-letters">
+      <style>
+        .late-letters{--late-teal:#0b696c;--late-line:#d7e7e5;--late-soft:#eff8f6;--late-muted:#486265;display:grid;gap:18px}
+        .late-letters h1{font-size:clamp(24px,3vw,34px);margin:0 0 5px}
+        .late-letters p{margin:0;color:var(--late-muted)}
+        .late-letters :is(.late-tabs,.late-filters,.late-actions,.late-summary){display:flex;flex-wrap:wrap;align-items:end;gap:9px}
+        .late-letters button,.late-letters input:not([type=checkbox]),.late-letters select{font:inherit;font-size:.9rem;border:1px solid var(--late-line);border-radius:9px;padding:8px 11px;background:#fff;color:#16484b}
+        .late-letters button{cursor:pointer;font-weight:650}
+        .late-letters button:hover:not(:disabled){border-color:var(--late-teal)}
+        .late-letters button:is([aria-pressed=true],.late-primary){background:var(--late-teal);border-color:var(--late-teal);color:white}
+        .late-letters button:disabled{opacity:.55;cursor:default}
+        .late-letters input[type=checkbox]{accent-color:var(--late-teal);width:16px;height:16px}
+        .late-letters label{display:grid;gap:5px;font-size:.82rem;font-weight:650;color:#31575a}
+        .late-letters .late-filters{background:var(--late-soft);padding:13px;border-radius:12px}
+        .late-letters .late-summary button{flex:1;min-width:110px;text-align:left}
+        .late-letters .late-summary strong{display:block;font-size:1.35rem}
+        .late-letters .late-table{overflow:auto;border:1px solid var(--late-line);border-radius:12px}
+        .late-letters table{border-collapse:collapse;width:100%;font-size:.9rem}
+        .late-letters :is(th,td){padding:10px 12px;text-align:left;border-bottom:1px solid var(--late-line);vertical-align:top}
+        .late-letters th{background:var(--late-soft);white-space:nowrap;color:#31575a}
+        .late-letters tr:last-child td{border-bottom:0}
+        .late-letters tbody tr:hover{background:#f6fbfa}
+        .late-letters .late-tag{display:inline-block;white-space:nowrap;border-radius:999px;padding:3px 8px;background:#fff2d8;color:#774e08;font-size:.8rem;font-weight:650}
+        .late-letters .late-done{background:#dff5ec;color:#165a43}
+        .late-letters small{display:block;margin-top:4px;color:var(--late-muted)}
+        .late-letters details summary{cursor:pointer;white-space:nowrap}
+        .late-letters details ul{padding-left:18px;min-width:150px}
+        .late-letters dialog{color:#182e31;background:white}
+        .late-letters dialog form{display:grid;gap:12px}
+        .late-letters dialog fieldset{display:flex;flex-wrap:wrap;gap:9px;border:1px solid var(--late-line);border-radius:9px}
+      </style>
+      <header><h1>Rekap Keterlambatan</h1><p>Ambang surat per semester · SP 1: 5 kali · SP 2: 10 kali · SP 3 dan pemanggilan: 15 kali</p></header>
+      <div class="late-tabs"><button type="button" data-tab="recap">Rekap Semester</button><button type="button" data-tab="history">Riwayat Surat</button></div>
+      <form class="late-filters">
+        <label>Dari tanggal<input type="date" name="from"></label>
+        <label>Sampai tanggal<input type="date" name="to"></label>
+        <label>Cari siswa atau kelas<input type="search" name="search" placeholder="Nama siswa atau kelas"></label>
+        <label data-print-filter>Status cetak<select name="printed"><option value="">Semua status</option><option value="yes">Sudah Dicetak</option><option value="no">Belum Dicetak</option></select></label>
+        <button type="submit" class="late-primary">Terapkan</button><button type="button" data-reset>Reset</button>
+      </form>
+      <p data-scope></p><div class="late-summary"></div><p role="status" aria-live="polite"></p><div data-body></div>
+    </section>`;
+    const root = container.querySelector('.late-letters');
+    const filters = root.querySelector('form');
+    const summary = root.querySelector('.late-summary');
     const body = root.querySelector('[data-body]');
     const status = root.querySelector('[role=status]');
+    const scope = root.querySelector('[data-scope]');
+    const selected = new Set();
+    let mode = 'recap';
+    let kind = '';
+    let data;
     let requestId = 0;
-    const open = async number => {
-      try { await print(number); } catch (error) { status.textContent = error.message; }
+    let page = 0;
+    const pageSize = 25;
+
+    const open = async (numbers, download) => {
+      try {
+        await print(numbers, () => {
+          for (const number of numbers) selected.delete(number);
+          if (root.isConnected && mode === 'history') load();
+        }, download);
+      } catch (error) {
+        status.textContent = error.message;
+      }
     };
 
-    async function show(action, offset = 0) {
-      const id = ++requestId;
-      body.replaceChildren();
-      status.textContent = 'Memuat…';
-      try {
-        const data = await api({ action, offset });
-        if (id !== requestId || !root.isConnected || !allowed()) return;
-        status.textContent = '';
-        if (action === 'history') {
-          const { letters } = data;
-          body.innerHTML = letters.length ? `<table><thead><tr><th>Nomor</th><th>Siswa</th><th>Kelas</th><th>Jenis surat</th><th>Aksi</th></tr></thead>
-          <tbody>${letters.map(x => `<tr><td>${esc(numberLabel(x))}</td><td>${esc(x.student_name)}</td><td>${esc(x.class_name)}</td>
-          <td>${kinds[x.kind][1]}</td><td><button type="button" data-print="${x.number}">Buka surat</button></td></tr>`).join('')}</tbody></table>`
-            : '<p>Belum ada surat di halaman ini.</p>';
-          if (offset) body.insertAdjacentHTML('beforeend', '<button type="button" data-prev>Sebelumnya</button> ');
-          if (letters.length === 50) body.insertAdjacentHTML('beforeend', '<button type="button" data-next>Berikutnya</button>');
-          body.querySelectorAll('[data-print]').forEach(button => button.onclick = () => open(Number(button.dataset.print)));
-          body.querySelector('[data-prev]')?.addEventListener('click', () => show('history', offset - 50));
-          body.querySelector('[data-next]')?.addEventListener('click', () => show('history', offset + 50));
-          return;
-        }
+    function render() {
+      if (!data) return;
+      const { from, to, search, printed } = filters.elements;
+      if (from.value && to.value && from.value > to.value) {
+        status.textContent = 'Tanggal akhir harus sama dengan atau setelah tanggal awal.';
+        return;
+      }
+      status.textContent = '';
+      const inRange = date => (!from.value || date >= from.value) && (!to.value || date <= to.value);
+      const query = search.value.trim().toLowerCase();
+      const matches = row => [row.student_name, row.class_name].join(' ').toLowerCase().includes(query);
+      const history = mode === 'history';
+      const eligible = (row, key) => Boolean(row.issued?.[key]) || row.dates.length >= kinds[key][0];
+      const base = history
+        ? data.letters.filter(row => inRange(row.issued_on) && matches(row) && (!printed.value || Boolean(row.printed_at) === (printed.value === 'yes')))
+        : data.rows.filter(matches).map(row => ({ ...row, filteredDates: row.dates.filter(x => inRange(x.date)) })).filter(row => row.filteredDates.length);
+      const hasKind = (row, key) => history ? row.kind === key : eligible(row, key);
+      const rows = kind ? base.filter(row => hasKind(row, kind)) : base;
+      summary.innerHTML = [['', 'Semua'], ...Object.entries(shortKind)].map(([key, label]) => {
+        const total = key ? base.filter(row => hasKind(row, key)).length : base.length;
+        return `<button type="button" data-filter-kind="${key}" aria-pressed="${key === kind}">${label}<strong>${total}</strong></button>`;
+      }).join('');
+      if (!rows.length) {
+        body.innerHTML = '<p>Tidak ada data yang sesuai dengan filter.</p>';
+        return;
+      }
+      page = Math.min(page, Math.ceil(rows.length / pageSize) - 1);
+      const visible = rows.slice(page * pageSize, (page + 1) * pageSize);
+      const selection = history
+        ? '<div class="late-actions"><button type="button" class="late-primary" data-batch></button><p data-selection></p></div>'
+        : '';
+      const columns = history
+        ? '<th scope="col"><input type="checkbox" data-all aria-label="Pilih semua surat di halaman ini"></th><th scope="col">Nomor / Terbit</th><th scope="col">Siswa / Kelas</th><th scope="col">Jenis</th><th scope="col">Status cetak</th><th scope="col">Aksi</th>'
+        : '<th scope="col">Siswa / Kelas</th><th scope="col">Dalam rentang</th><th scope="col">Total semester</th><th scope="col">Surat</th>';
+      const student = row => `<strong>${esc(row.student_name)}</strong><small>${esc(row.class_name)}</small>`;
+      const cells = history ? visible.map(row => `<tr>
+        <td><input type="checkbox" data-select="${row.number}" aria-label="Pilih ${esc(numberLabel(row))}"></td>
+        <td><strong>${esc(numberLabel(row))}</strong><small>${esc(dateLabel(row.issued_on))}</small></td><td>${student(row)}</td>
+        <td>${shortKind[row.kind]}</td>
+        <td><span class="late-tag ${row.printed_at ? 'late-done' : ''}">${row.printed_at ? 'Sudah Dicetak' : 'Belum Dicetak'}</span>
+        ${row.printed_at ? `<small>${esc(printDate.format(new Date(row.printed_at)))} WIB</small>` : ''}</td>
+        <td><div class="late-actions"><button type="button" data-open="${row.number}">Lihat</button><button type="button" data-download="${row.number}">Cetak PDF</button></div></td></tr>`)
+        : visible.map((row, index) => `<tr><td>${student(row)}</td>
+        <td><details><summary>${row.filteredDates.length} kali</summary><ul>${row.filteredDates.map(x =>
+          `<li>${esc(dateLabel(x.date))}${x.note ? ' · ' + esc(x.note) : ''}</li>`).join('')}</ul></details></td>
+        <td>${row.dates.length} kali</td><td><div class="late-actions">${Object.keys(kinds).filter(key => eligible(row, key)).map(key =>
+          `<button type="button" data-kind="${key}" data-index="${index}">${row.issued?.[key] ? 'Lihat' : 'Buat'} ${shortKind[key]}</button>`).join('') || '—'}</div></td></tr>`);
+      body.innerHTML = `${selection}<div class="late-table"><table><thead><tr>${columns}</tr></thead>
+        <tbody>${cells.join('')}</tbody></table></div><div class="late-actions">
+        <button type="button" data-prev ${page === 0 ? 'disabled' : ''}>Sebelumnya</button>
+        <p>${page * pageSize + 1}–${Math.min((page + 1) * pageSize, rows.length)} dari ${rows.length}</p>
+        <button type="button" data-next ${(page + 1) * pageSize >= rows.length ? 'disabled' : ''}>Berikutnya</button></div>`;
+      body.querySelector('[data-prev]').onclick = () => { page--; render(); };
+      body.querySelector('[data-next]').onclick = () => { page++; render(); };
 
-        const { rows, period } = data;
-        status.textContent = `${dateLabel(period.start_date)} sampai ${dateLabel(period.end_date)}`;
-        body.innerHTML = rows.length ? `<label>Cari siswa atau kelas <input type="search" data-search></label>
-          <table><thead><tr><th>Siswa</th><th>Kelas</th><th>Bulan Ini</th><th>Semester Ini</th><th>Surat</th></tr></thead>
-          <tbody>${rows.map((row, index) => `<tr data-row="${index}"><td>${esc(row.student_name)}</td><td>${esc(row.class_name)}</td>
-          <td>${row.dates.filter(x => x.date.slice(0, 7) === period.today.slice(0, 7)).length}</td>
-          <td><details><summary>${row.dates.length} kali</summary><ul>${row.dates.map(x =>
-            `<li>${esc(dateLabel(x.date))}${x.note ? ' · ' + esc(x.note) : ''}</li>`).join('')}</ul></details></td>
-          <td>${Object.entries(kinds).filter(([, [threshold]]) => row.dates.length >= threshold).map(([kind, [, label]]) =>
-            `<button type="button" data-kind="${kind}" data-index="${index}">${row.issued?.[kind] ? 'Buka ' : 'Buat '}${label}</button> `).join('') || '—'}</td>
-          </tr>`).join('')}</tbody></table>` : '<p>Belum ada keterlambatan tercatat pada semester ini.</p>';
-        body.querySelector('[data-search]')?.addEventListener('input', event => {
-          const query = event.target.value.trim().toLowerCase();
-          body.querySelectorAll('[data-row]').forEach(tr => {
-            const row = rows[Number(tr.dataset.row)];
-            tr.hidden = ![row.student_name, row.class_name].join(' ').toLowerCase().includes(query);
+      if (history) {
+        const all = body.querySelector('[data-all]');
+        const boxes = [...body.querySelectorAll('[data-select]')];
+        const batch = body.querySelector('[data-batch]');
+        const update = () => {
+          for (const box of boxes) box.checked = selected.has(Number(box.dataset.select));
+          const checked = boxes.filter(box => box.checked).length;
+          all.checked = checked === boxes.length;
+          all.indeterminate = checked > 0 && !all.checked;
+          batch.disabled = selected.size === 0;
+          batch.textContent = `Cetak PDF terpilih (${selected.size})`;
+          body.querySelector('[data-selection]').textContent = 'Maksimal 50 surat per PDF.';
+        };
+        const select = (numbers, checked) => {
+          if (checked && new Set([...selected, ...numbers]).size > 50) {
+            status.textContent = 'Maksimal 50 surat per PDF.';
+          } else {
+            status.textContent = '';
+            for (const number of numbers) checked ? selected.add(number) : selected.delete(number);
+          }
+          update();
+        };
+        all.onchange = () => select(visible.map(row => row.number), all.checked);
+        for (const box of boxes) box.onchange = () => select([Number(box.dataset.select)], box.checked);
+        batch.onclick = () => open([...selected], true);
+        for (const button of body.querySelectorAll('[data-open]')) button.onclick = () => open([Number(button.dataset.open)]);
+        for (const button of body.querySelectorAll('[data-download]')) button.onclick = () => open([Number(button.dataset.download)], true);
+        update();
+      } else {
+        for (const button of body.querySelectorAll('[data-kind]')) button.onclick = () => {
+          const row = visible[Number(button.dataset.index)];
+          const key = button.dataset.kind;
+          if (row.issued?.[key]) return open([row.issued[key]]);
+          preview(root, row, key, data.period, number => {
+            (data.rows.find(x => x.student_id === row.student_id).issued ||= {})[key] = number;
+            render();
+            status.textContent = 'Surat diterbitkan. Buka surat untuk melihat PDF.';
           });
-        });
-        body.querySelectorAll('[data-kind]').forEach(button => button.onclick = () => {
-          const row = rows[Number(button.dataset.index)];
-          const kind = button.dataset.kind;
-          if (row.issued?.[kind]) return open(row.issued[kind]);
-          preview(root, row, kind, period, number => {
-            (row.issued ||= {})[kind] = number;
-            button.textContent = 'Buka ' + kinds[kind][1];
-            status.textContent = 'Surat diterbitkan. Klik tombol Buka untuk melihat atau menyimpan PDF.';
-          });
-        });
+        };
+      }
+    }
+
+    async function load() {
+      const id = ++requestId;
+      data = null;
+      body.replaceChildren();
+      summary.replaceChildren();
+      scope.textContent = '';
+      status.textContent = 'Memuat…';
+      const history = mode === 'history';
+      filters.elements.printed.disabled = !history;
+      root.querySelector('[data-print-filter]').style.display = history ? '' : 'none';
+      for (const tab of root.querySelectorAll('[data-tab]')) tab.setAttribute('aria-pressed', tab.dataset.tab === mode);
+      try {
+        const result = await api({ action: mode });
+        if (id !== requestId || !root.isConnected || !allowed()) return;
+        if (history) {
+          for (let offset = 50; result.letters.length === offset; offset += 50) {
+            const next = await api({ action: 'history', offset });
+            if (id !== requestId || !root.isConnected || !allowed()) return;
+            result.letters.push(...next.letters);
+          }
+        }
+        data = result;
+        scope.textContent = history ? 'Rentang berdasarkan tanggal terbit surat.'
+          : `Rentang berdasarkan tanggal kejadian · Semester aktif ${dateLabel(data.period.start_date)}–${dateLabel(data.period.end_date)}`;
+        render();
       } catch (error) {
         if (id === requestId) status.textContent = error.message;
       }
     }
 
-    root.querySelector('[data-recap]').onclick = () => show('recap');
-    root.querySelector('[data-history]').onclick = () => show('history');
-    show('recap');
+    const apply = () => {
+      selected.clear();
+      page = 0;
+      body.replaceChildren();
+      summary.replaceChildren();
+      render();
+    };
+    filters.onsubmit = event => { event.preventDefault(); apply(); };
+    filters.elements.printed.onchange = apply;
+    filters.querySelector('[data-reset]').onclick = () => { filters.reset(); kind = ''; apply(); };
+    summary.onclick = event => {
+      const button = event.target.closest('[data-filter-kind]');
+      if (!button) return;
+      kind = button.dataset.filterKind;
+      apply();
+    };
+    for (const tab of root.querySelectorAll('[data-tab]')) tab.onclick = () => {
+      if (mode !== tab.dataset.tab) {
+        mode = tab.dataset.tab;
+        filters.reset();
+        kind = '';
+        selected.clear();
+        page = 0;
+      }
+      load();
+    };
+    load();
   };
 })();

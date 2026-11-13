@@ -6,6 +6,32 @@ export async function lateLetters(sb: any, J: (body: unknown, status?: number) =
     return J({ error: "Khusus Kabid Kesiswaan." }, 403);
   }
   try {
+    if (body.operation === "print_batch" || body.operation === "confirm_print") {
+      const numbers = body.numbers;
+      if (!Array.isArray(numbers) || numbers.length < 1 || numbers.length > 50 ||
+          numbers.some(n => !Number.isSafeInteger(n) || n < 206 || n > 2147483647) ||
+          new Set(numbers).size !== numbers.length) {
+        return J({ error: "Pilih 1 sampai 50 nomor surat yang valid." }, 400);
+      }
+      const table = () => sb.from("kesiswaan_late_letters");
+      const { data: letters, error } = await table()
+        .select(body.operation === "print_batch" ? "number,kind,issued_on,payload" : "number")
+        .in("number", numbers);
+      if (error) throw error;
+      if (letters.length !== numbers.length) return J({ error: "Ada surat yang tidak ditemukan." }, 404);
+      if (body.operation === "confirm_print") {
+        const { error: updateError } = await table()
+          .update({ printed_at: new Date().toISOString(), printed_by: account.id }).in("number", numbers);
+        if (updateError) throw updateError;
+        return J({ confirmed: letters.length });
+      }
+      const { data: asset, error: assetError } = await sb.from("kesiswaan_letter_assets")
+        .select("png_base64").eq("name", "signature").maybeSingle();
+      if (assetError) throw assetError;
+      const byNumber = new Map(letters.map((letter: any) => [letter.number, letter]));
+      return J({ letters: numbers.map(number => byNumber.get(number)), signature: asset?.png_base64 || null });
+    }
+
     if (body.operation === "print") {
       if (!Number.isSafeInteger(body.number) || body.number < 206) return J({ error: "Nomor surat tidak valid." }, 400);
       const { data: letter, error } = await sb.from("kesiswaan_late_letters")
@@ -22,7 +48,7 @@ export async function lateLetters(sb: any, J: (body: unknown, status?: number) =
       const offset = body.offset ?? 0;
       if (!Number.isSafeInteger(offset) || offset < 0) return J({ error: "Halaman tidak valid." }, 400);
       const { data, error } = await sb.from("kesiswaan_late_letters")
-        .select("number,kind,issued_on,student_id,semester_id,student_name:payload->>student_name,class_name:payload->>class_name")
+        .select("number,kind,issued_on,printed_at,student_id,semester_id,student_name:payload->>student_name,class_name:payload->>class_name")
         .order("number", { ascending: false }).range(offset, offset + 49);
       if (error) throw error;
       return J({ letters: data });
