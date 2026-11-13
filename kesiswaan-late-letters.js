@@ -9,6 +9,10 @@
   const dateLabel = value => new Intl.DateTimeFormat('id-ID', {
     dateStyle: 'long', timeZone: 'Asia/Jakarta'
   }).format(new Date(value + 'T12:00:00+07:00'));
+  const fullDateLabel = value => new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'full', timeZone: 'Asia/Jakarta'
+  }).format(new Date(value + 'T12:00:00+07:00'));
+  const timeLabel = value => value ? String(value).trim().slice(0, 5).replace(':', '.') : '[Jam]';
   const numberLabel = letter => {
     const [year, month] = letter.issued_on.split('-');
     return [letter.number, letter.kind === 'spo' ? 'SPO' : 'SP', 'KES', roman[Number(month) - 1], year].join('/');
@@ -32,26 +36,29 @@
     return data;
   }
 
-  function content(letter, signature) {
+  function content(letter) {
     const p = letter.payload;
     const meeting = letter.kind === 'spo';
     const agenda = meeting ? `<p>Kami mengundang Bapak/Ibu untuk membahas kendala kedatangan Ananda dan menyepakati langkah perbaikan bersama.</p>
-      <p>Tanggal pertemuan <strong>${p.meeting_date ? esc(dateLabel(p.meeting_date)) : '[Tanggal]'}</strong><br>
-      Waktu <strong>${esc(p.meeting_time || '[Jam]')} WIB</strong><br>Tempat <strong>${esc(p.meeting_place || '[Tempat]')}</strong></p>`
+      <p>Hari/Tanggal: <strong>${p.meeting_date ? esc(fullDateLabel(p.meeting_date)) : '[Hari/Tanggal]'}</strong><br>
+      Waktu: <strong>${esc(timeLabel(p.meeting_time))} WIB</strong><br>Tempat: <strong>${esc(p.meeting_place || '[Tempat]')}</strong></p>`
       : '<p>Kami memohon kerja sama Bapak/Ibu untuk mendampingi Ananda agar datang tepat waktu. Jika ada kendala, silakan sampaikan kepada wali kelas agar sekolah dan keluarga dapat mencari solusi bersama.</p>';
     const next = { sp1: 'Pada akumulasi 10 kali dalam semester yang sama, sekolah menerbitkan Surat Peringatan II.',
       sp2: 'Pada akumulasi 15 kali dalam semester yang sama, sekolah menerbitkan Surat Peringatan III dan Surat Pemanggilan Orang Tua/Wali.',
       sp3: 'Bidang Kesiswaan akan mengundang Bapak/Ibu untuk membahas tindak lanjut pembinaan.' }[letter.kind];
     return `<h1>${kinds[letter.kind][1]}</h1><div class="letter-number">Nomor ${letter.number ? esc(numberLabel(letter)) : 'ditetapkan saat terbit'}</div>
-      <p>Yth. Bapak/Ibu Orang Tua/Wali dari <strong>${esc(p.student_name)}</strong><br>Kelas ${esc(p.class_name)}</p>
+      <p>Yth. Orang Tua/Wali Murid dari Ananda <strong>${esc(p.student_name)}</strong><br>Kelas ${esc(p.class_name)}</p>
       <p>Assalamu’alaikum warahmatullahi wabarakatuh.</p>
-      <p>Berdasarkan rekap kehadiran SD Islam Tahfizh Cahaya Qur’an, Ananda <strong>${esc(p.student_name)}</strong> tercatat terlambat <strong>${p.dates.length} kali</strong> pada Semester ${p.semester_no === 1 ? 'Ganjil' : 'Genap'} Tahun Pelajaran ${esc(p.year_name)}.</p>
-      <p>Tanggal keterlambatan: ${p.dates.map(x => esc(dateLabel(x.date))).join(', ')}.</p>
+      <p>Berdasarkan rekap keterlambatan SD Islam Tahfizh Cahaya Qur’an, Ananda <strong>${esc(p.student_name)}</strong> tercatat terlambat <strong>${p.dates.length} kali</strong> pada Semester ${p.semester_no === 1 ? 'Ganjil' : 'Genap'} Tahun Pelajaran ${esc(p.year_name)}.</p>
+      <table class="letter-late-table"><colgroup><col style="width:11%"><col style="width:29%"><col></colgroup>
+      <thead><tr><th scope="col">Nomor</th><th scope="col">Tanggal</th><th scope="col">Alasan Telat</th></tr></thead>
+      <tbody>${p.dates.map((entry, index) => `<tr><td>${index + 1}</td><td>${esc(dateLabel(entry.date))}</td>
+      <td>${esc(String(entry.note ?? '').replace(/^Alasan:\s*/i, '').trim() || '—')}</td></tr>`).join('')}</tbody></table>
       ${agenda}${next ? `<p>${next}</p>` : ''}
       <p>Terima kasih atas perhatian dan kerja sama Bapak/Ibu.</p>
       <p>Wassalamu’alaikum warahmatullahi wabarakatuh.</p>
       <div class="letter-sign"><p>Depok, ${esc(dateLabel(letter.issued_on))}<br>Kepala Bidang Kesiswaan<br>SD Islam Tahfizh Cahaya Qur’an</p>
-      ${signature && /^[a-z0-9+/=]+$/i.test(signature) ? `<img class="signature" alt="Tanda tangan" src="data:image/png;base64,${signature}">` : '<div class="signature"></div>'}
+      <div class="wet-signature" aria-hidden="true"></div>
       <strong>Khoerunnisa, S.Kom.</strong></div>`;
   }
 
@@ -60,8 +67,8 @@
 
   async function downloadPdf(doc, filename) {
     const { jsPDF } = await rpLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf');
-    const [header, footer, signature] = await Promise.all(
-      ['.kop', '.footer', 'img.signature'].map(async selector => {
+    const [header, footer] = await Promise.all(
+      ['.kop', '.footer'].map(async selector => {
         const image = doc.querySelector(selector);
         if (!image) return null;
         const response = await fetch(image.src);
@@ -69,10 +76,22 @@
         return new Uint8Array(await response.arrayBuffer());
       })
     );
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true, putOnlyUsedFonts: true });
+    await Promise.all([['Regular', 'normal'], ['Bold', 'bold']].map(async ([name, style]) => {
+      const file = 'LiberationSans-' + name + '.ttf';
+      const response = await fetch(new URL('fonts/' + file, location.href));
+      if (!response.ok) throw Error('Font surat belum dapat dimuat.');
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      let binary = '';
+      for (let offset = 0; offset < bytes.length; offset += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+      }
+      pdf.addFileToVFS(file, btoa(binary));
+      pdf.addFont(file, 'LiberationSans', style);
+    }));
     const width = pdf.internal.pageSize.getWidth();
     const height = pdf.internal.pageSize.getHeight();
-    const margin = 18;
+    const margin = 20;
     const textWidth = width - 2 * margin;
     const bottom = height - 29;
     let y;
@@ -88,7 +107,7 @@
       const footerHeight = imageHeight(footer, LETTER_ART.footerWidth);
       pdf.addImage(header, 'PNG', LETTER_ART.headerX, LETTER_ART.headerY, LETTER_ART.headerWidth, imageHeight(header, LETTER_ART.headerWidth), 'letterhead');
       pdf.addImage(footer, 'PNG', LETTER_ART.footerX, height - footerHeight - LETTER_ART.footerGap, LETTER_ART.footerWidth, footerHeight, 'letterfooter');
-      y = 46;
+      y = 56;
     }
 
     function nextPage() {
@@ -97,31 +116,60 @@
     }
 
     function lines(text, maxWidth, fontSize, weight = 'normal') {
-      pdf.setFont('helvetica', weight);
+      pdf.setFont('LiberationSans', weight);
       pdf.setFontSize(fontSize);
-      return pdf.splitTextToSize(text, maxWidth);
+      return pdf.splitTextToSize(text.replace(/[‘’]/g, "'"), maxWidth);
     }
 
     const lineHeight = 5.3;
+    function drawLateTable(table) {
+      const widths = [18.5, 49, textWidth - 67.5];
+      const rowHeight = 6.7;
+      const row = (cells, heading = false) => {
+        const text = Array.from(cells, (cell, i) => lines(cell.textContent.trim(), widths[i] - 5, 10.5, heading ? 'bold' : 'normal'));
+        const height = Math.max(rowHeight, Math.max(...text.map(value => value.length)) * 4.4 + 2.3);
+        if (y + height > bottom) {
+          nextPage();
+          if (!heading) row(table.tHead.rows[0].cells, true);
+        }
+        let x = margin;
+        pdf.setDrawColor(201, 214, 222);
+        pdf.setLineWidth(.18);
+        for (const [i, value] of text.entries()) {
+          if (heading) pdf.setFillColor(232, 242, 247);
+          pdf.rect(x, y, widths[i], height, heading ? 'FD' : 'S');
+          value.forEach((line, j) => pdf.text(line, heading ? x + widths[i] / 2 : x + 2.5,
+            y + 4.6 + j * 4.4, { align: heading ? 'center' : 'left' }));
+          x += widths[i];
+        }
+        y += height;
+      };
+      y -= 1;
+      if (y + rowHeight * 2 > bottom) nextPage();
+      row(table.tHead.rows[0].cells, true);
+      for (const entry of table.tBodies[0].rows) row(entry.cells);
+      y += 7;
+    }
+
     letterhead();
     for (const [index, main] of [...doc.querySelectorAll('main')].entries()) {
       if (index) nextPage();
       for (const block of main.children) {
+        if (block.matches('.letter-late-table')) {
+          drawLateTable(block);
+          continue;
+        }
         if (block.matches('.letter-sign')) {
           const x = width * .56;
           const signatureLines = lines(block.querySelector('p').innerText, width - margin - x, 11);
           const name = block.querySelector('strong').textContent;
-          if (y + signatureLines.length * lineHeight + 22 > bottom) nextPage();
+          if (y + signatureLines.length * lineHeight + 18 > bottom) nextPage();
           for (const line of signatureLines) {
             pdf.text(line, x, y);
             y += lineHeight;
           }
-          if (signature) {
-            const props = pdf.getImageProperties(signature);
-            pdf.addImage(signature, 'PNG', x, y - 3, 14 * props.width / props.height, 14);
-          }
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(name, x, y + 14);
+          pdf.setFont('LiberationSans', 'bold');
+          pdf.text(name, x, y + 18);
           break;
         }
 
@@ -146,23 +194,28 @@
     page.opener = null;
     page.document.body.textContent = 'Memuat surat…';
     try {
-      const { letters, signature } = await api({ action: 'print_batch', numbers });
+      const { letters } = await api({ action: 'print_batch', numbers });
       const filename = letters.length === 1 ? numberLabel(letters[0]) : 'Surat_Keterlambatan_' + letters.length + '_Surat';
       const header = new URL('kesiswaan-kop-header.png', location.href);
       const footer = new URL('kesiswaan-kop-footer.png', location.href);
       page.document.open();
       page.document.write(`<!doctype html><html lang="id"><meta charset="utf-8"><title>${esc(filename)}</title>
         <style>
-        @page{size:A4;margin:44mm 18mm 29mm}
+        @page{size:A4;margin:52mm 20mm 29mm}
         body{font:11pt/1.4 Tahoma,Arial,sans-serif;color:#17202a;margin:0 auto;max-width:174mm}
         .kop,.footer{display:block;height:auto;max-width:none;margin:0}
         .kop{width:205.3mm}.footer{width:178.8mm}
         h1{text-align:center;font-size:14pt;margin:0;text-transform:uppercase}
         .letter-number{text-align:center;margin:1mm 0 6mm}.letter-sign{margin-left:55%;break-inside:avoid}
-        .signature{display:block;height:14mm;width:auto;object-fit:contain}
+        .wet-signature{height:20mm}
+        .letter-late-table{width:100%;border-collapse:collapse;margin:3mm 0 5mm;font-size:10.5pt}
+        .letter-late-table :is(th,td){border:1px solid #c9d6de;padding:1mm 2.5mm;overflow-wrap:anywhere}
+        .letter-late-table th{text-align:center;background:#e8f2f7}
+        .letter-late-table tr{break-inside:avoid}
+        .letter-late-table thead{display:table-header-group}
         @media screen{
           body{padding:8mm;max-width:none}.print{margin-bottom:5mm}
-          .letter-sheet{box-sizing:border-box;position:relative;clip-path:inset(0);width:210mm;min-height:297mm;margin:0 auto;padding:46mm 18mm 29mm;background:#fff;box-shadow:0 0 0 1px #d0d5dd}
+          .letter-sheet{box-sizing:border-box;position:relative;clip-path:inset(0);width:210mm;min-height:297mm;margin:0 auto;padding:52mm 20mm 29mm;background:#fff;box-shadow:0 0 0 1px #d0d5dd}
           .kop,.footer{position:absolute}
           .kop{left:6.7mm;top:-1.46mm}.footer{left:18mm;bottom:.3mm}
         }
@@ -171,13 +224,13 @@
           /* Body space is reserved by @page margins (44/29 mm); artwork is pinned to the A4 page edges
              exactly like KOP_SURAT.docx: header x 6.7 mm / y -1.46 mm, footer x 18 mm / 0.3 mm from bottom. */
           .kop,.footer{position:fixed}
-          .kop{left:-11.3mm;top:-45.46mm}.footer{left:0;bottom:-28.7mm}
+          .kop{left:-13.3mm;top:-53.46mm}.footer{left:-2mm;bottom:-28.7mm}
         }
         </style>
         <button type="button" class="print" id="print-letter">Unduh PDF A4</button> <button type="button" class="print" id="confirm-print" disabled>Konfirmasi sudah dicetak</button><span class="print-status" id="pdf-status" role="status"></span>
         ${letters.map(letter => `<div class="letter-sheet">
           <img class="kop" alt="Kop sekolah" src="${esc(header.href)}">
-          <main>${content(letter, signature)}</main>
+          <main>${content(letter)}</main>
           <img class="footer" alt="Footer sekolah" src="${esc(footer.href)}">
         </div>`).join('')}</html>`);
       page.document.close();
@@ -289,6 +342,8 @@
         .late-letters details summary{cursor:pointer;white-space:nowrap}
         .late-letters details ul{padding-left:18px;min-width:150px}
         .late-letters dialog{color:#182e31;background:white}
+        .late-letters .letter-late-table th{text-align:center}
+        .late-letters .wet-signature{height:20mm}
         .late-letters dialog form{display:grid;gap:12px}
         .late-letters dialog fieldset{display:flex;flex-wrap:wrap;gap:9px;border:1px solid var(--late-line);border-radius:9px}
       </style>
