@@ -55,6 +55,9 @@
       <strong>Khoerunnisa, S.Kom.</strong></div>`;
   }
 
+  // Letterhead geometry in mm on an A4 page, measured from KOP_SURAT.docx.
+  const LETTER_ART = { headerX: 6.7, headerY: -1.46, headerWidth: 205.3, footerX: 18, footerWidth: 178.8, footerGap: 0.3 };
+
   async function downloadPdf(doc, filename) {
     const { jsPDF } = await rpLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf');
     const [header, footer, signature] = await Promise.all(
@@ -70,7 +73,6 @@
     const width = pdf.internal.pageSize.getWidth();
     const height = pdf.internal.pageSize.getHeight();
     const margin = 18;
-    const edge = 11;
     const textWidth = width - 2 * margin;
     const bottom = height - 29;
     let y;
@@ -81,9 +83,11 @@
     }
 
     function letterhead() {
-      const footerHeight = imageHeight(footer, textWidth);
-      pdf.addImage(header, 'PNG', (width - 140) / 2, edge, 140, imageHeight(header, 140), 'letterhead');
-      pdf.addImage(footer, 'PNG', margin, height - edge - footerHeight, textWidth, footerHeight, 'letterfooter');
+      // Same placement as the KOP_SURAT.docx template (A4, mm): header bleeds off the top and right edges,
+      // footer is 178.8 mm wide, starts 18 mm from the left and sits 0.3 mm above the bottom edge.
+      const footerHeight = imageHeight(footer, LETTER_ART.footerWidth);
+      pdf.addImage(header, 'PNG', LETTER_ART.headerX, LETTER_ART.headerY, LETTER_ART.headerWidth, imageHeight(header, LETTER_ART.headerWidth), 'letterhead');
+      pdf.addImage(footer, 'PNG', LETTER_ART.footerX, height - footerHeight - LETTER_ART.footerGap, LETTER_ART.footerWidth, footerHeight, 'letterfooter');
       y = 46;
     }
 
@@ -147,21 +151,23 @@
         <style>
         @page{size:A4;margin:44mm 18mm 29mm}
         body{font:11pt/1.4 Tahoma,Arial,sans-serif;color:#17202a;margin:0 auto;max-width:174mm}
-        .kop,.footer{display:block;height:auto;margin-inline:auto}
-        .kop{width:140mm;max-width:100%}.footer{width:100%}
+        .kop,.footer{display:block;height:auto;max-width:none;margin:0}
+        .kop{width:205.3mm}.footer{width:178.8mm}
         h1{text-align:center;font-size:14pt;margin:0;text-transform:uppercase}
         .letter-number{text-align:center;margin:1mm 0 6mm}.letter-sign{margin-left:55%;break-inside:avoid}
         .signature{display:block;height:14mm;width:auto;object-fit:contain}
         @media screen{
-          body{padding:8mm}.print{margin-bottom:5mm}
-          .letter-sheet{box-sizing:border-box;min-height:275mm;display:flex;flex-direction:column}
-          .kop{margin-bottom:5mm}.footer{margin-top:auto;padding-top:5mm}
+          body{padding:8mm;max-width:none}.print{margin-bottom:5mm}
+          .letter-sheet{box-sizing:border-box;position:relative;clip-path:inset(0);width:210mm;min-height:297mm;margin:0 auto;padding:46mm 18mm 29mm;background:#fff;box-shadow:0 0 0 1px #d0d5dd}
+          .kop,.footer{position:absolute}
+          .kop{left:6.7mm;top:-1.46mm}.footer{left:18mm;bottom:.3mm}
         }
         @media print{
           .print{display:none}
-          /* Reserve body space on each A4 page. Anchor artwork 11 mm from both page edges. */
-          .kop,.footer{position:fixed;left:0;right:0}
-          .kop{top:-33mm}.footer{bottom:-18mm}
+          /* Body space is reserved by @page margins (44/29 mm); artwork is pinned to the A4 page edges
+             exactly like KOP_SURAT.docx: header x 6.7 mm / y -1.46 mm, footer x 18 mm / 0.3 mm from bottom. */
+          .kop,.footer{position:fixed}
+          .kop{left:-11.3mm;top:-45.46mm}.footer{left:0;bottom:-28.7mm}
         }
         </style>
         <button type="button" class="print" id="print-letter">Unduh PDF</button><span id="pdf-status" role="status"></span>
