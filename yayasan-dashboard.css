@@ -1,0 +1,78 @@
+.yay-nav,.yay-shell {
+  font-family: Tahoma, Verdana, sans-serif;
+  color: #193234;
+}
+.yay-nav { display: grid; gap: 5px; }
+.yay-nav button {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  min-height: 46px; padding: 8px 12px; border: 1px solid transparent;
+  border-radius: 10px; background: transparent; color: #305251; font: inherit;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.yay-nav button span { width: 18px; text-align: center; font-size: 18px; }
+.yay-nav button:hover,.yay-nav button[aria-current="page"] { background: #e1f1ed; color: #064f4a; border-color: #c6e2da; }
+.yay-shell { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; min-width: 0; }
+.yay-header {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  padding: clamp(24px,4vw,46px); border-radius: 20px;
+  background: linear-gradient(115deg,#113739,#0c514c 68%,#186458); color: #fff;
+}
+.yay-header::after {
+  content: ''; z-index: -1; position: absolute; right: -35px; bottom: -142px; width: 320px; height: 320px;
+  border: 1px solid #a6d4c44a; border-radius: 50%;
+  box-shadow: 0 0 0 22px #a6d4c416, 0 0 0 46px #a6d4c40d;
+}
+.yay-kicker { color: #c8e9df; font-size: 12px; letter-spacing: .05em; }
+.yay-header h1 { margin: 10px 0 0; color: #fff; font: 700 clamp(25px,4vw,43px)/1.15 Tahoma,sans-serif; letter-spacing: -.045em; }
+.yay-header p { color: #d9ece8; margin: 12px 0 0; font-size: 13px; }
+.yay-read { border: 1px solid #9bd1be85; border-radius: 30px; padding: 7px 12px; color: #e2f3ec; font-size: 12px; }
+.yay-filters,.yay-metric,.yay-links button,.yay-table,.yay-empty {
+  background: #fff; border: 1px solid #dce8e4; border-radius: 14px;
+}
+.yay-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 14px 16px; }
+.yay-filters label { display: grid; gap: 6px; font-size: 12px; color: #355451; font-weight: 700; min-width: 140px; }
+.yay-filters input,.yay-filters select,.yay-action,.yay-pages button {
+  min-height: 38px; border: 1px solid #cbdfda; border-radius: 8px;
+  padding: 7px 10px; font: 13px Tahoma,sans-serif; background: #f8fbfa; color: #193234;
+}
+.yay-filters select { max-width: 245px; }
+.yay-action { justify-self: start; background: #105c53; color: white; border-color: #105c53; font-weight: 700; cursor: pointer; }
+.yay-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.yay-metric { display: grid; gap: 8px; padding: 18px; }
+.yay-metric span { font-size: 13px; font-weight: 700; color: #315651; }
+.yay-metric strong { font-size: clamp(22px,3vw,34px); color: #134c45; font-variant-numeric: tabular-nums; }
+.yay-metric small,.yay-links small,.yay-table small { color: #506a67; font-size: 12px; line-height: 1.55; }
+.yay-links { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 14px; }
+.yay-links button {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+  padding: 15px; text-align: left; color: #193234; font: inherit; cursor: pointer;
+}
+.yay-links button:hover { border-color: #7bb3a5; background: #f6fbf9; }
+.yay-links strong,.yay-links small,.yay-table small { display: block; }
+.yay-links strong { font-size: 14px; margin-bottom: 4px; }
+.yay-icon { background: #e5f3ef; color: #125e52; border-radius: 10px; padding: 9px; font-size: 18px; }
+.yay-note { margin: 14px 0; font-size: 12px; line-height: 1.55; color: #405c58; }
+.yay-table { max-width: 100%; overflow: auto; }
+.yay-table table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.yay-table th,.yay-table td { padding: 12px 14px; border-bottom: 1px solid #e2ece8; vertical-align: top; }
+.yay-table th { background: #edf6f2; color: #24564e; font-size: 12px; white-space: nowrap; }
+.yay-table td { line-height: 1.55; overflow-wrap: anywhere; }
+.yay-table tbody tr:last-child td { border-bottom: 0; }
+.yay-table tbody tr:nth-child(even) { background: #f8fbfa; }
+.yay-tag { display: inline-block; padding: 3px 9px; border-radius: 20px; white-space: nowrap; font-size: 11px; font-weight: 700; }
+.yay-tag.green { background: #dff2e6; color: #1b5a37; }
+.yay-tag.amber { background: #fbecd4; color: #754b16; }
+.yay-tag.blue { background: #e7eff7; color: #2c4f6c; }
+.yay-empty { margin: 0; padding: 28px; color: #405c58; font-size: 14px; }
+.yay-pages { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 12px; font-size: 12px; }
+.yay-pages span { margin-right: auto; }
+.yay-pages button { cursor: pointer; }
+.yay-pages button:disabled { cursor: default; opacity: .5; }
+.yay-shell :focus-visible,.yay-nav :focus-visible { outline: 2px solid #138471; outline-offset: 2px; }
+@media(max-width: 640px) {
+  .yay-nav { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .yay-links { grid-template-columns: 1fr; }
+  .yay-metrics { grid-template-columns: repeat(auto-fit,minmax(135px,1fr)); }
+  .yay-filters label { min-width: 130px; }
+}

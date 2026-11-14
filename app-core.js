@@ -854,6 +854,12 @@ function enterApp(){
   document.getElementById('user-name').textContent = currentUser.nama;
   document.getElementById('user-role').textContent = currentUser.role.toUpperCase();
   updateProfilePhotoUI();
+  const isYayasan = currentUser.role === 'yayasan';
+  document.getElementById('bell-wrap').hidden = isYayasan;
+  if(isYayasan){
+    setActiveModule('dashboard');
+    return;
+  }
 
   // HRD memakai workspace laporan terisolasi. Role lain tetap memakai router lama.
   if(String(currentUser?.role||'').trim().toLowerCase()==='hrd'){
@@ -923,6 +929,10 @@ function renderSidebar(){
     return;
   }
   sidebar.innerHTML = '';
+  if(sidebarRole==='yayasan'){
+    window.cqYayasan?.sidebar(sidebar, activeModule);
+    return;
+  }
 
   // SAPRAS: isolated navigation, never expose attendance or academic modules.
   if (sidebarRole === 'sapras') {
@@ -982,6 +992,12 @@ function renderSidebar(){
 }
 
 function setActiveModule(id){
+  if(currentUser?.role==='yayasan'){
+    activeModule = window.cqYayasan?.route(id) || 'dashboard';
+    renderSidebar();
+    window.cqYayasan?.render(activeModule);
+    return;
+  }
   // Route SAPRAS only to the facilities dashboard; block accidental legacy module navigation.
   if(String(currentUser?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_')==='sapras'){
     activeModule='dashboard';
