@@ -126,12 +126,26 @@ async function morningTalk(db: SupabaseClient, classIds: string[], start: string
   }));
 }
 
-async function facilities(db: SupabaseClient, start: string, end: string) {
+async function facilities(db: SupabaseClient, start: string, end: string, photos: boolean) {
   const nextDay = new Date(Date.parse(end + "T00:00:00Z") + 86400000).toISOString().slice(0, 10);
-  return rows(db.from("internal_reports")
-    .select("ticket_no,location,description,status,resolution_note,created_at")
+  const reports = await rows(db.from("internal_reports")
+    .select("ticket_no,location,description,status,resolution_note,created_at,photo_url,resolution_photo_url")
     .eq("report_type", "SAPRAS").gte("created_at", start + "T00:00:00+07:00").lt("created_at", nextDay + "T00:00:00+07:00")
     .order("created_at", { ascending: false }).order("id"));
+  const paths = photos ? [...new Set(reports.flatMap(r => [r.photo_url, r.resolution_photo_url]).filter(Boolean))] : [];
+  const signed = new Map<string, string>();
+  for (let i = 0; i < paths.length; i += 100) {
+    const { data, error } = await db.storage.from("internal-report-photos").createSignedUrls(paths.slice(i, i + 100), 3600);
+    if (error) console.warn("Sapras photos unavailable", error.message);
+    for (const photo of data || []) {
+      if (photo.path && photo.signedUrl) signed.set(photo.path, photo.signedUrl);
+    }
+  }
+  return reports.map(({ photo_url, resolution_photo_url, ...report }) => ({
+    ...report,
+    photo_url: signed.get(photo_url),
+    resolution_photo_url: signed.get(resolution_photo_url),
+  }));
 }
 
 async function academics(db: SupabaseClient, period: Awaited<ReturnType<typeof activePeriod>>, classId: string) {
@@ -215,7 +229,7 @@ export async function serveYayasan(db: SupabaseClient, request: Request, body: R
     if (!validDate(start) || !validDate(end) || start > end || end > today || Date.parse(end) - Date.parse(start) > 366 * 86400000) {
       return reply({ error: "invalid_dates" }, 400);
     }
-    const [mt, sapras] = await Promise.all([morningTalk(db, period.classes.map(c => c.id), start, end, body.mt_details === true), facilities(db, start, end)]);
+    const [mt, sapras] = await Promise.all([morningTalk(db, period.classes.map(c => c.id), start, end, body.mt_details === true), facilities(db, start, end, body.sapras_photos === true)]);
     return reply({ year: period.year.name, semester: period.semester, classes: period.classes, mt, sapras, start, end });
   } catch (error) {
     console.error("yayasan-dashboard", error);

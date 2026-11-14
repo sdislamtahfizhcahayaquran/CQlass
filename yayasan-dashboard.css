@@ -110,3 +110,6 @@
 .yay-grade-grid .yay-table tr:nth-child(even) td:nth-child(2) { background: #f8fbfa; }
 .yay-grade-grid .yay-table td:nth-last-child(3) { font-weight: 700; background: #edf6f2; }
 .yay-grade-grid .yay-note,.yay-grade-grid .yay-pages { margin: 10px 14px; }
+
+.yay-sapras-photo { display: grid; gap: 4px; width: fit-content; margin-top: 8px; color: #105c53; font-size: 12px; }
+.yay-sapras-photo img { width: 112px; height: 76px; object-fit: contain; background: #edf5f2; border: 1px solid #dce8e4; border-radius: 8px; }

@@ -28,6 +28,7 @@
   let session;
   let overview;
   let mtDetailsAt = 0;
+  let saprasPhotosAt = 0;
   let academic;
   let controller;
   let classId = '';
@@ -90,6 +91,13 @@
       ][i]}</small></span><span aria-hidden="true">→</span></button>`).join('')}</div>`;
   }
 
+  function saprasPhoto(url, label) {
+    if (!/^https:\/\//i.test(url || '')) return '';
+    return `<a class="yay-sapras-photo" href="${esc(url)}" target="_blank" rel="noopener noreferrer">
+      <img loading="lazy" src="${esc(url)}" alt=""><span>${esc(label)}</span>
+    </a>`;
+  }
+
   function content() {
     if (view === 'dashboard') return summary();
     if (view === 'yayasan-mt') {
@@ -112,9 +120,9 @@
     if (view === 'yayasan-sapras') {
       return paged(overview.sapras, ['Laporan', 'Lokasi dan kebutuhan', 'Status', 'Tindak lanjut'],
         r => tr(`<strong>${esc(r.ticket_no || 'Laporan Sapras')}</strong><small>${esc(dateLabel(r.created_at))}</small>`,
-          `<strong>${esc(r.location || 'Lokasi belum dicatat')}</strong><small>${esc(r.description)}</small>`,
+          `<strong>${esc(r.location || 'Lokasi belum dicatat')}</strong><small>${esc(r.description)}</small>${saprasPhoto(r.photo_url, 'Lihat foto laporan')}`,
           tag(saprasStatuses[r.status] || r.status || 'Belum ada status', r.status === 'SELESAI' ? 'green' : r.status === 'DIPROSES' ? 'blue' : 'amber'),
-          esc(r.resolution_note || '—')), 'Belum ada laporan Sapras pada periode ini.');
+          esc(r.resolution_note || '—') + saprasPhoto(r.resolution_photo_url, 'Lihat foto tindak lanjut')), 'Belum ada laporan Sapras pada periode ini.');
     }
     if (!academic) return '<p class="yay-empty">Belum ada data akademik untuk kelas ini.</p>';
     if (view === 'yayasan-tp') {
@@ -263,12 +271,16 @@
     page = 0;
     try {
       const wantsMt = view === 'yayasan-mt';
-      if (!overview || force || (wantsMt && Date.now() - mtDetailsAt > 50 * 60000)) {
+      const wantsSapras = view === 'yayasan-sapras';
+      const photoMaxAge = 50 * 60000;
+      if (!overview || force || (wantsMt && Date.now() - mtDetailsAt > photoMaxAge) ||
+          (wantsSapras && Date.now() - saprasPhotosAt > photoMaxAge)) {
         draw(true);
-        const result = await request('overview', {...(range || {start:overview?.start, end:overview?.end}), mt_details:wantsMt}, signal);
+        const result = await request('overview', {...(range || {start:overview?.start, end:overview?.end}), mt_details:wantsMt, sapras_photos:wantsSapras}, signal);
         if (!current()) return;
         overview = result;
         mtDetailsAt = wantsMt ? Date.now() : 0;
+        saprasPhotosAt = wantsSapras ? Date.now() : 0;
         if (!overview.classes.some(c => c.id === classId)) classId = overview.classes[0]?.id || '';
         if (force) { academic = null; academicClass = ''; subjectId = ''; }
       }
@@ -295,7 +307,7 @@
     const token = getAuthToken();
     if (session !== token) {
       overview = academic = null;
-      mtDetailsAt = 0;
+      mtDetailsAt = saprasPhotosAt = 0;
       classId = academicClass = mtClass = subjectId = status = search = '';
       session = token;
     }
