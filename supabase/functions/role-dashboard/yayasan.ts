@@ -61,20 +61,69 @@ async function activePeriod(db: SupabaseClient) {
   return { year, semester: semester.semester_no, classes };
 }
 
-async function morningTalk(db: SupabaseClient, classIds: string[], start: string, end: string) {
+async function morningTalk(db: SupabaseClient, classIds: string[], start: string, end: string, details: boolean) {
   if (!classIds.length) return [];
   const [history, live] = await Promise.all([
-    rows(db.from("morning_talk_recap_history").select("class_id,recap_date,theme")
+    rows(db.from("morning_talk_recap_history").select("class_id,recap_date,theme,photo_path,present_count,sick_count,excused_count,unexcused_count")
       .in("class_id", classIds).gte("recap_date", start).lte("recap_date", end).order("updated_at").order("id")),
-    rows(db.from("morning_talk_sessions").select("class_id,attendance_date,theme")
+    rows(db.from("morning_talk_sessions").select("id,class_id,attendance_date,theme,photo_path,additional_note")
       .in("class_id", classIds).gte("attendance_date", start).lte("attendance_date", end).order("updated_at").order("id")),
   ]);
-  const byClassDate = new Map<string, { class_id: string; date: string; theme: string }>();
-  for (const entry of [...history.map(r => ({ ...r, date: r.recap_date })), ...live.map(r => ({ ...r, date: r.attendance_date }))]) {
-    const key = entry.class_id + "|" + entry.date;
-    byClassDate.set(key, { class_id: entry.class_id, date: entry.date, theme: entry.theme || byClassDate.get(key)?.theme || "" });
+  const byClassDate = new Map<string, {
+    class_id: string; date: string; theme: string; note?: string; path?: string; session?: string;
+    counts?: { present: number | null; sick: number | null; excused: number | null; unexcused: number | null };
+  }>();
+  for (const r of history) {
+    byClassDate.set(r.class_id + "|" + r.recap_date, {
+      class_id: r.class_id, date: r.recap_date, theme: r.theme, path: r.photo_path,
+      counts: { present: r.present_count, sick: r.sick_count, excused: r.excused_count, unexcused: r.unexcused_count },
+    });
   }
-  return [...byClassDate.values()].sort((a, b) => b.date.localeCompare(a.date));
+  for (const r of live) {
+    const key = r.class_id + "|" + r.attendance_date;
+    const previous = byClassDate.get(key);
+    byClassDate.set(key, {
+      class_id: r.class_id, date: r.attendance_date, theme: r.theme || previous?.theme,
+      path: r.photo_path || previous?.path, note: r.additional_note, session: r.id, counts: previous?.counts,
+    });
+  }
+  const entries = [...byClassDate.values()].sort((a, b) => b.date.localeCompare(a.date));
+  if (!details) return entries.map(({ class_id, date, theme }) => ({ class_id, date, theme }));
+
+  const attendance = new Map<string, { present: number; sick: number; excused: number; unexcused: number }>();
+  const photos = new Map<string, string>();
+  const ids = entries.flatMap(r => r.session ? [r.session] : []);
+  const paths = [...new Set(entries.flatMap(r => r.path && !/^https?:\/\//i.test(r.path) ? [r.path] : []))];
+  await Promise.all([
+    (async () => {
+      for (let i = 0; i < ids.length; i += 75) {
+        const records = await rows(db.from("morning_talk_attendance").select("session_id,status")
+          .in("session_id", ids.slice(i, i + 75)).order("id"));
+        for (const r of records) {
+          const counts = attendance.get(r.session_id) || { present: 0, sick: 0, excused: 0, unexcused: 0 };
+          if (r.status === "Hadir" || r.status === "Terlambat") counts.present++;
+          else if (r.status === "Sakit") counts.sick++;
+          else if (r.status === "Izin") counts.excused++;
+          else if (r.status === "Alfa") counts.unexcused++;
+          attendance.set(r.session_id, counts);
+        }
+      }
+    })(),
+    (async () => {
+      for (let i = 0; i < paths.length; i += 100) {
+        const { data, error } = await db.storage.from("morning-talk").createSignedUrls(paths.slice(i, i + 100), 3600);
+        if (error) console.warn("Morning Talk photos unavailable", error.message);
+        for (const photo of data || []) {
+          if (photo.path && photo.signedUrl) photos.set(photo.path, photo.signedUrl);
+        }
+      }
+    })(),
+  ]);
+  return entries.map(({ class_id, date, theme, note, path, session, counts }) => ({
+    class_id, date, theme, note,
+    counts: (session && attendance.get(session)) || counts,
+    photo_url: path && (/^https:\/\//i.test(path) ? path : photos.get(path)),
+  }));
 }
 
 async function facilities(db: SupabaseClient, start: string, end: string) {
@@ -157,7 +206,7 @@ export async function serveYayasan(db: SupabaseClient, request: Request, body: R
     if (!validDate(start) || !validDate(end) || start > end || end > today || Date.parse(end) - Date.parse(start) > 366 * 86400000) {
       return reply({ error: "invalid_dates" }, 400);
     }
-    const [mt, sapras] = await Promise.all([morningTalk(db, period.classes.map(c => c.id), start, end), facilities(db, start, end)]);
+    const [mt, sapras] = await Promise.all([morningTalk(db, period.classes.map(c => c.id), start, end, body.mt_details === true), facilities(db, start, end)]);
     return reply({ year: period.year.name, semester: period.semester, classes: period.classes, mt, sapras, start, end });
   } catch (error) {
     console.error("yayasan-dashboard", error);

@@ -27,6 +27,7 @@
   let view;
   let session;
   let overview;
+  let mtDetailsAt = 0;
   let academic;
   let controller;
   let classId = '';
@@ -94,9 +95,19 @@
     if (view === 'yayasan-mt') {
       const names = new Map(overview.classes.map(c => [c.id, c.name]));
       const records = overview.mt.filter(r => !mtClass || r.class_id === mtClass);
-      return paged(records, ['Tanggal', 'Kelas', 'Tema kegiatan'],
-        r => tr(esc(dateLabel(r.date)), esc(names.get(r.class_id)), esc(r.theme || 'Tema belum dicatat')),
-        'Belum ada kegiatan Morning Talk pada periode ini.');
+      return paginate(records, batch => batch.length ? `<div class="yay-mt-grid">${batch.map(r => {
+        const name = names.get(r.class_id);
+        const photo = /^https:\/\//i.test(r.photo_url || '') ?
+          `<a class="yay-mt-photo" href="${esc(r.photo_url)}" target="_blank" rel="noopener noreferrer"><img loading="lazy" referrerpolicy="no-referrer" src="${esc(r.photo_url)}" alt="Foto Morning Talk ${esc(name)}"></a>` :
+          '<div class="yay-mt-photo yay-mt-placeholder">Foto belum tersedia</div>';
+        return `<article class="yay-mt-card">${photo}<div class="yay-mt-body">
+          <div class="yay-mt-meta"><h2>${esc(name)}</h2><time datetime="${esc(r.date)}">${esc(dateLabel(r.date))}</time></div>
+          <dl class="yay-mt-counts">${[['present','Masuk'],['sick','Sakit'],['excused','Izin'],['unexcused','Alfa']].map(([key,label]) =>
+            `<div><dt>${label}</dt><dd>${r.counts?.[key] == null ? '—' : number.format(r.counts[key])}</dd></div>`).join('')}</dl>
+          <h3>Kegiatan hari itu</h3><p>${esc(r.theme || r.note || 'Kegiatan belum dicatat')}</p>
+          ${r.theme && r.note ? `<p>${esc(r.note)}</p>` : ''}
+        </div></article>`;
+      }).join('')}</div>` : '<p class="yay-empty">Belum ada kegiatan Morning Talk pada periode ini.</p>', 12);
     }
     if (view === 'yayasan-sapras') {
       return paged(overview.sapras, ['Laporan', 'Lokasi dan kebutuhan', 'Status', 'Tindak lanjut'],
@@ -109,16 +120,22 @@
     const subjectNames = new Map(academic.subjects.map(s => [s.id, s.name]));
     if (view === 'yayasan-tp') {
       const objectives = academic.tp.filter(o => !subjectId || subjectId === o.subject_id);
-      return `<div class="yay-metrics yay-tp-metrics">${Object.entries(statuses).map(([id,label]) =>
+      const className = overview.classes.find(c => c.id === classId)?.name || '';
+      const visible = objectives.filter(o => !status || status === o.status);
+      const grouped = academic.subjects.map(subject => ({
+        name: subject.name, rows: visible.filter(o => o.subject_id === subject.id),
+      })).filter(group => group.rows.length);
+      return `<h2 class="yay-section-heading">Capaian TP · ${esc(className)}</h2>
+        <div class="yay-metrics">${Object.entries(statuses).map(([id,label]) =>
         metric(label, objectives.filter(o => o.status === id).length, 'Tujuan pembelajaran')).join('')}</div>
-        <p class="yay-note">Status TP dihitung dari rata-rata nilai kelas terhadap KKTP. Jika KKTP kosong, ambang yang dipakai adalah 75.</p>` +
-        paged(objectives.filter(o => !status || status === o.status),
-          ['Tujuan pembelajaran', 'KKTP', 'Rata-rata', 'Siswa mencapai KKTP', 'Status'],
-          o => tr(`<strong>${esc(subjectNames.get(o.subject_id))} · ${esc(o.code)}</strong><small>${esc(o.description)}</small>`,
-            number.format(o.target), o.average == null ? '—' : number.format(o.average),
-            o.assessed ? number.format(o.achieved) + ' dari ' + number.format(o.assessed) + ' dinilai' : '—',
-            tag(statuses[o.status], o.status === 'achieved' ? 'green' : o.status === 'below' ? 'amber' : 'blue')),
-          'Belum ada TP yang sesuai dengan pilihan ini.');
+        <p class="yay-note">Status TP mengikuti rata-rata kelas terhadap KKTP. Ambang 75 dipakai jika KKTP belum diatur.</p>` +
+        (grouped.length ? grouped.map(group => `<section class="yay-tp-group"><h3>${esc(group.name)}</h3>
+          ${table(['TP', 'Tujuan pembelajaran', 'KKTP', 'Rata-rata kelas', 'Siswa mencapai KKTP', 'Status'],
+            group.rows.map(o => tr(`<strong>${esc(o.code)}</strong>`, esc(o.description || '—'),
+              number.format(o.target), o.average == null ? '—' : number.format(o.average),
+              o.assessed ? number.format(o.achieved) + ' dari ' + number.format(o.assessed) + ' dinilai' : '—',
+              tag(statuses[o.status], o.status === 'achieved' ? 'green' : o.status === 'below' ? 'amber' : 'blue'))),
+            '')}</section>`).join('') : '<p class="yay-empty">Belum ada TP yang sesuai dengan pilihan ini.</p>');
     }
     const tpNames = new Map(academic.tp.map(o => [o.id, o.code]));
     const grades = academic.grades.filter(g => (!subjectId || subjectId === g.subject_id) &&
@@ -131,9 +148,12 @@
   }
 
   function paged(records, headers, row, empty) {
-    const size = 25;
+    return paginate(records, batch => table(headers, batch.map(row), empty), 25);
+  }
+
+  function paginate(records, render, size) {
     const start = page * size;
-    return table(headers, records.slice(start, start + size).map(row), empty) + (records.length > size ?
+    return render(records.slice(start, start + size)) + (records.length > size ?
       `<div class="yay-pages"><span>${start + 1}–${Math.min(start + size, records.length)} dari ${number.format(records.length)}</span>
         <button type="button" data-page="-1" ${page === 0 ? 'disabled' : ''}>Sebelumnya</button>
         <button type="button" data-page="1" ${start + size >= records.length ? 'disabled' : ''}>Berikutnya</button></div>` : '');
@@ -214,11 +234,13 @@
     error = '';
     page = 0;
     try {
-      if (!overview || force) {
+      const wantsMt = view === 'yayasan-mt';
+      if (!overview || force || (wantsMt && Date.now() - mtDetailsAt > 50 * 60000)) {
         draw(true);
-        const result = await request('overview', range || {start:overview?.start, end:overview?.end}, signal);
+        const result = await request('overview', {...(range || {start:overview?.start, end:overview?.end}), mt_details:wantsMt}, signal);
         if (!current()) return;
         overview = result;
+        mtDetailsAt = wantsMt ? Date.now() : 0;
         if (!overview.classes.some(c => c.id === classId)) classId = overview.classes[0]?.id || '';
         if (force) { academic = null; academicClass = ''; subjectId = ''; }
       }
@@ -240,6 +262,7 @@
     const token = getAuthToken();
     if (session !== token) {
       overview = academic = null;
+      mtDetailsAt = 0;
       classId = academicClass = mtClass = subjectId = status = search = '';
       session = token;
     }
