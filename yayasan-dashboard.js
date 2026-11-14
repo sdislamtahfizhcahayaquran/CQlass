@@ -200,7 +200,7 @@
     const heading = view === 'dashboard' ? 'Dashboard Yayasan' : menus[view][0];
     const period = overview ? `${overview.year} · Semester ${overview.semester}` : '';
     node.innerHTML = `<section class="yay-shell">
-      <header class="yay-header"><div><div class="yay-kicker">SD Islam Tahfizh Cahaya Qur’an</div><h1>${heading}</h1>
+      <header class="yay-header${view === 'dashboard' ? ' yay-header-home' : ''}"><div><div class="yay-kicker">SD Islam Tahfizh Cahaya Qur’an</div><h1>${heading}</h1>
         ${period ? `<p>${esc(period)}</p>` : ''}</div><span class="yay-read">Akses baca</span></header>
       ${busy ? '<p class="yay-empty" role="status">Memuat data CQlass…</p>' :
         error ? `<p class="yay-empty" role="alert">${esc(error)}</p>${overview ? filters() : ''}<button class="yay-action" type="button" data-retry>Muat ulang</button>` :

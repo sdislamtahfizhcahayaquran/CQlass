@@ -13,20 +13,27 @@
 .yay-nav button:hover,.yay-nav button[aria-current="page"] { background: #e1f1ed; color: #064f4a; border-color: #c6e2da; }
 .yay-shell { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; min-width: 0; }
 .yay-header {
-  position: relative; isolation: isolate; overflow: hidden;
-  display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 16px;
-  padding: clamp(24px,4vw,46px); border-radius: 20px;
-  background: linear-gradient(115deg,#113739,#0c514c 68%,#186458); color: #fff;
+  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+  padding: 22px clamp(18px,3.5vw,42px);
+  border: 1px solid #cfe4dc; border-radius: 16px; background: #f8fcfa; color: #163f39;
 }
-.yay-header::after {
-  content: ''; z-index: -1; position: absolute; right: -35px; bottom: -142px; width: 320px; height: 320px;
-  border: 1px solid #a6d4c44a; border-radius: 50%;
-  box-shadow: 0 0 0 22px #a6d4c416, 0 0 0 46px #a6d4c40d;
+.yay-header-home {
+  min-height: 188px; align-items: center; padding-block: clamp(26px,4vw,46px);
+  border-color: #174e47; border-radius: 20px; color: #fff;
+  background: linear-gradient(90deg,#102f32 0%,#103c39f5 36%,#15564fbd 65%,#14524a65 100%),
+    #144b46 url('gedung.png') right 51% / cover no-repeat;
+  box-shadow: 0 12px 28px #153f351c;
 }
-.yay-kicker { color: #c8e9df; font-size: 12px; letter-spacing: .05em; }
-.yay-header h1 { margin: 10px 0 0; color: #fff; font: 700 clamp(25px,4vw,43px)/1.15 Tahoma,sans-serif; letter-spacing: -.045em; }
-.yay-header p { color: #d9ece8; margin: 12px 0 0; font-size: 13px; }
-.yay-read { border: 1px solid #9bd1be85; border-radius: 30px; padding: 7px 12px; color: #e2f3ec; font-size: 12px; }
+.yay-kicker { color: #3b6259; font-size: 12px; font-weight: 700; line-height: 1.45; }
+.yay-header h1 { margin: 6px 0 0; color: inherit; font: 700 clamp(23px,3.3vw,35px)/1.15 Tahoma,sans-serif; letter-spacing: -.035em; }
+.yay-header p { color: #42675f; margin: 9px 0 0; font-size: 13px; }
+.yay-read { align-self: flex-start; border: 1px solid #b7d5ca; border-radius: 8px; padding: 7px 11px; color: #20564b; background: #eaf5ef; font-size: 12px; white-space: nowrap; }
+.yay-header-home h1 { font-size: clamp(26px,4.4vw,47px); margin-top: 8px; }
+.yay-header-home .yay-kicker,.yay-header-home p { color: #e0eee8; }
+.yay-header-home .yay-read { color: #e4f5ed; background: #103a36; border-color: #79a69b; }
+@media(max-width: 640px) {
+  .yay-header-home { background-image: linear-gradient(90deg,#102f32f5,#103c39c9),url('gedung.png'); }
+}
 .yay-filters,.yay-metric,.yay-links button,.yay-table,.yay-empty {
   background: #fff; border: 1px solid #dce8e4; border-radius: 14px;
 }
