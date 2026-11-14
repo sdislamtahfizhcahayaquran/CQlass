@@ -62,7 +62,7 @@
       const subjects = (academic?.subjects || []).map(s => option(s.id, s.name, subjectId)).join('');
       return `<div class="yay-filters">
         <label>Kelas<select data-filter="class">${classOptions}</select></label>
-        <label>Mata pelajaran<select data-filter="subject">${option('', 'Semua mapel', subjectId)}${subjects}</select></label>
+        <label>Mata pelajaran<select data-filter="subject">${(view === 'yayasan-tp' ? option('', 'Semua mapel', subjectId) : '')}${subjects}</select></label>
         ${view === 'yayasan-tp'
           ? `<label>Status TP<select data-filter="status">${option('', 'Semua status', status)}${Object.entries(statuses).map(([id,label]) => option(id,label,status)).join('')}</select></label>`
           : '<label>Nama siswa<input type="search" data-filter="search" placeholder="Cari nama siswa"></label>'}
@@ -117,7 +117,6 @@
           esc(r.resolution_note || '—')), 'Belum ada laporan Sapras pada periode ini.');
     }
     if (!academic) return '<p class="yay-empty">Belum ada data akademik untuk kelas ini.</p>';
-    const subjectNames = new Map(academic.subjects.map(s => [s.id, s.name]));
     if (view === 'yayasan-tp') {
       const objectives = academic.tp.filter(o => !subjectId || subjectId === o.subject_id);
       const className = overview.classes.find(c => c.id === classId)?.name || '';
@@ -137,14 +136,43 @@
               tag(statuses[o.status], o.status === 'achieved' ? 'green' : o.status === 'below' ? 'amber' : 'blue'))),
             '')}</section>`).join('') : '<p class="yay-empty">Belum ada TP yang sesuai dengan pilihan ini.</p>');
     }
-    const tpNames = new Map(academic.tp.map(o => [o.id, o.code]));
-    const grades = academic.grades.filter(g => (!subjectId || subjectId === g.subject_id) &&
-      g.student.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID')));
-    return paged(grades, ['Nama siswa', 'Mata pelajaran', 'Komponen', 'Nilai'],
-      g => tr(esc(g.student), esc(subjectNames.get(g.subject_id) || '—'),
-        esc(tpNames.get(g.objective_id) || String(g.type || '—').replace(/_/g, ' ')),
-        '<strong>' + number.format(g.score) + '</strong>'),
-      'Belum ada nilai yang sesuai dengan pilihan ini.');
+    return gradeGrid();
+  }
+
+  function gradeGrid() {
+    const subject = academic.subjects.find(s => s.id === subjectId);
+    if (!subject) return '<p class="yay-empty">Belum ada mata pelajaran pada kelas ini.</p>';
+    const objectives = academic.tp.filter(o => o.subject_id === subjectId);
+    const scores = new Map();
+    for (const grade of academic.grades) {
+      if (grade.subject_id !== subjectId) continue;
+      if (!scores.has(grade.student_id)) scores.set(grade.student_id, {components:{},tp:[]});
+      const student = scores.get(grade.student_id);
+      if (grade.type === 'TP') student.tp.push({learning_objective_id:grade.objective_id,score:grade.score});
+      else student.components[grade.type] = {score:grade.score};
+    }
+    const students = academic.students.map((student,index) => ({...student,no:index + 1}))
+      .filter(student => student.name.toLocaleLowerCase('id-ID').includes(search.trim().toLocaleLowerCase('id-ID')));
+    const headers = ['No','Nama Siswa',...ACADEMIC_COMPONENTS.map((_,i) => 'T' + (i + 1)),
+      'RT',...objectives.map(o => o.code),'RTP','WWP','ASAS','NA','Pred.','Status'];
+    const className = overview.classes.find(c => c.id === classId)?.name;
+    return `<section class="yay-tp-group yay-grade-grid"><h3>${esc(className)} · ${esc(subject.name)}</h3>` +
+      paged(students, headers, row => {
+        const student = scores.get(row.id);
+        const final = academicFinalScore(student, objectives);
+        const cells = [
+          ...ACADEMIC_COMPONENTS.map(type => academicComponentScore(student,type)),
+          academicTaskAverage(student),
+          ...objectives.map(o => academicTPScore(student,o.id)),
+          academicTPAverage(student,objectives),
+          academicComponentScore(student,'WWP'),
+          academicComponentScore(student,'ASAS'),
+          final,
+        ];
+        return tr(row.no, `<strong>${esc(row.name)}</strong>`, ...cells.map(academicFormatScore), academicPredicate(final),
+          final === null ? '—' : tag(final >= 75 ? 'Tuntas' : 'Belum', final >= 75 ? 'green' : 'amber'));
+      }, 'Belum ada siswa yang sesuai dengan pilihan ini.') +
+      '<p class="yay-note">RT = rata-rata tugas · RTP = rata-rata TP · NA = nilai akhir. NA tampil setelah seluruh komponen terisi.</p></section>';
   }
 
   function paged(records, headers, row, empty) {
@@ -255,7 +283,12 @@
       if (!current()) return;
       error = err instanceof TypeError || err instanceof SyntaxError ? 'Koneksi ke CQlass terganggu. Coba lagi.' : err.message;
     }
-    if (current()) draw();
+    if (current()) {
+      if (view === 'yayasan-nilai' && !academic?.subjects.some(s => s.id === subjectId)) {
+        subjectId = academic?.subjects[0]?.id || '';
+      }
+      draw();
+    }
   }
 
   function render(id) {

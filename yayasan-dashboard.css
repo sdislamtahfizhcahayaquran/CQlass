@@ -99,3 +99,14 @@
 .yay-tp-group table { min-width: 650px; }
 .yay-tp-group td:nth-child(2) { width: 100%; min-width: 175px; }
 .yay-tp-group td:nth-child(n+3):nth-child(-n+5),.yay-tp-group th:nth-child(n+3):nth-child(-n+5) { text-align: center; }
+
+.yay-grade-grid .yay-table :is(th,td) { text-align: center; white-space: nowrap; }
+.yay-grade-grid .yay-table :is(th,td):nth-child(2) {
+  position: sticky; left: 0; z-index: 1; min-width: 175px;
+  text-align: left; white-space: normal; width: auto;
+  box-shadow: 1px 0 #dce8e4;
+}
+.yay-grade-grid .yay-table td:nth-child(2) { background: #fff; }
+.yay-grade-grid .yay-table tr:nth-child(even) td:nth-child(2) { background: #f8fbfa; }
+.yay-grade-grid .yay-table td:nth-last-child(3) { font-weight: 700; background: #edf6f2; }
+.yay-grade-grid .yay-note,.yay-grade-grid .yay-pages { margin: 10px 14px; }

@@ -139,12 +139,14 @@ async function academics(db: SupabaseClient, period: Awaited<ReturnType<typeof a
   if (!cls) return null;
   const yearId = period.year.id;
   const semester = period.semester;
-  const [assignments, objectives, scores] = await Promise.all([
+  const [assignments, objectives, scores, enrollments] = await Promise.all([
     rows(db.from("teacher_subject_assignments").select("subject_id").eq("academic_year_id", yearId).eq("semester_no", semester).eq("class_id", classId).eq("is_active", true).order("id")),
     rows(db.from("learning_objectives").select("id,subject_id,code,description,topic,kktp").eq("academic_year_id", yearId).eq("semester_no", semester)
       .eq("grade_level", cls.grade_level).eq("is_active", true).order("sort_order").order("code").order("id")),
-    rows(db.from("academic_scores").select("student_id,subject_id,learning_objective_id,assessment_type,score,students(full_name)").eq("academic_year_id", yearId).eq("semester_no", semester)
+    rows(db.from("academic_scores").select("student_id,subject_id,learning_objective_id,assessment_type,score").eq("academic_year_id", yearId).eq("semester_no", semester)
       .eq("class_id", classId).is("deleted_at", null).order("updated_at", { ascending: false }).order("id")),
+    rows(db.from("student_enrollments").select("student_id,students(full_name,status)").eq("academic_year_id", yearId)
+      .eq("semester_no", semester).eq("class_id", classId).order("id")),
   ]);
   const subjectIds = [...new Set([...assignments, ...scores].map(r => r.subject_id))];
   const subjects = subjectIds.length ? await rows(db.from("subjects").select("id,name").in("id", subjectIds).order("name").order("id")) : [];
@@ -174,11 +176,18 @@ async function academics(db: SupabaseClient, period: Awaited<ReturnType<typeof a
       status: average === null ? "pending" : average >= target ? "achieved" : "below",
     };
   });
-  const grades = valid.map(r => ({
-    student: (r.students as unknown as { full_name: string } | null)?.full_name || "Siswa",
-    subject_id: r.subject_id, objective_id: r.learning_objective_id, type: r.assessment_type, score: r.score,
-  })).sort((a, b) => a.student.localeCompare(b.student, "id"));
-  return { subjects, tp, grades };
+  const roster = new Map<string, { id: string; name: string }>();
+  for (const r of enrollments) {
+    const student = r.students as unknown as { full_name: string; status: string } | null;
+    if (!student || blocked.has(String(student.status).trim().toLowerCase())) continue;
+    roster.set(r.student_id, { id: r.student_id, name: student.full_name });
+  }
+  const students = [...roster.values()].sort((a, b) => a.name.localeCompare(b.name, "id"));
+  const grades = valid.filter(r => roster.has(r.student_id)).map(r => ({
+    student_id: r.student_id, subject_id: r.subject_id, objective_id: r.learning_objective_id,
+    type: r.assessment_type, score: r.score,
+  }));
+  return { subjects, tp, students, grades };
 }
 
 function validDate(value: string) {
