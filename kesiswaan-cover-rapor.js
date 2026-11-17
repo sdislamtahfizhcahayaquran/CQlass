@@ -26,7 +26,7 @@ function page(st,o){st={...st,ttl:capTtl(st.ttl),suku:cap(st.suku),kota:cap(st.k
   <tr><td class="no">1</td><td class="lb" colspan="3">Nama</td></tr>
   ${sub('1.1&nbsp; Nama Lengkap',st.nama)}${sub('1.2&nbsp; NISN',st.nisn)}
   ${row(2,'Jenis Kelamin',st.jenis_kelamin)}${row(3,'Tempat/Tanggal Lahir',st.ttl)}${row(4,'Golongan Darah',st.golongan_darah)}${row(5,'Suku',st.suku)}${row(6,'Agama',st.agama)}${row(7,'Alamat Domisili',st.alamat)}
-  <tr class="kota"><td class="no"></td><td class="lb"></td><td class="cl"></td><td class="vl"><span>Kota/Kabupaten :</span><b>${esc(st.kota)}</b><span>Provinsi :</span><b>${esc(st.provinsi)}</b></td></tr>
+  <tr class="kota"><td class="no"></td><td class="lb"></td><td class="cl"></td><td class="vl"><span class="kv">Kota/Kabupaten: ${esc(st.kota)}</span><span class="kv">Provinsi: ${esc(st.provinsi)}</span></td></tr>
   <tr class="sec gap"><td class="no">B</td><td colspan="3">IDENTITAS ORANG TUA/WALI</td></tr>
   <tr><td class="no">1</td><td class="lb" colspan="3">Ayah Kandung/Wali</td></tr>
   ${sub('1.1&nbsp; Nama Lengkap',st.ayah.nama)}${sub('1.2&nbsp; Tempat/Tanggal Lahir',st.ayah.ttl)}${sub('1.3&nbsp; Agama',st.ayah.agama)}${sub('1.4&nbsp; Warga Negara',st.ayah.warga_negara)}
@@ -44,7 +44,7 @@ h1{margin:0 0 5mm;text-align:center;font-size:16pt;font-weight:700;letter-spacin
 .cv-t .no{width:8mm;padding-left:3mm}.cv-t .lb{width:58mm}.cv-t .cl{width:4mm}.cv-t .vl{border-bottom:.3mm solid #222}
 .cv-t tr.sub .lb{padding-left:6mm}.cv-t tr.sec td{font-weight:700;padding-top:1.5mm}.cv-t tr.sec .no{padding-left:0}.cv-t tr.gap td{padding-top:3.5mm}
 .cv-t tr:not(.sub):not(.sec):not(.kota) td.vl:empty{border:0}.cv-t tr td[colspan]{border:0}
-.cv-t tr.kota .vl{display:flex;gap:2mm;align-items:flex-end}.cv-t tr.kota .vl span{white-space:nowrap}.cv-t tr.kota .vl b{font-weight:400;flex:1;text-align:center}
+.cv-t tr.kota .vl{display:flex;gap:10mm;align-items:flex-end}.cv-t tr.kota .vl .kv{white-space:nowrap}
 .cv-bottom{display:flex;justify-content:space-between;align-items:flex-start;margin-top:7mm}
 .cv-photo{position:relative;width:30mm;height:40mm;border:.35mm solid #222;display:flex;align-items:center;justify-content:center;text-align:center;font-size:8.5pt;line-height:1.7;overflow:hidden}.cv-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#fff}
 .cv-sign{width:78mm;text-align:center;font-size:9.6pt;margin-right:8mm}.cv-sign .d1{display:inline-block;border-bottom:.3mm solid #222;padding:0 2mm}.cv-sign .d2{margin-top:1mm}.cv-sign .sch{margin-top:2.5mm;font-weight:700}.cv-sign .ttd{height:20mm;display:flex;align-items:center;justify-content:center}.cv-sign .ttd img{max-height:22mm;max-width:46mm}.cv-sign .nm{font-weight:700;text-decoration:underline}
