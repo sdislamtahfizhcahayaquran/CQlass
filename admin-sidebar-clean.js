@@ -46,7 +46,7 @@ function draw(active){
     <div class="cq-admin-section">Data Sekolah</div>
     ${button('students','Data Siswa',I.students,'openCleanAdminStudents()')}
     ${button('data-master','Data Master',I.master,'openCleanAdminMaster()')}
-    ${button('master-tp','Master TP',I.tp,'openCleanAdminMasterTP()',true)}
+    ${button('master-tp','Master TP',I.tp,'openCleanAdminMasterTP()')}
     <div class="cq-admin-section">Guru & Akun</div>
     ${button('users','Guru & Pengguna',I.users,'openCleanAdminUsers()')}
     ${button('roles','Kelola Role',I.roles,'openCleanAdminRoles()')}
@@ -81,7 +81,9 @@ window.openCleanAdminDashboard=function(){
 };
 window.openCleanAdminMaster=function(){if(!isAdmin())return;set('data-master');window.renderAdminMasterData?.(document.getElementById('content'))};
 window.openAdminDataMaster=window.openCleanAdminMaster;
-window.openCleanAdminMasterTP=function(){if(!isAdmin())return;set('master-tp');location.href='master-tp.html'};
+window.openCleanAdminMasterTP=function(){if(!isAdmin())return;set('master-tp');try{if(typeof activeModule!=='undefined')activeModule='master-tp'}catch(_){}const c=document.getElementById('content');if(!c)return;dsCss();
+ c.innerHTML='<div class="cq-ds"><div class="cq-ds-head"><div class="cq-ds-title">Master TP</div><div class="cq-ds-sub">Tujuan Pembelajaran per mapel dan kelas: import awal lewat Excel, lalu tambah atau ubah TP tanpa memutus nilai siswa.</div></div><iframe class="cq-ds-frame tp" src="master-tp.html?embed=1" title="Master Tujuan Pembelajaran"></iframe></div>';
+ const f=c.querySelector('iframe');f.addEventListener('load',()=>{try{const d=f.contentDocument;const x=d.createElement('style');x.textContent='.top,a.back{display:none!important}body{background:#fff!important}.wrap{padding:14px}';d.head.appendChild(x)}catch(_){}})};
 window.openCleanAdminSchedule=function(){if(!isAdmin())return;set('edit-jadwal');window.renderAdminScheduleEditor?.(document.getElementById('content'))};
 window.openCleanAdminUsers=function(){if(!isAdmin())return;set('users');window.renderAdminUsers?.(document.getElementById('content'))};
 window.openCleanAdminRoles=function(){
@@ -118,9 +120,10 @@ window.openCleanAdminReportPeriod=function(){
 };
 window.openCleanAdminRaporReadiness=function(){if(!isAdmin())return;set('rapor-readiness');const c=document.getElementById('content');if(typeof window.renderAdminRaporReadiness==='function')return window.renderAdminRaporReadiness(c);if(c)c.innerHTML='<div class="card">Memuat Laporan Nilai Rapor...</div>';setTimeout(()=>window.renderAdminRaporReadiness?.(c),200)};
 window.openCleanAdminInputAccess=function(){if(!isAdmin())return;set('input-access');const c=document.getElementById('content');if(typeof window.renderInputAccessControlAdmin==='function')return window.renderInputAccessControlAdmin(c);if(c)c.innerHTML='<div class="card">Memuat Periode & Kunci Penginputan...</div>';setTimeout(()=>window.renderInputAccessControlAdmin?.(c),250)};
+function dsCss(){if(!document.getElementById('cq-ds-css')){const st=document.createElement('style');st.id='cq-ds-css';st.textContent=`.cq-ds{max-width:1180px;margin:0 auto}.cq-ds-title{font-size:clamp(21px,2.3vw,25px);font-weight:800;color:#123634}.cq-ds-sub{font-size:12.5px;color:#5f7775;margin-top:4px}.cq-ds-tabs{display:flex;gap:6px;padding:6px;margin:14px 0 16px;background:#fff;border:1px solid #dbe8e6;border-radius:14px;width:max-content;max-width:100%}.cq-ds-tabs button{border:0;background:transparent;border-radius:10px;padding:0 18px;min-height:40px;font:inherit;font-size:13px!important;font-weight:700;color:#5f7775;cursor:pointer}.cq-ds-tabs button.on{background:#0a6e6e;color:#fff}.cq-ds-frame.tp{margin-top:14px}.cq-ds-frame{width:100%;height:calc(100vh - 230px);min-height:560px;border:1px solid #dbe8e6;border-radius:16px;background:#fff}.cq-ds .asp-head{display:none}`;document.head.appendChild(st)}}
 function studentsPage(tab){if(!isAdmin())return;set('students');try{if(typeof activeModule!=='undefined')activeModule='students'}catch(_){}const c=document.getElementById('content');if(!c)return;
  c.innerHTML=`<div class="cq-ds"><div class="cq-ds-head"><div class="cq-ds-title">Data Siswa</div><div class="cq-ds-sub">Daftar siswa aktif, kelas, tambah/import siswa baru, dan biodata lengkap.</div></div><nav class="cq-ds-tabs"><button class="${tab==='list'?'on':''}" onclick="openCleanAdminStudents()">Daftar &amp; Kelas</button><button class="${tab==='bio'?'on':''}" onclick="openCleanAdminBiodata()">Biodata Lengkap</button></nav><div id="cq-ds-body"></div></div>`;
- if(!document.getElementById('cq-ds-css')){const st=document.createElement('style');st.id='cq-ds-css';st.textContent=`.cq-ds{max-width:1180px;margin:0 auto}.cq-ds-title{font-size:clamp(21px,2.3vw,25px);font-weight:800;color:#123634}.cq-ds-sub{font-size:12.5px;color:#5f7775;margin-top:4px}.cq-ds-tabs{display:flex;gap:6px;padding:6px;margin:14px 0 16px;background:#fff;border:1px solid #dbe8e6;border-radius:14px;width:max-content;max-width:100%}.cq-ds-tabs button{border:0;background:transparent;border-radius:10px;padding:0 18px;min-height:40px;font:inherit;font-size:13px!important;font-weight:700;color:#5f7775;cursor:pointer}.cq-ds-tabs button.on{background:#0a6e6e;color:#fff}.cq-ds-frame{width:100%;height:calc(100vh - 230px);min-height:560px;border:1px solid #dbe8e6;border-radius:16px;background:#fff}.cq-ds .asp-head{display:none}`;document.head.appendChild(st)}
+ dsCss();
  const body=document.getElementById('cq-ds-body');
  if(tab==='bio'){if(typeof window.renderAdminStudentProfiles==='function')return window.renderAdminStudentProfiles(body);body.innerHTML='<div class="card">Memuat Biodata Siswa...</div>';return setTimeout(()=>window.renderAdminStudentProfiles?.(body),300)}
  body.innerHTML='<iframe class="cq-ds-frame" src="master-data.html?embed=1" title="Daftar siswa dan kelas"></iframe>';
