@@ -2,8 +2,8 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 (async()=>{
  const dom=new JSDOM('<div id="sidebar"></div><div id="content"></div>',{runScripts:'outside-only'}),w=dom.window;
  w.currentUser={role:'admin'};w.eval(fs.readFileSync('admin-sidebar-clean.js','utf8'));w.__cqRenderAdminSidebar();
- assert.equal([...w.document.querySelectorAll('.cq-admin-nav')].filter(x=>x.textContent==='Penugasan & Jadwal').length,1);
- w.openCleanAdminPlanning();let called=0;w.renderAdminAssignments=()=>called++;w.openCleanAdminAssignments();assert.equal(called,1);assert(w.document.querySelector('.cq-admin-nav.active').textContent.includes('Penugasan & Jadwal'));
+ assert.equal([...w.document.querySelectorAll('.cq-admin-nav')].filter(x=>x.textContent==='Penugasan Guru').length,1);assert.equal(w.document.querySelector('.cq-admin-nav[data-admin-nav="edit-jadwal"]').textContent,'Jadwal Mengajar');
+ let called=0;w.renderAdminAssignments=()=>called++;w.openCleanAdminPlanning();assert.equal(called,1,'old planning hub opens assignments directly');w.openCleanAdminAssignments();assert.equal(called,2);assert(w.document.querySelector('.cq-admin-nav.active').textContent.includes('Penugasan Guru'));
  let requests=[];w.SUPABASE_PUBLISHABLE_KEY='key';w.getAuthToken=()=> 'test';w.fetch=async(url,o)=>{requests.push(JSON.parse(o.body));return{ok:true,json:async()=>({success:true,academic_year_id:'y',academic_year:'2026/2027',semester_no:2,classes:[],teachers:[],subjects:[]})}};
  w.eval(fs.readFileSync('admin-schedule-editor.js','utf8'));w.currentUser.role='akademik';await w.renderAdminScheduleEditor(w.document.getElementById('content'));assert(w.document.getElementById('content').textContent.includes('Semester 2'));assert(requests.some(x=>x.action==='bootstrap'));
  requests=[];w.currentUser.role='guru';await w.renderAdminScheduleEditor(w.document.getElementById('content'));assert.equal(requests.length,0);dom.window.close();
