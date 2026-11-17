@@ -12,6 +12,7 @@ function style(){
 }
 const I={
   dashboard:'<svg viewBox="0 0 24 24"><path d="M4 13h7V4H4zM13 20h7v-9h-7zM4 20h7v-5H4zM13 9h7V4h-7z"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>',
   master:'<svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v12c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/></svg>',
   tp:'<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h5"/></svg>',
   schedule:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M7 3v4M17 3v4M3.5 9.5h17"/></svg>',
@@ -41,15 +42,13 @@ function draw(active){
     ${button('dashboard','Beranda',I.dashboard,'openCleanAdminDashboard()')}
     <div class="cq-admin-section">Periode</div>
     ${button('academic-period','Tahun Ajaran',I.period,'openCleanAdminAcademicPeriod()')}
+    ${button('data-master','Kalender Akademik',I.cal,'openCleanAdminMaster()')}
     ${button('input-access','Kunci Input Nilai',I.lock,'openCleanAdminInputAccess()')}
     ${button('report-period','Pengaturan Rapor',I.report,'openCleanAdminReportPeriod()')}
     <div class="cq-admin-section">Data Sekolah</div>
     ${button('students','Data Siswa',I.students,'openCleanAdminStudents()')}
-    ${button('data-master','Data Master',I.master,'openCleanAdminMaster()')}
     ${button('master-tp','Master TP',I.tp,'openCleanAdminMasterTP()')}
-    <div class="cq-admin-section">Guru & Akun</div>
     ${button('users','Guru & Pengguna',I.users,'openCleanAdminUsers()')}
-    ${button('roles','Kelola Role',I.roles,'openCleanAdminRoles()')}
     <div class="cq-admin-section">Penugasan & Jadwal</div>
     ${button('penugasan','Penugasan Guru',I.task,'openCleanAdminAssignments()')}
     ${button('edit-jadwal','Jadwal Mengajar',I.schedule,'openCleanAdminSchedule()')}
@@ -57,7 +56,7 @@ function draw(active){
     ${button('partner-kelas','Partner Kelas',I.partner,'openCleanAdminClassPartners()')}
     <div class="cq-admin-section">Laporan</div>
     ${button('rapor-readiness','Laporan Nilai Rapor',I.report,'openCleanAdminRaporReadiness()')}
-    ${(()=>{const ids=['ekskul','raw-ekskul','uks','kegiatan-khusus'];const open=moreOpen()||ids.includes(window.__cqAdminActive);return `<button type="button" class="cq-admin-more${open?' open':''}" onclick="cqAdminToggleMore()"><span>Lainnya</span><small>${open?'Tutup':'Data Ekskul, UKS, Kegiatan Khusus'}</small><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="cq-admin-more-items"${open?'':' hidden'}>${button('ekskul','Data Ekskul',I.ball,'openCleanAdminExtracurricular()')}${typeof window.openCleanAdminRawEkskul==='function'?button('raw-ekskul','Raw Ekskul',I.students,'openCleanAdminRawEkskul()'):''}${button('uks','Jadwal UKS',I.uks,'openCleanAdminUks()')}${button('kegiatan-khusus','Kegiatan Khusus',I.star,'openCleanAdminSpecialActivity()')}</div>`})()}
+    ${(()=>{const ids=['ekskul','raw-ekskul','uks','kegiatan-khusus','roles'];const open=moreOpen()||ids.includes(window.__cqAdminActive);return `<button type="button" class="cq-admin-more${open?' open':''}" onclick="cqAdminToggleMore()"><span>Lainnya</span><small>${open?'Tutup':'Ekskul, UKS, Kegiatan Khusus, Daftar Role'}</small><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="cq-admin-more-items"${open?'':' hidden'}>${button('ekskul','Data Ekskul',I.ball,'openCleanAdminExtracurricular()')}${typeof window.openCleanAdminRawEkskul==='function'?button('raw-ekskul','Raw Ekskul',I.students,'openCleanAdminRawEkskul()'):''}${button('uks','Jadwal UKS',I.uks,'openCleanAdminUks()')}${button('kegiatan-khusus','Kegiatan Khusus',I.star,'openCleanAdminSpecialActivity()')}${button('roles','Daftar Role',I.roles,'openCleanAdminRoles()')}</div>`})()}
   </nav>`;
   return true
 }

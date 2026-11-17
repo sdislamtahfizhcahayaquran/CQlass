@@ -45,9 +45,10 @@ async function gather(){
   year&&no?safe(call('admin-academic-period','effective_days',{academic_year_id:year.id,semester_no:no,assessment_period:'PAS'})):Promise.resolve({ok:false}),
   year&&no?safe(call('admin-academic-period','report_config_get',{academic_year_id:year.id,semester_no:no,report_type:'PTS'})):Promise.resolve({ok:false}),
   year&&no?safe(call('admin-academic-period','report_config_get',{academic_year_id:year.id,semester_no:no,report_type:'PAS'})):Promise.resolve({ok:false}),
-  next?.year?safe(call('admin-academic-period','preview_activation',{academic_year_id:next.year.id,semester_no:next.no})):Promise.resolve({ok:false})
+  next?.year?safe(call('admin-academic-period','preview_activation',{academic_year_id:next.year.id,semester_no:next.no})):Promise.resolve({ok:false}),
+  safe(call('admin-academic-period','admin_health'))
  ]);
- return {years,year,sem,next,dash:jobs[0],conf:jobs[1],ePTS:jobs[2],ePAS:jobs[3],rPTS:jobs[4],rPAS:jobs[5],ready:jobs[6]};
+ return {years,year,sem,next,dash:jobs[0],conf:jobs[1],ePTS:jobs[2],ePAS:jobs[3],rPTS:jobs[4],rPAS:jobs[5],ready:jobs[6],health:jobs[7]};
 }
 function missingDays(r){if(!r.ok)return null;const cs=r.v.classes||[];return {total:cs.length,missing:cs.filter(c=>c.effective_days==null).length}}
 function tasks(d){
@@ -61,6 +62,10 @@ function tasks(d){
  if(a&&b){const miss=[a.missing?`STS/PTS: ${a.missing} kelas`:'',b.missing?`SAS/PAS: ${b.missing} kelas`:''].filter(Boolean);add(miss.length?{level:'warn',icon:'clock',title:`Hari efektif Semester ${s.semester_no} belum lengkap`,text:`Belum diisi — ${miss.join(' · ')}.`,go:"cqAdminGo('academic-period','hari')",cta:'Isi hari efektif'}:{level:'ok',icon:'clock',title:`Hari efektif Semester ${s.semester_no}`,text:`Lengkap untuk ${a.total} kelas.`})}
  const rp=[['STS/PTS',d.rPTS],['SAS/PAS',d.rPAS]].filter(([,r])=>r.ok);
  if(rp.length){const notSet=rp.filter(([,r])=>!r.v.config?.configured).map(([l])=>l);add(notSet.length?{level:'warn',icon:'report',title:`Pengaturan rapor ${notSet.join(' & ')} belum diatur`,text:'Tentukan periode data dan tanggal cetak rapor agar walas bisa mencetak.',go:"openCleanAdminReportPeriod()",cta:'Atur rapor'}:{level:'ok',icon:'report',title:`Pengaturan rapor Semester ${s.semester_no}`,text:'STS/PTS dan SAS/PAS sudah diatur.'})}
+ if(d.health?.ok&&d.health.v.ready){const h=d.health.v,miss=h.tp_missing||[];
+  add(miss.length?{level:'warn',icon:'book',title:`${miss.length} mapel belum punya TP Semester ${h.semester_no}`,text:`${miss.slice(0,6).map(x=>esc(x.subject)+' kelas '+x.grade_level).join(', ')}${miss.length>6?', …':''}. Deskripsi rapor mapel ini akan kosong.`,go:"openCleanAdminMasterTP()",cta:'Lengkapi TP'}:{level:'ok',icon:'book',title:`TP Semester ${h.semester_no}`,text:'Semua mapel yang diajarkan sudah punya TP.'});
+  if(h.tp_next_semester===0)add({level:'info',icon:'book',title:'TP Semester 2 belum diimpor',text:'Impor TP Semester 2 di Master TP sebelum semester baru dimulai.',go:"openCleanAdminMasterTP()",cta:'Buka Master TP'});
+  if(!h.kaldik_days)add({level:'warn',icon:'calendar',title:`Kaldik Semester ${h.semester_no} belum diupload`,text:'Kaldik dipakai untuk hari efektif, presensi, dan timesheet guru.',go:"openCleanAdminMaster()",cta:'Upload Kaldik'});}
  if(d.conf.ok){const n=Number(d.conf.v.summary?.teacher_conflicts||0)+Number(d.conf.v.summary?.class_conflicts||0);add(n?{level:'bad',icon:'alert',title:`${n} bentrok jadwal mengajar`,text:'Ada guru atau kelas yang terjadwal dua kali pada jam yang sama.',go:"openCleanAdminSchedule()",cta:'Perbaiki jadwal'}:{level:'ok',icon:'grid',title:'Jadwal mengajar',text:'Tidak ada bentrok.'})}
  if(d.next){if(!d.next.year)add({level:'info',icon:'layers',title:`Tahun ajaran ${esc(d.next.name)} belum dibuat`,text:'Siapkan sebelum tahun ajaran baru dimulai.',go:"cqAdminGo('academic-period','baru')",cta:'Buat tahun ajaran'});
   else if(d.ready.ok){const c=d.ready.v.counts||{},sem=d.next.year.semesters?.find(x=>x.semester_no===d.next.no),parts=[!(sem?.start_date&&sem?.end_date)&&'tanggal',!c.students&&'anggota siswa',!c.mapel&&'penugasan mapel',!c.tahfizh&&'penugasan Tahfizh'].filter(Boolean);add(parts.length?{level:'info',icon:'layers',title:`Persiapan ${esc(d.next.year.name)} · Semester ${d.next.no}`,text:`Belum ada: ${parts.join(', ')}.`,go:"cqAdminGo('academic-period','ringkasan')",cta:'Lihat kesiapan'}:{level:'ok',icon:'layers',title:`${esc(d.next.year.name)} · Semester ${d.next.no}`,text:'Siap diaktifkan.'})}}
@@ -72,6 +77,7 @@ const LINKS=[
  ['student','Data Siswa','Daftar siswa, kelas, dan biodata','openCleanAdminStudents()'],
  ['task','Penugasan Guru','Walas, mapel, Tahfizh, partner','openCleanAdminAssignments()'],
  ['grid','Jadwal Mengajar','Atur hari dan jam pelajaran','openCleanAdminSchedule()'],
+ ['calendar','Kalender Akademik','Kaldik dan aktivitas non-mengajar','openCleanAdminMaster()'],
  ['lock','Kunci Input Nilai','Buka/tutup periode input guru','openCleanAdminInputAccess()'],
  ['report','Laporan Nilai Rapor','Pantau kelengkapan nilai','openCleanAdminRaporReadiness()']
 ];
