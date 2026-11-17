@@ -41,7 +41,7 @@ function parseWorkbook(wb){
  }
  return {sheet:pick,rows:out,columns:cols.length,has_photo_col:photoCol>=0};
 }
-const S={summary:null,result:null,busy:false,file:''};
+const S={summary:null,result:null,busy:false,file:'',classes:[],classId:'',list:null,q:'',loadingList:false};
 function fmtDate(v){try{return new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}).format(new Date(v))}catch(_){return v||''}}
 function view(){const s=S.summary,r=S.result;
  const pct=s&&s.active_students?Math.round(s.profiles/s.active_students*100):0;
@@ -58,16 +58,36 @@ function view(){const s=S.summary,r=S.result;
   <div id="asp-msg" class="asp-msg" hidden></div>
  </div>
  ${r?`<div class="asp-card"><div class="asp-card-title">Hasil upload terakhir</div><div class="asp-res"><div class="ok"><b>${r.saved}</b><span>siswa tersimpan</span></div><div><b>${r.with_photo}</b><span>dengan link foto</span></div><div class="${r.unmatched.length?'warn':''}"><b>${r.unmatched.length}</b><span>baris tidak cocok</span></div></div>${r.unmatched.length?`<p class="asp-sub">Baris berikut tidak ditemukan di data siswa CQlass (periksa NIS/nama, atau tambahkan siswanya di Data Master terlebih dahulu):</p><div class="asp-table"><table><thead><tr><th>Kelas</th><th>NIS</th><th>Nama</th><th>Keterangan</th></tr></thead><tbody>${r.unmatched.map(u=>`<tr><td>${esc(u.class_name)}</td><td>${esc(u.nis)}</td><td>${esc(u.full_name)}</td><td>${esc(u.reason)}</td></tr>`).join('')}</tbody></table></div>`:''}</div>`:''}
+ ${browseCard()}
  </div>`}
+
+const LABEL={nik:'NIK',kps:'KPS',kip:'KIP',pip:'PIP',tk:'TK',km:'(km)',cm:'(cm)',kg:'(kg)',hp:'HP',rt:'RT',rw:'RW',nis:'NIS',nisn:'NISN',sd:'SD',e:'E'};
+function label(k){return String(k).split('_').map((w,i)=>LABEL[w]||(i===0?w.charAt(0).toUpperCase()+w.slice(1):w)).join(' ').replace('E mail','E-mail').replace('Jumalah','Jumlah').replace('regestrasi','registrasi')}
+function fmtVal(k,v){const m=/tanggal/.test(k)&&String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)return `${Number(m[3])} ${['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][Number(m[2])-1]} ${m[1]}`;return v}
+const GROUPS=[['siswa','Identitas Siswa'],['ayah','Ayah'],['ibu','Ibu'],['wali','Wali'],['lainnya','Lainnya']];
+function browseCard(){const l=S.list||[],q=S.q.trim().toLowerCase();const shown=q?l.filter(x=>(x.name+' '+x.nis+' '+x.nisn+' '+x.class_name).toLowerCase().includes(q)):l;
+ return `<div class="asp-card" id="asp-browse"><div class="asp-card-title">Lihat data siswa</div>
+ <div class="asp-filter"><select onchange="cqAspClass(this.value)"><option value="">Semua kelas</option>${S.classes.map(c=>`<option value="${esc(c.id)}" ${c.id===S.classId?'selected':''}>${esc(c.name)}</option>`).join('')}</select><input type="search" placeholder="Cari nama, NIS, atau NISN…" value="${esc(S.q)}" oninput="cqAspSearch(this.value)"></div>
+ ${S.loadingList?'<p class="asp-sub">Memuat daftar siswa…</p>':S.list?`<p class="asp-sub">${shown.length} siswa${q?' (hasil pencarian)':''} · ${l.filter(x=>!x.has_profile).length} belum ada biodata</p><div class="asp-table asp-browse"><table><thead><tr><th>Kelas</th><th>NIS</th><th>Nama</th><th>Biodata</th><th>Foto</th><th></th></tr></thead><tbody>${shown.map(x=>`<tr class="${x.has_profile?'':'miss'}"><td>${esc(x.class_name)}</td><td>${esc(x.nis)}</td><td><b>${esc(x.name)}</b></td><td>${x.has_profile?'<span class="asp-ok">Ada</span>':'<span class="asp-no">Belum</span>'}</td><td>${x.has_photo?'<span class="asp-ok">Ada</span>':'–'}</td><td><button class="asp-btn" onclick="cqAspOpen('${esc(x.id)}')">Lihat</button></td></tr>`).join('')}</tbody></table></div>`:''}
+ </div>`}
+async function loadList(){S.loadingList=true;redrawBrowse();try{const d=await api('profile_list',{class_id:S.classId});S.list=d.students||[]}catch(e){msg(e.message,true)}S.loadingList=false;redrawBrowse()}
+function redrawBrowse(){const el=document.getElementById('asp-browse');if(el)el.outerHTML=browseCard()}
+window.cqAspClass=v=>{S.classId=v;loadList()};
+let qt=0;window.cqAspSearch=v=>{S.q=v;clearTimeout(qt);qt=setTimeout(()=>{const el=document.getElementById('asp-browse');if(!el)return;const pos=el.querySelector('input[type=search]');redrawBrowse();const inp=document.querySelector('#asp-browse input[type=search]');if(inp){inp.focus();inp.setSelectionRange(v.length,v.length)}},200)};
+window.cqAspOpen=async id=>{const m=document.createElement('div');m.className='asp-modal';m.innerHTML='<div class="asp-modal-box"><p class="asp-sub">Memuat biodata…</p></div>';const close=()=>{m.remove();document.removeEventListener('keydown',key)},key=e=>{if(e.key==='Escape')close()};m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))close()});document.addEventListener('keydown',key);document.body.appendChild(m);
+ try{const d=await api('profile_get',{student_id:id});const st=d.student,pf=d.profile,data=pf?.data||{};
+  const groups=GROUPS.map(([k,t])=>{const o=data[k]||{};const ks=Object.keys(o);if(!ks.length)return '';return `<section><h4>${t}</h4><dl>${ks.map(f=>`<dt>${esc(label(f))}</dt><dd>${esc(fmtVal(f,o[f]))}</dd>`).join('')}</dl></section>`}).join('');
+  m.querySelector('.asp-modal-box').innerHTML=`<div class="asp-modal-head">${pf?.photo_url?`<img src="${esc(pf.photo_url)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}<div><div class="asp-card-title" style="margin:0">${esc(st.full_name)}</div><p class="asp-sub">NIS ${esc(st.nis||'-')} · NISN ${esc(st.nisn||'-')}${pf?.updated_at?` · diperbarui ${esc(fmtDate(pf.updated_at))}`:''}</p></div><button class="asp-btn ghost" data-close>Tutup</button></div>${pf?`<div class="asp-modal-body">${groups}</div>`:'<p class="asp-sub">Biodata siswa ini belum ada di file yang diupload.</p>'}`}
+ catch(e){m.querySelector('.asp-modal-box').innerHTML=`<p class="asp-sub">${esc(e.message)}</p><button class="asp-btn ghost" data-close>Tutup</button>`}};
 function msg(t,bad){const el=document.getElementById('asp-msg');if(!el)return;el.hidden=!t;el.textContent=t||'';el.className='asp-msg '+(bad?'bad':'ok');if(typeof showToast==='function'&&t)showToast(t,bad)}
 function draw(){const c=document.getElementById('content');if(!c||!c.querySelector('.asp'))return;c.innerHTML=view()}
 window.cqAspPick=async function(input){const f=input.files?.[0];if(!f||S.busy)return;S.busy=true;S.file=f.name;draw();
  try{await loadXLSX();const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:false,cellStyles:false});const p=parseWorkbook(wb);if(!p.rows.length)throw Error('Tidak ada baris siswa yang terbaca.');
   const total={received:0,saved:0,with_photo:0,unmatched:[]};
   for(let i=0;i<p.rows.length;i+=120){const d=await api('import_rows',{file_name:f.name,rows:p.rows.slice(i,i+120)});total.received+=d.received;total.saved+=d.saved;total.with_photo+=d.with_photo;total.unmatched.push(...(d.unmatched||[]))}
-  S.result=total;S.summary=await api('summary');S.busy=false;draw();msg(`Biodata ${total.saved} siswa tersimpan dari sheet "${p.sheet}".${total.unmatched.length?` ${total.unmatched.length} baris tidak cocok.`:''}`,false)}
+  S.result=total;S.summary=await api('summary');S.busy=false;draw();loadList();msg(`Biodata ${total.saved} siswa tersimpan dari sheet "${p.sheet}".${total.unmatched.length?` ${total.unmatched.length} baris tidak cocok.`:''}`,false)}
  catch(e){S.busy=false;draw();msg(e.message,true)}};
-window.renderAdminStudentProfiles=async function(c){if(!c)return;css();S.result=null;c.innerHTML='<div class="asp"><div class="asp-card">Memuat biodata siswa…</div></div>';try{S.summary=await api('summary')}catch(e){S.summary=null;c.innerHTML=view();msg(e.message,true);return}c.innerHTML=view()};
+window.renderAdminStudentProfiles=async function(c){if(!c)return;css();S.result=null;c.innerHTML='<div class="asp"><div class="asp-card">Memuat biodata siswa…</div></div>';try{const[sm,cl]=await Promise.all([api('summary'),api('profile_classes')]);S.summary=sm;S.classes=cl.classes||[]}catch(e){S.summary=null;c.innerHTML=view();msg(e.message,true);return}c.innerHTML=view();if(!S.classId&&S.classes[0])S.classId=S.classes[0].id;loadList()};
 function css(){if(document.getElementById('asp-css'))return;const s=document.createElement('style');s.id='asp-css';s.textContent=`
 .asp{max-width:1040px;margin:0 auto;color:#123634}.asp *{box-sizing:border-box}
 .asp-head{margin-bottom:16px}.asp-title{font-size:clamp(21px,2.3vw,25px);font-weight:800;letter-spacing:-.02em}.asp-sub{font-size:12.5px;color:#5f7775;margin-top:4px;line-height:1.55}
@@ -78,6 +98,13 @@ function css(){if(document.getElementById('asp-css'))return;const s=document.cre
 .asp-msg{margin-top:12px;padding:11px 14px;border-radius:12px;font-size:13px;font-weight:600}.asp-msg.ok{background:#e5f5ee;color:#155f45}.asp-msg.bad{background:#fbeceb;color:#8d2f27}
 .asp-res{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}.asp-res div{padding:14px;border-radius:14px;background:#f3f8f7;text-align:center}.asp-res div.ok{background:#e9f7f0}.asp-res div.warn{background:#fff6e6}.asp-res b{display:block;font-size:22px}.asp-res span{font-size:12px;color:#5f7775}
 .asp-table{max-height:360px;overflow:auto;border:1px solid #e1eceb;border-radius:12px;margin-top:8px}.asp-table table{width:100%;border-collapse:collapse;font-size:12.5px}.asp-table th{position:sticky;top:0;background:#f4f8f8;text-align:left;padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#5f7775}.asp-table td{padding:9px 12px;border-top:1px solid #edf3f3}
+.asp-filter{display:grid;grid-template-columns:220px minmax(0,1fr);gap:10px;margin-bottom:10px}.asp-filter select,.asp-filter input{height:42px;border:1px solid #cddfdc;border-radius:10px;padding:0 12px;font:inherit;font-size:13px;background:#fff;color:#123634}
+.asp-browse{max-height:520px}.asp-browse tr.miss td{background:#fffaf1}.asp-ok{display:inline-block;padding:3px 9px;border-radius:99px;background:#e5f5ee;color:#1f8a63;font-size:11.5px;font-weight:700}.asp-no{display:inline-block;padding:3px 9px;border-radius:99px;background:#fff1dc;color:#a86a12;font-size:11.5px;font-weight:700}
+.asp-btn{min-height:32px;padding:0 13px;border-radius:9px;border:1px solid #0a6e6e;background:#0a6e6e;color:#fff;font:inherit;font-size:12px;font-weight:700;cursor:pointer}.asp-btn.ghost{background:#fff;color:#123634;border-color:#c9dbd9}
+.asp-modal{position:fixed;inset:0;z-index:9999;background:rgba(9,34,32,.45);display:flex;align-items:center;justify-content:center;padding:18px}.asp-modal-box{width:100%;max-width:820px;max-height:88vh;overflow:auto;background:#fff;border-radius:20px;padding:22px;color:#123634;box-shadow:0 30px 70px rgba(5,40,38,.3)}
+.asp-modal-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}.asp-modal-head>div{flex:1}.asp-modal-head img{width:66px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #dbe8e6}
+.asp-modal-body section{margin-bottom:14px}.asp-modal-body h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:#0a6e6e}.asp-modal-body dl{display:grid;grid-template-columns:220px minmax(0,1fr);margin:0;border:1px solid #e6eeed;border-radius:12px;overflow:hidden}.asp-modal-body dt,.asp-modal-body dd{margin:0;padding:8px 12px;font-size:12.5px;border-bottom:1px solid #eef3f3}.asp-modal-body dt{background:#f6faf9;color:#5f7775;font-weight:600}.asp-modal-body dd{word-break:break-word}
+@media(max-width:700px){.asp-filter{grid-template-columns:1fr}.asp-modal-body dl{grid-template-columns:1fr}.asp-modal-body dt{border-bottom:0;padding-bottom:2px}}
 @media(max-width:700px){.asp-kpis,.asp-res{grid-template-columns:1fr}.asp-card{padding:16px}}
 `;document.head.appendChild(s)}
 window.__cqParseStudentWorkbook=parseWorkbook;
