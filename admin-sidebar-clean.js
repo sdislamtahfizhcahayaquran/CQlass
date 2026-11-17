@@ -7,7 +7,7 @@ function isAdmin(){return role()==='admin'}
 function style(){
   if(document.getElementById('cq-admin-side-css'))return;
   const el=document.createElement('style');el.id='cq-admin-side-css';
-  el.textContent=`.cq-admin-side{padding:16px 12px 24px;display:flex;flex-direction:column;gap:2px}.cq-admin-nav{width:100%;min-height:40px;height:auto;border:0;border-radius:11px;background:transparent;color:#2c4a48;padding:0 12px;display:flex;align-items:center;gap:11px;font:600 13.5px/1.2 'Plus Jakarta Sans',Inter,system-ui,sans-serif;text-align:left;cursor:pointer;transition:background .12s,color .12s}.cq-admin-nav:hover{background:#eaf5f3;color:#0b5e5a}.cq-admin-nav.active{background:#0a6e6e;color:#fff;box-shadow:0 6px 14px rgba(10,110,110,.2)}.cq-admin-nav svg{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.cq-admin-nav span{flex:1;min-width:0;white-space:normal;line-height:1.25;padding:9px 0}.cq-admin-nav.home{min-height:44px;font-weight:700;margin-bottom:4px}.cq-admin-section{margin:14px 12px 4px;font-size:10px;font-weight:800;letter-spacing:.11em;color:#7a918f;text-transform:uppercase}.cq-admin-ext{font-size:10px;font-weight:700;color:#8aa09e;flex:none}.cq-admin-nav.active .cq-admin-ext{color:#cdeee8}body.cq-admin-ui #sidebar,body.cq-admin-ui .sidebar{background-image:linear-gradient(180deg,#ffffff 0%,#f1faf7 100%)!important;background-size:100% 100%!important}`;
+  el.textContent=`.cq-admin-side{padding:16px 12px 24px;display:flex;flex-direction:column;gap:2px}.cq-admin-nav{width:100%;min-height:40px;height:auto;border:0;border-radius:11px;background:transparent;color:#2c4a48;padding:0 12px;display:flex;align-items:center;gap:11px;font:600 13.5px/1.2 'Plus Jakarta Sans',Inter,system-ui,sans-serif;text-align:left;cursor:pointer;transition:background .12s,color .12s}.cq-admin-nav:hover{background:#eaf5f3;color:#0b5e5a}.cq-admin-nav.active{background:#0a6e6e;color:#fff;box-shadow:0 6px 14px rgba(10,110,110,.2)}.cq-admin-nav svg{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9}.cq-admin-nav span{flex:1;min-width:0;white-space:normal;line-height:1.25;padding:9px 0}.cq-admin-nav.home{min-height:44px;font-weight:700;margin-bottom:4px}.cq-admin-section{margin:14px 12px 4px;font-size:10px;font-weight:800;letter-spacing:.11em;color:#7a918f;text-transform:uppercase}.cq-admin-ext{font-size:10px;font-weight:700;color:#8aa09e;flex:none}.cq-admin-nav.active .cq-admin-ext{color:#cdeee8}.cq-admin-more{width:100%;margin:14px 0 2px;border:0;background:transparent;display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;text-align:left;font:inherit;color:#7a918f}.cq-admin-more span{font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.cq-admin-more small{flex:1;font-size:10.5px;color:#9aaeac;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cq-admin-more svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;transition:transform .15s}.cq-admin-more.open svg{transform:rotate(180deg)}.cq-admin-more:hover{color:#0a6e6e}.cq-admin-more-items[hidden]{display:none}body.cq-admin-ui #sidebar,body.cq-admin-ui .sidebar{background-image:linear-gradient(180deg,#ffffff 0%,#f1faf7 100%)!important;background-size:100% 100%!important}`;
   document.head.appendChild(el)
 }
 const I={
@@ -29,6 +29,8 @@ const I={
   report:'<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 11h6M9 15h6M9 19h4"/></svg>'
 };
 function button(id,l,i,oc,ext){const domId=id==='roles'?' id="cq-role-manager-menu"':'';return `<button${domId} class="cq-admin-nav${id==='dashboard'?' home':''}${window.__cqAdminActive===id?' active':''}" data-admin-nav="${id}" onclick="${oc}" title="${l}">${i}<span>${l}</span>${ext?'<small class="cq-admin-ext">↗</small>':''}</button>`}
+function moreOpen(){try{return localStorage.getItem('cq_admin_more')==='1'}catch(_){return false}}
+window.cqAdminToggleMore=function(){const open=!moreOpen();try{localStorage.setItem('cq_admin_more',open?'1':'0')}catch(_){}draw()};
 function draw(active){
   try{document.body.classList.toggle('cq-admin-ui',isAdmin())}catch(_){}
   if(!isAdmin())return false;style();
@@ -42,8 +44,7 @@ function draw(active){
     ${button('input-access','Kunci Input Nilai',I.lock,'openCleanAdminInputAccess()')}
     ${button('report-period','Pengaturan Rapor',I.report,'openCleanAdminReportPeriod()')}
     <div class="cq-admin-section">Data Sekolah</div>
-    ${button('students','Siswa & Kelas',I.students,'openCleanAdminStudents()',true)}
-    ${button('biodata','Biodata Siswa',I.students,'openCleanAdminBiodata()')}
+    ${button('students','Data Siswa',I.students,'openCleanAdminStudents()')}
     ${button('data-master','Data Master',I.master,'openCleanAdminMaster()')}
     ${button('master-tp','Master TP',I.tp,'openCleanAdminMasterTP()',true)}
     <div class="cq-admin-section">Guru & Akun</div>
@@ -54,12 +55,9 @@ function draw(active){
     ${button('edit-jadwal','Jadwal Mengajar',I.schedule,'openCleanAdminSchedule()')}
     ${button('halaqah','Pembagian Halaqah',I.halaqah,'openCleanAdminHalaqahRoute()')}
     ${button('partner-kelas','Partner Kelas',I.partner,'openCleanAdminClassPartners()')}
-    ${button('ekskul','Data Ekskul',I.ball,'openCleanAdminExtracurricular()')}
-    <div class="cq-admin-section">Kegiatan</div>
-    ${button('uks','Jadwal UKS',I.uks,'openCleanAdminUks()')}
-    ${button('kegiatan-khusus','Kegiatan Khusus',I.star,'openCleanAdminSpecialActivity()')}
     <div class="cq-admin-section">Laporan</div>
     ${button('rapor-readiness','Laporan Nilai Rapor',I.report,'openCleanAdminRaporReadiness()')}
+    ${(()=>{const ids=['ekskul','raw-ekskul','uks','kegiatan-khusus'];const open=moreOpen()||ids.includes(window.__cqAdminActive);return `<button type="button" class="cq-admin-more${open?' open':''}" onclick="cqAdminToggleMore()"><span>Lainnya</span><small>${open?'Tutup':'Data Ekskul, UKS, Kegiatan Khusus'}</small><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="cq-admin-more-items"${open?'':' hidden'}>${button('ekskul','Data Ekskul',I.ball,'openCleanAdminExtracurricular()')}${typeof window.openCleanAdminRawEkskul==='function'?button('raw-ekskul','Raw Ekskul',I.students,'openCleanAdminRawEkskul()'):''}${button('uks','Jadwal UKS',I.uks,'openCleanAdminUks()')}${button('kegiatan-khusus','Kegiatan Khusus',I.star,'openCleanAdminSpecialActivity()')}</div>`})()}
   </nav>`;
   return true
 }
@@ -120,8 +118,15 @@ window.openCleanAdminReportPeriod=function(){
 };
 window.openCleanAdminRaporReadiness=function(){if(!isAdmin())return;set('rapor-readiness');const c=document.getElementById('content');if(typeof window.renderAdminRaporReadiness==='function')return window.renderAdminRaporReadiness(c);if(c)c.innerHTML='<div class="card">Memuat Laporan Nilai Rapor...</div>';setTimeout(()=>window.renderAdminRaporReadiness?.(c),200)};
 window.openCleanAdminInputAccess=function(){if(!isAdmin())return;set('input-access');const c=document.getElementById('content');if(typeof window.renderInputAccessControlAdmin==='function')return window.renderInputAccessControlAdmin(c);if(c)c.innerHTML='<div class="card">Memuat Periode & Kunci Penginputan...</div>';setTimeout(()=>window.renderInputAccessControlAdmin?.(c),250)};
-window.openCleanAdminBiodata=function(){if(!isAdmin())return;set('biodata');try{if(typeof activeModule!=='undefined')activeModule='biodata'}catch(_){}const c=document.getElementById('content');if(typeof window.renderAdminStudentProfiles==='function')return window.renderAdminStudentProfiles(c);if(c)c.innerHTML='<div class="card">Memuat Biodata Siswa...</div>';setTimeout(()=>window.renderAdminStudentProfiles?.(c),250)};
-window.openCleanAdminStudents=function(){if(!isAdmin())return;set('students');location.href='master-data.html'};
+function studentsPage(tab){if(!isAdmin())return;set('students');try{if(typeof activeModule!=='undefined')activeModule='students'}catch(_){}const c=document.getElementById('content');if(!c)return;
+ c.innerHTML=`<div class="cq-ds"><div class="cq-ds-head"><div class="cq-ds-title">Data Siswa</div><div class="cq-ds-sub">Daftar siswa aktif, kelas, tambah/import siswa baru, dan biodata lengkap.</div></div><nav class="cq-ds-tabs"><button class="${tab==='list'?'on':''}" onclick="openCleanAdminStudents()">Daftar &amp; Kelas</button><button class="${tab==='bio'?'on':''}" onclick="openCleanAdminBiodata()">Biodata Lengkap</button></nav><div id="cq-ds-body"></div></div>`;
+ if(!document.getElementById('cq-ds-css')){const st=document.createElement('style');st.id='cq-ds-css';st.textContent=`.cq-ds{max-width:1180px;margin:0 auto}.cq-ds-title{font-size:clamp(21px,2.3vw,25px);font-weight:800;color:#123634}.cq-ds-sub{font-size:12.5px;color:#5f7775;margin-top:4px}.cq-ds-tabs{display:flex;gap:6px;padding:6px;margin:14px 0 16px;background:#fff;border:1px solid #dbe8e6;border-radius:14px;width:max-content;max-width:100%}.cq-ds-tabs button{border:0;background:transparent;border-radius:10px;padding:0 18px;min-height:40px;font:inherit;font-size:13px!important;font-weight:700;color:#5f7775;cursor:pointer}.cq-ds-tabs button.on{background:#0a6e6e;color:#fff}.cq-ds-frame{width:100%;height:calc(100vh - 230px);min-height:560px;border:1px solid #dbe8e6;border-radius:16px;background:#fff}.cq-ds .asp-head{display:none}`;document.head.appendChild(st)}
+ const body=document.getElementById('cq-ds-body');
+ if(tab==='bio'){if(typeof window.renderAdminStudentProfiles==='function')return window.renderAdminStudentProfiles(body);body.innerHTML='<div class="card">Memuat Biodata Siswa...</div>';return setTimeout(()=>window.renderAdminStudentProfiles?.(body),300)}
+ body.innerHTML='<iframe class="cq-ds-frame" src="master-data.html?embed=1" title="Daftar siswa dan kelas"></iframe>';
+ const f=body.querySelector('iframe');f.addEventListener('load',()=>{try{const d=f.contentDocument;const x=d.createElement('style');x.textContent='a.back{display:none!important}body{background:#fff!important}';d.head.appendChild(x)}catch(_){}})}
+window.openCleanAdminStudents=function(){studentsPage('list')};
+window.openCleanAdminBiodata=function(){studentsPage('bio')};
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
 window.openCleanAdminSpecialActivity=function(){if(!isAdmin())return;set('kegiatan-khusus');const c=document.getElementById('content');if(typeof window.renderAdminSpecialActivity==='function')return window.renderAdminSpecialActivity(c);if(c)c.innerHTML='<div class="card">Memuat Kegiatan Khusus...</div>';setTimeout(()=>window.renderAdminSpecialActivity?.(c),250)};
 window.openCleanAdminHalaqahRoute=function(){if(!isAdmin())return;set('halaqah');if(window.openCleanAdminHalaqah)return window.openCleanAdminHalaqah();const c=document.getElementById('content');if(c)c.innerHTML='<div class="card">Memuat Pembagian Halaqah...</div>'};

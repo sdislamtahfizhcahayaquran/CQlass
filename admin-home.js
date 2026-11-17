@@ -69,7 +69,7 @@ function tasks(d){
 function kpis(d){const m=d.dash.ok?d.dash.v.master_counts||{}:null;const k=[['student','Siswa aktif',m?.students],['users','Guru',m?.teachers],['school','Kelas',m?.classes],['book','Mapel',m?.subjects],['key','Akun',m?.accounts]];return `<div class="adh-kpis">${k.map(([i,l,v])=>`<div class="adh-kpi"><span class="adh-kpi-ic">${ic(i,18)}</span><div><b>${v==null?'—':Number(v).toLocaleString('id-ID')}</b><small>${l}</small></div></div>`).join('')}</div>`}
 const LINKS=[
  ['users','Guru & Pengguna','Tambah guru, buat akun, atur role','openCleanAdminUsers()'],
- ['student','Siswa & Kelas','Data siswa dan anggota kelas','openCleanAdminStudents()'],
+ ['student','Data Siswa','Daftar siswa, kelas, dan biodata','openCleanAdminStudents()'],
  ['task','Penugasan Guru','Walas, mapel, Tahfizh, partner','openCleanAdminAssignments()'],
  ['grid','Jadwal Mengajar','Atur hari dan jam pelajaran','openCleanAdminSchedule()'],
  ['lock','Kunci Input Nilai','Buka/tutup periode input guru','openCleanAdminInputAccess()'],
