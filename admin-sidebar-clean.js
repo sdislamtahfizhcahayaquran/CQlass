@@ -43,6 +43,7 @@ function draw(active){
     ${button('report-period','Pengaturan Rapor',I.report,'openCleanAdminReportPeriod()')}
     <div class="cq-admin-section">Data Sekolah</div>
     ${button('students','Siswa & Kelas',I.students,'openCleanAdminStudents()',true)}
+    ${button('biodata','Biodata Siswa',I.students,'openCleanAdminBiodata()')}
     ${button('data-master','Data Master',I.master,'openCleanAdminMaster()')}
     ${button('master-tp','Master TP',I.tp,'openCleanAdminMasterTP()',true)}
     <div class="cq-admin-section">Guru & Akun</div>
@@ -119,6 +120,7 @@ window.openCleanAdminReportPeriod=function(){
 };
 window.openCleanAdminRaporReadiness=function(){if(!isAdmin())return;set('rapor-readiness');const c=document.getElementById('content');if(typeof window.renderAdminRaporReadiness==='function')return window.renderAdminRaporReadiness(c);if(c)c.innerHTML='<div class="card">Memuat Laporan Nilai Rapor...</div>';setTimeout(()=>window.renderAdminRaporReadiness?.(c),200)};
 window.openCleanAdminInputAccess=function(){if(!isAdmin())return;set('input-access');const c=document.getElementById('content');if(typeof window.renderInputAccessControlAdmin==='function')return window.renderInputAccessControlAdmin(c);if(c)c.innerHTML='<div class="card">Memuat Periode & Kunci Penginputan...</div>';setTimeout(()=>window.renderInputAccessControlAdmin?.(c),250)};
+window.openCleanAdminBiodata=function(){if(!isAdmin())return;set('biodata');try{if(typeof activeModule!=='undefined')activeModule='biodata'}catch(_){}const c=document.getElementById('content');if(typeof window.renderAdminStudentProfiles==='function')return window.renderAdminStudentProfiles(c);if(c)c.innerHTML='<div class="card">Memuat Biodata Siswa...</div>';setTimeout(()=>window.renderAdminStudentProfiles?.(c),250)};
 window.openCleanAdminStudents=function(){if(!isAdmin())return;set('students');location.href='master-data.html'};
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
 window.openCleanAdminSpecialActivity=function(){if(!isAdmin())return;set('kegiatan-khusus');const c=document.getElementById('content');if(typeof window.renderAdminSpecialActivity==='function')return window.renderAdminSpecialActivity(c);if(c)c.innerHTML='<div class="card">Memuat Kegiatan Khusus...</div>';setTimeout(()=>window.renderAdminSpecialActivity?.(c),250)};

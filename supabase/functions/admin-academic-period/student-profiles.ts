@@ -1,0 +1,55 @@
+// CQlass — Biodata siswa (route /admin-academic-period/student-profiles): impor dari Excel (Admin) dan data Cover Rapor (Admin & Kabid Kesiswaan).
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+const H={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-session-token","Access-Control-Allow-Methods":"POST, OPTIONS"};
+const J=(b:any,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{...H,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
+const T=(v:any)=>String(v??"").trim(),L=(v:any)=>T(v).toLowerCase();
+function key(){const p=Deno.env.get("SUPABASE_SECRET_KEYS");if(p){try{const x=JSON.parse(p);if(x?.default)return String(x.default)}catch{}}const k=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||Deno.env.get("SUPABASE_SECRET_KEY");if(!k)throw Error("service_key_missing");return k}
+const sb=createClient(Deno.env.get("SUPABASE_URL")!,key(),{auth:{persistSession:false,autoRefreshToken:false}});
+async function hash(s:string){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("")}
+async function auth(req:Request){const tok=T(req.headers.get("x-session-token"));if(!tok)return null;const{data:ss,error:se}=await sb.from("user_sessions").select("user_account_id,expires_at,revoked_at").eq("token_hash",await hash(tok)).maybeSingle();if(se)throw se;if(!ss||ss.revoked_at||!ss.expires_at||Date.parse(ss.expires_at)<=Date.now())return null;const{data:a,error:ae}=await sb.from("user_accounts").select("id,username,status").eq("id",ss.user_account_id).maybeSingle();if(ae)throw ae;if(!a||["nonaktif","inactive","disabled","blocked"].includes(L(a.status)))return null;const{data:r,error:re}=await sb.from("user_account_roles").select("role_code,role").eq("user_account_id",a.id).eq("is_active",true);if(re)throw re;const roles=(r||[]).map((x:any)=>L(x.role_code||x.role)).filter(Boolean);return{...a,roles,is_admin:roles.includes("admin"),is_kesiswaan:roles.some((x:string)=>["kesiswaan","kabid_kesiswaan"].includes(x))}}
+async function rows(q:any){const r=await q;if(r.error)throw r.error;return r.data}
+async function unit(){const d=await rows(sb.from("school_units").select("id,name").limit(1).maybeSingle());if(!d)throw Error("school_unit_missing");return d}
+async function period(u:any){const y=await rows(sb.from("academic_years").select("id,name").eq("school_unit_id",u.id).eq("is_active",true).maybeSingle());if(!y)throw Error("active_academic_year_not_found");const s=await rows(sb.from("semesters").select("semester_no").eq("academic_year_id",y.id).eq("is_active",true).maybeSingle());if(!s)throw Error("active_semester_not_found");return{year:y,semester_no:s.semester_no}}
+const normNis=(v:any)=>{const x=T(v).replace(/\.0+$/,"").replace(/\s+/g,"");return /^\d+$/.test(x)?x:""};
+const normName=(v:any)=>L(v).normalize("NFKD").replace(/[^a-z0-9]+/g," ").trim();
+function cleanObj(o:any,depth=0):any{if(depth>3||o==null)return null;if(Array.isArray(o))return null;if(typeof o!=="object"){const s=T(o);return s?s.slice(0,600):null}const out:any={};let n=0;for(const[k,v]of Object.entries(o)){if(++n>200)break;const kk=T(k).slice(0,80);if(!kk)continue;const vv=cleanObj(v,depth+1);if(vv!==null&&vv!==""&&!(typeof vv==="object"&&!Object.keys(vv).length))out[kk]=vv}return out}
+function photo(v:any){const s=T(v);if(!/^https:\/\//i.test(s))return null;const m=s.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{10,})/);if(m)return`https://drive.google.com/thumbnail?id=${m[1]}&sz=w600`;return s.slice(0,800)}
+
+async function importRows(user:any,b:any){
+  const list=Array.isArray(b.rows)?b.rows:[];if(!list.length)return J({success:false,error:"rows_required"},400);if(list.length>400)return J({success:false,error:"too_many_rows"},400);
+  const u=await unit();const students=await rows(sb.from("students").select("id,nis,nisn,full_name,status").eq("school_unit_id",u.id));
+  const byNis=new Map(),byNisn=new Map(),byName=new Map();
+  for(const s of students){const a=normNis(s.nis),n=normNis(s.nisn),m=normName(s.full_name);if(a)byNis.set(a,s);if(n)byNisn.set(n,s);if(m){if(byName.has(m))byName.set(m,null);else byName.set(m,s)}}
+  const upserts:any[]=[],unmatched:any[]=[],seen=new Set();let withPhoto=0;
+  for(const r of list){const st=byNis.get(normNis(r.nis))||byNisn.get(normNis(r.nisn))||byName.get(normName(r.full_name))||null;
+    if(!st||seen.has(st.id)){unmatched.push({nis:T(r.nis).slice(0,30),full_name:T(r.full_name).slice(0,120),class_name:T(r.class_name).slice(0,40),reason:st?"duplikat di file":"tidak ditemukan"});continue}
+    seen.add(st.id);const data=cleanObj(r.profile)||{};const p=photo(r.photo_url);if(p)withPhoto++;
+    upserts.push({student_id:st.id,data,photo_url:p,source_file:T(b.file_name).slice(0,200)||null,updated_by:user.id,updated_at:new Date().toISOString()})}
+  for(let i=0;i<upserts.length;i+=100){const{error}=await sb.from("student_profiles").upsert(upserts.slice(i,i+100),{onConflict:"student_id"});if(error)throw error}
+  return J({success:true,received:list.length,saved:upserts.length,with_photo:withPhoto,unmatched})
+}
+async function summary(){const u=await unit();const active=await rows(sb.from("students").select("id").eq("school_unit_id",u.id).ilike("status","aktif"));const ids=new Set(active.map((x:any)=>x.id));const prof=await rows(sb.from("student_profiles").select("student_id,photo_url,updated_at,source_file"));const mine=prof.filter((p:any)=>ids.has(p.student_id));const last=mine.map((p:any)=>p.updated_at).sort().pop()||null;const src=mine.find((p:any)=>p.updated_at===last)?.source_file||null;return J({success:true,active_students:ids.size,profiles:mine.length,with_photo:mine.filter((p:any)=>p.photo_url).length,last_import_at:last,last_file:src})}
+
+const MONTHS=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+function tgl(v:any){const s=T(v);const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return`${Number(m[3]).toString().padStart(2,"0")} ${MONTHS[Number(m[2])-1]} ${m[1]}`;return s}
+function ttl(place:any,date:any){const p=T(place),d=tgl(date);if(p&&d)return`${p.replace(/\b\w/g,(c)=>c.toUpperCase())}, ${d}`;return p||d||""}
+function pad(v:any,n:number){const s=T(v).replace(/\.0+$/,"");return /^\d+$/.test(s)?s.padStart(n,"0"):s}
+function alamat(s:any){const parts=[T(s.nama_jalan)];const rt=pad(s.rt,3),rw=pad(s.rw,2);if(rt||rw)parts.push(`RT. ${rt||"-"}/${rw||"-"}`);if(T(s.kelurahan))parts.push(`Kel. ${T(s.kelurahan)}`);if(T(s.kecamatan))parts.push(`Kec. ${T(s.kecamatan)}`);return parts.filter(Boolean).join(" ")}
+function coverOf(st:any,prof:any){const d=prof?.data||{},s=d.siswa||{},ay=d.ayah||{},ib=d.ibu||{};const dash=(v:any)=>T(v)||"-";
+  return{student_id:st.id,has_profile:!!prof,photo_url:prof?.photo_url||null,
+    nama:T(s.nama_siswa)||st.full_name,nisn:T(s.nisn)||T(st.nisn)||"-",nis:T(st.nis),jenis_kelamin:dash(s.jenis_kelamin||(L(st.gender).startsWith("p")?"Perempuan":L(st.gender).startsWith("l")?"Laki-laki":"")),
+    ttl:dash(ttl(s.tempat_lahir,s.tanggal_lahir)),golongan_darah:dash(s.golongan_darah),suku:dash(s.suku),agama:T(s.agama)||"Islam",
+    alamat:dash(alamat(s)),kota:dash(s.kota_kabupaten),provinsi:dash(s.provinsi),
+    ayah:{nama:dash(ay.nama),ttl:dash(ttl(ay.tempat_lahir,ay.tanggal_lahir)),agama:T(ay.agama)||"Islam",warga_negara:dash(ay.kewarganegaraan)},
+    ibu:{nama:dash(ib.nama),ttl:dash(ttl(ib.tempat_lahir||ib.tempat_tanggal_lahir,ib.tanggal_lahir)),agama:T(ib.agama)||"Islam",warga_negara:dash(ib.kewarganegaraan)}}}
+async function principal(){const ts=await rows(sb.from("teachers").select("id,full_name,position,status"));const p=ts.find((x:any)=>!["nonaktif","inactive"].includes(L(x.status))&&/kepala sekolah|principal|headmaster/i.test(T(x.position)));if(!p)return{name:"",signature_url:""};const sig=await rows(sb.from("teacher_signatures").select("storage_path").eq("teacher_id",p.id).maybeSingle());let url="";if(sig?.storage_path){const{data}=await sb.storage.from("teacher-signatures").createSignedUrl(sig.storage_path,3600);url=data?.signedUrl||""}return{name:T(p.full_name),signature_url:url}}
+async function coverBootstrap(){const u=await unit(),p=await period(u);const classes=await rows(sb.from("classes").select("id,name,grade_level").eq("school_unit_id",u.id).eq("academic_year_id",p.year.id).eq("is_active",true).order("grade_level").order("name"));return J({success:true,academic_year:p.year.name,semester_no:p.semester_no,school_name:T(u.name),classes,principal:await principal()})}
+async function coverClass(b:any){const u=await unit(),p=await period(u);const classId=T(b.class_id);const cl=await rows(sb.from("classes").select("id,name").eq("id",classId).eq("academic_year_id",p.year.id).maybeSingle());if(!cl)return J({success:false,error:"class_not_found"},404);const en=await rows(sb.from("student_enrollments").select("student_id").eq("class_id",classId).eq("academic_year_id",p.year.id).eq("semester_no",p.semester_no).eq("is_active",true));const ids=[...new Set(en.map((e:any)=>e.student_id))];if(!ids.length)return J({success:true,class:cl,students:[]});const[st,pr]=await Promise.all([rows(sb.from("students").select("id,nis,nisn,full_name,gender").in("id",ids)),rows(sb.from("student_profiles").select("student_id,data,photo_url").in("student_id",ids))]);const pm=new Map(pr.map((x:any)=>[x.student_id,x]));const out=st.map((s:any)=>coverOf(s,pm.get(s.id))).sort((a:any,b:any)=>a.nama.localeCompare(b.nama,"id"));return J({success:true,class:cl,students:out})}
+
+export async function handleStudentProfiles(req:Request){if(req.method==="OPTIONS")return new Response("ok",{headers:H});if(req.method!=="POST")return J({success:false,error:"method_not_allowed"},405);
+  try{const user=await auth(req);if(!user)return J({success:false,error:"unauthorized"},401);const b=await req.json().catch(()=>({})),a=L(b.action);
+    if(a==="cover_bootstrap"||a==="cover_class"){if(!user.is_admin&&!user.is_kesiswaan)return J({success:false,error:"forbidden"},403);return a==="cover_bootstrap"?await coverBootstrap():await coverClass(b)}
+    if(!user.is_admin)return J({success:false,error:"forbidden"},403);
+    if(a==="summary")return await summary();if(a==="import_rows")return await importRows(user,b);
+    return J({success:false,error:"unknown_action"},400)}
+  catch(e){console.error("student-profiles",e);return J({success:false,error:T((e as any)?.message)||"internal_error"},500)}}

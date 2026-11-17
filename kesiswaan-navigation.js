@@ -29,7 +29,8 @@
     'kes-rekap-keterlambatan':c=>window.renderKesiswaanLateLetters?.(c),
     'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c),
     'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c),
-    'kes-laporan-kelas':c=>window.renderKesiswaanProblemRecap?.(c)
+    'kes-laporan-kelas':c=>window.renderKesiswaanProblemRecap?.(c),
+    'kes-cover-rapor':c=>window.renderKesiswaanCoverRapor?.(c)
   };
 
   function renderControllingMt(content){
@@ -57,7 +58,8 @@
         ['kes-salam-cq','SALAM CQ']
       ]},
       {id:'kes-administrasi',label:'Administrasi',items:[
-        ['kes-perizinan','Perizinan & Kepulangan']
+        ['kes-perizinan','Perizinan & Kepulangan'],
+        ['kes-cover-rapor','Cover Rapor']
       ]},
       {id:'kes-kegiatan',label:'Kegiatan Siswa',items:[
         ['kes-muhadhoroh','Petugas Muhadhoroh'],
