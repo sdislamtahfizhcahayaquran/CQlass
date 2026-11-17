@@ -1,6 +1,6 @@
 /* CQlass — Monitoring Nilai Kabid Akademik
    Ringan: bootstrap saat buka, nilai detail hanya dimuat setelah kelas dipilih.
-   Tidak ada generator Excel di browser. Google Legger tetap ditangani legger-google-sync.js.
+   Tidak ada generator Excel di browser. Legger dibaca langsung dari database CQlass (tanpa sinkron ke Google).
 */
 (function(){
 const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
