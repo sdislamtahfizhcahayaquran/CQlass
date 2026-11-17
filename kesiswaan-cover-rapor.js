@@ -15,7 +15,9 @@ function hijri(iso){const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);i
 const S={boot:null,classId:'',data:null,date:'',place:'Depok',hijri:'',signerId:'',photo:true,selected:new Set(),busy:false};
 function signer(){const l=S.boot?.signers?.list||[];return l.find(x=>x.id===S.signerId)||null}
 
-function page(st,o){const row=(no,label,val,cls='')=>`<tr class="${cls}"><td class="no">${no}</td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
+const capTtl=v=>{const t=String(v??'');const i=t.indexOf(',');return i>0?cap(t.slice(0,i))+t.slice(i):cap(t)};
+const cap=v=>{const t=String(v??'');return t&&t===t.toUpperCase()&&/[A-Z]{3}/.test(t)?t.toLowerCase().replace(/(^|[\s,(/-])([a-z])/g,(m,a,b)=>a+b.toUpperCase()):t};
+function page(st,o){st={...st,ttl:capTtl(st.ttl),suku:cap(st.suku),kota:cap(st.kota),provinsi:cap(st.provinsi),golongan_darah:st.golongan_darah,ayah:{...st.ayah,ttl:capTtl(st.ayah?.ttl)},ibu:{...st.ibu,ttl:capTtl(st.ibu?.ttl)}};const row=(no,label,val,cls='')=>`<tr class="${cls}"><td class="no">${no}</td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
  const sub=(label,val)=>`<tr class="sub"><td class="no"></td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
  const photo=o.photo&&st.photo_url?`<img src="${esc(st.photo_url)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:'';
  return `<section class="cv-page"><img class="cv-kop" src="${o.header}" alt=""><h1>BIODATA SISWA</h1>
@@ -36,7 +38,7 @@ function page(st,o){const row=(no,label,val,cls='')=>`<tr class="${cls}"><td cla
  <img class="cv-foot" src="${o.footer}" alt=""></section>`}
 const PRINT_CSS=`@page{size:A4;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#e9eef0}body{font-family:Tahoma,Verdana,'DejaVu Sans',sans-serif;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cv-page{position:relative;width:210mm;height:297mm;margin:0 auto 8mm;background:#fff;padding:38mm 22mm 28mm 26mm;overflow:hidden;page-break-after:always;break-after:page}
-.cv-kop{position:absolute;left:8mm;top:4mm;width:197mm}.cv-foot{position:absolute;left:0;bottom:4mm;width:210mm}
+.cv-kop{position:absolute;left:6mm;right:0;top:0;width:204mm;height:auto;display:block}.cv-foot{position:absolute;left:0;right:0;bottom:0;width:210mm;height:auto;display:block}
 h1{margin:0 0 5mm;text-align:center;font-size:16pt;font-weight:700;letter-spacing:.02em}
 .cv-t{width:100%;border-collapse:collapse;font-size:9.4pt;line-height:1.3}.cv-t td{padding:1.15mm 0 .9mm;vertical-align:bottom}
 .cv-t .no{width:8mm;padding-left:3mm}.cv-t .lb{width:58mm}.cv-t .cl{width:4mm}.cv-t .vl{border-bottom:.3mm solid #222}
