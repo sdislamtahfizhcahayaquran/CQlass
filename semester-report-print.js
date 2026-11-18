@@ -1,6 +1,6 @@
 /* CQlass — Rapor Akhir Semester (Indonesia / English).
-   Halaman: Nilai Rapor, Psikomotorik, Kognitif Umum, Kognitif Diniyah, Sikap, Komentar.
-   Rapor IKM (deskripsi + kokurikuler) menyusul sebagai halaman terpisah.
+   Tampilan mengikuti sheet cetak Excel (XKOM, XSIK, XKOGU/XKOGD, XPSIK, XNILAI).
+   Urutan: Komentar (1), Sikap/Adab (2-3), [Tahfizh 4-6 dicetak terpisah], Kognitif (mulai 7), Psikomotorik, Nilai, [IKM menyusul].
    Data: report-preview-v2 (identitas, kehadiran, tanda tangan) + /admin-academic-period/semester-report
    (nilai akhir & nilai TP dari academic_scores, isian walas). */
 (function(){
@@ -128,81 +128,93 @@ function tpGrade(score){const n=Number(score);if(score===null||score===undefined
 
 /* ---------- Teks antarmuka ---------- */
 const T={
- id:{sem:n=>Number(n)===2?'SEMESTER II (DUA)':'SEMESTER I (SATU)',year:'TAHUN AJARAN',name:'Nama Siswa',idno:'NIS/NISN',cls:'Kelas',
+ id:{sem:n=>Number(n)===2?'II (Dua)':'I (Satu)',year:'Tahun Ajaran',name:'Nama',nameLong:'Nama Siswa',cls:'Kelas',semL:'Semester',school:'Sekolah',
   nilai:'NILAI RAPOR',psik:'PENILAIAN PSIKOMOTORIK',kogu:'PENILAIAN KOGNITIF UMUM',kogd:'PENILAIAN KOGNITIF DINIYAH',sikap:'PENILAIAN SIKAP',kom:'KOMENTAR UMUM',
-  lphb:'LAPORAN PENILAIAN HASIL BELAJAR SISWA',secA:'A. Nilai Akademik',secB:'B. Kepribadian',secC:'C. Ketidakhadiran',no:'No',subject:'Mata Pelajaran',kktp:'KKTP',score:'Nilai',num:'Angka',words:'Huruf',
-  pai:'Pendidikan Agama Islam dan Budi Pekerti',mulok:'Muatan Lokal',aspect:'Aspek',value:'Nilai',sick:'Sakit',excused:'Izin',unexcused:'Tanpa Keterangan',days:'hari',
-  parent:'Orang Tua / Wali',homeroom:'Wali Kelas',principal:'Kepala Sekolah',page:(i,n)=>`Halaman ${i} dari ${n}`,commentTitle:'Catatan Wali Kelas',noComment:'Belum ada komentar.',noTp:'Tujuan pembelajaran belum diatur.',noSubject:'Belum ada mata pelajaran untuk kelompok ini.',
-  masehi:d=>d?new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric'}).format(d)+' M':'-',hijriSuffix:' H',incomplete:'Nilai belum lengkap'},
- en:{sem:n=>Number(n)===2?'SEMESTER II':'SEMESTER I',year:'ACADEMIC YEAR',name:'Student Name',idno:'Student ID/NISN',cls:'Class',
+  lphb:'LAPORAN PENILAIAN HASIL BELAJAR SISWA',no:'NO',subject:'MATA PELAJARAN',kktp:'KKTP',score:'NILAI',num:'ANGKA',words:'HURUF',
+  pai:'Pendidikan Agama Islam dan Budi Pekerti',mulok:'Muatan Lokal',kepribadian:'KEPRIBADIAN',value:'NILAI',absence:'KETIDAKHADIRAN',days:'HARI',sick:'Sakit',excused:'Izin',unexcused:'Tanpa Keterangan',
+  parent:'Orang Tua / Wali',homeroom:'Wali Kelas',principal:'Kepala Sekolah',page:i=>`Halaman ${i}`,noComment:'',noTp:'Tujuan pembelajaran belum diatur.',noSubject:'Belum ada mata pelajaran untuk kelompok ini.',
+  masehi:d=>d?new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'long',year:'numeric'}).format(d)+' M':'-',hijriSuffix:' H',incomplete:'Nilai belum lengkap'},
+ en:{sem:n=>Number(n)===2?'II (Two)':'I (One)',year:'Academic Year',name:'Name',nameLong:'Student Name',cls:'Class',semL:'Semester',school:'School',
   nilai:'SEMESTER REPORT CARD',psik:'PSYCHOMOTOR ASSESSMENT',kogu:'COGNITIVE ASSESSMENT: GENERAL SUBJECTS',kogd:'COGNITIVE ASSESSMENT: ISLAMIC STUDIES',sikap:'ATTITUDE ASSESSMENT',kom:'GENERAL COMMENTS',
-  lphb:'STUDENT LEARNING ACHIEVEMENT REPORT',secA:'A. Academic Scores',secB:'B. Personality',secC:'C. Absences',no:'No',subject:'Subject',kktp:'KKTP',score:'Score',num:'Number',words:'In Words',
-  pai:'Islamic Studies',mulok:'Local Content Subjects',aspect:'Aspect',value:'Rating',sick:'Illness',excused:'Excused',unexcused:'Unexcused',days:'days',
-  parent:'Parent / Guardian',homeroom:'Homeroom Teacher',principal:'Principal',page:(i,n)=>`Page ${i} of ${n}`,commentTitle:"Homeroom Teacher's Comments",noComment:'No comments yet.',noTp:'Learning objectives have not been set.',noSubject:'No subjects in this group yet.',
-  masehi:d=>d?new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric'}).format(d)+' CE':'-',hijriSuffix:' AH',incomplete:'Incomplete scores'}
+  lphb:'STUDENT LEARNING ACHIEVEMENT REPORT',no:'NO',subject:'SUBJECT',kktp:'KKTP',score:'SCORE',num:'NUMBER',words:'IN WORDS',
+  pai:'Islamic Studies',mulok:'Local Content Subjects',kepribadian:'PERSONALITY',value:'RATING',absence:'ABSENCES',days:'DAYS',sick:'Illness',excused:'Excused',unexcused:'Unexcused',
+  parent:'Parent / Guardian',homeroom:'Homeroom Teacher',principal:'Principal',page:i=>`Page ${i}`,noComment:'',noTp:'Learning objectives have not been set.',noSubject:'No subjects in this group yet.',
+  masehi:d=>d?new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'long',year:'numeric'}).format(d)+' CE':'-',hijriSuffix:' AH',incomplete:'Incomplete scores'}
 };
+// Rapor Tahfizh (3 lembar) dicetak terpisah tetapi nomor halamannya disisakan setelah halaman Sikap/Adab.
+const TAHFIZH_PAGES=3;
+const LOGO='rapor-semester-logo.png',FOOTER='rapor-semester-footer.jpg';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function letters(i){return String.fromCharCode(97+i)}
 
-/* ---------- Gaya ---------- */
+/* ---------- Gaya (mengikuti sheet cetak Excel) ---------- */
 function injectStyles(){if(document.getElementById('cq-semester-print-style'))return;const s=document.createElement('style');s.id='cq-semester-print-style';s.textContent=`
-.srp-page{display:flex;flex-direction:column;padding:14mm 14mm 14mm 14mm!important;font-family:Tahoma,Verdana,'Segoe UI',sans-serif}
-.srp-head{width:100%;border-collapse:collapse;border:1.25px solid #111;margin:0}.srp-head td{border:1.25px solid #111;padding:2px 5px;height:6.6mm;vertical-align:middle;font-size:10.5px}
-.srp-head .l{width:46%;text-align:center;font-weight:900;font-size:11.5px}.srp-head .r{display:flex;align-items:center}.srp-head .r b{font-weight:900}.srp-head .k{flex:0 0 29mm}.srp-head .c{flex:0 0 3mm}.srp-head .v{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.srp-shadow{height:2mm;background:#e7e7e7;margin:0 0 4.5mm}
-.srp-title{text-align:center;font-weight:900;font-size:12px;margin:0 0 3mm;letter-spacing:.2px}
-.srp-sec{font-weight:900;font-size:11.5px;margin:3.5mm 0 1.5mm}
-.srp-t{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10.5px;line-height:1.25}.srp-t th,.srp-t td{border:.75px solid #000;padding:1.2mm 1.6mm;vertical-align:middle}.srp-t th{background:#dce7f1;font-weight:900;text-align:center}
-.srp-t .c{text-align:center}.srp-t .sub{padding-left:6mm}.srp-t tr.grp td{background:#eef2f6;font-weight:900}.srp-t .muted{color:#666;font-style:italic}
-.srp-box{display:inline-block;width:3.6mm;height:3.6mm;border:1px solid #111;vertical-align:middle}.srp-box.on{background:#111}
-.srp-legend{font-size:10px;margin-top:2mm;font-style:italic}
-.srp-two{display:grid;grid-template-columns:1fr 1fr;gap:6mm;align-items:start}
-.srp-sign-area{margin-top:auto;padding-bottom:6mm}
-.srp-date{text-align:center;font-size:10.5px;line-height:1.5;margin-bottom:2mm}
-.srp-sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;font-size:10.5px;text-align:center}.srp-sign>div{position:relative;min-height:32mm;display:flex;flex-direction:column;align-items:center}
-.srp-sign .name{margin-top:auto;font-weight:900;border-bottom:1px solid #111;padding-bottom:1px;white-space:nowrap}.srp-sign .line{margin-top:auto;width:60%;border-bottom:1px solid #111;height:1px}
+.srp-page{display:flex;flex-direction:column;padding:13mm 14mm 32mm 15mm!important;font-family:Tahoma,Verdana,'Segoe UI',sans-serif;font-size:10.5px;color:#111}
+.srp-title{font-family:Calibri,'Segoe UI',Arial,sans-serif;font-weight:700;font-size:15.5px;letter-spacing:.2px;margin:0 0 3mm 112mm;white-space:nowrap}
+.srp-id{display:grid;grid-template-columns:1fr 20mm 1fr;align-items:center;column-gap:4mm;margin:0 0 6mm;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
+.srp-id img{width:20mm;height:20mm;object-fit:contain}
+.srp-kv{display:grid;grid-template-columns:auto 4mm 1fr;row-gap:2mm;align-items:baseline}.srp-kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srp-kv.r{grid-template-columns:24mm 4mm 1fr}.srp-kv.l{grid-template-columns:14mm 4mm 1fr}
+.srp-nid{display:grid;grid-template-columns:1fr 64mm 20mm;align-items:start;column-gap:3mm;margin:0 0 5mm;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
+.srp-nid .srp-kv.l{grid-template-columns:26mm 4mm 1fr}.srp-nid img{width:20mm;height:20mm;object-fit:contain;margin-top:-3mm}
+.srp-big{text-align:center;font-family:Tahoma,Verdana,sans-serif;font-weight:900;font-size:17px;margin:1mm 0 6mm;letter-spacing:.3px}
+.srp-t{width:100%;border-collapse:collapse;table-layout:fixed;border:1.6px solid #000;line-height:1.25}.srp-t td,.srp-t th{border:.6px solid #000;padding:1mm 1.6mm;vertical-align:middle}
+.srp-t .hd th,.srp-t th.hd{background:#ffffcc;font-weight:900;text-align:center}.srp-t .hd th.title{text-align:left;font-size:12.5px;letter-spacing:.2px}
+.srp-t .code{text-align:center;font-weight:900;font-size:12.5px}.srp-t .c{text-align:center}.srp-t .ck{text-align:center;font-size:10px}
+.srp-t .sh td{font-weight:900;background:#fff}.srp-t .grey{background:#e6e6e6}.srp-t .sub{padding-left:3mm}.srp-t .bul{display:inline-block;width:2.6mm;height:2.6mm;background:#111;margin:0 3mm 0 1mm;vertical-align:middle}
+.srp-t .muted{color:#666;font-style:italic}.srp-gap{height:3.5mm}
+.srp-box{display:inline-block;width:3.4mm;height:3.4mm;border:1px solid #333;vertical-align:middle;background:#fff}.srp-box.on{background:#111;border-color:#111}
+.srp-legend{font-size:10.5px;font-style:italic;margin:3mm 0 0 10mm}
+.srp-two{display:grid;grid-template-columns:1fr 1fr;column-gap:16mm;align-items:start;margin-top:7mm}
+.srp-sign-area{margin-top:6mm}
+.srp-date{text-align:center;line-height:1.7;margin-bottom:1mm;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
+.srp-sign{display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:4mm;text-align:center;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
+.srp-sign>div{position:relative;min-height:33mm;display:flex;flex-direction:column;align-items:center}
+.srp-sign .name{margin-top:auto;text-decoration:underline;white-space:nowrap}.srp-sign .line{margin-top:auto;width:70%;border-bottom:1px solid #111;height:1px}
 .srp-sign img{position:absolute;top:5mm;left:50%;transform:translateX(-50%);max-width:44mm;max-height:20mm;object-fit:contain}
-.srp-comment{border:.75px solid #000;min-height:70mm;padding:4mm;font-size:11px;line-height:1.6;white-space:pre-wrap}
-.srp-foot{position:absolute;left:14mm;right:14mm;bottom:4mm;display:flex;justify-content:space-between;font-size:10px;font-style:italic}
+.srp-comment{border:1.6px solid #000}.srp-comment .band{height:6.5mm;background:#ffffcc}.srp-comment .body{min-height:82mm;padding:4mm 5mm;border-top:1.6px solid #000;border-bottom:1.6px solid #000;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.7;white-space:pre-wrap;text-align:justify}
+.srp-foot{position:absolute;left:12mm;right:12mm;bottom:6mm;height:23mm}.srp-foot img{width:100%;height:100%;object-fit:contain;object-position:left bottom}
+.srp-pno{position:absolute;left:0;right:0;bottom:1.5mm;text-align:center;font-size:9px;color:#444}
 `;document.head.appendChild(s)}
 
 /* ---------- Bagian halaman ---------- */
-function headHtml(ctx,title){const L=T[ctx.lang],st=ctx.student;return`<table class="srp-head"><tbody>
-<tr><td class="l">${esc(title)}</td><td><div class="r"><span class="k">${L.name}</span><span class="c">:</span><span class="v"><b>${esc(st.name||'-')}</b></span></div></td></tr>
-<tr><td class="l">${esc(L.sem(ctx.semester))}</td><td><div class="r"><span class="k">${L.idno}</span><span class="c">:</span><span class="v">${esc([st.nis,st.nisn].filter(Boolean).join(' / ')||'-')}</span></div></td></tr>
-<tr><td class="l">${L.year} ${esc(ctx.year||'-')}</td><td><div class="r"><span class="k">${L.cls}</span><span class="c">:</span><span class="v">${esc(ctx.className||'-')}</span></div></td></tr>
-</tbody></table><div class="srp-shadow"></div>`}
+function headHtml(ctx,title){const L=T[ctx.lang],st=ctx.student;return`<div class="srp-title">${esc(title)}</div>
+<div class="srp-id"><div class="srp-kv l"><span>${L.name}</span><span>:</span><span class="v">${esc(st.name||'')}</span><span>${L.cls}</span><span>:</span><span class="v">${esc(ctx.className||'-')}</span></div><img src="${LOGO}" alt=""><div class="srp-kv r"><span>${L.semL}</span><span>:</span><span>${esc(L.sem(ctx.semester))}</span><span>${L.year}</span><span>:</span><span>${esc(ctx.year||'-')}</span></div></div>`}
 function boxes(selected){return GRADES.map(g=>`<td class="c"><span class="srp-box${selected===g?' on':''}" aria-label="${g}${selected===g?' ✓':''}"></span></td>`).join('')}
-function signHtml(ctx){const L=T[ctx.lang],tr=ctx.teachers||{};let d=null;if(ctx.printDate){const x=new Date(ctx.printDate+'T00:00:00');if(!Number.isNaN(x.getTime()))d=x}
+function signHtml(ctx,third){const L=T[ctx.lang],tr=ctx.teachers||{};let d=null;if(ctx.printDate){const x=new Date(ctx.printDate+'T00:00:00');if(!Number.isNaN(x.getTime()))d=x}
  const hijri=String(ctx.hijri||'').trim();const hijriLine=hijri?`Depok, ${esc(hijri)}${/\b(H|AH|M|CE)$/i.test(hijri)?'':L.hijriSuffix}`:'';
  const img=u=>u?`<img crossorigin="anonymous" src="${esc(u)}" alt="">`:'';
- return`<div class="srp-sign-area"><div class="srp-date">${hijriLine?`<div><u>${hijriLine}</u></div><div>${esc(L.masehi(d))}</div>`:`<div>Depok, ${esc(L.masehi(d))}</div>`}</div>
+ return`<div class="srp-sign-area"><div class="srp-date">${hijriLine?`<div><u>${hijriLine}</u></div><div>${esc(L.masehi(d))}</div>`:`<div><u>Depok, ${esc(L.masehi(d))}</u></div>`}</div>
 <div class="srp-sign"><div>${L.parent}<div class="line"></div></div><div>${L.homeroom}${img(tr.homeroom_signature_url)}<div class="name">${esc(tr.homeroom||'_______________')}</div></div><div>${L.principal}${img(tr.principal_signature_url)}<div class="name">${esc(tr.principal||'_______________')}</div></div></div></div>`}
 
-function nilaiPage(ctx){const L=T[ctx.lang],subs=ctx.subjects,acad=ctx.academic||{};
- const row=(no,s,sub)=>{const a=acad[s.id]||{},f=a.final;const k=s.kktp_min==null?'-':(s.kktp_min===s.kktp_max?String(s.kktp_min):`${s.kktp_min}-${s.kktp_max}`);return`<tr><td class="c">${no}</td><td${sub?' class="sub"':''}>${sub?letters(sub-1)+'. ':''}${esc(subjectName(s,ctx.lang))}</td><td class="c">${esc(k)}</td><td class="c"><b>${f==null?'-':f}</b></td><td${f==null?' class="muted"':''}>${f==null?esc(L.incomplete):esc(terbilang(f,ctx.lang))}</td></tr>`};
+function nilaiPage(ctx){const L=T[ctx.lang],subs=ctx.subjects,acad=ctx.academic||{},st=ctx.student;
+ const kk=s=>s.kktp_min==null?'-':(s.kktp_min===s.kktp_max?String(s.kktp_min):`${s.kktp_min}-${s.kktp_max}`);
+ const cells=s=>{const f=(acad[s.id]||{}).final;return`<td class="c">${esc(kk(s))}</td><td class="c">${f==null?'-':f}</td><td${f==null?' class="muted"':''}>${f==null?esc(L.incomplete):esc(terbilang(f,ctx.lang))}</td>`};
+ const group=(no,label,list)=>`<tr><td class="c" rowspan="${list.length+1}">${no}</td><td>${esc(label)}</td><td class="grey"></td><td class="grey" colspan="2"></td></tr>`+list.map(s=>`<tr><td class="sub"><span class="bul"></span>${esc(subjectName(s,ctx.lang))}</td>${cells(s)}</tr>`).join('');
  const pai=subs.filter(s=>classify(s).group==='pai'),mulok=subs.filter(s=>classify(s).group==='mulok'),main=subs.filter(s=>classify(s).group==='main');let no=0,body='';
- if(pai.length){no++;body+=`<tr class="grp"><td class="c">${no}</td><td colspan="4">${L.pai}</td></tr>`+pai.map((s,i)=>row('',s,i+1)).join('')}
- for(const s of main){no++;body+=row(no,s,0)}
- if(mulok.length){no++;body+=`<tr class="grp"><td class="c">${no}</td><td colspan="4">${L.mulok}</td></tr>`+mulok.map((s,i)=>row('',s,i+1)).join('')}
+ if(pai.length)body+=group(++no,L.pai,pai);
+ for(const s of main)body+=`<tr><td class="c">${++no}</td><td>${esc(subjectName(s,ctx.lang))}</td>${cells(s)}</tr>`;
+ if(mulok.length)body+=group(++no,L.mulok,mulok);
  if(!body)body=`<tr><td colspan="5" class="c muted">${L.noSubject}</td></tr>`;
- const e=ctx.entry||{},kp=e.kepribadian||{},att=ctx.attendance||{};
- return headHtml(ctx,L.nilai)+`<div class="srp-title">${L.lphb}</div><div class="srp-sec" style="margin-top:0">${L.secA}</div>
-<table class="srp-t"><colgroup><col style="width:8%"><col style="width:46%"><col style="width:12%"><col style="width:10%"><col></colgroup><thead><tr><th rowspan="2">${L.no}</th><th rowspan="2">${L.subject}</th><th rowspan="2">${L.kktp}</th><th colspan="2">${L.score}</th></tr><tr><th>${L.num}</th><th>${L.words}</th></tr></thead><tbody>${body}</tbody></table>
-<div class="srp-two"><div><div class="srp-sec">${L.secB}</div><table class="srp-t"><colgroup><col style="width:14%"><col><col style="width:24%"></colgroup><thead><tr><th>${L.no}</th><th>${L.aspect}</th><th>${L.value}</th></tr></thead><tbody>${KEPRIBADIAN.map((k,i)=>`<tr><td class="c">${i+1}</td><td>${esc(k[ctx.lang])}</td><td class="c"><b>${esc(kp[k.key]||'-')}</b></td></tr>`).join('')}</tbody></table><div class="srp-legend">${esc(LEGEND.kepribadian[ctx.lang])}</div></div>
-<div><div class="srp-sec">${L.secC}</div><table class="srp-t"><colgroup><col style="width:14%"><col><col style="width:30%"></colgroup><thead><tr><th>${L.no}</th><th>${L.aspect}</th><th>${L.days}</th></tr></thead><tbody>${[[L.sick,att.sick],[L.excused,att.excused],[L.unexcused,att.unexcused]].map(([l,v],i)=>`<tr><td class="c">${i+1}</td><td>${l}</td><td class="c">${Number(v)||0}</td></tr>`).join('')}</tbody></table></div></div>`+signHtml(ctx)}
+ const kp=(ctx.entry||{}).kepribadian||{},att=ctx.attendance||{};
+ return`<div class="srp-title">${esc(L.nilai)}</div>
+<div class="srp-nid"><div class="srp-kv l"><span>${L.school}</span><span>:</span><span class="v">${SCHOOL}</span><span>${L.nameLong}</span><span>:</span><span class="v">${esc(st.name||'')}</span><span>NISN</span><span>:</span><span class="v">${esc(st.nisn||'-')}</span><span>NPSN</span><span>:</span><span class="v">70004670</span></div><div class="srp-kv r"><span>${L.cls}</span><span>:</span><span class="v">${esc(ctx.className||'-')}</span><span>${L.semL}</span><span>:</span><span>${esc(L.sem(ctx.semester))}</span><span>${L.year}</span><span>:</span><span>${esc(ctx.year||'-')}</span></div><img src="${LOGO}" alt=""></div>
+<div class="srp-big">${L.lphb}</div>
+<table class="srp-t"><colgroup><col style="width:7%"><col style="width:44%"><col style="width:12%"><col style="width:10%"><col></colgroup><thead><tr class="hd"><th rowspan="2">${L.no}</th><th rowspan="2">${L.subject}</th><th rowspan="2">${L.kktp}</th><th colspan="2">${L.score}</th></tr><tr class="hd"><th>${L.num}</th><th>${L.words}</th></tr></thead><tbody>${body}</tbody></table>
+<div class="srp-two"><table class="srp-t"><colgroup><col style="width:13%"><col><col style="width:26%"></colgroup><thead><tr class="hd"><th>${L.no}</th><th>${L.kepribadian}</th><th>${L.value}</th></tr></thead><tbody>${KEPRIBADIAN.map((k,i)=>`<tr><td class="c">${i+1}</td><td>${esc(k[ctx.lang])}</td><td class="c">${esc(kp[k.key]||'-')}</td></tr>`).join('')}</tbody></table>
+<table class="srp-t"><colgroup><col><col style="width:30%"></colgroup><thead><tr class="hd"><th>${L.absence}</th><th>${L.days}</th></tr></thead><tbody>${[[L.sick,att.sick],[L.excused,att.excused],[L.unexcused,att.unexcused]].map(([l,v])=>`<tr><td><span class="bul" style="margin-left:0"></span>${l}</td><td class="c">${Number(v)||0}</td></tr>`).join('')}</tbody></table></div>`+signHtml(ctx)}
 
 /* Paginate blocks of rows onto A4 pages using an estimated height budget (mm). */
 function paginate(blocks,budget){const pages=[];let cur=[],used=0;for(const b of blocks){if(cur.length&&used+b.h>budget){pages.push(cur);cur=[];used=0}cur.push(b);used+=b.h}if(cur.length)pages.push(cur);return pages.length?pages:[[]]}
-// Calibrated in Chrome on A4: 1 line = 6.6mm, 2 lines = 9.5mm, ~75 characters per line in the description column.
-const rowH=text=>3.7+2.9*Math.max(1,Math.ceil(String(text||'').length/72));
-function gradeBlocks(groups,ctx){return groups.map(g=>({h:6+(g.sub?6.6:0)+g.rows.reduce((n,r)=>n+rowH(r.label)+(r.subhead?6.6:0),0)+3,html:`<table class="srp-t" style="margin-bottom:3mm"><colgroup><col style="width:8%"><col><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup><thead><tr><th>${esc(g.code)}</th><th style="text-align:left">${esc(g.title)}</th>${GRADES.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${g.sub?`<tr class="grp"><td></td><td colspan="5">${esc(g.sub)}</td></tr>`:''}${g.rows.length?g.rows.map((r,i)=>`${r.subhead?`<tr class="grp"><td></td><td colspan="5">${esc(r.subhead)}</td></tr>`:''}<tr><td class="c">${letters(i%26)}</td><td>${esc(r.label)}</td>${boxes(r.grade)}</tr>`).join(''):`<tr><td></td><td colspan="5" class="muted">${esc(T[ctx.lang].noTp)}</td></tr>`}</tbody></table>`}))}
+// Calibrated in Chrome on A4 (Tahoma 10.5px, ~118mm label column): one line ≈ 5.6mm, each extra line ≈ +3.9mm.
+const rowH=text=>1.7+3.9*Math.max(1,Math.ceil(String(text||'').length/80));
+function gradeBlocks(groups,ctx){return groups.map(g=>({h:7.5+g.rows.reduce((n,r)=>n+rowH(r.label)+(r.subhead?5.6:0),0)+3.5,html:`<table class="srp-t"><colgroup><col style="width:6.5%"><col><col style="width:7.5%"><col style="width:7.5%"><col style="width:7.5%"><col style="width:7.5%"></colgroup><thead><tr class="hd"><th class="code">${esc(g.code)}</th><th class="title">${esc(g.title)}</th>${GRADES.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${g.rows.length?g.rows.map(r=>`${r.subhead?`<tr class="sh"><td></td><td colspan="5">${esc(r.subhead.toUpperCase())}</td></tr>`:''}<tr><td class="ck">✔</td><td>${esc(r.label)}</td>${boxes(r.grade)}</tr>`).join(''):`<tr><td></td><td colspan="5" class="muted">${esc(T[ctx.lang].noTp)}</td></tr>`}</tbody></table><div class="srp-gap"></div>`}))}
 function kognitifGroups(ctx,kind){const acad=ctx.academic||{};return ctx.subjects.filter(s=>classify(s).kind===kind).map((s,idx)=>{const a=acad[s.id]||{};return{code:String(idx+1).padStart(2,'0'),title:subjectName(s,ctx.lang).toUpperCase(),rows:(s.objectives||[]).map((o,i)=>({label:o.description||`TP ${i+1}`,grade:tpGrade(a.tp?.[i])}))}})}
 function sikapGroups(ctx){const v=ctx.entry?.sikap||{};return SIKAP.map(c=>({code:c.code,title:c[ctx.lang].toUpperCase(),rows:c.items.map(([k,id,en])=>({label:ctx.lang==='en'?en:id,grade:v[k]||''}))}))}
 function psikGroups(ctx){const v=ctx.entry?.psikomotor||{};return PSIKOMOTOR.map(c=>({code:c.code,title:c[ctx.lang].toUpperCase(),rows:c.groups.flatMap(g=>g.items.map(([k,id,en],i)=>({subhead:i===0?g[ctx.lang]:'',label:ctx.lang==='en'?en:id,grade:v[k]||''})))}))}
-function blockPages(ctx,title,groups,legendKey){const L=T[ctx.lang];if(!groups.length)return[headHtml(ctx,title)+`<p class="muted">${L.noSubject}</p>`];return paginate(gradeBlocks(groups,ctx),236).map(p=>headHtml(ctx,title)+p.map(b=>b.html).join('')+`<div class="srp-legend">${esc(LEGEND[legendKey][ctx.lang])}</div>`)}
-function komentarPage(ctx){const L=T[ctx.lang],c=String(ctx.entry?.komentar||'').trim();return headHtml(ctx,L.kom)+`<div class="srp-sec" style="margin-top:0">${L.commentTitle}</div><div class="srp-comment">${c?esc(c):`<span class="muted">${L.noComment}</span>`}</div>`+signHtml(ctx)}
+function blockPages(ctx,title,groups,legendKey){const L=T[ctx.lang];if(!groups.length)return[headHtml(ctx,title)+`<p class="muted">${L.noSubject}</p>`];return paginate(gradeBlocks(groups,ctx),206).map(p=>headHtml(ctx,title)+p.map(b=>b.html).join('')+`<div class="srp-legend">${esc(LEGEND[legendKey][ctx.lang])}</div>`)}
+function komentarPage(ctx){const L=T[ctx.lang],c=String(ctx.entry?.komentar||'').trim();return headHtml(ctx,L.kom)+`<div class="srp-comment"><div class="band"></div><div class="body">${c?esc(c):''}</div><div class="band"></div></div>`+signHtml(ctx)}
 
 /* Semua halaman satu siswa. report = hasil report-preview-v2 yang sudah ditempeli semester_print. */
 function pagesHtml(report,opts){
@@ -210,8 +222,13 @@ function pagesHtml(report,opts){
  const lang=opts?.lang==='en'?'en':'id';
  const ctx={lang,student:report.student||{},className:report.class?.name||sp.class?.name||'',semester:report.semester_no||sp.semester_no,year:report.academic_year||sp.academic_year,teachers:report.teachers||{},attendance:report.attendance||{},subjects:sp.subjects||[],academic:sp.student?.academic||{},entry:sp.student?.entry?.data||{},printDate:opts?.printDate||'',hijri:opts?.hijri||''};
  const L=T[lang];
- const pages=[nilaiPage(ctx),...blockPages(ctx,L.psik,psikGroups(ctx),'psikomotor'),...blockPages(ctx,L.kogu,kognitifGroups(ctx,'umum'),'kognitif'),...blockPages(ctx,L.kogd,kognitifGroups(ctx,'diniyah'),'kognitif'),...blockPages(ctx,L.sikap,sikapGroups(ctx),'sikap'),komentarPage(ctx)];
- return pages.map((html,i)=>`<section class="rpv-paper srp-page" data-student-id="${esc(ctx.student.id||'')}">${html}<div class="srp-foot"><span>${SCHOOL}</span><span>${L.page(i+1,pages.length)}</span></div></section>`).join('');
+ // Urutan cetak sekolah: 1 Komentar, 2-3 Sikap/Adab, 4-6 Tahfizh (dicetak terpisah), Kognitif mulai hal. 7, Psikomotorik, Nilai, lalu IKM (menyusul).
+ // Seperti sheet XSIK: lembar 1 = kategori A-C, lembar 2 = D-F.
+ const sg=sikapGroups(ctx);
+ const first=[komentarPage(ctx),...blockPages(ctx,L.sikap,sg.slice(0,3),'sikap'),...blockPages(ctx,L.sikap,sg.slice(3),'sikap')];
+ const rest=[...blockPages(ctx,L.kogu,kognitifGroups(ctx,'umum'),'kognitif'),...blockPages(ctx,L.kogd,kognitifGroups(ctx,'diniyah'),'kognitif'),...blockPages(ctx,L.psik,psikGroups(ctx),'psikomotor'),nilaiPage(ctx)];
+ const numbered=[...first.map((html,i)=>[html,i+1]),...rest.map((html,i)=>[html,first.length+TAHFIZH_PAGES+i+1])];
+ return numbered.map(([html,no])=>`<section class="rpv-paper srp-page" data-student-id="${esc(ctx.student.id||'')}" data-page-no="${no}">${html}<div class="srp-foot"><img src="${FOOTER}" alt=""></div><div class="srp-pno">${esc(L.page(no))}</div></section>`).join('');
 }
 
 /* Ambil data cetak satu kelas lalu tempelkan ke tiap laporan siswa. */
