@@ -174,8 +174,8 @@ function injectStyles(){if(document.getElementById('cq-semester-print-style'))re
 .srp-sign .name{margin-top:auto;text-decoration:underline;white-space:nowrap}.srp-sign .line{margin-top:auto;width:70%;border-bottom:1px solid #111;height:1px}
 .srp-sign img{position:absolute;top:5mm;left:50%;transform:translateX(-50%);max-width:44mm;max-height:20mm;object-fit:contain}
 .srp-comment{border:1.6px solid #000}.srp-comment .band{height:6.5mm;background:#ffffcc}.srp-comment .body{min-height:82mm;padding:4mm 5mm;border-top:1.6px solid #000;border-bottom:1.6px solid #000;font-family:Tahoma,Verdana,sans-serif;font-size:9.5pt;line-height:1.6;white-space:pre-wrap;text-align:justify}
-.srp-foot{position:absolute;left:12mm;right:12mm;bottom:6mm;height:23mm}.srp-foot img{width:100%;height:100%;object-fit:contain;object-position:left bottom}
-.srp-pno{position:absolute;left:15mm;right:14mm;bottom:1.5mm;text-align:center;font-family:Tahoma,Verdana,sans-serif;font-size:7pt;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srp-foot{position:absolute;left:0;right:0;bottom:0;height:26.4mm}.srp-foot img{display:block;width:100%;height:100%;object-fit:fill}
+.srp-pno{position:absolute;right:14mm;bottom:27.5mm;max-width:120mm;text-align:right;font-family:Tahoma,Verdana,sans-serif;font-size:7.5pt;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2mm;border-right:2px solid #b5174f}
 `;document.head.appendChild(s)}
 
 /* ---------- Bagian halaman ---------- */
