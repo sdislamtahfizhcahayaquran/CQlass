@@ -20,13 +20,14 @@ async function importRows(user:any,b:any){
   const u=await unit();const students=await rows(sb.from("students").select("id,nis,nisn,full_name,status").eq("school_unit_id",u.id));
   const byNis=new Map(),byNisn=new Map(),byName=new Map();
   for(const s of students){const a=normNis(s.nis),n=normNis(s.nisn),m=normName(s.full_name);if(a)byNis.set(a,s);if(n)byNisn.set(n,s);if(m){if(byName.has(m))byName.set(m,null);else byName.set(m,s)}}
-  const upserts:any[]=[],unmatched:any[]=[],seen=new Set();let withPhoto=0;
+  const prevEdits=new Map<string,any>(),prevPhoto=new Map<string,string>();{const ids=[...new Set(list.map((r:any)=>(byNis.get(normNis(r.nis))||byNisn.get(normNis(r.nisn))||byName.get(normName(r.full_name)))?.id).filter(Boolean))];for(let i=0;i<ids.length;i+=200){const ex=await rows(sb.from("student_profiles").select("student_id,photo_url,data->_edits").in("student_id",ids.slice(i,i+200)));for(const x of ex){if(x._edits&&typeof x._edits==="object")prevEdits.set(x.student_id,x._edits);if(x.photo_url)prevPhoto.set(x.student_id,x.photo_url)}}}
+  const upserts:any[]=[],unmatched:any[]=[],seen=new Set();let withPhoto=0,keptEdits=0;
   for(const r of list){const st=byNis.get(normNis(r.nis))||byNisn.get(normNis(r.nisn))||byName.get(normName(r.full_name))||null;
     if(!st||seen.has(st.id)){unmatched.push({nis:T(r.nis).slice(0,30),full_name:T(r.full_name).slice(0,120),class_name:T(r.class_name).slice(0,40),reason:st?"duplikat di file":"tidak ditemukan"});continue}
-    seen.add(st.id);const data=cleanObj(r.profile)||{};const p=photo(r.photo_url);if(p)withPhoto++;
-    upserts.push({student_id:st.id,data,photo_url:p,source_file:T(b.file_name).slice(0,200)||null,updated_by:user.id,updated_at:new Date().toISOString()})}
+    seen.add(st.id);const data=cleanObj(r.profile)||{};const ed=prevEdits.get(st.id);if(ed){const keep:any={};for(const[path,e]of Object.entries(ed as any)){const[g,f]=path.split(".");const inFile=T(data?.[g]?.[f]);if(inFile===T((e as any)?.file)){data[g]=data[g]||{};if(T((e as any).value))data[g][f]=(e as any).value;else delete data[g][f];keep[path]=e;keptEdits++}}if(Object.keys(keep).length)data._edits=keep}const p=photo(r.photo_url);if(p)withPhoto++;
+    upserts.push({student_id:st.id,data,photo_url:p||prevPhoto.get(st.id)||null,source_file:T(b.file_name).slice(0,200)||null,updated_by:user.id,updated_at:new Date().toISOString()})}
   for(let i=0;i<upserts.length;i+=100){const{error}=await sb.from("student_profiles").upsert(upserts.slice(i,i+100),{onConflict:"student_id"});if(error)throw error}
-  return J({success:true,received:list.length,saved:upserts.length,with_photo:withPhoto,unmatched})
+  return J({success:true,received:list.length,saved:upserts.length,with_photo:withPhoto,kept_edits:keptEdits,unmatched})
 }
 async function summary(){const u=await unit();const active=await rows(sb.from("students").select("id").eq("school_unit_id",u.id).ilike("status","aktif"));const ids=new Set(active.map((x:any)=>x.id));const prof=await rows(sb.from("student_profiles").select("student_id,photo_url,updated_at,source_file"));const mine=prof.filter((p:any)=>ids.has(p.student_id));const last=mine.map((p:any)=>p.updated_at).sort().pop()||null;const src=mine.find((p:any)=>p.updated_at===last)?.source_file||null;return J({success:true,active_students:ids.size,profiles:mine.length,with_photo:mine.filter((p:any)=>p.photo_url).length,last_import_at:last,last_file:src})}
 
@@ -50,6 +51,25 @@ async function coverClass(b:any){const u=await unit(),p=await period(u);const cl
 
 async function profileList(b:any){const u=await unit(),p=await period(u);const classId=T(b.class_id);const en=await rows(sb.from("student_enrollments").select("student_id,class_id").eq("academic_year_id",p.year.id).eq("semester_no",p.semester_no).eq("is_active",true));const pick=classId?en.filter((e:any)=>e.class_id===classId):en;const ids=[...new Set(pick.map((e:any)=>e.student_id))];if(!ids.length)return J({success:true,students:[]});const cls=await rows(sb.from("classes").select("id,name").eq("academic_year_id",p.year.id));const cm=new Map(cls.map((c:any)=>[c.id,c.name]));const ec=new Map(pick.map((e:any)=>[e.student_id,cm.get(e.class_id)||""]));const out:any[]=[];for(let i=0;i<ids.length;i+=200){const part=ids.slice(i,i+200);const[st,pr]=await Promise.all([rows(sb.from("students").select("id,nis,nisn,full_name").in("id",part)),rows(sb.from("student_profiles").select("student_id,photo_url,updated_at").in("student_id",part))]);const pm=new Map(pr.map((x:any)=>[x.student_id,x]));for(const s of st){const pf:any=pm.get(s.id);out.push({id:s.id,nis:T(s.nis),nisn:T(s.nisn),name:T(s.full_name),class_name:ec.get(s.id)||"",has_profile:!!pf,has_photo:!!pf?.photo_url,updated_at:pf?.updated_at||null})}}out.sort((a,b)=>a.class_name.localeCompare(b.class_name,"id",{numeric:true})||a.name.localeCompare(b.name,"id"));return J({success:true,students:out})}
 async function profileGet(b:any){const id=T(b.student_id);if(!id)return J({success:false,error:"student_required"},400);const st=await rows(sb.from("students").select("id,nis,nisn,full_name,gender,status").eq("id",id).maybeSingle());if(!st)return J({success:false,error:"student_not_found"},404);const pf=await rows(sb.from("student_profiles").select("data,photo_url,source_file,updated_at").eq("student_id",id).maybeSingle());return J({success:true,student:st,profile:pf||null})}
+
+const PGROUPS=new Set(["siswa","ayah","ibu","wali","lainnya"]);
+function validIso(v:string){const m=v.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return false;const d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));return d.getUTCFullYear()===+m[1]&&d.getUTCMonth()===+m[2]-1&&d.getUTCDate()===+m[3]}
+async function profileSave(user:any,b:any){const id=T(b.student_id);const st=await rows(sb.from("students").select("id,full_name,nisn,gender").eq("id",id).maybeSingle());if(!st)return J({success:false,error:"Siswa tidak ditemukan."},404);
+  const ch=b.changes&&typeof b.changes==="object"?b.changes:{};const entries=Object.entries(ch);if(entries.length>300)return J({success:false,error:"Terlalu banyak perubahan."},400);
+  const pf=await rows(sb.from("student_profiles").select("data,photo_url").eq("student_id",id).maybeSingle());const data:any=pf?.data&&typeof pf.data==="object"?structuredClone(pf.data):{};const edits:any=data._edits&&typeof data._edits==="object"?data._edits:{};
+  for(const[path,raw]of entries){const[g,f,extra]=String(path).split(".");if(!PGROUPS.has(g)||!/^[a-z0-9_]{1,80}$/.test(f||"")||extra!==undefined)return J({success:false,error:`Kolom tidak dikenal: ${path}`},400);
+    const v=T(raw).slice(0,600);if(v&&/tanggal/.test(f)&&/^\d{4}-/.test(v)&&!validIso(v))return J({success:false,error:`Tanggal tidak valid: ${f.replace(/_/g," ")}`},400);
+    const old=T(data?.[g]?.[f]);if(old===v)continue;const fileVal=edits[path]?edits[path].file:old;
+    data[g]=data[g]&&typeof data[g]==="object"?data[g]:{};if(v)data[g][f]=v;else delete data[g][f];
+    if(T(fileVal)===v)delete edits[path];else edits[path]={file:T(fileVal),value:v,at:new Date().toISOString()}}
+  if(Object.keys(edits).length)data._edits=edits;else delete data._edits;
+  const photoIn=b.photo_url===undefined?pf?.photo_url??null:(T(b.photo_url)?photo(b.photo_url):null);
+  if(T(b.photo_url)&&!photoIn)return J({success:false,error:"Link pas foto harus diawali https://"},400);
+  const{error}=await sb.from("student_profiles").upsert({student_id:id,data,photo_url:photoIn,updated_by:user.id,updated_at:new Date().toISOString()},{onConflict:"student_id"});if(error)throw error;
+  const s:any=data.siswa||{};const patch:any={};const nm=T(s.nama_siswa),ni=normNis(s.nisn),g=normG(s.jenis_kelamin);
+  if(ch["siswa.nama_siswa"]!==undefined&&nm&&nm!==T(st.full_name))patch.full_name=nm;if(ch["siswa.nisn"]!==undefined&&ni&&ni!==normNis(st.nisn))patch.nisn=ni;if(ch["siswa.jenis_kelamin"]!==undefined&&g&&g!==T(st.gender))patch.gender=g;
+  if(Object.keys(patch).length){patch.updated_at=new Date().toISOString();const r=await sb.from("students").update(patch).eq("id",id);if(r.error)throw r.error}
+  return J({success:true,identity_updated:Object.keys(patch).filter(k=>k!=="updated_at")})}
 
 /* ---- Satu pintu: siswa baru, pindah kelas, dan identitas dari file master ---- */
 const normG=(v:any)=>{const x=L(v);return x.startsWith("p")?"Perempuan":x.startsWith("l")?"Laki-laki":""};
@@ -78,6 +98,6 @@ export async function handleStudentProfiles(req:Request){if(req.method==="OPTION
   try{const user=await auth(req);if(!user)return J({success:false,error:"unauthorized"},401);const b=await req.json().catch(()=>({})),a=L(b.action);
     if(["cover_bootstrap","cover_class","cover_signature_save","cover_signature_delete"].includes(a)){if(!user.is_admin&&!user.is_kesiswaan)return J({success:false,error:"forbidden"},403);if(a==="cover_signature_save")return await coverSignatureSave(user,b);if(a==="cover_signature_delete")return await coverSignatureDelete(b);return a==="cover_bootstrap"?await coverBootstrap():await coverClass(b)}
     if(!user.is_admin)return J({success:false,error:"forbidden"},403);
-    if(a==="summary")return await summary();if(a==="profile_list")return await profileList(b);if(a==="profile_get")return await profileGet(b);if(a==="profile_classes")return await coverBootstrap();if(a==="import_rows")return await importRows(user,b);if(a==="sync_preview")return await syncPreview(b);if(a==="sync_apply")return await syncApply(b);
+    if(a==="summary")return await summary();if(a==="profile_list")return await profileList(b);if(a==="profile_get")return await profileGet(b);if(a==="profile_save")return await profileSave(user,b);if(a==="profile_classes")return await coverBootstrap();if(a==="import_rows")return await importRows(user,b);if(a==="sync_preview")return await syncPreview(b);if(a==="sync_apply")return await syncApply(b);
     return J({success:false,error:"unknown_action"},400)}
   catch(e){console.error("student-profiles",e);return J({success:false,error:T((e as any)?.message)||"internal_error"},500)}}
