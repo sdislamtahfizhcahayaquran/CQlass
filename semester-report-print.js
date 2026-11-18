@@ -132,13 +132,13 @@ const T={
   nilai:'NILAI RAPOR',psik:'PENILAIAN PSIKOMOTORIK',kogu:'PENILAIAN KOGNITIF UMUM',kogd:'PENILAIAN KOGNITIF DINIYAH',sikap:'PENILAIAN SIKAP',kom:'KOMENTAR UMUM',
   lphb:'LAPORAN PENILAIAN HASIL BELAJAR SISWA',no:'NO',subject:'MATA PELAJARAN',kktp:'KKTP',score:'NILAI',num:'ANGKA',words:'HURUF',
   pai:'Pendidikan Agama Islam dan Budi Pekerti',mulok:'Muatan Lokal',kepribadian:'KEPRIBADIAN',value:'NILAI',absence:'KETIDAKHADIRAN',days:'HARI',sick:'Sakit',excused:'Izin',unexcused:'Tanpa Keterangan',
-  parent:'Orang Tua / Wali',homeroom:'Wali Kelas',principal:'Kepala Sekolah',page:i=>`Halaman ${i}`,noComment:'',noTp:'Tujuan pembelajaran belum diatur.',noSubject:'Belum ada mata pelajaran untuk kelompok ini.',
+  parent:'Orang Tua / Wali',homeroom:'Wali Kelas',principal:'Kepala Sekolah',page:(i,n)=>`Halaman ${i}${n?` | ${n}`:''}`,noComment:'',noTp:'Tujuan pembelajaran belum diatur.',noSubject:'Belum ada mata pelajaran untuk kelompok ini.',
   masehi:d=>d?new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'long',year:'numeric'}).format(d)+' M':'-',hijriSuffix:' H',incomplete:'Nilai belum lengkap'},
  en:{sem:n=>Number(n)===2?'II (Two)':'I (One)',year:'Academic Year',name:'Name',nameLong:'Student Name',cls:'Class',semL:'Semester',school:'School',
   nilai:'SEMESTER REPORT CARD',psik:'PSYCHOMOTOR ASSESSMENT',kogu:'COGNITIVE ASSESSMENT: GENERAL SUBJECTS',kogd:'COGNITIVE ASSESSMENT: ISLAMIC STUDIES',sikap:'ATTITUDE ASSESSMENT',kom:'GENERAL COMMENTS',
   lphb:'STUDENT LEARNING ACHIEVEMENT REPORT',no:'NO',subject:'SUBJECT',kktp:'KKTP',score:'SCORE',num:'NUMBER',words:'IN WORDS',
   pai:'Islamic Studies',mulok:'Local Content Subjects',kepribadian:'PERSONALITY',value:'RATING',absence:'ABSENCES',days:'DAYS',sick:'Illness',excused:'Excused',unexcused:'Unexcused',
-  parent:'Parent / Guardian',homeroom:'Homeroom Teacher',principal:'Principal',page:i=>`Page ${i}`,noComment:'',noTp:'Learning objectives have not been set.',noSubject:'No subjects in this group yet.',
+  parent:'Parent / Guardian',homeroom:'Homeroom Teacher',principal:'Principal',page:(i,n)=>`Page ${i}${n?` | ${n}`:''}`,noComment:'',noTp:'Learning objectives have not been set.',noSubject:'No subjects in this group yet.',
   masehi:d=>d?new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'long',year:'numeric'}).format(d)+' CE':'-',hijriSuffix:' AH',incomplete:'Incomplete scores'}
 };
 // Rapor Tahfizh (3 lembar) dicetak terpisah tetapi nomor halamannya disisakan setelah halaman Sikap/Adab.
@@ -150,32 +150,32 @@ function letters(i){return String.fromCharCode(97+i)}
 
 /* ---------- Gaya (mengikuti sheet cetak Excel) ---------- */
 function injectStyles(){if(document.getElementById('cq-semester-print-style'))return;const s=document.createElement('style');s.id='cq-semester-print-style';s.textContent=`
-.srp-page{display:flex;flex-direction:column;padding:13mm 14mm 32mm 15mm!important;font-family:Tahoma,Verdana,'Segoe UI',sans-serif;font-size:10.5px;color:#111}
-.srp-title{font-family:Calibri,'Segoe UI',Arial,sans-serif;font-weight:700;font-size:15.5px;letter-spacing:.2px;margin:0 0 3mm 112mm;white-space:nowrap}
-.srp-id{display:grid;grid-template-columns:1fr 20mm 1fr;align-items:center;column-gap:4mm;margin:0 0 6mm;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
+.srp-page{display:flex;flex-direction:column;padding:13mm 14mm 32mm 15mm!important;font-family:Tahoma,Verdana,'Segoe UI',sans-serif;font-size:8pt;color:#111}
+.srp-title{font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-weight:700;font-size:12pt;letter-spacing:.2px;margin:0 0 3mm 112mm;white-space:nowrap}
+.srp-id{display:grid;grid-template-columns:1fr 20mm 1fr;align-items:center;column-gap:4mm;margin:0 0 6mm;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:8pt}
 .srp-id img{width:20mm;height:20mm;object-fit:contain}
 .srp-kv{display:grid;grid-template-columns:auto 4mm 1fr;row-gap:2mm;align-items:baseline}.srp-kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srp-kv.r{grid-template-columns:24mm 4mm 1fr}.srp-kv.l{grid-template-columns:14mm 4mm 1fr}
-.srp-nid{display:grid;grid-template-columns:1fr 64mm 20mm;align-items:start;column-gap:3mm;margin:0 0 5mm;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
+.srp-nid{display:grid;grid-template-columns:1fr 64mm 20mm;align-items:start;column-gap:3mm;margin:0 0 5mm;font-family:Tahoma,Verdana,sans-serif;font-size:8pt}
 .srp-nid .srp-kv.l{grid-template-columns:26mm 4mm 1fr}.srp-nid img{width:20mm;height:20mm;object-fit:contain;margin-top:-3mm}
-.srp-big{text-align:center;font-family:Tahoma,Verdana,sans-serif;font-weight:900;font-size:17px;margin:1mm 0 6mm;letter-spacing:.3px}
-.srp-t{width:100%;border-collapse:collapse;table-layout:fixed;border:1.6px solid #000;line-height:1.25}.srp-t td,.srp-t th{border:.6px solid #000;padding:1mm 1.6mm;vertical-align:middle}
-.srp-t .hd th,.srp-t th.hd{background:#ffffcc;font-weight:900;text-align:center}.srp-t .hd th.title{text-align:left;font-size:12.5px;letter-spacing:.2px}
-.srp-t .code{text-align:center;font-weight:900;font-size:12.5px}.srp-t .c{text-align:center}.srp-t .ck{text-align:center;font-size:10px}
+.srp-big{text-align:center;font-family:Tahoma,Verdana,sans-serif;font-weight:700;font-size:16pt;margin:1mm 0 6mm;letter-spacing:.3px}
+.srp-t{width:100%;border-collapse:collapse;table-layout:fixed;border:1.6px solid #000;line-height:1.25;font-size:8pt}.srp-t td,.srp-t th{border:.6px solid #000;padding:1mm 1.6mm;vertical-align:middle}
+.srp-t .hd th,.srp-t th.hd{background:#ffffcc;font-weight:900;text-align:center}.srp-t .hd th.title{text-align:left;font-size:10pt;letter-spacing:.2px}
+.srp-t .code{text-align:center;font-weight:900;font-size:10pt}.srp-t .c{text-align:center}.srp-t .ck{text-align:center;font-size:7.5pt}
 .srp-t .sh td{font-weight:900;background:#fff}.srp-t .grey{background:#e6e6e6}.srp-t .sub{padding-left:3mm}.srp-t .bul{display:inline-block;width:2.6mm;height:2.6mm;background:#111;margin:0 3mm 0 1mm;vertical-align:middle}
 .srp-t .muted{color:#666;font-style:italic}.srp-gap{height:3.5mm}
 .srp-box{display:inline-block;width:3.4mm;height:3.4mm;border:1px solid #333;vertical-align:middle;background:#fff}.srp-box.on{background:#111;border-color:#111}
-.srp-legend{font-size:10.5px;font-style:italic;margin:3mm 0 0 10mm}
+.srp-legend{font-size:8pt;font-style:italic;margin:3mm 0 0 10mm}
 .srp-two{display:grid;grid-template-columns:1fr 1fr;column-gap:16mm;align-items:start;margin-top:7mm}
 .srp-sign-area{margin-top:6mm}
-.srp-date{text-align:center;line-height:1.7;margin-bottom:1mm;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
-.srp-sign{display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:4mm;text-align:center;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11.5px}
+.srp-date{text-align:center;line-height:1.7;margin-bottom:1mm;font-family:Tahoma,Verdana,sans-serif;font-size:8pt}
+.srp-sign{display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:4mm;text-align:center;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:8pt}
 .srp-sign>div{position:relative;min-height:33mm;display:flex;flex-direction:column;align-items:center}
 .srp-sign .name{margin-top:auto;text-decoration:underline;white-space:nowrap}.srp-sign .line{margin-top:auto;width:70%;border-bottom:1px solid #111;height:1px}
 .srp-sign img{position:absolute;top:5mm;left:50%;transform:translateX(-50%);max-width:44mm;max-height:20mm;object-fit:contain}
-.srp-comment{border:1.6px solid #000}.srp-comment .band{height:6.5mm;background:#ffffcc}.srp-comment .body{min-height:82mm;padding:4mm 5mm;border-top:1.6px solid #000;border-bottom:1.6px solid #000;font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.7;white-space:pre-wrap;text-align:justify}
+.srp-comment{border:1.6px solid #000}.srp-comment .band{height:6.5mm;background:#ffffcc}.srp-comment .body{min-height:82mm;padding:4mm 5mm;border-top:1.6px solid #000;border-bottom:1.6px solid #000;font-family:Tahoma,Verdana,sans-serif;font-size:9.5pt;line-height:1.6;white-space:pre-wrap;text-align:justify}
 .srp-foot{position:absolute;left:12mm;right:12mm;bottom:6mm;height:23mm}.srp-foot img{width:100%;height:100%;object-fit:contain;object-position:left bottom}
-.srp-pno{position:absolute;left:0;right:0;bottom:1.5mm;text-align:center;font-size:9px;color:#444}
+.srp-pno{position:absolute;left:15mm;right:14mm;bottom:1.5mm;text-align:center;font-family:Tahoma,Verdana,sans-serif;font-size:7pt;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 `;document.head.appendChild(s)}
 
 /* ---------- Bagian halaman ---------- */
@@ -228,7 +228,7 @@ function pagesHtml(report,opts){
  const first=[komentarPage(ctx),...blockPages(ctx,L.sikap,sg.slice(0,3),'sikap'),...blockPages(ctx,L.sikap,sg.slice(3),'sikap')];
  const rest=[...blockPages(ctx,L.kogu,kognitifGroups(ctx,'umum'),'kognitif'),...blockPages(ctx,L.kogd,kognitifGroups(ctx,'diniyah'),'kognitif'),...blockPages(ctx,L.psik,psikGroups(ctx),'psikomotor'),nilaiPage(ctx)];
  const numbered=[...first.map((html,i)=>[html,i+1]),...rest.map((html,i)=>[html,first.length+TAHFIZH_PAGES+i+1])];
- return numbered.map(([html,no])=>`<section class="rpv-paper srp-page" data-student-id="${esc(ctx.student.id||'')}" data-page-no="${no}">${html}<div class="srp-foot"><img src="${FOOTER}" alt=""></div><div class="srp-pno">${esc(L.page(no))}</div></section>`).join('');
+ return numbered.map(([html,no])=>`<section class="rpv-paper srp-page" data-student-id="${esc(ctx.student.id||'')}" data-page-no="${no}">${html}<div class="srp-foot"><img src="${FOOTER}" alt=""></div><div class="srp-pno">${esc(L.page(no,ctx.student.name))}</div></section>`).join('');
 }
 
 /* Ambil data cetak satu kelas lalu tempelkan ke tiap laporan siswa. */
