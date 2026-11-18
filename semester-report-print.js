@@ -110,7 +110,7 @@ const SUBJECTS=[
  {key:'mtk',re:/matematika|mathematics/,en:'Mathematics',group:'main',kind:'umum'},
  {key:'ipas',re:/ipas|alam dan sosial|natural and social/,en:'Natural and Social Sciences',group:'main',kind:'umum'},
  {key:'ipa',re:/\bipa\b|pengetahuan alam|natural sciences|sains/,en:'Natural Sciences',group:'main',kind:'umum'},
- {key:'ips',re:/\bips\b|pengetahuan sosial|social sciences/,en:'Social Sciences',group:'main',kind:'umum'},
+ {key:'ips',re:/\bips\b|pengetahuan sosial|social sciences|\bsosial\b/,en:'Social Sciences',group:'main',kind:'umum'},
  {key:'sbdp',re:/seni|sbdp|prakarya|arts/,en:'Arts, Culture, and Crafts',group:'main',kind:'umum'},
  {key:'pjok',re:/pjok|jasmani|penjas|physical/,en:'Physical Education, Sports, and Health',group:'main',kind:'umum'}
 ];
@@ -149,34 +149,43 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function letters(i){return String.fromCharCode(97+i)}
 
 /* ---------- Gaya (mengikuti sheet cetak Excel) ---------- */
-function injectStyles(){if(document.getElementById('cq-semester-print-style'))return;const s=document.createElement('style');s.id='cq-semester-print-style';s.textContent=`
-.srp-page{display:flex;flex-direction:column;padding:13mm 14mm 32mm 15mm!important;font-family:Tahoma,Verdana,'Segoe UI',sans-serif;font-size:8pt;color:#111}
-.srp-title{font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-weight:700;font-size:12pt;letter-spacing:.2px;margin:0 0 3mm 112mm;white-space:nowrap}
-.srp-id{display:grid;grid-template-columns:1fr 20mm 1fr;align-items:center;column-gap:4mm;margin:0 0 6mm;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:8pt}
-.srp-id img{width:20mm;height:20mm;object-fit:contain}
-.srp-kv{display:grid;grid-template-columns:auto 4mm 1fr;row-gap:2mm;align-items:baseline}.srp-kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+// CQlass theme CSS (cq-global-role-theme.css) sets font, 13px font-size, 8px cell padding and line-height on every
+// #app-screen .content element with !important / high specificity. To keep the Excel geometry, every rule below is
+// emitted twice (plain and prefixed with "#app-screen#app-screen .content") and every declaration gets !important.
+// The doubled id outranks the theme's "#app-screen :is(...):not(...)x6" font rule (specificity 1,6,1).
+const RAPOR_CSS=`
+.srp-page,.srp-page *{font-family:Tahoma,Verdana,sans-serif;box-sizing:border-box}
+.srp-title,.srp-id,.srp-id *,.srp-sign,.srp-sign *{font-family:'Segoe UI',Tahoma,Arial,sans-serif}
+.srp-page{display:flex;flex-direction:column;padding:13mm 14mm 32mm 15mm;font-size:8pt;line-height:1.3;color:#111}
+.srp-title{font-weight:700;font-size:12pt;line-height:1.3;letter-spacing:.2px;width:max-content;max-width:100%;min-width:69mm;margin:0 0 3mm auto;white-space:nowrap}
+.srp-id{display:grid;grid-template-columns:1fr 20mm 1fr;align-items:center;column-gap:4mm;margin:0 0 6mm;font-size:8pt;line-height:1.3}
+.srp-id img{width:20mm;height:20mm;max-width:none;object-fit:contain}
+.srp-kv{display:grid;grid-template-columns:auto 4mm 1fr;row-gap:2mm;align-items:baseline}.srp-kv span{font-size:8pt;line-height:1.3}.srp-kv .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srp-kv.r{grid-template-columns:24mm 4mm 1fr}.srp-kv.l{grid-template-columns:14mm 4mm 1fr}
-.srp-nid{display:grid;grid-template-columns:1fr 64mm 20mm;align-items:start;column-gap:3mm;margin:0 0 5mm;font-family:Tahoma,Verdana,sans-serif;font-size:8pt}
-.srp-nid .srp-kv.l{grid-template-columns:26mm 4mm 1fr}.srp-nid img{width:20mm;height:20mm;object-fit:contain;margin-top:-3mm}
-.srp-big{text-align:center;font-family:Tahoma,Verdana,sans-serif;font-weight:700;font-size:16pt;margin:1mm 0 6mm;letter-spacing:.3px}
-.srp-t{width:100%;border-collapse:collapse;table-layout:fixed;border:1.6px solid #000;line-height:1.25;font-size:8pt}.srp-t td,.srp-t th{border:.6px solid #000;padding:1mm 1.6mm;vertical-align:middle}
+.srp-nid{display:grid;grid-template-columns:1fr 64mm 20mm;align-items:start;column-gap:3mm;margin:0 0 5mm;font-size:8pt;line-height:1.3}
+.srp-nid .srp-kv.l{grid-template-columns:26mm 4mm 1fr}.srp-nid img{width:20mm;height:20mm;max-width:none;object-fit:contain;margin-top:-3mm}
+.srp-big{text-align:center;font-weight:700;font-size:16pt;line-height:1.25;margin:1mm 0 6mm;letter-spacing:.3px}
+.srp-t{width:100%;min-width:0;max-width:100%;border-collapse:collapse;table-layout:fixed;border:1.6px solid #000;font-size:8pt;line-height:1.25;margin:0}
+.srp-t td,.srp-t th{border:.6px solid #000;padding:1mm 1.6mm;vertical-align:middle;font-size:8pt;line-height:1.25;height:auto;min-width:0;background:#fff;color:#111;text-transform:none}
 .srp-t .hd th,.srp-t th.hd{background:#ffffcc;font-weight:900;text-align:center}.srp-t .hd th.title{text-align:left;font-size:10pt;letter-spacing:.2px}
 .srp-t .code{text-align:center;font-weight:900;font-size:10pt}.srp-t .c{text-align:center}.srp-t .ck{text-align:center;font-size:7.5pt}
-.srp-t .sh td{font-weight:900;background:#fff}.srp-t .grey{background:#e6e6e6}.srp-t .sub{padding-left:3mm}.srp-t .bul{display:inline-block;width:2.6mm;height:2.6mm;background:#111;margin:0 3mm 0 1mm;vertical-align:middle}
+.srp-t .sh td{font-weight:900}.srp-t .grey{background:#e6e6e6}.srp-t .sub{padding-left:3mm}.srp-t .bul{display:inline-block;width:2.6mm;height:2.6mm;background:#111;margin:0 3mm 0 1mm;vertical-align:middle}
 .srp-t .muted{color:#666;font-style:italic}.srp-gap{height:3.5mm}
 .srp-box{display:inline-block;width:3.4mm;height:3.4mm;border:1px solid #333;vertical-align:middle;background:#fff}.srp-box.on{background:#111;border-color:#111}
 .srp-legend{font-size:8pt;font-style:italic;margin:3mm 0 0 10mm}
-.srp-two{display:grid;grid-template-columns:1fr 1fr;column-gap:16mm;align-items:start;margin-top:7mm}
-.srp-sign-area{margin-top:6mm}
-.srp-date{text-align:center;line-height:1.7;margin-bottom:1mm;font-family:Tahoma,Verdana,sans-serif;font-size:8pt}
-.srp-sign{display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:4mm;text-align:center;font-family:'Segoe UI',Tahoma,Arial,sans-serif;font-size:8pt}
-.srp-sign>div{position:relative;min-height:33mm;display:flex;flex-direction:column;align-items:center}
-.srp-sign .name{margin-top:auto;text-decoration:underline;white-space:nowrap}.srp-sign .line{margin-top:auto;width:70%;border-bottom:1px solid #111;height:1px}
+.srp-two{display:grid;grid-template-columns:1fr 1fr;column-gap:16mm;align-items:start;margin-top:6mm}
+.srp-sign-area{margin-top:4mm}
+.srp-date{text-align:center;line-height:1.7;margin-bottom:1mm;font-size:8pt}.srp-date div,.srp-date u{font-size:8pt}
+.srp-sign{display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:4mm;text-align:center;font-size:8pt;line-height:1.3}
+.srp-sign>div{position:relative;min-height:28mm;display:flex;flex-direction:column;align-items:center;font-size:8pt}
+.srp-sign .name{margin-top:auto;text-decoration:underline;white-space:nowrap;font-size:8pt}.srp-sign .line{margin-top:auto;width:70%;border-bottom:1px solid #111;height:1px}
 .srp-sign img{position:absolute;top:5mm;left:50%;transform:translateX(-50%);max-width:44mm;max-height:20mm;object-fit:contain}
-.srp-comment{border:1.6px solid #000}.srp-comment .band{height:6.5mm;background:#ffffcc}.srp-comment .body{min-height:82mm;padding:4mm 5mm;border-top:1.6px solid #000;border-bottom:1.6px solid #000;font-family:Tahoma,Verdana,sans-serif;font-size:9.5pt;line-height:1.6;white-space:pre-wrap;text-align:justify}
-.srp-foot{position:absolute;left:0;right:0;bottom:0;height:26.4mm}.srp-foot img{display:block;width:100%;height:100%;object-fit:fill}
-.srp-pno{position:absolute;right:14mm;bottom:27.5mm;max-width:120mm;text-align:right;font-family:Tahoma,Verdana,sans-serif;font-size:7.5pt;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2mm;border-right:2px solid #b5174f}
-`;document.head.appendChild(s)}
+.srp-comment{border:1.6px solid #000}.srp-comment .band{height:6.5mm;background:#ffffcc}.srp-comment .body{min-height:82mm;padding:4mm 5mm;border-top:1.6px solid #000;border-bottom:1.6px solid #000;font-size:9.5pt;line-height:1.6;white-space:pre-wrap;text-align:justify}
+.srp-foot{position:absolute;left:0;right:0;bottom:0;height:26.4mm;padding:0;margin:0}.srp-foot img{display:block;width:100%;height:100%;max-width:none;object-fit:fill}
+.srp-pno{position:absolute;right:14mm;bottom:27.5mm;max-width:120mm;text-align:right;font-size:7.5pt;line-height:1.3;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2mm;border-right:2px solid #b5174f}
+`;
+function hardenCss(css){return css.replace(/([^{}]+)\{([^{}]*)\}/g,(m,sel,decl)=>{const sels=sel.split(',').map(x=>x.trim()).filter(Boolean);const all=[...sels,...sels.map(x=>'#app-screen#app-screen .content '+x)];const d=decl.split(';').map(x=>x.trim()).filter(Boolean).map(x=>/!important$/.test(x)?x:x+'!important').join(';');return'\n'+all.join(',')+'{'+d+'}'})}
+function injectStyles(){if(document.getElementById('cq-semester-print-style'))return;const s=document.createElement('style');s.id='cq-semester-print-style';s.textContent=hardenCss(RAPOR_CSS);document.head.appendChild(s)}
 
 /* ---------- Bagian halaman ---------- */
 function headHtml(ctx,title){const L=T[ctx.lang],st=ctx.student;return`<div class="srp-title">${esc(title)}</div>
@@ -188,22 +197,27 @@ function signHtml(ctx,third){const L=T[ctx.lang],tr=ctx.teachers||{};let d=null;
  return`<div class="srp-sign-area"><div class="srp-date">${hijriLine?`<div><u>${hijriLine}</u></div><div>${esc(L.masehi(d))}</div>`:`<div><u>Depok, ${esc(L.masehi(d))}</u></div>`}</div>
 <div class="srp-sign"><div>${L.parent}<div class="line"></div></div><div>${L.homeroom}${img(tr.homeroom_signature_url)}<div class="name">${esc(tr.homeroom||'_______________')}</div></div><div>${L.principal}${img(tr.principal_signature_url)}<div class="name">${esc(tr.principal||'_______________')}</div></div></div></div>`}
 
-function nilaiPage(ctx){const L=T[ctx.lang],subs=ctx.subjects,acad=ctx.academic||{},st=ctx.student;
+// Returns 1 page, or 2 when the subject table is too long (then Kepribadian, Ketidakhadiran and signatures move to page 2 with the standard header).
+// Measured in Chrome with the CQlass theme loaded: table starts at 61mm, header 11.5mm, one-line row 5.75mm, bottom block 73mm;
+// keep the last signature line at most 256mm so it stays clear of the "Halaman N | Nama" line (266mm).
+function nilaiPages(ctx){const L=T[ctx.lang],subs=ctx.subjects,acad=ctx.academic||{},st=ctx.student;let estRows=0;
  const kk=s=>s.kktp_min==null?'-':(s.kktp_min===s.kktp_max?String(s.kktp_min):`${s.kktp_min}-${s.kktp_max}`);
  const cells=s=>{const f=(acad[s.id]||{}).final;return`<td class="c">${esc(kk(s))}</td><td class="c">${f==null?'-':f}</td><td${f==null?' class="muted"':''}>${f==null?esc(L.incomplete):esc(terbilang(f,ctx.lang))}</td>`};
- const group=(no,label,list)=>`<tr><td class="c" rowspan="${list.length+1}">${no}</td><td>${esc(label)}</td><td class="grey"></td><td class="grey" colspan="2"></td></tr>`+list.map(s=>`<tr><td class="sub"><span class="bul"></span>${esc(subjectName(s,ctx.lang))}</td>${cells(s)}</tr>`).join('');
+ const lineRows=n=>Math.max(1,Math.ceil(String(n||'').length/46));
+ const group=(no,label,list)=>{estRows+=1+list.reduce((a,s)=>a+lineRows(subjectName(s,ctx.lang)),0);return`<tr><td class="c" rowspan="${list.length+1}">${no}</td><td>${esc(label)}</td><td class="grey"></td><td class="grey" colspan="2"></td></tr>`+list.map(s=>`<tr><td class="sub"><span class="bul"></span>${esc(subjectName(s,ctx.lang))}</td>${cells(s)}</tr>`).join('')};
  const pai=subs.filter(s=>classify(s).group==='pai'),mulok=subs.filter(s=>classify(s).group==='mulok'),main=subs.filter(s=>classify(s).group==='main');let no=0,body='';
  if(pai.length)body+=group(++no,L.pai,pai);
- for(const s of main)body+=`<tr><td class="c">${++no}</td><td>${esc(subjectName(s,ctx.lang))}</td>${cells(s)}</tr>`;
+ for(const s of main){estRows+=lineRows(subjectName(s,ctx.lang));body+=`<tr><td class="c">${++no}</td><td>${esc(subjectName(s,ctx.lang))}</td>${cells(s)}</tr>`}
  if(mulok.length)body+=group(++no,L.mulok,mulok);
  if(!body)body=`<tr><td colspan="5" class="c muted">${L.noSubject}</td></tr>`;
  const kp=(ctx.entry||{}).kepribadian||{},att=ctx.attendance||{};
- return`<div class="srp-title">${esc(L.nilai)}</div>
+ const top=`<div class="srp-title">${esc(L.nilai)}</div>
 <div class="srp-nid"><div class="srp-kv l"><span>${L.school}</span><span>:</span><span class="v">${SCHOOL}</span><span>${L.nameLong}</span><span>:</span><span class="v">${esc(st.name||'')}</span><span>NISN</span><span>:</span><span class="v">${esc(st.nisn||'-')}</span><span>NPSN</span><span>:</span><span class="v">70004670</span></div><div class="srp-kv r"><span>${L.cls}</span><span>:</span><span class="v">${esc(ctx.className||'-')}</span><span>${L.semL}</span><span>:</span><span>${esc(L.sem(ctx.semester))}</span><span>${L.year}</span><span>:</span><span>${esc(ctx.year||'-')}</span></div><img src="${LOGO}" alt=""></div>
 <div class="srp-big">${L.lphb}</div>
-<table class="srp-t"><colgroup><col style="width:7%"><col style="width:44%"><col style="width:12%"><col style="width:10%"><col></colgroup><thead><tr class="hd"><th rowspan="2">${L.no}</th><th rowspan="2">${L.subject}</th><th rowspan="2">${L.kktp}</th><th colspan="2">${L.score}</th></tr><tr class="hd"><th>${L.num}</th><th>${L.words}</th></tr></thead><tbody>${body}</tbody></table>
-<div class="srp-two"><table class="srp-t"><colgroup><col style="width:13%"><col><col style="width:26%"></colgroup><thead><tr class="hd"><th>${L.no}</th><th>${L.kepribadian}</th><th>${L.value}</th></tr></thead><tbody>${KEPRIBADIAN.map((k,i)=>`<tr><td class="c">${i+1}</td><td>${esc(k[ctx.lang])}</td><td class="c">${esc(kp[k.key]||'-')}</td></tr>`).join('')}</tbody></table>
-<table class="srp-t"><colgroup><col><col style="width:30%"></colgroup><thead><tr class="hd"><th>${L.absence}</th><th>${L.days}</th></tr></thead><tbody>${[[L.sick,att.sick],[L.excused,att.excused],[L.unexcused,att.unexcused]].map(([l,v])=>`<tr><td><span class="bul" style="margin-left:0"></span>${l}</td><td class="c">${Number(v)||0}</td></tr>`).join('')}</tbody></table></div>`+signHtml(ctx)}
+<table class="srp-t"><colgroup><col style="width:7%"><col style="width:44%"><col style="width:12%"><col style="width:10%"><col></colgroup><thead><tr class="hd"><th rowspan="2">${L.no}</th><th rowspan="2">${L.subject}</th><th rowspan="2">${L.kktp}</th><th colspan="2">${L.score}</th></tr><tr class="hd"><th>${L.num}</th><th>${L.words}</th></tr></thead><tbody>${body}</tbody></table>`;
+ const bottom=`<div class="srp-two"><table class="srp-t"><colgroup><col style="width:13%"><col><col style="width:26%"></colgroup><thead><tr class="hd"><th>${L.no}</th><th>${L.kepribadian}</th><th>${L.value}</th></tr></thead><tbody>${KEPRIBADIAN.map((k,i)=>`<tr><td class="c">${i+1}</td><td>${esc(k[ctx.lang])}</td><td class="c">${esc(kp[k.key]||'-')}</td></tr>`).join('')}</tbody></table>
+<table class="srp-t"><colgroup><col><col style="width:30%"></colgroup><thead><tr class="hd"><th>${L.absence}</th><th>${L.days}</th></tr></thead><tbody>${[[L.sick,att.sick],[L.excused,att.excused],[L.unexcused,att.unexcused]].map(([l,v])=>`<tr><td><span class="bul" style="margin-left:0"></span>${l}</td><td class="c">${Number(v)||0}</td></tr>`).join('')}</tbody></table></div>`+signHtml(ctx);
+ return 61+11.5+estRows*5.75+73<=256?[top+bottom]:[top,headHtml(ctx,L.nilai)+bottom.replace('class="srp-two"','class="srp-two" style="margin-top:0"')]}
 
 /* Paginate blocks of rows onto A4 pages using an estimated height budget (mm). */
 function paginate(blocks,budget){const pages=[];let cur=[],used=0;for(const b of blocks){if(cur.length&&used+b.h>budget){pages.push(cur);cur=[];used=0}cur.push(b);used+=b.h}if(cur.length)pages.push(cur);return pages.length?pages:[[]]}
@@ -226,7 +240,7 @@ function pagesHtml(report,opts){
  // Seperti sheet XSIK: lembar 1 = kategori A-C, lembar 2 = D-F.
  const sg=sikapGroups(ctx);
  const first=[komentarPage(ctx),...blockPages(ctx,L.sikap,sg.slice(0,3),'sikap'),...blockPages(ctx,L.sikap,sg.slice(3),'sikap')];
- const rest=[...blockPages(ctx,L.kogu,kognitifGroups(ctx,'umum'),'kognitif'),...blockPages(ctx,L.kogd,kognitifGroups(ctx,'diniyah'),'kognitif'),...blockPages(ctx,L.psik,psikGroups(ctx),'psikomotor'),nilaiPage(ctx)];
+ const rest=[...blockPages(ctx,L.kogu,kognitifGroups(ctx,'umum'),'kognitif'),...blockPages(ctx,L.kogd,kognitifGroups(ctx,'diniyah'),'kognitif'),...blockPages(ctx,L.psik,psikGroups(ctx),'psikomotor'),...nilaiPages(ctx)];
  const numbered=[...first.map((html,i)=>[html,i+1]),...rest.map((html,i)=>[html,first.length+TAHFIZH_PAGES+i+1])];
  return numbered.map(([html,no])=>`<section class="rpv-paper srp-page" data-student-id="${esc(ctx.student.id||'')}" data-page-no="${no}">${html}<div class="srp-foot"><img src="${FOOTER}" alt=""></div><div class="srp-pno">${esc(L.page(no,ctx.student.name))}</div></section>`).join('');
 }
