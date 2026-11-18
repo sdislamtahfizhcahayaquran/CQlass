@@ -16,8 +16,31 @@ const S={boot:null,classId:'',data:null,date:'',place:'Depok',hijri:'',signerId:
 function signer(){const l=S.boot?.signers?.list||[];return l.find(x=>x.id===S.signerId)||null}
 
 const capTtl=v=>{const t=String(v??'');const i=t.indexOf(',');return i>0?cap(t.slice(0,i))+t.slice(i):cap(t)};
-const cap=v=>{const t=String(v??'');return t&&t===t.toUpperCase()&&/[A-Z]{3}/.test(t)?t.toLowerCase().replace(/(^|[\s,(/-])([a-z])/g,(m,a,b)=>a+b.toUpperCase()):t};
-function page(st,o){st={...st,ttl:capTtl(st.ttl),suku:cap(st.suku),kota:cap(st.kota),provinsi:cap(st.provinsi),golongan_darah:st.golongan_darah,ayah:{...st.ayah,ttl:capTtl(st.ayah?.ttl)},ibu:{...st.ibu,ttl:capTtl(st.ibu?.ttl)}};const row=(no,label,val,cls='')=>`<tr class="${cls}"><td class="no">${no}</td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
+/* ---- Perapian teks sesuai EYD + koreksi salah ketik nama tempat (hanya tampilan cetak; data asli tidak diubah) ---- */
+const PLACE_FIX=[[/\bdwpok\b/gi,'Depok'],[/\bpancoranmas\b/gi,'Pancoran Mas'],[/\bsukmaja\b/gi,'Sukmajaya'],[/\bsuka\s+maju\b/gi,'Sukamaju'],[/\bsukamajubaru\b/gi,'Sukamaju Baru'],[/\babadi\s+jaya\b/gi,'Abadijaya'],[/\bbhaktijaya\b/gi,'Baktijaya'],[/\bratujaya\b/gi,'Ratu Jaya'],[/\bcimapeun\b/gi,'Cimpaeun'],[/\bnanggewermekar\b/gi,'Nanggewer Mekar'],[/\btapis\b/gi,'Tapos'],[/\bjatimula\b/gi,'Jatimulya'],[/\bregencyr\b/gi,'Regency'],[/\bmesjid\b/gi,'Masjid'],[/\bkomplek\b/gi,'Kompleks']];
+const SMALL=new Set(['di','ke','dari','dan','yang','bin','binti','untuk']);
+const ABBR={jl:'Jl.',jln:'Jl.',jalan:'Jalan',no:'No.',nomor:'No.',gg:'Gg.',kp:'Kp.',komp:'Komp.',kav:'Kav.',kel:'Kel.',kec:'Kec.',kab:'Kab.',rt:'RT',rw:'RW',km:'Km',ds:'Ds.',drs:'Drs.',hj:'Hj.',moch:'Moch.',moh:'Moh.',muh:'Muh.',th:'Th.',sektor:'Sektor',blok:'Blok',perum:'Perum',dki:'DKI'};
+function wordCase(w,first,allCaps){if(!w)return w;const core=w.replace(/[.,;:)]+$/,''),tail=w.slice(core.length),lead=core.match(/^[("']*/)[0],body=core.slice(lead.length);if(!body)return w;
+ const key=body.toLowerCase().replace(/\.$/,'');if(ABBR[key]&&!/\d/.test(body))return lead+ABBR[key]+(ABBR[key].endsWith('.')?tail.replace(/^\./,''):tail);
+ if(/\d/.test(body))return lead+body.toUpperCase()+tail; // nomor/blok: 20c → 20C, d3/7 → D3/7
+ if(!first&&SMALL.has(body.toLowerCase()))return lead+body.toLowerCase()+tail;
+ if(!allCaps&&body.length<=3&&body===body.toUpperCase())return w; // singkatan: GDC, BRI, AS
+ return lead+body.toLowerCase().replace(/(^|[-'’/])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase())+tail}
+function eyd(v){let t=String(v??'').trim();if(!t||t==='-')return t||'';for(const[r,x]of PLACE_FIX)t=t.replace(r,x);
+ t=t.replace(/\s+/g,' ').replace(/\s+([,.;:])/g,'$1').replace(/,(?=\S)/g,', ').replace(/\b(Jl|Jln|No|Gg|Kp|Komp|Kel|Kec|Kab|Drs|Moh|Moch|H|Th)\.(?=[A-Za-z0-9])/gi,'$1. ').replace(/\s*-\s+|\s+-\s*/g,' - ').replace(/[.,\s]+$/,'');
+ const allCaps=t===t.toUpperCase()&&/[A-Z]{4}/.test(t);
+ return t.split(' ').map((w,i)=>wordCase(w,i===0,allCaps)).join(' ').replace(/\b(Jl|No|Gg|Kp|Kab|Kec|Kel)\.\./g,'$1.')}
+const cap=v=>eyd(v);
+function addrFix(v){let t=String(v??'').trim();const rts=[...t.matchAll(/\bRT\b/gi)];if(rts.length>=2)t=t.slice(0,rts[rts.length-1].index).replace(/[\s,]+$/,'');t=eyd(t).replace(/\s*[-,]?\s*(Kota|Kabupaten|Kab\.)\s+(Depok|Bogor)$/i,'').replace(/[,\s]+$/,'');return t.replace(/\bRT\.?\s*(\d{1,3}|-)\s*\/\s*(?:RW\.?\s*)?(\d{1,3}|-)/g,(m,a,b)=>`RT ${a}/RW ${b}`)}
+function kotaFix(v){let t=eyd(v);if(!t)return t;t=t.replace(/^Kota\s+/i,'').replace(/^(Kab\.|Kab|Kabupaten)\s*/i,'Kabupaten ');return t}
+function provFix(v,kota){let t=eyd(v);const k=String(kota||'').toLowerCase();if(!t)return t;const x=t.toLowerCase().replace(/[^a-z]/g,'');
+ if(/^(jawabarat|jawabbarat|jaeabarat|jabar|janar)$/.test(x))return'Jawa Barat';if(/^(dkijakarta|dkjakarta|jakarta)$/.test(x))return'DKI Jakarta';if(x==='diyogyakarta')return'DI Yogyakarta';if(x==='jawatengah')return'Jawa Tengah';if(x==='jawatimur')return'Jawa Timur';
+ if(/depok|bogor|bekasi|sukabumi|cirebon/.test(k)&&/^ja/.test(x)&&x.length<=10)return'Jawa Barat';return t}
+/* Bagi teks panjang menjadi beberapa baris sesuai lebar kolom isian (Tahoma 9,4pt, ±90 mm). */
+let _cv;function wrapLines(text,maxLines=4){const t=String(text||'');if(!t)return[''];_cv=_cv||document.createElement('canvas').getContext('2d');_cv.font="9.4pt Tahoma, Verdana, 'DejaVu Sans', sans-serif";const max=88*96/25.4;const out=[];let line='';
+ for(const w of t.split(' ')){const tryL=line?line+' '+w:w;if(_cv.measureText(tryL).width<=max||!line)line=tryL;else{out.push(line);line=w}}if(line)out.push(line);
+ if(out.length>maxLines){const keep=out.slice(0,maxLines-1);keep.push(out.slice(maxLines-1).join(' '));return keep}return out}
+function page(st,o){const kota=kotaFix(st.kota);st={...st,nama:eyd(st.nama),ttl:capTtl(st.ttl),suku:cap(st.suku),alamat:addrFix(st.alamat),kota,provinsi:provFix(st.provinsi,kota),golongan_darah:String(st.golongan_darah||'').toUpperCase().replace(/\s+/g,''),ayah:{...st.ayah,nama:eyd(st.ayah?.nama),ttl:capTtl(st.ayah?.ttl),warga_negara:eyd(st.ayah?.warga_negara)},ibu:{...st.ibu,nama:eyd(st.ibu?.nama),ttl:capTtl(st.ibu?.ttl),warga_negara:eyd(st.ibu?.warga_negara)}};const addr=wrapLines(st.alamat);const row=(no,label,val,cls='')=>`<tr class="${cls}"><td class="no">${no}</td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
  const sub=(label,val)=>`<tr class="sub"><td class="no"></td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
  const photo=o.photo&&st.photo_url?`<img src="${esc(st.photo_url)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:'';
  return `<section class="cv-page"><img class="cv-kop" src="${o.header}" alt=""><h1>BIODATA SISWA</h1>
@@ -25,7 +48,7 @@ function page(st,o){st={...st,ttl:capTtl(st.ttl),suku:cap(st.suku),kota:cap(st.k
   <tr class="sec"><td class="no">A</td><td colspan="3">IDENTITAS ANAK</td></tr>
   <tr><td class="no">1</td><td class="lb" colspan="3">Nama</td></tr>
   ${sub('1.1&nbsp; Nama Lengkap',st.nama)}${sub('1.2&nbsp; NISN',st.nisn)}
-  ${row(2,'Jenis Kelamin',st.jenis_kelamin)}${row(3,'Tempat/Tanggal Lahir',st.ttl)}${row(4,'Golongan Darah',st.golongan_darah)}${row(5,'Suku',st.suku)}${row(6,'Agama',st.agama)}${row(7,'Alamat Domisili',st.alamat)}
+  ${row(2,'Jenis Kelamin',st.jenis_kelamin)}${row(3,'Tempat/Tanggal Lahir',st.ttl)}${row(4,'Golongan Darah',st.golongan_darah)}${row(5,'Suku',st.suku)}${row(6,'Agama',st.agama)}${row(7,'Alamat Domisili',addr[0])}${addr.slice(1).map(l=>`<tr class="cont"><td class="no"></td><td class="lb"></td><td class="cl"></td><td class="vl">${esc(l)}</td></tr>`).join('')}
   <tr class="kota"><td class="no"></td><td class="lb"></td><td class="cl"></td><td class="vl"><span class="kv">Kota/Kabupaten: ${esc(st.kota)}</span><span class="kv">Provinsi: ${esc(st.provinsi)}</span></td></tr>
   <tr class="sec gap"><td class="no">B</td><td colspan="3">IDENTITAS ORANG TUA/WALI</td></tr>
   <tr><td class="no">1</td><td class="lb" colspan="3">Ayah Kandung/Wali</td></tr>
