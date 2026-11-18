@@ -120,15 +120,13 @@ window.openCleanAdminReportPeriod=function(){
 window.openCleanAdminRaporReadiness=function(){if(!isAdmin())return;set('rapor-readiness');const c=document.getElementById('content');if(typeof window.renderAdminRaporReadiness==='function')return window.renderAdminRaporReadiness(c);if(c)c.innerHTML='<div class="card">Memuat Laporan Nilai Rapor...</div>';setTimeout(()=>window.renderAdminRaporReadiness?.(c),200)};
 window.openCleanAdminInputAccess=function(){if(!isAdmin())return;set('input-access');const c=document.getElementById('content');if(typeof window.renderInputAccessControlAdmin==='function')return window.renderInputAccessControlAdmin(c);if(c)c.innerHTML='<div class="card">Memuat Periode & Kunci Penginputan...</div>';setTimeout(()=>window.renderInputAccessControlAdmin?.(c),250)};
 function dsCss(){if(!document.getElementById('cq-ds-css')){const st=document.createElement('style');st.id='cq-ds-css';st.textContent=`.cq-ds{max-width:1180px;margin:0 auto}.cq-ds-title{font-size:clamp(21px,2.3vw,25px);font-weight:800;color:#123634}.cq-ds-sub{font-size:12.5px;color:#5f7775;margin-top:4px}.cq-ds-tabs{display:flex;gap:6px;padding:6px;margin:14px 0 16px;background:#fff;border:1px solid #dbe8e6;border-radius:14px;width:max-content;max-width:100%}.cq-ds-tabs button{border:0;background:transparent;border-radius:10px;padding:0 18px;min-height:40px;font:inherit;font-size:13px!important;font-weight:700;color:#5f7775;cursor:pointer}.cq-ds-tabs button.on{background:#0a6e6e;color:#fff}.cq-ds-frame.tp{margin-top:14px}.cq-ds-frame{width:100%;height:calc(100vh - 230px);min-height:560px;border:1px solid #dbe8e6;border-radius:16px;background:#fff}.cq-ds .asp-head{display:none}`;document.head.appendChild(st)}}
-function studentsPage(tab){if(!isAdmin())return;set('students');try{if(typeof activeModule!=='undefined')activeModule='students'}catch(_){}const c=document.getElementById('content');if(!c)return;
- c.innerHTML=`<div class="cq-ds"><div class="cq-ds-head"><div class="cq-ds-title">Data Siswa</div><div class="cq-ds-sub">Daftar siswa aktif, kelas, tambah/import siswa baru, dan biodata lengkap.</div></div><nav class="cq-ds-tabs"><button class="${tab==='list'?'on':''}" onclick="openCleanAdminStudents()">Daftar &amp; Kelas</button><button class="${tab==='bio'?'on':''}" onclick="openCleanAdminBiodata()">Biodata Lengkap</button></nav><div id="cq-ds-body"></div></div>`;
- dsCss();
- const body=document.getElementById('cq-ds-body');
- if(tab==='bio'){if(typeof window.renderAdminStudentProfiles==='function')return window.renderAdminStudentProfiles(body);body.innerHTML='<div class="card">Memuat Biodata Siswa...</div>';return setTimeout(()=>window.renderAdminStudentProfiles?.(body),300)}
- body.innerHTML='<iframe class="cq-ds-frame" src="master-data.html?embed=1" title="Daftar siswa dan kelas"></iframe>';
- const f=body.querySelector('iframe');f.addEventListener('load',()=>{try{const d=f.contentDocument;const x=d.createElement('style');x.textContent='a.back{display:none!important}body{background:#fff!important}';d.head.appendChild(x)}catch(_){}})}
-window.openCleanAdminStudents=function(){studentsPage('list')};
-window.openCleanAdminBiodata=function(){studentsPage('bio')};
+/* Data Siswa: satu halaman (daftar, tambah/edit siswa, upload Excel, biodata) dari admin-student-profiles.js */
+function studentsPage(){if(!isAdmin())return;set('students');try{if(typeof activeModule!=='undefined')activeModule='students'}catch(_){}const c=document.getElementById('content');if(!c)return;
+ if(typeof window.renderAdminStudentProfiles==='function')return window.renderAdminStudentProfiles(c);
+ c.innerHTML='<div class="card">Memuat Data Siswa...</div>';
+ let n=0;const t=setInterval(()=>{n++;if(typeof window.renderAdminStudentProfiles==='function'){clearInterval(t);window.renderAdminStudentProfiles(c)}else if(n>=30){clearInterval(t);c.innerHTML='<div class="card">Data Siswa belum dapat dimuat. Muat ulang halaman.</div>'}},100)}
+window.openCleanAdminStudents=function(){studentsPage()};
+window.openCleanAdminBiodata=function(){studentsPage()};
 window.openCleanAdminUks=function(){if(!isAdmin())return;set('uks');window.renderAdminUksSchedule?.(document.getElementById('content'))};
 window.openCleanAdminSpecialActivity=function(){if(!isAdmin())return;set('kegiatan-khusus');const c=document.getElementById('content');if(typeof window.renderAdminSpecialActivity==='function')return window.renderAdminSpecialActivity(c);if(c)c.innerHTML='<div class="card">Memuat Kegiatan Khusus...</div>';setTimeout(()=>window.renderAdminSpecialActivity?.(c),250)};
 window.openCleanAdminHalaqahRoute=function(){if(!isAdmin())return;set('halaqah');if(window.openCleanAdminHalaqah)return window.openCleanAdminHalaqah();const c=document.getElementById('content');if(c)c.innerHTML='<div class="card">Memuat Pembagian Halaqah...</div>'};
@@ -143,10 +141,25 @@ function takeAdminOwnership(){
   }
   return true;
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(takeAdminOwnership,0),{once:true});
-else setTimeout(takeAdminOwnership,0);
+/* Penjaga Beranda: dashboard umum aplikasi (#rd-root) bisa termuat belakangan, misalnya setelah login,
+   dan menimpa Beranda admin. Jika itu terjadi saat admin berada di Beranda, tampilkan kembali Beranda admin. */
+function guardAdminHome(){
+  const c=document.getElementById('content');if(!c||c.__cqAdminHomeGuard)return;c.__cqAdminHomeGuard=true;
+  let busy=false;
+  new MutationObserver(function(){
+    if(busy||!isAdmin()||typeof window.renderAdminDashboard!=='function')return;
+    if((window.__cqAdminActive||'dashboard')!=='dashboard')return;
+    if(!c.querySelector('#rd-root')||c.querySelector('.adh'))return;
+    busy=true;
+    try{if(!document.querySelector('#sidebar .cq-admin-side'))draw('dashboard');window.renderAdminDashboard(c)}catch(_){}
+    setTimeout(function(){busy=false},0);
+  }).observe(c,{childList:true});
+}
+function boot(){guardAdminHome();takeAdminOwnership()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,0),{once:true});
+else setTimeout(boot,0);
 setTimeout(takeAdminOwnership,250);
 
 window.__cqAdminSidebarClean=true
 })();
-[['admin-assignments.js?v=20261025-role1','cq-admin-assignments'],['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20261025-planning1','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20261117-layout2','cq-input-access-layout-fix'],['report-period-control.js?v=20261025-period2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});
+[['admin-assignments.js?v=20261118-grid1','cq-admin-assignments'],['admin-uks-schedule.js?v=20260914-uksadmin1','cq-admin-uks'],['admin-schedule-editor.js?v=20261025-planning1','cq-admin-schedule'],['admin-halaqah.js?v=20260916-halaqah1','cq-admin-halaqah'],['input-access-control.js?v=20260921-access1','cq-input-access'],['input-access-layout-fix.js?v=20261117-layout2','cq-input-access-layout-fix'],['report-period-control.js?v=20261025-period2','cq-report-period-direct']].forEach(([src,key])=>{if(document.querySelector(`script[data-${key}]`))return;const s=document.createElement('script');s.src=src;s.setAttribute(`data-${key}`,'1');document.head.appendChild(s)});

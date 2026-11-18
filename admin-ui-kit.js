@@ -31,6 +31,17 @@ ${sel(TABLE,' tbody tr:hover td')}{background:#f8fbfb!important}
 ${sel(TABLE,' tbody tr:last-child td')}{border-bottom:0!important}
 ${R} :is(.av2wrap,.amtablewrap,.asewrap,.ah-wrap,.asatablewrap,.cqarr-scroll){border-radius:14px!important;border:1px solid #e1eceb!important;overflow:auto!important}
 ${R} :is(.av2pill,.ampill,.cqaa2-chip,.cqarr-pill,.asachip,.cq-auks-chip){border-radius:999px!important;font-weight:700!important}
+/* Ukuran minimum agar terbaca: label form, tab, label status, catatan bantuan */
+${R} :is(.amfield,.asefield,.cqaa2-field,.ah-field,.cqpa-opt,.asafield,.cq-auks-field) label,${R} :is(.iac-label,.aml,.cqaa2-type){font-size:12px!important;line-height:1.35!important}
+${R} :is(.av2pill,.ampill,.asepill,.cqaa2-chip,.cqaa2-badge,.cqarr-pill,.asachip,.cq-auks-chip,.iac-pill,.iac-badge-admin,.ah-pill,.cqpa-chip,.cqpa-status,.atsm-pill){font-size:11.5px!important;padding:3px 9px!important;line-height:1.35!important}
+${R} :is(.cqpa-primary,.iac-th){font-size:11px!important}
+${R} :is(.amtab,.cqaa2-tab,.iac-tab){font-size:13px!important}
+${R} :is(.amnote,.amsub,.amyear,.asewarn,.asehint,.aseempty,.aseh p,.iac-help,.iac-empty,.iac-ex-item,.iac-key,.ah-warn,.ah-info,.ah-note,.ah-drop,.cqaa2-note,.cqaa2-panel,.cqaa2-sub,.cqpa-walas,.cqpa-empty,.cqarr-loading,.atsm-help){font-size:12.5px!important;line-height:1.55!important}
+${R} :is(.cqpa-btn,.atsm-btn,.ah-btn,.iac-btn,.asebtn,.ambtn,.cqaa2-btn,.cqarr-btn){font-size:12.5px!important}
+${R} :is(.atsm-sel,.amsel,.iac-select){font-size:13px!important}
+${R} :is(.amdate,.aseok,.asebad,.aseerr){font-size:12px!important}
+${R} :is(.kxrg-mini,.kx-sub,.kx-over){font-size:11.5px!important;line-height:1.4!important}${R} :is(.kxrg-src,.kxrg-status,.kxrg-chip,.kx-tag){font-size:11px!important}${R} .kx-cap :is(small,b){font-size:11.5px!important}${R} .amevent b{font-size:13px!important}
+${R} :is(.amtable,.asetable,.cqaa2-table,.cqarr-table,.ah-table,.iac-card table) :is(td,th){line-height:1.45}
 `;
 (document.head||document.documentElement).appendChild(s);
 })();

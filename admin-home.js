@@ -46,9 +46,12 @@ async function gather(){
   year&&no?safe(call('admin-academic-period','report_config_get',{academic_year_id:year.id,semester_no:no,report_type:'PTS'})):Promise.resolve({ok:false}),
   year&&no?safe(call('admin-academic-period','report_config_get',{academic_year_id:year.id,semester_no:no,report_type:'PAS'})):Promise.resolve({ok:false}),
   next?.year?safe(call('admin-academic-period','preview_activation',{academic_year_id:next.year.id,semester_no:next.no})):Promise.resolve({ok:false}),
-  safe(call('admin-academic-period','admin_health'))
+  safe(call('admin-academic-period','admin_health')),
+  safe(call('admin-users','summary')),
+  safe(call('admin-academic-period/student-profiles','summary')),
+  safe(call('admin-users','list_photos'))
  ]);
- return {years,year,sem,next,dash:jobs[0],conf:jobs[1],ePTS:jobs[2],ePAS:jobs[3],rPTS:jobs[4],rPAS:jobs[5],ready:jobs[6],health:jobs[7]};
+ return {years,year,sem,next,dash:jobs[0],conf:jobs[1],ePTS:jobs[2],ePAS:jobs[3],rPTS:jobs[4],rPAS:jobs[5],ready:jobs[6],health:jobs[7],acct:jobs[8],bio:jobs[9],photos:jobs[10]};
 }
 function missingDays(r){if(!r.ok)return null;const cs=r.v.classes||[];return {total:cs.length,missing:cs.filter(c=>c.effective_days==null).length}}
 function tasks(d){
@@ -71,7 +74,28 @@ function tasks(d){
   else if(d.ready.ok){const c=d.ready.v.counts||{},sem=d.next.year.semesters?.find(x=>x.semester_no===d.next.no),parts=[!(sem?.start_date&&sem?.end_date)&&'tanggal',!c.students&&'anggota siswa',!c.mapel&&'penugasan mapel',!c.tahfizh&&'penugasan Tahfizh'].filter(Boolean);add(parts.length?{level:'info',icon:'layers',title:`Persiapan ${esc(d.next.year.name)} · Semester ${d.next.no}`,text:`Belum ada: ${parts.join(', ')}.`,go:"cqAdminGo('academic-period','ringkasan')",cta:'Lihat kesiapan'}:{level:'ok',icon:'layers',title:`${esc(d.next.year.name)} · Semester ${d.next.no}`,text:'Siap diaktifkan.'})}}
  const rank={bad:0,warn:1,info:2,ok:3};return out.sort((x,y)=>rank[x.level]-rank[y.level]);
 }
-function kpis(d){const m=d.dash.ok?d.dash.v.master_counts||{}:null;const k=[['student','Siswa aktif',m?.students],['users','Guru',m?.teachers],['school','Kelas',m?.classes],['book','Mapel',m?.subjects],['key','Akun',m?.accounts]];return `<div class="adh-kpis">${k.map(([i,l,v])=>`<div class="adh-kpi"><span class="adh-kpi-ic">${ic(i,18)}</span><div><b>${v==null?'—':Number(v).toLocaleString('id-ID')}</b><small>${l}</small></div></div>`).join('')}</div>`}
+const num=v=>v==null||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('id-ID');
+function kpis(d){const m=d.dash.ok?d.dash.v.master_counts||{}:null;const a=d.acct?.ok?d.acct.v.summary||{}:null;const b=d.bio?.ok?d.bio.v:null;
+ const k=[['student','Siswa aktif',m?.students,b&&b.with_photo!=null?`${num(b.with_photo)} punya pas foto`:'','openCleanAdminStudents()'],
+  ['users','Guru',m?.teachers,'','openCleanAdminUsers()'],
+  ['school','Kelas',m?.classes,'','openCleanAdminAssignments()'],
+  ['book','Mapel',m?.subjects,'','openCleanAdminMasterTP()'],
+  ['key','Akun',m?.accounts,a&&a.logged_today!=null?`${num(a.logged_today)} login hari ini`:'','openCleanAdminUsers()']];
+ return `<div class="adh-kpis">${k.map(([i,l,v,sub,go])=>`<button type="button" class="adh-kpi" onclick="${go}"><span class="adh-kpi-ic">${ic(i,18)}</span><div><b>${num(v)}</b><small>${l}</small>${sub?`<em>${esc(sub)}</em>`:''}</div></button>`).join('')}</div>`}
+/* Kemajuan semester: hari ke-berapa dan sisa hari */
+function semProgress(s){if(!s?.start_date||!s?.end_date)return null;const day=86400e3,today=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Jakarta'}));today.setHours(0,0,0,0);const a=new Date(s.start_date+'T00:00:00'),b=new Date(s.end_date+'T00:00:00');const total=Math.round((b-a)/day)+1,done=Math.min(total,Math.max(0,Math.round((today-a)/day)+1));return{total,done,left:Math.max(0,Math.round((b-today)/day)),pct:Math.round(done/total*100),end:b}}
+const fmtDate=d=>{try{return new Intl.DateTimeFormat('id-ID',{day:'numeric',month:'long',year:'numeric'}).format(d)}catch(_){return''}};
+/* Kelengkapan data yang dikelola admin */
+function meters(d){const b=d.bio?.ok?d.bio.v:null,a=d.acct?.ok?d.acct.v.summary||{}:null,ph=d.photos?.ok?Object.keys(d.photos.v.photos||{}).length:null;const out=[];
+ const add=(icon,label,val,total,go,note,soft)=>{if(val==null||!total)return;const p=Math.round(val/total*100);out.push({icon,label,val,total,p,go,note,soft})};
+ if(b){const act=b.active_students;if(b.empty_profiles!=null)add('student','Biodata siswa terisi',b.profiles-b.empty_profiles,act,'openCleanAdminStudents()','Dari upload Excel master siswa');else add('student','Biodata siswa terisi',b.profiles,act,'openCleanAdminStudents()','Dari upload Excel master siswa');
+  if(b.no_nisn!=null)add('report','NISN siswa terisi',act-b.no_nisn,act,'openCleanAdminStudents()','Dibutuhkan untuk rapor');
+  add('student','Pas foto siswa (Cover Rapor)',b.with_photo,act,'openCleanAdminStudents()','Kolom FOTO SISWA RESMI di Excel')}
+ if(ph!=null&&a)add('users','Foto profil guru & pengguna',ph,a.total,'openCleanAdminUsers()','Diunggah sendiri oleh tiap pengguna',true);
+ if(a)add('key','Login hari ini',a.logged_today,a.active,'openCleanAdminUsers()',`${num(a.active)} akun aktif${a.inactive?` · ${num(a.inactive)} nonaktif`:''}${a.locked?` · ${num(a.locked)} terkunci`:''}`,true);
+ if(!out.length)return'';
+ const tone=p=>p>=90?'ok':p>=60?'mid':'low';
+ return `<section class="adh-card"><div class="adh-card-head"><div><div class="adh-card-title">Kelengkapan Data</div><div class="adh-card-sub">Klik untuk membuka menu terkait</div></div></div><div class="adh-meters">${out.map(m=>`<button type="button" class="adh-meter ${m.soft?'soft':tone(m.p)}" onclick="${m.go}"><span class="adh-meter-ic">${ic(m.icon,16)}</span><span class="adh-meter-body"><span class="adh-meter-top"><b>${esc(m.label)}</b><strong>${m.p}%</strong></span><span class="adh-bar"><i style="width:${m.p}%"></i></span><small>${num(m.val)} dari ${num(m.total)} · ${esc(m.note)}</small></span></button>`).join('')}</div></section>`}
 const LINKS=[
  ['users','Guru & Pengguna','Tambah guru, buat akun, atur role','openCleanAdminUsers()'],
  ['student','Data Siswa','Daftar siswa, kelas, dan biodata','openCleanAdminStudents()'],
@@ -83,16 +107,21 @@ const LINKS=[
 ];
 function view(d){
  const ts=tasks(d),todo=ts.filter(t=>t.level!=='ok'),done=ts.filter(t=>t.level==='ok');
- const y=d.year,s=d.sem;
+ const y=d.year,s=d.sem,pg=semProgress(s);
  return `<div class="adh">
- <section class="cq-role-hero adh-hero" data-cq-role-theme="1"><div class="cq-role-hero-copy adh-hero-copy"><div class="cq-role-hero-eye adh-eye">${esc(todayLabel())}</div><div class="cq-role-hero-title adh-title">${greet()}, ${esc(userName())}</div><div class="cq-role-hero-sub adh-sub">Periode aktif: <b>${y?`${esc(y.name)} · Semester ${esc(s?.semester_no||'—')}`:'belum ditetapkan'}</b></div></div><div class="adh-hero-stat"><b>${todo.length}</b><span>${todo.length?'perlu dikerjakan':'semua beres'}</span></div></section>
+ <section class="cq-role-hero adh-hero" data-cq-role-theme="1"><div class="cq-role-hero-copy adh-hero-copy"><div class="cq-role-hero-eye adh-eye">${esc(todayLabel())}</div><div class="cq-role-hero-title adh-title">${greet()}, ${esc(userName())}</div><div class="cq-role-hero-sub adh-sub">${y?`<span class="adh-chip">${esc(y.name)} · Semester ${esc(s?.semester_no||'—')}</span>`:'Periode aktif belum ditetapkan'}</div>
+  ${pg?`<div class="adh-prog"><div class="adh-prog-top"><span>Hari ke-${num(pg.done)} dari ${num(pg.total)}</span><span>${pg.left?`${num(pg.left)} hari lagi · selesai ${esc(fmtDate(pg.end))}`:'Semester berakhir hari ini'}</span></div><div class="adh-prog-bar"><i style="width:${pg.pct}%"></i></div></div>`:''}</div>
+  <div class="adh-hero-stat ${todo.length?'':'good'}"><b>${todo.length}</b><span>${todo.length?'perlu dikerjakan':'semua beres'}</span></div></section>
  ${kpis(d)}
  <div class="adh-grid">
-  <section class="adh-card"><div class="adh-card-head"><div><div class="adh-card-title">Perlu dikerjakan</div><div class="adh-card-sub">Diurutkan dari yang paling penting</div></div><button class="adh-icon-btn" onclick="renderAdminDashboard(document.getElementById('content'),true)" title="Muat ulang">${ic('refresh',16)}</button></div>
+  <section class="adh-card adh-span"><div class="adh-card-head"><div><div class="adh-card-title">Perlu dikerjakan</div><div class="adh-card-sub">Diurutkan dari yang paling penting</div></div><button class="adh-icon-btn" onclick="renderAdminDashboard(document.getElementById('content'),true)" title="Muat ulang">${ic('refresh',16)}</button></div>
    ${todo.length?`<div class="adh-tasks">${todo.map(t=>`<div class="adh-task ${t.level}"><span class="adh-task-ic">${ic(t.icon,17)}</span><div class="adh-task-body"><b>${t.title}</b><small>${t.text}</small></div>${t.go?`<button class="adh-btn" onclick="${t.go}">${esc(t.cta)} ${ic('arrow',15)}</button>`:''}</div>`).join('')}</div>`:`<div class="adh-allgood">${ic('check',22)}<div><b>Semua beres</b><small>Tidak ada pekerjaan admin yang tertunda.</small></div></div>`}
    ${done.length?`<details class="adh-done"><summary>${ic('check',15)} ${done.length} sudah beres</summary>${done.map(t=>`<div class="adh-done-row">${ic('check',14)}<span><b>${t.title}</b> — ${t.text}</span></div>`).join('')}</details>`:''}
   </section>
-  <section class="adh-card"><div class="adh-card-head"><div><div class="adh-card-title">Pintasan</div><div class="adh-card-sub">Pekerjaan yang paling sering dilakukan</div></div></div><div class="adh-links">${LINKS.map(([i,t,s,go])=>`<button class="adh-link" onclick="${go}"><span class="adh-link-ic">${ic(i,18)}</span><span class="adh-link-t"><b>${t}</b><small>${s}</small></span>${ic('arrow',15)}</button>`).join('')}</div></section>
+  <div class="adh-side">
+  ${meters(d)}
+  <section class="adh-card"><div class="adh-card-head"><div><div class="adh-card-title">Pintasan</div><div class="adh-card-sub">Pekerjaan yang paling sering dilakukan</div></div></div><div class="adh-tiles">${LINKS.map(([i,t,s,go])=>`<button class="adh-tile" onclick="${go}" title="${esc(s)}"><span class="adh-link-ic">${ic(i,18)}</span><b>${t}</b></button>`).join('')}</div></section>
+  </div>
  </div></div>`;
 }
 window.cqAdminGo=function(page,tab){if(page==='academic-period'){window.__cqAYTab=tab||'ringkasan';return window.openCleanAdminAcademicPeriod?.()}};
@@ -121,6 +150,20 @@ function css(){if(document.getElementById('adh-css'))return;const s=document.cre
 .adh-links{display:flex;flex-direction:column;gap:8px}.adh-link{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:14px;border:1px solid #e3ecea;background:#fff;color:#123634;font:inherit;text-align:left;cursor:pointer;transition:background .12s,border-color .12s}.adh-link:hover{background:#f1f8f7;border-color:#bfdcd7}.adh-link>svg{color:#8aa3a0}
 .adh-link-ic{flex:none;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:#eef6f5;color:#0a6e6e}.adh-link-t{flex:1;min-width:0}.adh-link-t b{display:block;font-size:13.5px}.adh-link-t small{display:block;font-size:11.5px;color:#5f7775;margin-top:1px}
 .adh-loading{display:flex;align-items:center;gap:10px;color:#5f7775}.adh-spin{width:18px;height:18px;border-radius:50%;border:2.5px solid #d4e6e3;border-top-color:#0a6e6e;animation:adhspin .8s linear infinite}@keyframes adhspin{to{transform:rotate(360deg)}}
+.adh-chip{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);font-weight:700;font-size:12.5px}
+.adh-prog{margin-top:14px;max-width:460px}.adh-prog-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11.5px;font-weight:700;opacity:.92;margin-bottom:6px}.adh-prog-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.22);overflow:hidden}.adh-prog-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#b8f0dd,#fff)}
+.adh-hero-stat.good{background:rgba(184,240,221,.22)}
+button.adh-kpi{font:inherit;text-align:left;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}button.adh-kpi:hover{border-color:#9fd3c9;box-shadow:0 8px 20px rgba(10,80,76,.08);transform:translateY(-1px)}.adh-kpi em{display:block;font-style:normal;font-size:11px;color:#0a6e6e;font-weight:700;margin-top:2px}
+.adh-grid{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}.adh-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.adh-meters{display:flex;flex-direction:column;gap:6px}.adh-meter{display:flex;gap:12px;align-items:flex-start;width:100%;padding:10px;border:1px solid transparent;border-radius:14px;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer}.adh-meter:hover{background:#f6fbfa;border-color:#e1eceb}
+.adh-meter-ic{flex:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#eef6f5;color:#0a6e6e}.adh-meter-body{flex:1;min-width:0;display:block}.adh-meter-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.adh-meter-top b{font-size:13px}.adh-meter-top strong{font-size:14px;font-weight:800}
+.adh-bar{display:block;height:7px;border-radius:99px;background:#edf3f2;margin:6px 0 5px;overflow:hidden}.adh-bar i{display:block;height:100%;border-radius:99px}
+.adh-meter small{display:block;font-size:11.5px;color:#5f7775}
+.adh-meter.ok .adh-bar i{background:linear-gradient(90deg,#2ab394,#0a6e6e)}.adh-meter.ok strong{color:#1f8a63}
+.adh-meter.mid .adh-bar i{background:linear-gradient(90deg,#f2c46b,#d9902a)}.adh-meter.mid strong{color:#a86a12}
+.adh-meter.soft .adh-bar i{background:linear-gradient(90deg,#7cc3e0,#2a6f86)}.adh-meter.soft strong{color:#2a6f86}
+.adh-meter.low .adh-bar i{background:linear-gradient(90deg,#f0a39a,#c9564a)}.adh-meter.low strong{color:#b2453a}
+.adh-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.adh-tile{display:flex;align-items:center;gap:10px;padding:11px;border-radius:14px;border:1px solid #e3ecea;background:#fff;color:#123634;font:inherit;text-align:left;cursor:pointer;transition:background .12s,border-color .12s}.adh-tile:hover{background:#f1f8f7;border-color:#bfdcd7}.adh-tile b{font-size:12.5px;line-height:1.3}
 @media(max-width:1000px){.adh-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.adh-grid{grid-template-columns:1fr}}
 @media(max-width:640px){.adh-hero{padding:20px;border-radius:18px}.adh-hero-stat{min-width:0;padding:12px}.adh-hero-stat b{font-size:30px}.adh-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.adh-card{padding:16px}.adh-task{flex-wrap:wrap}.adh-task .adh-btn{width:100%;justify-content:center}}
 `;document.head.appendChild(s)}

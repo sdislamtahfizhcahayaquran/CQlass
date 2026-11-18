@@ -46,7 +46,7 @@ function fmtDate(v){try{return new Intl.DateTimeFormat('id-ID',{day:'numeric',mo
 function view(){const s=S.summary,r=S.result;
  const pct=s&&s.active_students?Math.round(s.profiles/s.active_students*100):0;
  return `<div class="asp">
- <div class="asp-head"><div><div class="asp-title">Biodata Siswa</div><div class="asp-sub">Data lengkap siswa (identitas, alamat, orang tua/wali) untuk Cover Rapor dan administrasi. Diperbarui dengan upload file Excel.</div></div></div>
+ <div class="asp-head"><div><div class="asp-title">Data Siswa</div><div class="asp-sub">Daftar siswa aktif per kelas dan biodata lengkapnya untuk Cover Rapor. Tambah atau pindahkan siswa satu per satu, atau perbarui banyak siswa sekaligus lewat upload Excel.</div></div><button class="asp-btn lg" onclick="cqAspEdit('')">+ Tambah Siswa</button></div>
  <div class="asp-kpis">
   <div class="asp-kpi"><b>${s?s.profiles.toLocaleString('id-ID'):'—'}<small> / ${s?s.active_students.toLocaleString('id-ID'):'—'}</small></b><span>Siswa aktif yang sudah punya biodata</span><i style="width:${pct}%"></i></div>
   <div class="asp-kpi"><b>${s?s.with_photo.toLocaleString('id-ID'):'—'}</b><span>Siswa dengan link pas foto</span></div>
@@ -55,14 +55,14 @@ function view(){const s=S.summary,r=S.result;
   <button type="button" class="asp-kpi click ${s?.incomplete_profiles?'warnk':''}" onclick="cqAspShow('incomplete')"><b>${s?(s.incomplete_profiles??0).toLocaleString('id-ID'):'—'}</b><span>Biodata belum lengkap</span><em>Lihat daftar →</em></button>
  </div>
  <p class="asp-sub" style="margin:-4px 0 14px">Upload terakhir: ${s?.last_import_at?esc(fmtDate(s.last_import_at))+(s.last_file?' · '+esc(s.last_file):''):'belum pernah'}</p>
- <div class="asp-card"><div class="asp-card-title">Upload file Excel</div>
+ ${browseCard()}
+ <div class="asp-card"><div class="asp-card-title">Upload Excel — banyak siswa sekaligus</div>
   <ol class="asp-steps"><li>Upload file master data siswa (contoh: <b>MASTER_ONLINE.xlsx</b>, sheet <b>DATA SISWA</b>). Satu file ini mengurus semuanya.</li><li>Sebelum disimpan, CQlass menampilkan ringkasan: <b>siswa baru</b>, <b>pindah kelas</b>, perubahan NISN/jenis kelamin, dan biodata. Anda pilih mana yang diterapkan.</li><li>Kolom <b>FOTO SISWA RESMI</b> berisi link Google Drive dipakai sebagai pas foto Cover Rapor (file harus dibagikan "siapa saja yang memiliki link").</li></ol>
   <label class="asp-drop ${S.busy?'busy':''}"><input type="file" id="asp-file" accept=".xlsx,.xls,.xlsb" ${S.busy?'disabled':''} onchange="cqAspPick(this)"><span class="asp-drop-ic">⬆</span><b>${S.busy?'Memproses '+esc(S.file)+'…':'Pilih file Excel'}</b><small>${S.busy?'Jangan tutup halaman ini.':'.xlsx / .xlsb — data dibaca di perangkat ini lalu dikirim ke CQlass'}</small></label>
   <div id="asp-msg" class="asp-msg" hidden></div>
  </div>
  ${planCard()}
  ${r?`<div class="asp-card"><div class="asp-card-title">Hasil upload terakhir</div><div class="asp-res">${r.sync?`<div class="ok"><b>${r.sync.created}</b><span>siswa baru</span></div><div class="ok"><b>${r.sync.moved}</b><span>pindah kelas</span></div>`:''}<div class="ok"><b>${r.saved}</b><span>biodata tersimpan</span></div><div><b>${r.with_photo}</b><span>dengan link foto</span></div><div class="${r.unmatched.length?'warn':''}"><b>${r.unmatched.length}</b><span>baris tidak cocok</span></div></div>${r.sync?.errors?.length?`<div class="asp-warn"><b>${r.sync.errors.length} perubahan gagal:</b> ${r.sync.errors.slice(0,20).map(x=>esc(x.full_name+' ('+x.error+')')).join('; ')}</div>`:''}${r.unmatched.length?`<p class="asp-sub">Baris berikut tidak ditemukan di data siswa CQlass (periksa NIS/nama, atau tambahkan siswanya di Data Master terlebih dahulu):</p><div class="asp-table"><table><thead><tr><th>Kelas</th><th>NIS</th><th>Nama</th><th>Keterangan</th></tr></thead><tbody>${r.unmatched.map(u=>`<tr><td>${esc(u.class_name)}</td><td>${esc(u.nis)}</td><td>${esc(u.full_name)}</td><td>${esc(u.reason)}</td></tr>`).join('')}</tbody></table></div>`:''}</div>`:''}
- ${browseCard()}
  </div>`}
 
 const LABEL={nik:'NIK',kps:'KPS',kip:'KIP',pip:'PIP',tk:'TK',km:'(km)',cm:'(cm)',kg:'(kg)',hp:'HP',rt:'RT',rw:'RW',nis:'NIS',nisn:'NISN',sd:'SD',e:'E'};
@@ -73,9 +73,9 @@ const SHOW=[['','Semua siswa'],['nisn','Belum punya NISN'],['empty','Biodata kos
 function matchShow(x){if(S.show==='nisn')return !x.nisn;if(S.show==='empty')return !x.has_profile||x.empty;if(S.show==='incomplete')return x.has_profile&&!x.empty&&(x.missing||[]).length>0;if(S.show==='nophoto')return !x.has_photo;return true}
 function kel(x){if(!x.has_profile||x.empty)return '<span class="asp-no">Kosong</span>';const m=x.missing||[];if(!m.length)return '<span class="asp-ok">Lengkap</span>';return `<span class="asp-mid" title="Belum diisi: ${esc(m.join(', '))}">Kurang ${m.length}</span><small class="asp-miss">${esc(m.slice(0,3).join(', '))}${m.length>3?', …':''}</small>`}
 function browseCard(){const l=S.list||[],q=S.q.trim().toLowerCase();const shown=l.filter(matchShow).filter(x=>!q||(x.name+' '+x.nis+' '+x.nisn+' '+x.class_name).toLowerCase().includes(q));
- return `<div class="asp-card" id="asp-browse"><div class="asp-card-title">Lihat data siswa</div>
+ return `<div class="asp-card" id="asp-browse"><div class="asp-card-title">Daftar Siswa</div>
  <div class="asp-filter"><select onchange="cqAspClass(this.value)"><option value="">Semua kelas</option>${S.classes.map(c=>`<option value="${esc(c.id)}" ${c.id===S.classId?'selected':''}>${esc(c.name)}</option>`).join('')}</select><select onchange="cqAspShow(this.value,true)">${SHOW.map(([k,t])=>`<option value="${k}" ${S.show===k?'selected':''}>${t}</option>`).join('')}</select><input type="search" placeholder="Cari nama, NIS, atau NISN…" value="${esc(S.q)}" oninput="cqAspSearch(this.value)"></div>
- ${S.loadingList?'<p class="asp-sub">Memuat daftar siswa…</p>':S.list?`<p class="asp-sub">${shown.length} siswa ditampilkan${S.show?' · '+esc(SHOW.find(x=>x[0]===S.show)?.[1]||''):''}${q?' · hasil pencarian':''}</p><div class="asp-table asp-browse"><table><thead><tr><th>Kelas</th><th>NIS</th><th>Nama</th><th>NISN</th><th>Kelengkapan</th><th>Foto</th><th></th></tr></thead><tbody>${shown.length?shown.map(x=>`<tr class="${x.has_profile&&!x.empty?'':'miss'}"><td>${esc(x.class_name)}</td><td>${esc(x.nis)}</td><td><b>${esc(x.name)}</b></td><td>${x.nisn?esc(x.nisn):'<span class="asp-no">Belum ada</span>'}</td><td>${kel(x)}</td><td>${x.has_photo?'<span class="asp-ok">Ada</span>':'–'}</td><td><button class="asp-btn" onclick="cqAspOpen('${esc(x.id)}')">Lihat</button></td></tr>`).join(''):'<tr><td colspan="7" class="asp-sub" style="text-align:center;padding:18px">Tidak ada siswa untuk filter ini. 👍</td></tr>'}</tbody></table></div>`:''}
+ ${S.loadingList?'<p class="asp-sub">Memuat daftar siswa…</p>':S.list?`<p class="asp-sub">${shown.length} siswa ditampilkan${S.show?' · '+esc(SHOW.find(x=>x[0]===S.show)?.[1]||''):''}${q?' · hasil pencarian':''}</p><div class="asp-table asp-browse"><table><thead><tr><th>Kelas</th><th>NIS</th><th>Nama</th><th>NISN</th><th>Kelengkapan</th><th>Foto</th><th></th></tr></thead><tbody>${shown.length?shown.map(x=>`<tr class="${x.has_profile&&!x.empty?'':'miss'}"><td>${esc(x.class_name)}</td><td>${esc(x.nis)}</td><td><b>${esc(x.name)}</b></td><td>${x.nisn?esc(x.nisn):'<span class="asp-no">Belum ada</span>'}</td><td>${kel(x)}</td><td>${x.has_photo?'<span class="asp-ok">Ada</span>':'–'}</td><td class="asp-acts"><button class="asp-btn" onclick="cqAspOpen('${esc(x.id)}')" title="Lihat dan edit biodata lengkap">Biodata</button><button class="asp-btn ghost" onclick="cqAspEdit('${esc(x.id)}')" title="Ubah NIS, kelas, tanggal masuk">Kelas &amp; NIS</button></td></tr>`).join(''):'<tr><td colspan="7" class="asp-sub" style="text-align:center;padding:18px">Tidak ada siswa untuk filter ini. 👍</td></tr>'}</tbody></table></div>`:''}
  </div>`}
 window.cqAspShow=(k,fromSelect)=>{S.show=k||'';if(!fromSelect&&S.classId){S.classId='';loadList()}else redrawBrowse();if(!fromSelect)setTimeout(()=>document.getElementById('asp-browse')?.scrollIntoView({behavior:'smooth',block:'start'}),60)};
 async function loadList(){S.loadingList=true;redrawBrowse();try{const d=await api('profile_list',{class_id:S.classId});S.list=d.students||[]}catch(e){msg(e.message,true)}S.loadingList=false;redrawBrowse()}
@@ -110,6 +110,40 @@ window.cqAspSave=async id=>{const m=document.querySelector('.asp-modal');if(!m)r
  const b=m.querySelector('#asp-save');if(b){b.disabled=true;b.textContent='Menyimpan…'}
  try{const d=await api('profile_save',{student_id:id,changes,...(photoChanged?{photo_url:ph}:{})});msg(`Biodata tersimpan (${Object.keys(changes).length+(photoChanged?1:0)} kolom diubah)${d.identity_updated?.length?'. Nama/NISN/jenis kelamin di Daftar Siswa ikut diperbarui.':'.'}`);cqAspOpen(id);if(d.identity_updated?.length)loadList()}
  catch(e){if(b){b.disabled=false;b.textContent='Simpan'}let x=m.querySelector('.asp-err');if(!x){x=document.createElement('div');x.className='asp-warn asp-err';x.style.margin='0 0 12px';m.querySelector('.asp-modal-head').after(x)}x.textContent=e.message;m.querySelector('.asp-modal-box').scrollTop=0}};
+/* ---- Tambah / Edit siswa satu per satu (memakai aksi save_students di master-data-admin) ---- */
+const MD=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co')+'/functions/v1/master-data-admin';
+const MDERR={admin_only:'Akses khusus Admin.',unauthorized:'Sesi berakhir. Silakan login ulang.'};
+async function md(action,p={}){const k=typeof SUPABASE_PUBLISHABLE_KEY!=='undefined'?SUPABASE_PUBLISHABLE_KEY:'';const r=await fetch(MD,{method:'POST',headers:{'Content-Type':'application/json',apikey:k,Authorization:'Bearer '+k,'x-session-token':token()},body:JSON.stringify({action,...p})});const d=await r.json().catch(()=>({}));if(r.status===401)throw Error(MDERR.unauthorized);if(!r.ok||(d.success===false&&!d.partial))throw Error(MDERR[d.error]||d.error||'Data siswa belum dapat disimpan.');return d}
+async function coreList(force){if(S.core&&!force)return S.core;const d=await md('list_students',{semester_no:S.semester});S.core=new Map((d.items||[]).map(x=>[x.id,x]));return S.core}
+const GENDERS=['Laki-laki','Perempuan'];
+window.cqAspEdit=async id=>{const m=document.createElement('div');m.className='asp-modal';m.innerHTML='<div class="asp-modal-box asp-form-box"><p class="asp-sub">Memuat data siswa…</p></div>';const close=()=>{m.remove();document.removeEventListener('keydown',key)},key=e=>{if(e.key==='Escape')close()};m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))close()});document.addEventListener('keydown',key);document.body.appendChild(m);
+ const box=m.querySelector('.asp-modal-box');
+ try{let x={};if(id){const core=await coreList(true);x=core.get(id);if(!x)throw Error('Data siswa tidak ditemukan. Muat ulang halaman.')}else x={class_id:S.classId||''};
+  const g=String(x.gender||'');const gOpts=['',...GENDERS,...(g&&!GENDERS.includes(g)?[g]:[])];
+  const f=(id2,lab,inp,wide)=>`<div class="asp-f${wide?' wide':''}"><label for="${id2}">${lab}</label>${inp}</div>`;
+  box.innerHTML=`<div class="asp-modal-head"><div><div class="asp-card-title" style="margin:0">${id?'Edit Siswa':'Tambah Siswa'}</div><p class="asp-sub">${id?'ID siswa tetap sama, jadi nilai dan riwayatnya tidak terputus.':'Siswa langsung ditempatkan di kelas yang dipilih untuk semester berjalan.'}</p></div><button class="asp-btn ghost" data-close>Tutup</button></div>
+  <div class="asp-fgrid">
+   ${f('asp-e-nama','Nama Lengkap *',`<input id="asp-e-nama" value="${esc(x.full_name||'')}">`,true)}
+   ${f('asp-e-nis','NIS *',`<input id="asp-e-nis" inputmode="numeric" value="${esc(x.nis||'')}">`)}
+   ${f('asp-e-nisn','NISN',`<input id="asp-e-nisn" inputmode="numeric" value="${esc(x.nisn||'')}">`)}
+   ${f('asp-e-jk','Jenis Kelamin',`<select id="asp-e-jk">${gOpts.map(v=>`<option value="${esc(v)}" ${v===g?'selected':''}>${v?esc(v):'—'}</option>`).join('')}</select>`)}
+   ${f('asp-e-kelas','Kelas *',`<select id="asp-e-kelas"><option value="">— Pilih kelas —</option>${S.classes.map(c=>`<option value="${esc(c.id)}" ${c.id===x.class_id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`)}
+   ${f('asp-e-masuk','Tanggal Masuk',`<input id="asp-e-masuk" type="date" value="${esc(String(x.entry_date||'').slice(0,10))}">`)}
+   ${f('asp-e-cat','Catatan',`<input id="asp-e-cat" value="${esc(x.notes||'')}">`,true)}
+  </div>
+  <p class="asp-sub">Biodata lengkap (alamat, orang tua/wali, pas foto) diperbarui lewat upload Excel.</p>
+  <div id="asp-e-msg" class="asp-msg bad" hidden></div>
+  <div class="asp-foot"><button class="asp-btn ghost lg" data-close>Batal</button><button class="asp-btn lg" id="asp-e-save">${id?'Simpan Perubahan':'Tambah Siswa'}</button></div>`;
+  const v=k=>document.getElementById(k).value.trim();
+  box.querySelector('#asp-e-nama').focus();
+  box.querySelector('#asp-e-save').onclick=async ev=>{const b=ev.currentTarget,err=box.querySelector('#asp-e-msg');err.hidden=true;
+   const item={student_id:id||undefined,nis:v('asp-e-nis'),nisn:v('asp-e-nisn'),full_name:v('asp-e-nama'),gender:v('asp-e-jk'),class_id:v('asp-e-kelas'),entry_date:v('asp-e-masuk'),notes:v('asp-e-cat')};
+   if(!item.nis||!item.full_name||!item.class_id){err.textContent='NIS, Nama Lengkap, dan Kelas wajib diisi.';err.hidden=false;return}
+   b.disabled=true;b.textContent='Menyimpan…';
+   try{const d=await md('save_students',{semester_no:S.semester,items:[item]});if(d.failed){throw Error((d.errors&&d.errors[0]&&(d.errors[0].error||d.errors[0].message))||'Data siswa belum dapat disimpan.')}
+    close();S.core=null;try{S.summary=await api('summary')}catch(_){}draw();loadList();msg(id?'Data siswa berhasil diperbarui.':'Siswa berhasil ditambahkan.')}
+   catch(e){err.textContent=e.message;err.hidden=false;b.disabled=false;b.textContent=id?'Simpan Perubahan':'Tambah Siswa'}}}
+ catch(e){box.innerHTML=`<p class="asp-sub">${esc(e.message)}</p><button class="asp-btn ghost" data-close>Tutup</button>`}};
 function msg(t,bad){const el=document.getElementById('asp-msg');if(!el)return;el.hidden=!t;el.textContent=t||'';el.className='asp-msg '+(bad?'bad':'ok');if(typeof showToast==='function'&&t)showToast(t,bad)}
 function draw(){const c=S.host;if(!c||!document.body.contains(c)||!c.querySelector('.asp'))return;c.innerHTML=view()}
 window.cqAspPick=async function(input){const f=input.files?.[0];input.value='';if(!f||S.busy)return;S.busy=true;S.file=f.name;S.plan=null;S.result=null;draw();
@@ -130,7 +164,7 @@ function planCard(){const pl=S.plan;if(!pl)return'';const n=k=>pl[k]?.length||0;
  </div>
  ${n('unknown_class')?`<div class="asp-warn"><b>${n('unknown_class')} baris dilewati</b> karena nama kelasnya tidak ada di CQlass (periksa ejaan kelas di file).${list(pl.unknown_class,x=>`<tr><td>${esc(x.class_name)}</td><td>${esc(x.nis)}</td><td>${esc(x.full_name)}</td></tr>`)}</div>`:''}
  ${n('invalid')?`<div class="asp-warn"><b>${n('invalid')} baris tidak valid</b> (NIS/nama kosong atau NIS ganda).${list(pl.invalid,x=>`<tr><td>${esc(x.nis)}</td><td>${esc(x.full_name)}</td><td>${esc(x.reason)}</td></tr>`)}</div>`:''}
- ${n('not_in_file')?`<div class="asp-info"><b>${n('not_in_file')} siswa aktif tidak ada di file</b> — tidak diubah. Jika siswa sudah keluar, ubah statusnya di tab Daftar &amp; Kelas.${list(pl.not_in_file,x=>`<tr><td>${esc(x.class_name)}</td><td>${esc(x.nis)}</td><td>${esc(x.full_name)}</td></tr>`)}</div>`:''}
+ ${n('not_in_file')?`<div class="asp-info"><b>${n('not_in_file')} siswa aktif tidak ada di file</b> — tidak diubah otomatis.${list(pl.not_in_file,x=>`<tr><td>${esc(x.class_name)}</td><td>${esc(x.nis)}</td><td>${esc(x.full_name)}</td></tr>`)}</div>`:''}
  <div class="asp-foot"><button class="asp-btn ghost lg" onclick="cqAspCancel()">Batal</button><button class="asp-btn lg" id="asp-apply" onclick="cqAspApply()">Terapkan</button></div></div>`}
 window.cqAspCancel=()=>{S.plan=null;S.parsed=null;draw()};
 window.cqAspApply=async function(){const ck=id=>!!document.getElementById(id)?.checked;const opts={create:ck('asp-o-create'),move:ck('asp-o-move'),identity:ck('asp-o-ident')||ck('asp-o-names'),names:ck('asp-o-names'),bio:ck('asp-o-bio')};const b=document.getElementById('asp-apply');if(b){b.disabled=true;b.textContent='Menerapkan…'}
@@ -140,10 +174,13 @@ window.cqAspApply=async function(){const ck=id=>!!document.getElementById(id)?.c
   if(opts.bio){for(let i=0;i<p.rows.length;i+=120){const d=await api('import_rows',{file_name:S.fileName,rows:p.rows.slice(i,i+120)});total.received+=d.received;total.saved+=d.saved;total.with_photo+=d.with_photo;total.unmatched.push(...(d.unmatched||[]))}}
   S.result={...total,sync};S.plan=null;S.summary=await api('summary');draw();loadList();msg(`Selesai: ${sync.created} siswa baru, ${sync.moved} pindah kelas, ${sync.updated} identitas diperbarui${opts.bio?`, biodata ${total.saved} siswa tersimpan`:''}.${sync.errors.length?` ${sync.errors.length} gagal.`:''}`,!!sync.errors.length)}
  catch(e){if(b){b.disabled=false;b.textContent='Terapkan'}msg(e.message,true)}};
-window.renderAdminStudentProfiles=async function(c){if(!c)return;S.host=c;css();S.result=null;c.innerHTML='<div class="asp"><div class="asp-card">Memuat biodata siswa…</div></div>';try{const[sm,cl]=await Promise.all([api('summary'),api('profile_classes')]);S.summary=sm;S.classes=cl.classes||[]}catch(e){S.summary=null;c.innerHTML=view();msg(e.message,true);return}c.innerHTML=view();if(!S.classId&&S.classes[0])S.classId=S.classes[0].id;loadList()};
+window.renderAdminStudentProfiles=async function(c){if(!c)return;S.host=c;css();S.result=null;c.innerHTML='<div class="asp"><div class="asp-card">Memuat biodata siswa…</div></div>';try{const[sm,cl]=await Promise.all([api('summary'),api('profile_classes')]);S.summary=sm;S.classes=cl.classes||[];S.semester=cl.semester_no||1;S.core=null}catch(e){S.summary=null;c.innerHTML=view();msg(e.message,true);return}c.innerHTML=view();if(!S.classId&&S.classes[0])S.classId=S.classes[0].id;loadList()};
 function css(){if(document.getElementById('asp-css'))return;const s=document.createElement('style');s.id='asp-css';s.textContent=`
 .asp{max-width:1040px;margin:0 auto;color:#123634}.asp *{box-sizing:border-box}
-.asp-head{margin-bottom:16px}.asp-title{font-size:clamp(21px,2.3vw,25px);font-weight:800;letter-spacing:-.02em}.asp-sub{font-size:12.5px;color:#5f7775;margin-top:4px;line-height:1.55}
+.asp-head{margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}.asp-head>div{flex:1;min-width:240px;max-width:720px}
+.asp-acts{white-space:nowrap;text-align:right}.asp-acts .asp-btn+.asp-btn{margin-left:6px}
+.asp-modal *{box-sizing:border-box}.asp-form-box{max-width:640px}.asp-fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 10px}.asp-f.wide{grid-column:1/-1}.asp-f label{display:block;font-size:12px;font-weight:700;color:#2c4a48;margin-bottom:5px}.asp-f input,.asp-f select{width:100%;height:42px;border:1px solid #cddfdc;border-radius:10px;padding:0 12px;font:inherit;font-size:13px;background:#fff;color:#123634}.asp-f input:focus,.asp-f select:focus{outline:0;border-color:#0c8a7c;box-shadow:0 0 0 3px rgba(12,138,124,.15)}
+@media(max-width:700px){.asp-fgrid{grid-template-columns:1fr}.asp-head .asp-btn{width:100%}}.asp-title{font-size:clamp(21px,2.3vw,25px);font-weight:800;letter-spacing:-.02em}.asp-sub{font-size:12.5px;color:#5f7775;margin-top:4px;line-height:1.55}
 .asp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}.asp-kpi{position:relative;overflow:hidden;padding:16px 18px;background:#fff;border:1px solid #dbe8e6;border-radius:16px}.asp-kpi b{display:block;font-size:24px;font-weight:800}.asp-kpi b.sm{font-size:15px;line-height:1.3}.asp-kpi b small{font-size:14px;color:#7a908e;font-weight:700}.asp-kpi span{display:block;font-size:12px;color:#5f7775;margin-top:3px}.asp-kpi i{position:absolute;left:0;bottom:0;height:4px;background:linear-gradient(90deg,#0a6e6e,#2ab394)}
 .asp-card{background:#fff;border:1px solid #dbe8e6;border-radius:18px;padding:20px 22px;margin-bottom:16px;box-shadow:0 6px 22px rgba(10,80,76,.05)}.asp-card-title{font-size:16px;font-weight:800;margin-bottom:10px}
 .asp-steps{margin:0 0 16px;padding-left:20px;font-size:12.5px;line-height:1.7;color:#3d5856}
