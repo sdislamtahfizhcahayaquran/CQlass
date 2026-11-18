@@ -29,7 +29,7 @@ async function importRows(user:any,b:any){
   for(let i=0;i<upserts.length;i+=100){const{error}=await sb.from("student_profiles").upsert(upserts.slice(i,i+100),{onConflict:"student_id"});if(error)throw error}
   return J({success:true,received:list.length,saved:upserts.length,with_photo:withPhoto,kept_edits:keptEdits,unmatched})
 }
-const KEYF:[string,string,string][]=[["siswa","nomor_induk_kependudukan_nik","NIK"],["siswa","jenis_kelamin","Jenis kelamin"],["siswa","tempat_lahir","Tempat lahir"],["siswa","tanggal_lahir","Tanggal lahir"],["siswa","agama","Agama"],["siswa","nama_jalan","Alamat"],["siswa","kelurahan","Kelurahan"],["siswa","kecamatan","Kecamatan"],["siswa","kota_kabupaten","Kota/Kabupaten"],["siswa","provinsi","Provinsi"],["ayah","nama","Nama ayah"],["ibu","nama","Nama ibu"]];
+const KEYF:[string,string,string][]=[["siswa","nomor_induk_kependudukan_nik","NIK"],["siswa","jenis_kelamin","Jenis kelamin"],["siswa","tempat_lahir","Tempat lahir"],["siswa","tanggal_lahir","Tanggal lahir"],["siswa","nama_jalan","Alamat"],["siswa","kelurahan","Kelurahan"],["siswa","kecamatan","Kecamatan"],["siswa","kota_kabupaten","Kota/Kabupaten"],["siswa","provinsi","Provinsi"],["ayah","nama","Nama ayah"],["ibu","nama","Nama ibu"]];
 const BASIC=new Set(["kelas","nis","nama_siswa","nisn"]);
 function completeness(data:any){const d=data&&typeof data==="object"?data:{};let any=false;for(const[g,o]of Object.entries(d)){if(g==="_edits"||!o||typeof o!=="object")continue;for(const[f,v]of Object.entries(o as any)){if(g==="siswa"&&BASIC.has(f))continue;if(T(v)){any=true;break}}if(any)break}
   return{empty:!any,missing:KEYF.filter(([g,f])=>!T(d?.[g]?.[f])).map(x=>x[2])}}
