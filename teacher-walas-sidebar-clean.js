@@ -142,6 +142,21 @@
               }
               if(content.firstElementChild===mount&&currentUser?.role==='walas')await window.renderMarketDayWalas(content);
             }catch(err){if(content.firstElementChild===mount)content.textContent=err.message||'Market Day gagal dimuat.'}
+          }},{id:'semester-report',label:'Input Rapor Semester',roles:['walas'],built:true,render:async function(content){
+            content.innerHTML='<div class="card"><span class="spinner"></span> Memuat Input Rapor Semester...</div>';
+            const mount=content.firstElementChild;
+            try{
+              if(typeof window.renderSemesterReportWalas!=='function'){
+                if(!window.__cqSemesterReportLoad)window.__cqSemesterReportLoad=new Promise(function(resolve,reject){
+                  const script=document.createElement('script');script.src='semester-report-walas.js?v=20261118-semester1';
+                  script.onload=function(){if(typeof window.renderSemesterReportWalas==='function')resolve();else reject(Error('Modul Rapor Semester belum siap.'))};
+                  script.onerror=function(){script.remove();reject(Error('Modul Rapor Semester gagal dimuat. Periksa koneksi lalu klik menu kembali.'))};
+                  document.head.appendChild(script);
+                }).catch(function(err){window.__cqSemesterReportLoad=null;throw err});
+                await window.__cqSemesterReportLoad;
+              }
+              if(content.firstElementChild===mount&&currentUser?.role==='walas')await window.renderSemesterReportWalas(content);
+            }catch(err){if(content.firstElementChild===mount)content.textContent=err.message||'Rapor Semester gagal dimuat.'}
           }},cloneItem(rapor,['walas'],'Cetak Rapor')]
         });
       }

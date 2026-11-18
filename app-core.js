@@ -3706,6 +3706,7 @@ function renderRaporControls(){
       <div class="rpv-field"><label>Data Selesai</label><input id="rpv-end" type="date" class="rpv-control" value="${raporPreviewState.endDate}"></div>
       <div class="rpv-field"><label>Tanggal Rapor</label><input id="rpv-print-date" type="date" class="rpv-control" value="${raporPreviewState.printDate}"></div>
       <div class="rpv-field"><label>Tanggal Hijriah (Opsional)</label><input id="rpv-hijri" class="rpv-control" value="${escapeHtml(raporPreviewState.hijriDate||'')}" placeholder="8 Muharram 1448 AH"></div>
+      <div class="rpv-field" id="rpv-lang-field"><label>Bahasa Rapor</label><select id="rpv-lang" class="rpv-control" onchange="raporPreviewState.lang=this.value;if(raporPreviewState.report?.semester_print)renderRaporPreview()"><option value="id" ${raporPreviewState.lang!=='en'?'selected':''}>Bahasa Indonesia</option><option value="en" ${raporPreviewState.lang==='en'?'selected':''}>English</option></select></div>
     </div>
     <div class="rpv-actions"><button class="btn" id="rpv-preview-btn" onclick="rpPreviewByMode()">Preview Rapor</button><button class="btn" id="rpv-print-btn" onclick="rpPrintByMode()">Cetak PDF</button></div>
   </div><div id="rpv-preview-area"></div>`;
@@ -3715,6 +3716,13 @@ function rpUpdatePrintUi(){
   const mode=document.getElementById('rpv-mode')?.value||'STUDENT';
   const sf=document.getElementById('rpv-student-field');if(sf)sf.style.display=mode==='STUDENT'?'block':'none';
   const pb=document.getElementById('rpv-print-btn');if(pb)pb.textContent=mode==='CLASS'?'Cetak PDF Per Kelas':'Cetak PDF Per Siswa';
+  const lf=document.getElementById('rpv-lang-field');if(lf)lf.style.display=(document.getElementById('rpv-type')?.value||raporPreviewState.reportType)==='SEMESTER'?'block':'none';
+}
+// Akhir Semester memakai template semester-report-print.js; data tambahannya diambil sekali per kelas.
+async function rpAttachSemester(reports,classId){
+  if(raporPreviewState.reportType!=='SEMESTER')return reports;
+  if(typeof window.cqSemesterAttach!=='function')throw new Error('Modul Rapor Akhir Semester belum dimuat. Muat ulang halaman.');
+  return window.cqSemesterAttach(reports,{academicYear:raporPreviewState.academicYear,semester:raporPreviewState.semester,classId});
 }
 async function rpPreviewByMode(){
   const mode=document.getElementById('rpv-mode')?.value||'STUDENT';
@@ -3754,7 +3762,7 @@ async function rpLoadPreview(){
   const current=()=>periodKey===rpPeriodKey()&&periodRoot===document.getElementById('rpv-root');
   try{
     const d=await reportPreviewRequest('preview',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,student_id:studentId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},45000);
-    if(!current())return false;const sig=await rpFetchReportSignatures(classId);if(!current())return false;raporPreviewState.report=d.report;rpApplySignatureBundle(raporPreviewState.report,sig);renderRaporPreview();return true;
+    if(!current())return false;const sig=await rpFetchReportSignatures(classId);if(!current())return false;await rpAttachSemester([d.report],classId);if(!current())return false;raporPreviewState.report=d.report;rpApplySignatureBundle(raporPreviewState.report,sig);renderRaporPreview();return true;
   }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Preview gagal dimuat.')}</div></div>`;return false}
   finally{if(btn){btn.disabled=false;btn.textContent='Preview Siswa'}}
 }
@@ -3777,7 +3785,7 @@ async function rpLoadClassPreview(autoPrint=false){
   const btn=autoPrint?document.getElementById('rpv-print-btn'):document.getElementById('rpv-preview-btn'),area=document.getElementById('rpv-preview-area');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Menyiapkan...'}if(area)area.innerHTML='<div class="card"><span class="spinner"></span> Menyusun seluruh rapor kelas. Mohon tunggu...</div>';
   const periodKey=rpPeriodKey(),periodRoot=document.getElementById('rpv-root');
   const current=()=>periodKey===rpPeriodKey()&&periodRoot===document.getElementById('rpv-root');
-  try{const d=await reportPreviewRequest('class_reports',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},120000);if(!current())return;const reports=Array.isArray(d.reports)?d.reports:[];if(!reports.length)throw new Error('Tidak ada siswa aktif pada kelas ini.');const sig=await rpFetchReportSignatures(classId);if(!current())return;reports.forEach(x=>rpApplySignatureBundle(x,sig));raporPreviewState.classReports=reports;
+  try{const d=await reportPreviewRequest('class_reports',{academic_year:raporPreviewState.academicYear,semester_no:raporPreviewState.semester,class_id:classId,report_type:raporPreviewState.reportType,start_date:raporPreviewState.startDate,end_date:raporPreviewState.endDate},120000);if(!current())return;const reports=Array.isArray(d.reports)?d.reports:[];if(!reports.length)throw new Error('Tidak ada siswa aktif pada kelas ini.');const sig=await rpFetchReportSignatures(classId);if(!current())return;reports.forEach(x=>rpApplySignatureBundle(x,sig));await rpAttachSemester(reports,classId);if(!current())return;raporPreviewState.classReports=reports;
     if(autoPrint){await rpEnsurePdfLibs(true);const zip=new window.JSZip();const original=raporPreviewState.report;for(let i=0;i<reports.length;i++){if(!current())return;raporPreviewState.report=reports[i];renderRaporPreview();const el=document.getElementById('rpv-preview');if(!el)continue;if(btn)btn.textContent=`PDF ${i+1}/${reports.length}`;const blob=await rpElementPdfBlob(el);if(!current())return;zip.file(rpSafeFilename(reports[i]?.student?.name||`Siswa ${i+1}`)+'.pdf',blob)}if(!current())return;raporPreviewState.report=original||reports[0];const cl=reports[0]?.class?.name||'Kelas';const label=raporPreviewState.reportType==='SEMESTER'?'Rapor Akhir Semester':'Rapor PTS';const zblob=await zip.generateAsync({type:'blob',compression:'STORE'});if(!current())return;rpDownloadBlob(zblob,`${label} ${rpSafeFilename(cl)}.zip`);showToast('ZIP rapor per kelas berhasil dibuat.');return}
     const first=reports[0];raporPreviewState.report=first;renderRaporPreview();
   }catch(e){if(area)area.innerHTML=`<div class="card"><div class="ms-alert">${escapeHtml(e.message||'Gagal membuat rapor kelas.')}</div></div>`}finally{if(btn){btn.disabled=false;btn.textContent=autoPrint?'Cetak PDF Per Kelas':'Preview Rapor'}}
@@ -3839,6 +3847,11 @@ function rpTeamPositions(team,tahfizh,homeroom){const arr=rpBuildTeamList(team,t
 
 function renderRaporPreview(){
   const area=document.getElementById('rpv-preview-area'),r=raporPreviewState.report;if(!area||!r)return;
+  if(r.semester_print&&typeof window.cqSemesterPagesHtml==='function'){
+    const lang=document.getElementById('rpv-lang')?.value||raporPreviewState.lang||'id';
+    area.innerHTML=`<div class="card"><div class="pv2-toolbar"><div><div class="card-title" style="margin:0">Preview Rapor Akhir Semester - ${escapeHtml(r.student?.name||'-')}</div><div class="page-sub" style="margin-top:3px">Ukuran A4 · ${lang==='en'?'English':'Bahasa Indonesia'} · Rapor IKM menyusul.</div></div><button class="btn btn-sm rpv-print-btn" onclick="rpPrintStudentPdf()">${pointSvg('save',15)} Cetak PDF</button></div></div><div class="rpv-paper-wrap" id="rpv-preview">${window.cqSemesterPagesHtml(r,{lang,printDate:raporPreviewState.printDate,hijri:raporPreviewState.hijriDate})}</div>`;
+    const root=document.getElementById('rpv-preview');rpWaitForImages(root).finally(()=>root?.scrollIntoView({behavior:'smooth',block:'start'}));return;
+  }
   const st=r.student||{},cl=r.class||{},att=r.attendance||{},pts=r.points||{},eks=r.extracurricular||{},trs=r.teachers||{};const p=att.percent||{},cats=pts.categories||{};
   const reportTitle=raporPreviewState.reportType==='SEMESTER'?'SEMESTER STUDENT PROGRESS REPORT':'MID-SEMESTER STUDENT PROGRESS REPORT';
   const semTxt=Number(r.semester_no)===2?'SEMESTER II':'SEMESTER I',idText=[st.nis,st.nisn].filter(Boolean).join(' / ')||'-',t=r.tahfizh||null;
