@@ -42,7 +42,7 @@ let _cv;function wrapLines(text,maxLines=4){const t=String(text||'');if(!t)retur
  if(out.length>maxLines){const keep=out.slice(0,maxLines-1);keep.push(out.slice(maxLines-1).join(' '));return keep}return out}
 function page(st,o){const kota=kotaFix(st.kota);st={...st,nama:eyd(st.nama),ttl:capTtl(st.ttl),suku:cap(st.suku),alamat:addrFix(st.alamat),kota,provinsi:provFix(st.provinsi,kota),golongan_darah:String(st.golongan_darah||'').toUpperCase().replace(/\s+/g,''),ayah:{...st.ayah,nama:eyd(st.ayah?.nama),ttl:capTtl(st.ayah?.ttl),warga_negara:eyd(st.ayah?.warga_negara)},ibu:{...st.ibu,nama:eyd(st.ibu?.nama),ttl:capTtl(st.ibu?.ttl),warga_negara:eyd(st.ibu?.warga_negara)}};const addr=wrapLines(st.alamat);const row=(no,label,val,cls='')=>`<tr class="${cls}"><td class="no">${no}</td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
  const sub=(label,val)=>`<tr class="sub"><td class="no"></td><td class="lb">${label}</td><td class="cl">:</td><td class="vl">${esc(val)}</td></tr>`;
- const photo=o.photo&&st.photo_url?`<img src="${esc(st.photo_url)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:'';
+ const photo=o.photo&&st.photo_url?`<img src="${esc(st.photo_url)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()" onload="if(this.naturalWidth>this.naturalHeight*1.05)this.remove()">`:'';
  return `<section class="cv-page"><img class="cv-kop" src="${o.header}" alt=""><h1>BIODATA SISWA</h1>
  <table class="cv-t">
   <tr class="sec"><td class="no">A</td><td colspan="3">IDENTITAS ANAK</td></tr>
