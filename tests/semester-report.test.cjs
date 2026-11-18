@@ -83,7 +83,7 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  const nums=[...id.matchAll(/data-page-no="(\d+)"/g)].map(m=>Number(m[1]));const titles=[...id.matchAll(/<div class="srp-title">([^<]+)<\/div>/g)].map(m=>m[1]);
  assert.equal(titles[0],'KOMENTAR UMUM');assert.equal(titles[1],'PENILAIAN SIKAP');assert.equal(titles[titles.length-1],'NILAI RAPOR','Nilai is the last page before IKM');
  assert.deepEqual(nums.slice(0,3),[1,2,3],'Komentar 1, Sikap/Adab 2-3');assert.equal(nums[3],7,'Kognitif starts at page 7 (Tahfizh 4-6 printed separately)');assert.equal(titles[3],'PENILAIAN KOGNITIF UMUM');
- assert(id.includes('Halaman 7')&&id.includes('rapor-semester-logo.png')&&id.includes('rapor-semester-footer.jpg'),'page number, logo and footer present');
+ assert(id.includes('Halaman 7 | Budi'),'footer shows page number and student name');assert(id.includes('Halaman 7')&&id.includes('rapor-semester-logo.png')&&id.includes('rapor-semester-footer.jpg'),'page number, logo and footer present');
  assert.equal((id.match(/srp-box on/g)||[]).length,2+1+1+1,'checked boxes: 2 MTK TP + 1 Arab TP + 1 sikap + 1 psikomotor');
  const en=win.cqSemesterPagesHtml(report,{lang:'en',printDate:'2026-12-19',hijri:''});
  for(const s of ['SEMESTER REPORT CARD','Mathematics','Arabic Language','Local Content Subjects','Language Week','GENERAL COMMENTS','Homeroom Teacher','Principal','19 December 2026 CE','Incomplete scores'])assert(en.includes(s),'EN page contains '+s);
