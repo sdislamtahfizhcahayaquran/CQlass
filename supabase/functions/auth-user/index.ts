@@ -60,8 +60,9 @@ function roleFromText(value: unknown): string | null {
   if(aliases[s])return aliases[s];
   return s;
 }
+// pembina_pramuka is an add-on role (extra menu only): it must never become the primary login role.
 function rolePriority(role: string): number {
-  const known = ({ pimpinan:700, hrd:675, kesiswaan:650, akademik:620, kabid_tahfizh:615, kegiatan:600, admin:550, walas:300, guru_partner:260, tahfizh:220, guru:100 } as Record<string,number>)[role];
+  const known = ({ pimpinan:700, hrd:675, kesiswaan:650, akademik:620, kabid_tahfizh:615, kegiatan:600, admin:550, walas:300, guru_partner:260, tahfizh:220, guru:100, pembina_pramuka:10 } as Record<string,number>)[role];
   return known ?? (role ? 500 : 0);
 }
 function choosePrimaryRole(roles: string[]): string {
