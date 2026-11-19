@@ -92,6 +92,10 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  const en=win.cqSemesterPagesHtml(report,{lang:'en',printDate:'2026-12-19',hijri:''});
  for(const s of ['SEMESTER REPORT CARD','Mathematics','Arabic Language','Local Content Subjects','Language Week','GENERAL COMMENTS','Homeroom Teacher','Principal','19 December 2026 CE','Incomplete scores'])assert(en.includes(s),'EN page contains '+s);
  assert(!en.includes('Matematika'),'EN uses English subject names');
+ const enTp={...report,semester_print:{subjects:pd.subjects.map(s=>({...s,objectives:s.objectives.map((o,i)=>({...o,description_en:i===0?'Whole numbers':''}))})),student:budi}};
+ const enHtml=win.cqSemesterPagesHtml(enTp,{lang:'en'}),idHtml=win.cqSemesterPagesHtml(enTp,{lang:'id'});
+ assert(enHtml.includes('Whole numbers')&&!enHtml.includes('Bilangan cacah'),'EN report uses description_en');assert(enHtml.includes('Pecahan'),'EN falls back to Indonesian when description_en is empty');
+ assert(idHtml.includes('Bilangan cacah')&&!idHtml.includes('Whole numbers'),'ID report keeps Indonesian TP');
  assert(!win.cqSemesterPagesHtml({...report,student:{...report.student,name:'<script>x</script>'}},{lang:'id'}).includes('<script>x'),'names are escaped');
  console.log('PASS semester-report print: terbilang ID/EN, TP grade bands, subject grouping, all pages in both languages, page numbers, escaping.');
 })().catch(e=>{console.error(e);process.exitCode=1});
