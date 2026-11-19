@@ -57,6 +57,16 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  assert.equal(entries[0].data.sikap.tauhid_1,'B','grades are normalised to upper case');assert.equal(entries[0].version,1);
  assert.equal((await call(body)).status,409,'stale version rejected');assert.equal(writes,1);
  assert.equal((await call({...body,entries:[{...body.entries[0],version:1}]})).status,200);assert.equal(entries[0].version,2);
+ // Rapor IKM: kesehatan, prestasi, keputusan.
+ const ikmData=d=>({...body,entries:[{...body.entries[0],version:2,data:{...body.entries[0].data,...d}}]});
+ assert.equal((await call(ikmData({kesehatan:{tb:'999'}}))).status,400,'height out of range rejected');
+ assert.equal((await call(ikmData({kesehatan:{bb:'abc'}}))).status,400,'non-numeric weight rejected');
+ assert.equal((await call(ikmData({prestasi:[{jenis:'a'},{jenis:'b'},{jenis:'c'},{jenis:'d'}]}))).status,400,'more than 3 achievements rejected');
+ assert.equal((await call(ikmData({keputusan:'lompat'}))).status,400,'unknown decision rejected');
+ assert.equal((await call(ikmData({kesehatan:{tb:'125,5',bb:'30',pendengaran:'Baik',gigi:''},prestasi:[{jenis:'Juara 1 Tahfizh',keterangan:'Tingkat kota'},{jenis:'',keterangan:''}],keputusan:'naik'}))).status,200);
+ const plain=v=>JSON.parse(JSON.stringify(v));
+ assert.deepEqual(plain(entries[0].data.kesehatan),{tb:'125.5',bb:'30',pendengaran:'Baik'},'decimal comma accepted, empty fields dropped');
+ assert.deepEqual(plain(entries[0].data.prestasi),[{jenis:'Juara 1 Tahfizh',keterangan:'Tingkat kota'}],'empty achievement rows dropped');assert.equal(entries[0].data.keputusan,'naik');assert.equal(entries[0].version,3);
 
  // Data cetak: nilai akhir mengikuti rumus legger, TP dibaca lebih dari 1000 baris.
  const pd=await (await call({action:'print_data',academic_year:'2026/2027',semester_no:1,class_id:'class'})).json();
@@ -80,11 +90,12 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  const id=win.cqSemesterPagesHtml(report,{lang:'id',printDate:'2026-12-19',hijri:'28 Jumadil Akhir 1448'});
  for(const s of ['NILAI RAPOR','Matematika','Sembilan puluh dua'.slice(0,0)+I.terbilang(budi.academic['s-mtk'].final,'id'),'Muatan Lokal','PENILAIAN KOGNITIF UMUM','PENILAIAN KOGNITIF DINIYAH','Bilangan cacah','Mufradat','PENILAIAN SIKAP','PENILAIAN PSIKOMOTORIK','Pekan bahasa','KOMENTAR UMUM','Ananda rajin.','Depok, 28 Jumadil Akhir 1448 H','19 Desember 2026 M','Bu Walas','Pak Kepsek','Nilai belum lengkap'])assert(id.includes(s),'ID page contains '+s);
  const pages=(id.match(/class="rpv-paper srp-page"/g)||[]).length;assert(pages>=6,'expected at least 6 A4 pages, got '+pages);
- const nums=[...id.matchAll(/data-page-no="(\d+)"/g)].map(m=>Number(m[1]));const titles=[...id.matchAll(/<div class="srp-title">([^<]+)<\/div>/g)].map(m=>m[1]);
+ const noIkm=h=>h.split('<section').filter(s=>!s.includes('data-part="ikm"')).join('<section');
+ const nums=[...id.matchAll(/data-page-no="(\d+)"/g)].map(m=>Number(m[1]));const titles=[...noIkm(id).matchAll(/<div class="srp-title">([^<]+)<\/div>/g)].map(m=>m[1]);
  assert.equal(titles[0],'KOMENTAR UMUM');assert.equal(titles[1],'PENILAIAN SIKAP');assert.equal(titles[titles.length-1],'NILAI RAPOR','Nilai is the last page before IKM');
  assert.deepEqual(nums.slice(0,3),[1,2,3],'Komentar 1, Sikap/Adab 2-3');assert.equal(nums[3],7,'Kognitif starts at page 7 (Tahfizh 4-6 printed separately)');assert.equal(titles[3],'PENILAIAN KOGNITIF UMUM');
  const many={...report,semester_print:{subjects:Array.from({length:24},(_,i)=>({id:'m'+i,name:'Mapel '+i,sort_order:i,kktp_min:75,kktp_max:75,objectives:[]})),student:{academic:{},entry:null}}};
- const mt=[...win.cqSemesterPagesHtml(many,{lang:'id'}).matchAll(/<div class="srp-title">([^<]+)<\/div>/g)].map(m=>m[1]);
+ const mt=[...noIkm(win.cqSemesterPagesHtml(many,{lang:'id'})).matchAll(/<div class="srp-title">([^<]+)<\/div>/g)].map(m=>m[1]);
  assert.deepEqual(mt.slice(-2),['NILAI RAPOR','NILAI RAPOR'],'long subject list splits Nilai into 2 pages, both with header');
  assert.equal(titles.filter(t=>t==='NILAI RAPOR').length,1,'short subject list keeps Nilai on 1 page');
  assert(id.includes('Halaman 7 | Budi'),'footer shows page number and student name');assert(id.includes('Halaman 7')&&id.includes('rapor-semester-logo.png')&&id.includes('rapor-semester-footer.jpg'),'page number, logo and footer present');
@@ -98,4 +109,21 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  assert(idHtml.includes('Bilangan cacah')&&!idHtml.includes('Whole numbers'),'ID report keeps Indonesian TP');
  assert(!win.cqSemesterPagesHtml({...report,student:{...report.student,name:'<script>x</script>'}},{lang:'id'}).includes('<script>x'),'names are escaped');
  console.log('PASS semester-report print: terbilang ID/EN, TP grade bands, subject grouping, all pages in both languages, page numbers, escaping.');
+
+ // Rapor IKM (XDESK).
+ const ikmOf=h=>h.split('<section').filter(s=>s.includes('data-part="ikm"')).join('<section');
+ const ikmReport={...report,points:{categories:{Minor:{incidents:2},Moderate:{incidents:0},Severe:{incidents:0}},violation_total:10,reward_total:25,final_total:15},
+  semester_print:{subjects:pd.subjects,class:{grade_level:4},student:{...budi,ekskul:[{name:'Robotic',activity:'A',skill:'B'},{name:'Pramuka',activity:'B',skill:'B'},{name:'Renang',external:true,institution:'Klub Tirta',activity:'A',skill:'A'}]}}};
+ const ik=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'id'}));
+ assert(ik.length>0,'IKM pages exist');assert(id.lastIndexOf('data-part="ikm"')>id.lastIndexOf('LAPORAN PENILAIAN HASIL BELAJAR SISWA</div>\n<table class="srp-t"><colgroup><col style="width:7%">'),'IKM comes after Nilai');
+ for(const s of ['A. Kriteria Ketuntasan Minimal Satuan Pendidikan = 70','CAPAIAN KOMPETENSI','B. Kokurikuler','Segera hadir','C. Ekstrakurikuler','D. Tinggi dan Berat Badan','125.5 cm','30 kg','E. Kondisi Kesehatan','F. Prestasi','Juara 1 Tahfizh','Tingkat kota','G. Ketidakhadiran','2 hari','H. Karakter dan Kedisiplinan','Total Poin Pelanggaran: 10 Poin','Total Poin Akhir: 15 Poin','Klub Tirta'])assert(ik.includes(s),'IKM contains '+s);
+ const mtkFinal=budi.academic['s-mtk'].final;assert(ik.includes(`<td class="c">${mtkFinal}</td><td class="c">${I.ikmLetter(mtkFinal)}</td>`),'Matematika final score and grade');assert.equal(I.ikmLetter(90),'A');assert.equal(I.ikmLetter(80),'B');assert.equal(I.ikmLetter(65),'C');assert.equal(I.ikmLetter(64),'D');
+ assert(ik.includes('Ananda Budi sangat baik dalam bilangan cacah dan cukup baik dalam pecahan.'),'capaian uses highest and lowest TP');
+ assert(ik.indexOf('>Pramuka<')<ik.indexOf('>Robotic<'),'Pramuka listed first');assert(!ik.includes('Keputusan:'),'no promotion decision in semester 1');
+ assert.equal(I.tpPhrase('Peserta didik mampu memahami teks.','id'),'memahami teks');assert.equal(I.tpPhrase('Students are able to read.','en'),'read');
+ const s2=ikmOf(win.cqSemesterPagesHtml({...ikmReport,semester_no:2,semester_print:{...ikmReport.semester_print,student:{...ikmReport.semester_print.student,kesehatan_s1:{tb:'120',bb:'28'}}}},{lang:'id'}));
+ assert(s2.includes('Naik ke Kelas : V (Lima)')&&s2.includes('120 cm')&&s2.includes('125.5 cm'),'semester 2: promotion and both semesters of height');
+ const g6=ikmOf(win.cqSemesterPagesHtml({...ikmReport,semester_no:2,semester_print:{...ikmReport.semester_print,class:{grade_level:6}}},{lang:'id'}));assert(g6.includes('LULUS'),'grade 6 graduates');
+ const ikEn=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'en'}));for(const s of ['Coming soon','Scouting (Pramuka)','Budi shows excellent achievement in','Final Total Points: 15 Points'])assert(ikEn.includes(s),'EN IKM contains '+s);
+ console.log('PASS rapor IKM: KKM 70 table, capaian from highest/lowest TP, Pramuka first, kesehatan, prestasi, absences, character points, semester 2 decision, English.');
 })().catch(e=>{console.error(e);process.exitCode=1});
