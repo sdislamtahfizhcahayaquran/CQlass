@@ -54,6 +54,15 @@ const call=async b=>{const r=await ctx.__handler(new Request('https://x.invalid'
  assert.equal((await call({action:'kkm_save',kkm:101})).status,400);assert.equal((await call({action:'kkm_save',kkm:7.5})).status,400);
  x=await call({action:'kkm_save',kkm:75});assert.equal(x.status,200);assert.equal(settings.kkm,75);x=await call({action:'kkm_get'});assert.equal(x.body.kkm,75);
  console.log('PASS master TP server: add subject to grades (skip/reactivate/create), subject switch-off guards, KKM get/save.');
+ // Rubrik kokurikuler: simpan per semester & kelas, validasi isi.
+ const rub=d=>({id:'Proyek X',tujuan:'T',dims:[{id:'Kolaborasi',kuat:'bekerja sama',latih:'berbagi tugas',indicators:[{indikator:'I1',l4:'a',l3:'b',l2:'c',l1:'d'}]},{id:'Kreativitas',kuat:'membuat ide',latih:'mengembangkan ide'}],...d});
+ assert.equal((await call({action:'koku_save',semester_no:3,items:[{grade_level:1,data:rub()}]})).status,400,'semester must be 1 or 2');
+ assert.equal((await call({action:'koku_save',semester_no:1,items:[{grade_level:7,data:rub()}]})).status,400,'grade must be 1-6');
+ assert.equal((await call({action:'koku_save',semester_no:1,items:[{grade_level:1,data:rub({dims:[{id:'A',kuat:'x',latih:'y'}]})}]})).status,400,'exactly 2 dimensions');
+ x=await call({action:'koku_save',semester_no:1,items:[{grade_level:1,data:rub({dims:[{id:'Kolaborasi',kuat:'',latih:'y'},{id:'B',kuat:'x',latih:'y'}]})}]});assert.equal(x.status,400);assert.match(x.body.error,/dimensi A/);
+ x=await call({action:'koku_save',semester_no:2,file_name:'r.xlsx',items:[{grade_level:2,data:rub()},{grade_level:5,data:rub()}]});assert.equal(x.status,200);assert.deepEqual(plain(x.body.saved),[2,5]);
+ assert.equal(settings.length,2);assert.equal(settings[0].semester_no,2);assert.equal(settings[0].data.dims[0].indicators[0].l4,'a');assert.equal(settings[0].source_file,'r.xlsx');
+ console.log('PASS kokurikuler rubric save: per semester/grade, validation.');
 
  // 3) KKM appears in Rapor IKM and as KKTP fallback in Nilai.
  const store=new Map();const w={document:{getElementById:id=>store.get(id)||null,createElement:()=>({}),head:{appendChild:el=>{if(el.id)store.set(el.id,el)}}}};w.window=w;
@@ -62,4 +71,10 @@ const call=async b=>{const r=await ctx.__handler(new Request('https://x.invalid'
  const h=w.cqSemesterPagesHtml(rep,{lang:'id'});assert(h.includes('Kriteria Ketuntasan Minimal Satuan Pendidikan = 75'),'IKM shows configured KKM');assert(h.includes('<td class="c">75</td><td class="c">80</td>'),'Nilai KKTP column falls back to KKM');
  const h2=w.cqSemesterPagesHtml({...rep,semester_print:{...rep.semester_print,kkm:undefined}},{lang:'id'});assert(h2.includes('Satuan Pendidikan = 70'),'default 70 when not configured');
  console.log('PASS KKM in print: IKM title and KKTP fallback.');
+ // Rubrik upload menggantikan rubrik bawaan; tanpa frasa English, rapor English memakai kalimat Indonesia.
+ const KC=w.CQ_SEMESTER_CATALOG.kokuComment,up={id:'Proyek Baru',dims:[{id:'Kolaborasi',kuat:'bekerja sama',latih:'berbagi tugas'},{id:'Kreativitas',kuat:'membuat ide',latih:'mengembangkan ide'}]};
+ assert.equal(KC('Ani',1,{a:4,b:1},'id',up),'Ananda Ani sangat baik dalam kolaborasi dengan mampu bekerja sama, dan masih perlu berlatih dalam mengembangkan ide.');
+ assert.equal(KC('Ani',1,{a:4,b:1},'en',up),KC('Ani',1,{a:4,b:1},'id',up),'English report falls back to Indonesian phrases');
+ const rp={...rep,semester_print:{...rep.semester_print,kokurikuler_rubric:up,student:{academic:{},entry:{data:{kokurikuler:{a:4,b:1}}}}}};assert(w.cqSemesterPagesHtml(rp,{lang:'id'}).includes('Proyek Baru'),'IKM uses uploaded rubric');
+ console.log('PASS uploaded rubric overrides built-in; EN falls back to ID.');
 })().catch(e=>{console.error(e);process.exitCode=1});
