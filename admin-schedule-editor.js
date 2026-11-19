@@ -78,11 +78,14 @@
   }
   function draw(){
     const c=document.getElementById('content');if(!c)return;
-    c.innerHTML=`<div class="ase"><div class="aseh"><h2>Jadwal <span>Mengajar</span></h2><p>${esc(S.boot?.academic_year||'')} · Semester ${esc(S.boot?.semester_no||'')}. Admin dan Akademik mengelola jadwal yang sama. Penugasan mapel dan kelas tetap dikelola Admin melalui Penugasan Guru.</p></div>${conflictPanel()}<div class="asecard"><div class="asefilters"><div class="asefield"><label>Kelas</label><select id="ase-class"><option value="">Pilih kelas...</option>${classOptions(S.classId)}</select></div><div class="asefield"><label>Hari</label><select id="ase-day"><option value="">Semua hari</option>${Object.entries(DAYS).slice(0,5).map(([k,v])=>`<option value="${k}" ${String(k)===String(S.day)?'selected':''}>${v}</option>`).join('')}</select></div><button class="asebtn" id="ase-load">Muat Jadwal</button></div><div class="asehint">Sistem menolak penyimpanan dan impor yang membuat guru atau kelas bentrok pada waktu yang sama.</div>${editor()}<div class="asewrap"><table class="asetable"><thead><tr><th>Hari</th><th>Jam</th><th>Kelas</th><th>Mapel</th><th>Guru</th><th>Slot</th><th>Aksi</th></tr></thead><tbody>${rows()}</tbody></table></div></div></div>`;
+    c.innerHTML=`<div class="ase"><div class="aseh"><h2>Jadwal <span>Mengajar</span></h2><p>${esc(S.boot?.academic_year||'')} · Semester ${esc(S.boot?.semester_no||'')}. Admin dan Akademik mengelola jadwal yang sama. Penugasan mapel dan kelas tetap dikelola Admin melalui Penugasan Guru.</p></div><div id="cq-jadwal-upload"></div>${conflictPanel()}<div class="asecard"><div class="asefilters"><div class="asefield"><label>Kelas</label><select id="ase-class"><option value="">Pilih kelas...</option>${classOptions(S.classId)}</select></div><div class="asefield"><label>Hari</label><select id="ase-day"><option value="">Semua hari</option>${Object.entries(DAYS).slice(0,5).map(([k,v])=>`<option value="${k}" ${String(k)===String(S.day)?'selected':''}>${v}</option>`).join('')}</select></div><button class="asebtn" id="ase-load">Muat Jadwal</button></div><div class="asehint">Sistem menolak penyimpanan dan impor yang membuat guru atau kelas bentrok pada waktu yang sama.</div>${editor()}<div class="asewrap"><table class="asetable"><thead><tr><th>Hari</th><th>Jam</th><th>Kelas</th><th>Mapel</th><th>Guru</th><th>Slot</th><th>Aksi</th></tr></thead><tbody>${rows()}</tbody></table></div></div></div>`;
     wire();
   }
   function wire(){
     const c=document.getElementById('content');if(!c)return;
+    // Upload jadwal (Admin + Akademik). The panel element is kept across redraws so a chosen file is not lost.
+    const up=c.querySelector('#cq-jadwal-upload');
+    if(up&&typeof window.cqScheduleUploadPanel==='function'){if(!S.uploadEl){S.uploadEl=document.createElement('div');window.cqScheduleUploadPanel(S.uploadEl,{onDone:async()=>{try{await refreshConflicts()}catch(_){}if(S.classId)await loadItems();else draw()}})}up.replaceWith(S.uploadEl)}
     const cls=c.querySelector('#ase-class'),day=c.querySelector('#ase-day');
     c.querySelector('#ase-load')?.addEventListener('click',async()=>{S.classId=cls?.value||'';S.day=day?.value||'';S.editing=null;await loadItems()});
     const ecl=c.querySelector('#ase-e-class');
@@ -97,7 +100,7 @@
   }
   async function render(c){
     if(!canSchedule()){c.innerHTML='<div class="card">Akses hanya untuk Admin dan Akademik.</div>';return}
-    css();c.innerHTML='<div class="ase"><div class="asecard aseempty">Memuat editor jadwal...</div></div>';
+    css();S.uploadEl=null;c.innerHTML='<div class="ase"><div class="asecard aseempty">Memuat editor jadwal...</div></div>';
     try{const [boot]=await Promise.all([api('bootstrap'),refreshConflicts()]);S.boot=boot;draw()}catch(e){c.innerHTML=`<div class="ase"><div class="asecard aseempty">${esc(msg(e))}</div></div>`}
   }
   window.renderAdminScheduleEditor=render;

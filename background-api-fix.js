@@ -156,7 +156,7 @@
       add('./academic-teacher-report.js?v=20261025-period2','__cqAcademicTeacherReportRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','kegiatan'].includes(r)){
-      add('./kabid-role-scope-fix.js?v=20261026-owner1','__cqKabidRoleScopeRoleLazy',false);
+      add('./kabid-role-scope-fix.js?v=20261119-upload1','__cqKabidRoleScopeRoleLazy',false);
     }
 
     if(['akademik','kabid_akademik','academic'].includes(r)){
