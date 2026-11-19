@@ -21,7 +21,8 @@ function tableData(table){return({
  subjects:[{id:'s-mtk',code:'MTK',name:'Matematika',sort_order:2},{id:'s-arab',code:'ARB',name:'Bahasa Arab',sort_order:9}],
  learning_objectives:[{id:'o1',subject_id:'s-mtk',description:'Bilangan cacah',sort_order:1,kktp:75},{id:'o2',subject_id:'s-mtk',description:'Pecahan',sort_order:2,kktp:78},{id:'o3',subject_id:'s-arab',description:'Mufradat',sort_order:1,kktp:null}],
  academic_scores:scores,
- semester_report_entries:entries
+ semester_report_entries:entries,
+ pramuka_assessments:[{student_id:'st1',grade:'B'},{student_id:'st2',grade:null}]
 })[table]}
 const sb={from(table){const q={_table:table,_single:false};for(const k of ['select','eq','in','order','match','is','limit'])q[k]=()=>q;q.range=(a,b)=>{q._range=[a,b];return q};
  q.update=r=>{q._write={type:'update',r};return q};q.insert=r=>{q._write={type:'insert',r};return q};
@@ -76,6 +77,9 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  assert.equal(budi.academic['s-mtk'].final,Math.round(80*.1+80*.3+80*.1+90*.5));assert.deepEqual(budi.academic['s-mtk'].tp,[90,70]);
  assert.equal(budi.academic['s-arab'].final,null,'incomplete subject has no final score');assert.equal(budi.entry.data.komentar,'Ananda rajin.');
  assert.equal(pd.students.find(s=>s.id==='st2').entry,null);
+ assert.deepEqual(budi.ekskul.map(e=>[e.name,e.rating]),[['Pramuka','B']],'Pramuka grade from Pembina Pramuka joins the ekskul list');
+ assert.deepEqual(pd.students.find(s=>s.id==='st2').ekskul,[],'ungraded Pramuka adds no row (template shows an empty Pramuka row)');
+ assert.equal(budi.academic['s-mtk'].wwp,80);assert.deepEqual(budi.academic['s-mtk'].tasks,[80,80,80,80,80],'components for the walas Excel download');
  console.log('PASS semester-report route: auth, walas scope, read-all print, period, grade/key/student/comment validation, versioning, legger final score, paged scores.');
 
  // Template cetak (tanpa browser).
