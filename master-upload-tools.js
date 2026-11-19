@@ -133,14 +133,71 @@
         if(!desc)return;if(!order)order=next;next=order+1;out.push({row_no:i+1,order,topic,desc})});return out}
   window.__cqMasterUploadInternals={parsePaste};
   /* ---------------- Alat Master TP: tab Tempel TP | Upload Excel | Mapel per Kelas | KKM ---------------- */
-  const TOOL_TABS=[['paste','Tempel TP'],['excel','Upload Excel'],['mapel','Mapel per Kelas'],['kkm','KKM']];
+  const TOOL_TABS=[['paste','Tempel TP'],['excel','Upload Excel'],['mapel','Mapel per Kelas'],['kkm','KKM'],['koku','Rubrik Kokurikuler']];
+
+  /* ---------------- Rubrik kokurikuler (format = file "Rubrik_PjBL_Dimensi_Profil_Lulusan.xlsx") ----------------
+     Satu sheet per kelas bernama "PjBL <kelas> ...". Sel yang dibaca: A1 judul, A2 tujuan, baris 6-10 indikator,
+     B12/B15 nama dimensi A/B, B13/B16 frasa kekuatan, B14/B17 frasa perlu berlatih; kolom C = English (opsional). */
+  const KOKU_LEVELS=['4 – Sangat Baik','3 – Baik','2 – Cukup','1 – Perlu Bimbingan'];
+  function kokuSheetRows(g,r){const A=r.dims[0],B=r.dims[1],rows=[];
+    rows[0]=[`RUBRIK PENILAIAN: ${r.id}`,'',r.en||''];rows[1]=[`Tujuan: ${r.tujuan||''}`];rows[2]=[`Dimensi terpilih: ${A.id} dan ${B.id}`];rows[3]=[`Kelas: ${g}`];
+    rows[4]=['Dimensi','Indikator',...KOKU_LEVELS];
+    const ind=[...(A.indicators||[]).map(x=>[A.id,x]),...(B.indicators||[]).map(x=>[B.id,x])];
+    const fill=ind.length?ind:[[A.id,{}],[A.id,{}],[B.id,{}],[B.id,{}]];fill.slice(0,5).forEach(([d,x],i)=>{rows[5+i]=[d,x.indikator||'',x.l4||'',x.l3||'',x.l2||'',x.l1||'']});
+    rows[10]=['Frasa untuk komentar (dapat diedit)','','English (opsional, untuk rapor bahasa Inggris)'];
+    rows[11]=['Dimensi A',A.id,A.en||''];rows[12]=['Kekuatan A (…dengan mampu …)',A.kuat,A.kuat_en||''];rows[13]=['Perlu berlatih A (…perlu berlatih dalam …)',A.latih,A.latih_en||''];
+    rows[14]=['Dimensi B',B.id,B.en||''];rows[15]=['Kekuatan B (…dengan mampu …)',B.kuat,B.kuat_en||''];rows[16]=['Perlu berlatih B (…perlu berlatih dalam …)',B.latih,B.latih_en||''];
+    for(let i=0;i<17;i++)rows[i]=rows[i]||[''];return rows}
+  function parseKokuWorkbook(wb){const out=[],errs=[];
+    for(const sn of wb.SheetNames){const ws=wb.Sheets[sn],cell=a=>String(ws[a]?.v??'').replace(/\s+/g,' ').trim();
+      const m=sn.match(/^pjbl\s*(\d)/i);const kel=cell('A4').match(/kelas\s*:?\s*(\d)/i);const g=m?+m[1]:kel?+kel[1]:0;
+      if(!g)continue;if(g<1||g>6){errs.push(`Sheet "${sn}": kelas harus 1–6.`);continue}
+      const title=cell('A1').replace(/^rubrik penilaian\s*:\s*/i,''),tujuan=cell('A2').replace(/^tujuan\s*:\s*/i,'');
+      const dims=[['B12','B13','B14','C12','C13','C14'],['B15','B16','B17','C15','C16','C17']].map(([n,k,l,ne,ke,le])=>({id:cell(n),kuat:cell(k),latih:cell(l),en:cell(ne),kuat_en:cell(ke),latih_en:cell(le),indicators:[]}));
+      for(let r=6;r<=10;r++){const d=cell('A'+r),ind=cell('B'+r);if(!d||!ind)continue;const t=dims.find(x=>x.id.toLowerCase()===d.toLowerCase()||x.id.toLowerCase().startsWith(d.toLowerCase())||d.toLowerCase().startsWith(x.id.toLowerCase()));if(t)t.indicators.push({indikator:ind,l4:cell('C'+r),l3:cell('D'+r),l2:cell('E'+r),l1:cell('F'+r)})}
+      const miss=[];if(!title)miss.push('judul (A1)');dims.forEach((d,i)=>{const s=i?'B':'A';if(!d.id)miss.push(`nama dimensi ${s} (B${i?15:12})`);if(!d.kuat)miss.push(`kekuatan ${s} (B${i?16:13})`);if(!d.latih)miss.push(`perlu berlatih ${s} (B${i?17:14})`)});
+      if(miss.length){errs.push(`Sheet "${sn}" (kelas ${g}): belum diisi ${miss.join(', ')}.`);continue}
+      if(out.some(x=>x.grade_level===g)){errs.push(`Kelas ${g} muncul di lebih dari satu sheet.`);continue}
+      out.push({grade_level:g,data:{id:title,en:cell('C1'),tujuan,dims}})}
+    return{items:out.sort((a,b)=>a.grade_level-b.grade_level),errors:errs}}
+  window.__cqMasterUploadInternals=Object.assign(window.__cqMasterUploadInternals||{},{kokuSheetRows,parseKokuWorkbook});
   window.cqTpUploadPanel=function(el,opts){
     if(!el)return;css();opts=opts||{};
     const T={tab:'paste',boot:null,sem:+(opts.semester||0)||0};
     const done=(kind,j)=>{try{opts.onDone&&opts.onDone(kind,j)}catch(_){}};
     const shell=()=>{el.innerHTML=`<div class="cqup"><div class="cqup-top"><div><div class="cqup-title">Alat Master TP</div><div class="cqup-sub">Tempel TP dari Excel/Word, upload file Excel (Indonesia & English), atur mapel tiap kelas, dan KKM. Untuk Admin dan Akademik.</div></div></div><div class="cqup-tabs">${TOOL_TABS.map(([k,l])=>`<button type="button" data-tt="${k}" aria-selected="${T.tab===k}">${l}</button>`).join('')}</div><div data-act="body"></div></div>`;
       el.querySelectorAll('[data-tt]').forEach(b=>b.onclick=()=>{T.tab=b.dataset.tt;shell()});
-      const body=el.querySelector('[data-act=body]');({paste:renderPaste,excel:renderExcel,mapel:renderMapel,kkm:renderKkm})[T.tab](body)};
+      const body=el.querySelector('[data-act=body]');({paste:renderPaste,excel:renderExcel,mapel:renderMapel,kkm:renderKkm,koku:renderKoku})[T.tab](body)};
+
+    /* -- Rubrik kokurikuler: download template (isi rubrik saat ini), upload, preview, simpan per semester -- */
+    async function renderKoku(box){const K=T.koku=T.koku||{sem:0,parsed:null};box.innerHTML='<div class="cqup-note">Memuat rubrik…</div>';
+      let b;try{b=await boot();if(!K.sem)K.sem=T.sem||+b.active_semester||1}catch(e){box.innerHTML=`<div class="cqup-msg err">${esc(e.message)}</div>`;return}
+      let cur;try{cur=await call('academic-master-tp',{action:'koku_list',semester_no:K.sem})}catch(e){box.innerHTML=`<div class="cqup-msg err">${esc(e.message)}</div>`;return}
+      const stored=new Map((cur.items||[]).map(x=>[+x.grade_level,x])),builtin=(window.CQ_SEMESTER_CATALOG||{}).KOKURIKULER||{};
+      const rubricOf=g=>stored.get(g)?.data||builtin[g]||null;
+      box.innerHTML=`<div class="cqup-note">Rubrik dipakai walas di tab Kokurikuler dan di Rapor IKM bagian B. Rubrik disimpan <b>per tahun ajaran dan semester</b>, jadi rapor semester lain tidak ikut berubah. Formatnya sama dengan file "Rubrik PjBL Dimensi Profil Lulusan": satu sheet per kelas (nama sheet diawali <b>PjBL 1</b> … <b>PjBL 6</b>). Kolom C (English) boleh dikosongkan.</div>
+<div class="cqup-row" style="gap:8px;margin-bottom:8px"><label class="cqup-lbl">Semester<select class="cqup-sel" data-k="sem"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></label><button class="cqup-btn alt" data-k="tpl">Download Template (isi rubrik saat ini)</button></div>
+<div class="cqup-tw"><table><thead><tr><th>Kelas</th><th>Proyek</th><th>Dimensi A</th><th>Dimensi B</th><th>Sumber</th></tr></thead><tbody>${[1,2,3,4,5,6].map(g=>{const r=rubricOf(g),s=stored.get(g);return`<tr><td>${g}</td><td>${esc(r?.id||'-')}</td><td>${esc(r?.dims?.[0]?.id||'-')}</td><td>${esc(r?.dims?.[1]?.id||'-')}</td><td>${s?`Upload ${new Date(s.updated_at).toLocaleDateString('id-ID')}${s.source_file?` · ${esc(s.source_file)}`:''}`:'Bawaan CQlass'}</td></tr>`}).join('')}</tbody></table></div>
+<div class="cqup-row" style="margin-top:10px"><input type="file" accept=".xlsx,.xls" data-k="file"><button class="cqup-btn alt" data-k="preview" disabled>Preview</button><button class="cqup-btn" data-k="apply" disabled>Simpan Rubrik</button></div><div class="cqup-msg" data-k="msg"></div><div class="cqup-res" data-k="res"></div>`;
+      const q=k=>box.querySelector(`[data-k=${k}]`),msg=(t,k)=>{q('msg').textContent=t||'';q('msg').className='cqup-msg'+(k?' '+k:'')};
+      q('sem').value=String(K.sem);q('sem').onchange=()=>{K.sem=+q('sem').value;K.parsed=null;renderKoku(box)};
+      q('tpl').onclick=async()=>{try{await loadXLSX();const wb=XLSX.utils.book_new();
+        const sum=[['RUBRIK KOKURIKULER (PjBL) — '+(b.academic_year||'')+' Semester '+K.sem],['Isi atau ubah sheet PjBL 1–6, lalu upload kembali di Alat Master TP > Rubrik Kokurikuler.'],[],['Kelas','Tema PjBL','Tujuan','Dimensi Lulusan 1','Dimensi Lulusan 2']];
+        for(let g=1;g<=6;g++){const r=rubricOf(g);if(r)sum.push([g,r.id,r.tujuan||'',r.dims[0].id,r.dims[1].id])}
+        sum.push([],['Skala Penilaian'],['',4,'Sangat Baik'],['',3,'Baik'],['',2,'Cukup'],['',1,'Perlu Bimbingan'],['','Komentar dibuat otomatis: skor 3–4 = kekuatan, skor 1–2 = perlu berlatih.']);
+        const s0=XLSX.utils.aoa_to_sheet(sum);s0['!cols']=[{wch:8},{wch:45},{wch:60},{wch:24},{wch:24}];XLSX.utils.book_append_sheet(wb,s0,'Ringkasan');
+        for(let g=1;g<=6;g++){const r=rubricOf(g);if(!r)continue;const ws=XLSX.utils.aoa_to_sheet(kokuSheetRows(g,r));ws['!cols']=[{wch:40},{wch:60},{wch:45},{wch:40},{wch:40},{wch:40}];
+          const nm=(`PjBL ${g} `+String(r.id).split(/[(/]/)[0]).replace(/[\\\/?*\[\]:]/g,' ').trim().slice(0,31);XLSX.utils.book_append_sheet(wb,ws,nm)}
+        XLSX.writeFile(wb,`Rubrik_Kokurikuler_${String(b.academic_year||'').replace(/\//g,'-')}_S${K.sem}.xlsx`);msg('Template terunduh. Ubah isinya bila perlu, lalu upload di sini.','ok')}catch(e){msg(e.message,'err')}};
+      q('file').onchange=()=>{K.parsed=null;q('apply').disabled=true;q('preview').disabled=!q('file').files[0];q('res').innerHTML='';msg(q('file').files[0]?'Klik Preview untuk memeriksa isi file.':'')};
+      q('preview').onclick=async()=>{const f=q('file').files[0];if(!f)return;K.parsed=null;q('apply').disabled=true;
+        try{await loadXLSX();const p=parseKokuWorkbook(XLSX.read(await f.arrayBuffer(),{type:'array'}));const C=window.CQ_SEMESTER_CATALOG||{};
+          q('res').innerHTML=(p.errors.length?`<div class="cqup-errs">${p.errors.map(e=>'• '+esc(e)).join('<br>')}</div>`:'')+(p.items.length?`<div class="cqup-tw"><table><thead><tr><th>Kelas</th><th>Proyek & dimensi</th><th>Contoh komentar (skor A=4, B=2)</th></tr></thead><tbody>${p.items.map(it=>`<tr><td>${it.grade_level}</td><td><b>${esc(it.data.id)}</b><div class="cqup-note" style="margin:2px 0 0">A: ${esc(it.data.dims[0].id)} · B: ${esc(it.data.dims[1].id)} · ${it.data.dims[0].indicators.length+it.data.dims[1].indicators.length} indikator${it.data.dims.every(d=>d.kuat_en&&d.latih_en&&d.en)?' · ada English':''}</div></td><td>${esc(C.kokuComment?C.kokuComment('Putra',it.grade_level,{a:4,b:2},'id',it.data):'')}</td></tr>`).join('')}</tbody></table></div>`:'');
+          if(!p.items.length){msg(p.errors.length?'File perlu diperbaiki.':'Tidak ada sheet "PjBL 1"–"PjBL 6" yang terbaca.','err');return}
+          if(p.errors.length){msg(`${p.errors.length} sheet perlu diperbaiki sebelum disimpan.`,'err');return}
+          K.parsed={items:p.items,file:f.name};q('apply').disabled=false;msg(`Siap disimpan: rubrik kelas ${p.items.map(x=>x.grade_level).join(', ')} untuk semester ${K.sem}.`,'ok')}catch(e){msg(e.message,'err')}};
+      q('apply').onclick=async()=>{if(!K.parsed)return;if(!confirm(`Simpan rubrik kokurikuler kelas ${K.parsed.items.map(x=>x.grade_level).join(', ')} untuk ${b.academic_year} semester ${K.sem}? Rubrik lama untuk kelas tersebut di semester ini akan diganti.`))return;
+        try{q('apply').disabled=true;msg('Menyimpan…');const j=await call('academic-master-tp',{action:'koku_save',semester_no:K.sem,items:K.parsed.items,file_name:K.parsed.file});K.parsed=null;await renderKoku(box);box.querySelector('[data-k=msg]').className='cqup-msg ok';box.querySelector('[data-k=msg]').textContent=`Rubrik kelas ${j.saved.join(', ')} tersimpan untuk semester ${j.semester_no}.`;done('koku',j)}catch(e){msg(e.message,'err');q('apply').disabled=false}}}
     async function boot(force){if(!T.boot||force){T.boot=await call('academic-master-tp',{action:'bootstrap'});if(!T.sem)T.sem=+T.boot.active_semester||1}return T.boot}
 
     /* -- Tempel TP: banyak baris sekaligus atau satu baris, langsung jadi TP1, TP2, ... -- */
