@@ -63,6 +63,7 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  assert.equal((await call(ikmData({kesehatan:{bb:'abc'}}))).status,400,'non-numeric weight rejected');
  assert.equal((await call(ikmData({prestasi:[{jenis:'a'},{jenis:'b'},{jenis:'c'},{jenis:'d'}]}))).status,400,'more than 3 achievements rejected');
  assert.equal((await call(ikmData({keputusan:'lompat'}))).status,400,'unknown decision rejected');
+ assert.equal((await call(ikmData({kokurikuler:{a:5}}))).status,400,'kokurikuler score 5 rejected');
  assert.equal((await call(ikmData({kesehatan:{tb:'125,5',bb:'30',pendengaran:'Baik',gigi:''},prestasi:[{jenis:'Juara 1 Tahfizh',keterangan:'Tingkat kota'},{jenis:'',keterangan:''}],keputusan:'naik'}))).status,200);
  const plain=v=>JSON.parse(JSON.stringify(v));
  assert.deepEqual(plain(entries[0].data.kesehatan),{tb:'125.5',bb:'30',pendengaran:'Baik'},'decimal comma accepted, empty fields dropped');
@@ -116,7 +117,7 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
   semester_print:{subjects:pd.subjects,class:{grade_level:4},student:{...budi,ekskul:[{name:'Robotic',activity:'A',skill:'B'},{name:'Pramuka',activity:'B',skill:'B'},{name:'Renang',external:true,institution:'Klub Tirta',activity:'A',skill:'A'}]}}};
  const ik=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'id'}));
  assert(ik.length>0,'IKM pages exist');assert(id.lastIndexOf('data-part="ikm"')>id.lastIndexOf('LAPORAN PENILAIAN HASIL BELAJAR SISWA</div>\n<table class="srp-t"><colgroup><col style="width:7%">'),'IKM comes after Nilai');
- for(const s of ['A. Kriteria Ketuntasan Minimal Satuan Pendidikan = 70','CAPAIAN KOMPETENSI','B. Kokurikuler','Segera hadir','C. Ekstrakurikuler','D. Tinggi dan Berat Badan','125.5 cm','30 kg','E. Kondisi Kesehatan','F. Prestasi','Juara 1 Tahfizh','Tingkat kota','G. Ketidakhadiran','2 hari','H. Karakter dan Kedisiplinan','Total Poin Pelanggaran: 10 Poin','Total Poin Akhir: 15 Poin','Klub Tirta'])assert(ik.includes(s),'IKM contains '+s);
+ for(const s of ['A. Kriteria Ketuntasan Minimal Satuan Pendidikan = 70','CAPAIAN KOMPETENSI','B. Kokurikuler','Belum dinilai.','C. Ekstrakurikuler','D. Tinggi dan Berat Badan','125.5 cm','30 kg','E. Kondisi Kesehatan','F. Prestasi','Juara 1 Tahfizh','Tingkat kota','G. Ketidakhadiran','2 hari','H. Karakter dan Kedisiplinan','Total Poin Pelanggaran: 10 Poin','Total Poin Akhir: 15 Poin','Klub Tirta'])assert(ik.includes(s),'IKM contains '+s);
  const mtkFinal=budi.academic['s-mtk'].final;assert(ik.includes(`<td class="c">${mtkFinal}</td><td class="c">${I.ikmLetter(mtkFinal)}</td>`),'Matematika final score and grade');assert.equal(I.ikmLetter(90),'A');assert.equal(I.ikmLetter(80),'B');assert.equal(I.ikmLetter(65),'C');assert.equal(I.ikmLetter(64),'D');
  assert(ik.includes('Ananda Budi sangat baik dalam bilangan cacah dan cukup baik dalam pecahan.'),'capaian uses highest and lowest TP');
  assert(ik.indexOf('>Pramuka<')<ik.indexOf('>Robotic<'),'Pramuka listed first');assert(!ik.includes('Keputusan:'),'no promotion decision in semester 1');
@@ -124,6 +125,21 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  const s2=ikmOf(win.cqSemesterPagesHtml({...ikmReport,semester_no:2,semester_print:{...ikmReport.semester_print,student:{...ikmReport.semester_print.student,kesehatan_s1:{tb:'120',bb:'28'}}}},{lang:'id'}));
  assert(s2.includes('Naik ke Kelas : V (Lima)')&&s2.includes('120 cm')&&s2.includes('125.5 cm'),'semester 2: promotion and both semesters of height');
  const g6=ikmOf(win.cqSemesterPagesHtml({...ikmReport,semester_no:2,semester_print:{...ikmReport.semester_print,class:{grade_level:6}}},{lang:'id'}));assert(g6.includes('LULUS'),'grade 6 graduates');
- const ikEn=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'en'}));for(const s of ['Coming soon','Scouting (Pramuka)','Budi shows excellent achievement in','Final Total Points: 15 Points'])assert(ikEn.includes(s),'EN IKM contains '+s);
+ const ikEn=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'en'}));for(const s of ['Not yet assessed.','Scouting (Pramuka)','Budi shows excellent achievement in','Final Total Points: 15 Points'])assert(ikEn.includes(s),'EN IKM contains '+s);
+ // Kokurikuler: komentar sama persis dengan "Generator komentar" di Rubrik_PjBL_Dimensi_Profil_Lulusan.xlsx.
+ const KC=win.CQ_SEMESTER_CATALOG.kokuComment;
+ assert.equal(KC('Putra',1,{a:2,b:2},'id'),'Ananda Putra masih perlu berlatih dalam menjelaskan sebab-akibat pertumbuhan kangkung berdasarkan data pengamatan, serta dalam berbagi tugas dan menghargai pendapat teman dalam menanam dan merawat kangkung.');
+ assert.equal(KC('Putra',2,{a:3,b:2},'id'),'Ananda Putra sudah baik dalam keimanan dan ketakwaan dengan mampu mengungkapkan rasa syukur dan memperlakukan ikan lele sebagai ciptaan Allah dengan penuh kasih sayang, dan masih perlu berlatih dalam melaksanakan tugas perawatan ikan secara rutin tanpa diingatkan.');
+ assert.equal(KC('Putra',6,{a:3,b:2},'id'),'Ananda Putra sudah baik dalam komunikasi dengan mampu mempresentasikan hasil proyek secara runtut, percaya diri, dan menarik, dan masih perlu berlatih dalam mengembangkan gagasan inovatif dan media visual yang menarik.');
+ assert.match(KC('Putra',4,{a:4,b:3},'id'),/^Ananda Putra sangat baik dalam penalaran kritis .*, serta sudah baik dalam kolaborasi /);assert.match(KC('Putra',3,{a:1,b:4},'id'),/^Ananda Putra sangat baik dalam kewargaan .* dan masih perlu berlatih dalam menjelaskan pentingnya air bersih/);
+ assert.equal(KC('Putra',4,{a:3},'id'),'','both scores required');assert.match(KC('Putra',5,{a:4,b:4},'en'),/^Putra shows very good health in .*, as well as very good critical reasoning in /);
+ const kk=ikmOf(win.cqSemesterPagesHtml({...ikmReport,semester_print:{...ikmReport.semester_print,student:{...ikmReport.semester_print.student,entry:{data:{...budi.entry.data,kokurikuler:{a:4,b:2}}}}}},{lang:'id'}));
+ assert(kk.includes('Young Scientists Explore')&&kk.includes('Penalaran Kritis: 4 (Sangat Baik)')&&kk.includes('Kolaborasi: 2 (Cukup)')&&kk.includes('Ananda Budi sangat baik dalam penalaran kritis'),'IKM B shows project, scores and comment');
+ // Tanda tangan: Komentar oleh Guru Partner; gambar tanda tangan disembunyikan saat dicetak ke printer.
+ const sg=win.cqSemesterPagesHtml({...report,teachers:{...report.teachers,principal_signature_url:'https://x.invalid/p.png'},semester_print:{...report.semester_print,partner:{name:'Ust. Partner',signature_url:'https://x.invalid/gp.png'}}},{lang:'id'});
+ const kom=sg.split('<section').find(s=>s.includes('KOMENTAR UMUM'));assert(kom.includes('Guru Partner')&&kom.includes('Ust. Partner')&&kom.includes('gp.png')&&!kom.includes('Kepala Sekolah'),'Komentar page signed by Guru Partner, not principal');
+ assert(sg.split('<section').some(s=>s.includes('PENILAIAN SIKAP')===false&&s.includes('Kepala Sekolah')),'other pages keep the principal');
+ assert(/@media print\{[^}]*\.srp-sign img[^}]*display:none/.test(store.get('cq-semester-print-style').textContent),'printer output hides e-signatures (wet signature)');
+ console.log('PASS kokurikuler comments (Excel generator), Guru Partner signature on Komentar, no e-signature when printing.');
  console.log('PASS rapor IKM: KKM 70 table, capaian from highest/lowest TP, Pramuka first, kesehatan, prestasi, absences, character points, semester 2 decision, English.');
 })().catch(e=>{console.error(e);process.exitCode=1});
