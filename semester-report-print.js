@@ -1,6 +1,6 @@
 /* CQlass — Rapor Akhir Semester (Indonesia / English).
    Tampilan mengikuti sheet cetak Excel (XKOM, XSIK, XKOGU/XKOGD, XPSIK, XNILAI).
-   Urutan: Komentar (1), Sikap/Adab (2-3), [Tahfizh 4-6 dicetak terpisah], Kognitif (mulai 7), Psikomotorik, Nilai, [IKM menyusul].
+   Urutan: Komentar (1), Sikap/Adab (2-3), [Tahfizh 4-6 dicetak terpisah], Kognitif (mulai 7), Psikomotorik, Nilai, Rapor IKM (XDESK).
    Data: report-preview-v2 (identitas, kehadiran, tanda tangan) + /admin-academic-period/semester-report
    (nilai akhir & nilai TP dari academic_scores, isian walas). */
 (function(){
@@ -182,6 +182,11 @@ const RAPOR_CSS=`
 .srp-sign img{position:absolute;top:5mm;left:50%;transform:translateX(-50%);max-width:44mm;max-height:20mm;object-fit:contain}
 .srp-comment{border:1.6px solid #000}.srp-comment .band{height:6.5mm;background:#ffffcc}.srp-comment .body{min-height:82mm;padding:4mm 5mm;border-top:1.6px solid #000;border-bottom:1.6px solid #000;font-size:9.5pt;line-height:1.6;white-space:pre-wrap;text-align:justify}
 .srp-foot{position:absolute;left:0;right:0;bottom:0;height:26.4mm;padding:0;margin:0}.srp-foot img{display:block;width:100%;height:100%;max-width:none;object-fit:fill}
+.srp-sec{font-weight:700;font-size:9pt;line-height:1.3;margin:4mm 0 1.5mm}.srp-sub{font-weight:700;font-size:8pt;margin:2.5mm 0 1mm}
+.srp-ikm td,.srp-ikm th{vertical-align:middle}.srp-ikm td.cap{text-align:left;font-size:7.5pt;line-height:1.3;padding:1.2mm 2mm}.srp-ikm td.nob{border-top:0;border-bottom:0}
+.srp-soon{height:14mm;text-align:center;font-style:italic;color:#666}
+.srp-half{width:64%}.srp-absrow{display:grid;grid-template-columns:64% 1fr;column-gap:5mm;align-items:center}.srp-absrow .srp-half{width:100%}
+.srp-dec{text-align:center;line-height:1.6;font-size:8pt}.srp-dec div,.srp-dec b{font-size:8pt}
 .srp-pno{position:absolute;right:14mm;bottom:27.5mm;max-width:120mm;text-align:right;font-size:7.5pt;line-height:1.3;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2mm;border-right:2px solid #b5174f}
 `;
 function hardenCss(css){return css.replace(/([^{}]+)\{([^{}]*)\}/g,(m,sel,decl)=>{const sels=sel.split(',').map(x=>x.trim()).filter(Boolean);const all=[...sels,...sels.map(x=>'#app-screen#app-screen .content '+x)];const d=decl.split(';').map(x=>x.trim()).filter(Boolean).map(x=>/!important$/.test(x)?x:x+'!important').join(';');return'\n'+all.join(',')+'{'+d+'}'})}
@@ -201,7 +206,8 @@ function signHtml(ctx,third){const L=T[ctx.lang],tr=ctx.teachers||{};let d=null;
 // Measured in Chrome with the CQlass theme loaded: table starts at 61mm, header 11.5mm, one-line row 5.75mm, bottom block 73mm;
 // keep the last signature line at most 256mm so it stays clear of the "Halaman N | Nama" line (266mm).
 function nilaiPages(ctx){const L=T[ctx.lang],subs=ctx.subjects,acad=ctx.academic||{},st=ctx.student;let estRows=0;
- const kk=s=>s.kktp_min==null?'-':(s.kktp_min===s.kktp_max?String(s.kktp_min):`${s.kktp_min}-${s.kktp_max}`);
+ // KKTP per TP bila diisi; jika belum, pakai KKM satuan pendidikan yang diatur Akademik.
+ const kk=s=>s.kktp_min==null?(ctx.kkm==null?'-':String(ctx.kkm)):(s.kktp_min===s.kktp_max?String(s.kktp_min):`${s.kktp_min}-${s.kktp_max}`);
  const cells=s=>{const f=(acad[s.id]||{}).final;return`<td class="c">${esc(kk(s))}</td><td class="c">${f==null?'-':f}</td><td${f==null?' class="muted"':''}>${f==null?esc(L.incomplete):esc(terbilang(f,ctx.lang))}</td>`};
  const lineRows=n=>Math.max(1,Math.ceil(String(n||'').length/46));
  const group=(no,label,list)=>{estRows+=1+list.reduce((a,s)=>a+lineRows(subjectName(s,ctx.lang)),0);return`<tr><td class="c" rowspan="${list.length+1}">${no}</td><td>${esc(label)}</td><td class="grey"></td><td class="grey" colspan="2"></td></tr>`+list.map(s=>`<tr><td class="sub"><span class="bul"></span>${esc(subjectName(s,ctx.lang))}</td>${cells(s)}</tr>`).join('')};
@@ -230,19 +236,105 @@ function psikGroups(ctx){const v=ctx.entry?.psikomotor||{};return PSIKOMOTOR.map
 function blockPages(ctx,title,groups,legendKey){const L=T[ctx.lang];if(!groups.length)return[headHtml(ctx,title)+`<p class="muted">${L.noSubject}</p>`];return paginate(gradeBlocks(groups,ctx),206).map(p=>headHtml(ctx,title)+p.map(b=>b.html).join('')+`<div class="srp-legend">${esc(LEGEND[legendKey][ctx.lang])}</div>`)}
 function komentarPage(ctx){const L=T[ctx.lang],c=String(ctx.entry?.komentar||'').trim();return headHtml(ctx,L.kom)+`<div class="srp-comment"><div class="band"></div><div class="body">${c?esc(c):''}</div><div class="band"></div></div>`+signHtml(ctx)}
 
+/* ---------- Rapor IKM (sheet XDESK) ---------- */
+// Nilai dan capaian mengikuti rumus Excel XDESK/DESKRIP: PAI = rata-rata Akidah, Fikih, Adab, Arab, Hadits, Siroh;
+// IPAS = rata-rata IPA dan IPS; prestasi A>=90, B>=80, C>=65, D; capaian = TP nilai tertinggi dan terendah.
+const IKM_KKM=70;
+// Characters per line in the capaian column (Tahoma 7.5pt, ~98mm); measured in Chrome with the CQlass theme.
+const CAP_CHARS=64;
+const IKM_ROWS=[
+ {id:'Pendidikan Agama Islam',en:'Islamic Religious Education',keys:['akidah','fikih','adab','arab','hadits','siroh']},
+ {id:'Pendidikan Pancasila',en:'Pancasila Education',keys:['pkn']},
+ {id:'Bahasa Indonesia',en:'Bahasa Indonesia',keys:['indo']},
+ {id:'Matematika',en:'Mathematics',keys:['mtk']},
+ {id:'Ilmu Pengetahuan Alam dan Sosial',en:'Natural and Social Sciences',keys:['ipas','ipa','ips']},
+ {id:'Pendidikan Seni Budaya dan Prakarya',en:'Arts, Culture, and Crafts',keys:['sbdp']},
+ {id:'Pendidikan Jasmani, Olahraga, dan Kesehatan',en:'Physical Education, Sports, and Health',keys:['pjok']}
+];
+const IKM_MULOK=[{id:'Bahasa Arab',en:'Arabic Language',keys:['arab']},{id:'Bahasa Inggris',en:'English',keys:['inggris']},{id:'Bahasa Sunda',en:'Sundanese Language',keys:['sunda']},{id:'Siroh',en:'Seerah (Prophetic Biography)',keys:['siroh']}];
+function ikmLetter(n){return n==null?'':n>=90?'A':n>=80?'B':n>=65?'C':'D'}
+const IKM_WORD={id:{A:'sangat baik dalam',B:'baik dalam',C:'cukup baik dalam',D:'kurang baik dalam'},en:{A:'excellent',B:'good',C:'fair',D:'limited'}};
+function tpPhrase(text,lang){let s=String(text||'').trim().replace(/[.\s]+$/,'');if(lang==='en')s=s.replace(/^(students?|the student)\s+(is|are)\s+able\s+to\s+/i,'').replace(/^is\s+able\s+to\s+/i,'');else s=s.replace(/^peserta\s+didik\s+/i,'').replace(/^(mampu|dapat)\s+/i,'');return s?s.charAt(0).toLowerCase()+s.slice(1):s}
+function ikmEval(ctx,keys){const acad=ctx.academic||{};const subs=ctx.subjects.filter(s=>keys.includes(classify(s).key)&&(s.objectives||[]).length);if(!subs.length)return null;
+ const finals=subs.map(s=>(acad[s.id]||{}).final);const final=finals.every(f=>f!=null)?Math.round(finals.reduce((a,b)=>a+b,0)/finals.length):null;
+ let hi=null,lo=null;for(const s of subs){const tp=(acad[s.id]||{}).tp||[];(s.objectives||[]).forEach((o,i)=>{const v=Number(tp[i]);if(tp[i]==null||tp[i]===''||!Number.isFinite(v))return;const d=(ctx.lang==='en'&&String(o.description_en||'').trim())||o.description;if(!hi||v>hi.v)hi={v,d};if(!lo||v<lo.v)lo={v,d}})}
+ return{final,letter:ikmLetter(final),hi,lo}}
+function capaian(ctx,ev){const nm=String(ctx.student.name||'').trim(),W=IKM_WORD[ctx.lang];if(!ev||!ev.hi)return'';const a=ikmLetter(ev.hi.v),b=ikmLetter(ev.lo.v),same=ev.hi===ev.lo||ev.hi.d===ev.lo.d;
+ if(ctx.lang==='en')return`${nm} shows ${W[a]} achievement in ${tpPhrase(ev.hi.d,'en')}`+(same?'.':` and ${W[b]} achievement in ${tpPhrase(ev.lo.d,'en')}.`);
+ return`Ananda ${nm} ${W[a]} ${tpPhrase(ev.hi.d,'id')}`+(same?'.':` dan ${W[b]} ${tpPhrase(ev.lo.d,'id')}.`)}
+const ROMAN=['','I','II','III','IV','V','VI','VII'];
+const GRADE_WORD={id:['','Satu','Dua','Tiga','Empat','Lima','Enam','Tujuh'],en:['','One','Two','Three','Four','Five','Six','Seven']};
+const EKS_WORD={id:{A:'Sangat baik',B:'Baik',C:'Cukup',D:'Perlu bimbingan'},en:{A:'Excellent',B:'Good',C:'Fair',D:'Needs guidance'}};
+function ekskulPredikat(e){const r=String(e.rating||'').trim().toUpperCase();if(GRADES.includes(r))return r;const v=[e.activity,e.skill].map(x=>({A:4,B:3,C:2,D:1})[String(x||'').toUpperCase()]).filter(Boolean);if(!v.length)return'';const m=Math.round(v.reduce((a,b)=>a+b,0)/v.length);return['','D','C','B','A'][m]}
+function ikmEkskul(ctx){const list=[...(ctx.ekskul||[])];let i=list.findIndex(e=>/pramuka|scout/i.test(e.name||''));const pr=i>=0?list.splice(i,1)[0]:{name:'Pramuka',wajib:true};pr.name=ctx.lang==='en'?'Scouting (Pramuka)':'Pramuka';return[pr,...list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'id'))]}
+const IKM_T={
+ id:{title:'NILAI RAPOR',kkm:k=>`A. Kriteria Ketuntasan Minimal Satuan Pendidikan = ${k}`,cont:'LAPORAN PENILAIAN HASIL BELAJAR SISWA',final:'NILAI AKHIR',prestasi:'PRESTASI',capaian:'CAPAIAN KOMPETENSI',mulok:'Muatan Lokal',
+  koku:'B. Kokurikuler',kokuH:'Kokurikuler',soon:'Segera hadir — penilaian kokurikuler sedang disiapkan.',eks:'C. Ekstrakurikuler',eksH:'Ekstrakurikuler',pred:'Predikat',ket:'Keterangan',external:'luar sekolah',
+  tbbb:'D. Tinggi dan Berat Badan',aspek:'Aspek yang dinilai',tb:'Tinggi Badan',bb:'Berat Badan',cm:'cm',kg:'kg',kes:'E. Kondisi Kesehatan',fisik:'Aspek Fisik',dengar:'Pendengaran',lihat:'Penglihatan',gigi:'Gigi',
+  pres:'F. Prestasi',jenis:'Jenis Prestasi',absen:'G. Ketidakhadiran',absenH:'Ketidakhadiran',day:n=>`${n} hari`,keputusan:'Keputusan:',dasar:'Berdasarkan pencapaian seluruh kompetensi, peserta didik dinyatakan:',naik:(r,w)=>`Naik ke Kelas : ${r} (${w})`,tinggal:(r,w)=>`Tinggal di Kelas : ${r} (${w})`,lulus:'LULUS',belumLulus:'BELUM LULUS',
+  kar:'H. Karakter dan Kedisiplinan',karA:'1. Rekap Pelanggaran',level:'Tingkat',inc:'Jumlah Kejadian',minor:'Ringan',moderate:'Sedang',severe:'Berat',vtot:p=>`Total Poin Pelanggaran: ${p} Poin`,karB:'2. Penghargaan dan Pembinaan',cat:'Kategori',pts:'Poin',award:'Penghargaan / Teladan',guided:'Poin berkurang melalui pembinaan',ftot:p=>`Total Poin Akhir: ${p} Poin`},
+ en:{title:'SEMESTER REPORT',kkm:k=>`A. School Minimum Mastery Criterion = ${k}`,cont:'STUDENT LEARNING ACHIEVEMENT REPORT',final:'FINAL SCORE',prestasi:'GRADE',capaian:'COMPETENCY ACHIEVEMENT',mulok:'Local Content Subjects',
+  koku:'B. Co-curricular',kokuH:'Co-curricular',soon:'Coming soon — the co-curricular assessment is being prepared.',eks:'C. Extracurricular Activities',eksH:'Extracurricular',pred:'Grade',ket:'Remarks',external:'outside school',
+  tbbb:'D. Height and Weight',aspek:'Aspect',tb:'Height',bb:'Weight',cm:'cm',kg:'kg',kes:'E. Health Condition',fisik:'Physical Aspect',dengar:'Hearing',lihat:'Vision',gigi:'Teeth',
+  pres:'F. Achievements',jenis:'Achievement',absen:'G. Absences',absenH:'Absence',day:n=>`${n} day${Number(n)===1?'':'s'}`,keputusan:'Decision:',dasar:'Based on the achievement of all competencies, the student is declared:',naik:(r,w)=>`Promoted to Grade : ${r} (${w})`,tinggal:(r,w)=>`Retained in Grade : ${r} (${w})`,lulus:'GRADUATED',belumLulus:'NOT YET GRADUATED',
+  kar:'H. Character and Discipline',karA:'1. Disciplinary Record Summary',level:'Level',inc:'Incidents',minor:'Minor',moderate:'Moderate',severe:'Severe',vtot:p=>`Total Violation Points: ${p} Points`,karB:'2. Merit and Guidance Record',cat:'Category',pts:'Points',award:'Achievement / Role Model Award',guided:'Points deducted through guidance',ftot:p=>`Final Total Points: ${p} Points`}
+};
+const dash=v=>{const s=String(v??'').trim();return s?esc(s):'-'};
+function ikmPages(ctx){const L=T[ctx.lang],K=IKM_T[ctx.lang],st=ctx.student,en=ctx.lang==='en';
+ // Rows of table A (each with an estimated height in mm; the capaian column holds ~60 characters per line).
+ const rows=[];let no=0;const rowH=t=>Math.max(8,2.6+3.45*Math.ceil(String(t||'').length/CAP_CHARS));
+ const subjRow=(label,ev,num,indent)=>{const cap=capaian(ctx,ev);const f=ev?ev.final:null;rows.push({h:rowH(cap),html:`<tr>${indent?'<td class="nob"></td>':`<td class="c">${num}</td>`}<td${indent?' class="sub"':''}>${indent?'<span class="bul"></span>':''}${esc(label)}</td><td class="c">${f==null?'-':f}</td><td class="c">${f==null?'-':ikmLetter(f)}</td><td class="cap">${cap?esc(cap):`<span class="muted">${esc(L.incomplete)}</span>`}</td></tr>`})};
+ for(const r of IKM_ROWS){const ev=ikmEval(ctx,r.keys);if(ev)subjRow(en?r.en:r.id,ev,++no,false)}
+ const mul=IKM_MULOK.map(r=>({r,ev:ikmEval(ctx,r.keys)})).filter(x=>x.ev);
+ // Muatan lokal: the group header stays with its first subject; later subjects may continue on the next page.
+ if(mul.length){const n=++no;rows.push({h:6,html:`<tr><td class="c">${n}</td><td colspan="4" class="grey">${esc(K.mulok)}</td></tr>`,group:1});for(const x of mul)subjRow(en?x.r.en:x.r.id,x.ev,'',true)}
+ if(!rows.length)rows.push({h:9,html:`<tr><td colspan="5" class="c muted">${esc(L.noSubject)}</td></tr>`});
+ const thead=`<colgroup><col style="width:6%"><col style="width:22%"><col style="width:8.5%"><col style="width:9.5%"><col></colgroup><thead><tr class="hd"><th>${L.no}</th><th>${L.subject}</th><th>${K.final}</th><th>${K.prestasi}</th><th>${K.capaian}</th></tr></thead>`;
+ const top=`<div class="srp-title">${esc(K.title)}</div>
+<div class="srp-nid"><div class="srp-kv l"><span>${L.school}</span><span>:</span><span class="v">${SCHOOL}</span><span>${L.nameLong}</span><span>:</span><span class="v">${esc(st.name||'')}</span><span>NISN</span><span>:</span><span class="v">${esc(st.nisn||'-')}</span><span>NPSN</span><span>:</span><span class="v">70004670</span></div><div class="srp-kv r"><span>${L.cls}</span><span>:</span><span class="v">${esc(ctx.className||'-')}</span><span>${L.semL}</span><span>:</span><span>${esc(L.sem(ctx.semester))}</span><span>${L.year}</span><span>:</span><span>${esc(ctx.year||'-')}</span></div><img src="${LOGO}" alt=""></div>
+<div class="srp-big">${esc(K.cont)}</div><div class="srp-sec">${esc(K.kkm(ctx.kkm))}</div>`;
+ // Keep a muatan-lokal header together with its rows.
+ const units=[];for(let i=0;i<rows.length;i++){if(rows[i].group){const g=rows.slice(i,i+rows[i].group+1);units.push({h:g.reduce((a,b)=>a+b.h,0),html:g.map(x=>x.html).join('')});i+=rows[i].group}else units.push(rows[i])}
+ // Table A starts ~78mm from the top on page 1 and ~45mm on later pages; keep its last row above ~258mm.
+ const pages=[];let cur=[],used=0,budget=178;for(const u of units){if(cur.length&&used+u.h>budget){pages.push(cur);cur=[];used=0;budget=200}cur.push(u);used+=u.h}if(cur.length)pages.push(cur);
+ const out=pages.map((p,i)=>(i===0?top:headHtml(ctx,K.title))+`<table class="srp-t srp-ikm">${thead}<tbody>${p.map(u=>u.html).join('')}</tbody></table>`);
+ // Sections B-H and signatures.
+ const kes=(ctx.entry||{}).kesehatan||{},s1=ctx.semester==2?(ctx.kesehatanS1||{}):kes,s2=ctx.semester==2?kes:{};
+ const unit=(v,u)=>{const s=String(v??'').trim();return s?`${esc(s)} ${u}`:'-'};
+ const small=(head,rowsHtml,cols)=>`<table class="srp-t srp-half">${cols}<thead><tr class="hd">${head}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+ const eks=ikmEkskul(ctx);
+ const eksRows=eks.map((e,i)=>{const p=ekskulPredikat(e);const ket=[p?EKS_WORD[ctx.lang][p]:'',e.external?`${K.external}${e.institution?': '+e.institution:''}`:''].filter(Boolean).join(' · ');return`<tr><td class="c">${i+1}</td><td>${esc(e.name)}</td><td class="c">${p||'-'}</td><td>${ket?esc(ket):'-'}</td></tr>`}).join('');
+ const pres=Array.isArray((ctx.entry||{}).prestasi)?ctx.entry.prestasi:[];const att=ctx.attendance||{},pts=ctx.points||{},cats=pts.categories||{};
+ const g=Number(ctx.gradeLevel)||0,stay=(ctx.entry||{}).keputusan==='tinggal';
+ const decision=Number(ctx.semester)===2?`<div class="srp-dec"><b>${esc(K.keputusan)}</b><div>${esc(K.dasar)}</div><b>${g>=6?esc(stay?K.belumLulus:K.lulus):g?esc(stay?K.tinggal(ROMAN[g],GRADE_WORD[ctx.lang][g]):K.naik(ROMAN[g+1],GRADE_WORD[ctx.lang][g+1])):'-'}</b></div>`:'';
+ const blocks=[
+  {h:26,html:`<div class="srp-sec">${esc(K.koku)}</div><table class="srp-t"><thead><tr class="hd"><th>${esc(K.kokuH)}</th></tr></thead><tbody><tr><td class="srp-soon">${esc(K.soon)}</td></tr></tbody></table>`},
+  {h:14+eks.length*5.2,html:`<div class="srp-sec">${esc(K.eks)}</div>`+small(`<th>${L.no}</th><th>${esc(K.eksH)}</th><th>${esc(K.pred)}</th><th>${esc(K.ket)}</th>`,eksRows,'<colgroup><col style="width:9%"><col style="width:45%"><col style="width:14%"><col></colgroup>')},
+  {h:26,html:`<div class="srp-sec">${esc(K.tbbb)}</div><table class="srp-t srp-half"><colgroup><col style="width:9%"><col style="width:45%"><col><col></colgroup><thead><tr class="hd"><th rowspan="2">${L.no}</th><th rowspan="2">${esc(K.aspek)}</th><th colspan="2">${L.semL}</th></tr><tr class="hd"><th>1</th><th>2</th></tr></thead><tbody><tr><td class="c">1</td><td>${esc(K.tb)}</td><td class="c">${unit(s1.tb,K.cm)}</td><td class="c">${unit(s2.tb,K.cm)}</td></tr><tr><td class="c">2</td><td>${esc(K.bb)}</td><td class="c">${unit(s1.bb,K.kg)}</td><td class="c">${unit(s2.bb,K.kg)}</td></tr></tbody></table>`},
+  {h:27,html:`<div class="srp-sec">${esc(K.kes)}</div>`+small(`<th>${L.no}</th><th>${esc(K.fisik)}</th><th>${esc(K.ket)}</th>`,[[K.dengar,kes.pendengaran],[K.lihat,kes.penglihatan],[K.gigi,kes.gigi]].map(([l,v],i)=>`<tr><td class="c">${i+1}</td><td>${esc(l)}</td><td class="c">${dash(v)}</td></tr>`).join(''),'<colgroup><col style="width:9%"><col style="width:55%"><col></colgroup>')},
+  {h:27,html:`<div class="srp-sec">${esc(K.pres)}</div><table class="srp-t"><colgroup><col style="width:5%"><col style="width:40%"><col></colgroup><thead><tr class="hd"><th>${L.no}</th><th>${esc(K.jenis)}</th><th>${esc(K.ket)}</th></tr></thead><tbody>${[0,1,2].map(i=>`<tr><td class="c">${i+1}</td><td>${dash(pres[i]?.jenis)}</td><td>${dash(pres[i]?.keterangan)}</td></tr>`).join('')}</tbody></table>`},
+  {h:30,html:`<div class="srp-sec">${esc(K.absen)}</div><div class="srp-absrow">`+small(`<th>${L.no}</th><th>${esc(K.absenH)}</th><th>${esc(K.ket)}</th>`,[[L.sick,att.sick],[L.excused,att.excused],[L.unexcused,att.unexcused]].map(([l,v],i)=>`<tr><td class="c">${i+1}</td><td>${esc(l)}</td><td class="c">${esc(K.day(Number(v)||0))}</td></tr>`).join(''),'<colgroup><col style="width:9%"><col style="width:55%"><col></colgroup>')+decision+`</div>`},
+  {h:52,html:`<div class="srp-sec">${esc(K.kar)}</div><div class="srp-sub">${esc(K.karA)}</div><table class="srp-t"><colgroup><col style="width:45%"><col style="width:18%"><col></colgroup><thead><tr class="hd"><th>${esc(K.level)}</th><th>${esc(K.inc)}</th><th>${esc(K.ket)}</th></tr></thead><tbody>${[[K.minor,cats.Minor],[K.moderate,cats.Moderate],[K.severe,cats.Severe]].map(([l,c])=>`<tr><td>${esc(l)}</td><td class="c">${Number(c?.incidents)||0}</td><td>-</td></tr>`).join('')}<tr><td colspan="3"><b>${esc(K.vtot(Number(pts.violation_total)||0))}</b></td></tr></tbody></table>
+<div class="srp-sub">${esc(K.karB)}</div><table class="srp-t"><colgroup><col style="width:45%"><col style="width:18%"><col></colgroup><thead><tr class="hd"><th>${esc(K.cat)}</th><th>${esc(K.pts)}</th><th>${esc(K.ket)}</th></tr></thead><tbody><tr><td>${esc(K.award)}</td><td class="c">${Number(pts.reward_total)||0}</td><td>-</td></tr><tr><td>${esc(K.guided)}</td><td class="c">${Number(pts.violation_total)||0}</td><td>-</td></tr><tr><td colspan="3"><b>${esc(K.ftot(Number(pts.final_total)||0))}</b></td></tr></tbody></table>`},
+  {h:44,html:signHtml(ctx)}
+ ];
+ return[...out,...paginate(blocks,212).map(p=>headHtml(ctx,K.title)+p.map(b=>b.html).join(''))];
+}
+
 /* Semua halaman satu siswa. report = hasil report-preview-v2 yang sudah ditempeli semester_print. */
 function pagesHtml(report,opts){
  injectStyles();const sp=report?.semester_print;if(!sp)throw new Error('Data Rapor Semester belum dimuat.');
  const lang=opts?.lang==='en'?'en':'id';
- const ctx={lang,student:report.student||{},className:report.class?.name||sp.class?.name||'',semester:report.semester_no||sp.semester_no,year:report.academic_year||sp.academic_year,teachers:report.teachers||{},attendance:report.attendance||{},subjects:sp.subjects||[],academic:sp.student?.academic||{},entry:sp.student?.entry?.data||{},printDate:opts?.printDate||'',hijri:opts?.hijri||''};
+ const ctx={lang,student:report.student||{},className:report.class?.name||sp.class?.name||'',semester:report.semester_no||sp.semester_no,year:report.academic_year||sp.academic_year,teachers:report.teachers||{},attendance:report.attendance||{},subjects:sp.subjects||[],academic:sp.student?.academic||{},entry:sp.student?.entry?.data||{},printDate:opts?.printDate||'',hijri:opts?.hijri||'',
+  points:report.points||{},ekskul:sp.student?.ekskul||[],kesehatanS1:sp.student?.kesehatan_s1||{},gradeLevel:sp.class?.grade_level||report.class?.grade_level||null,kkm:Number.isFinite(Number(sp.kkm))&&sp.kkm!==null&&sp.kkm!==''?Number(sp.kkm):IKM_KKM};
  const L=T[lang];
  // Urutan cetak sekolah: 1 Komentar, 2-3 Sikap/Adab, 4-6 Tahfizh (dicetak terpisah), Kognitif mulai hal. 7, Psikomotorik, Nilai, lalu IKM (menyusul).
  // Seperti sheet XSIK: lembar 1 = kategori A-C, lembar 2 = D-F.
  const sg=sikapGroups(ctx);
  const first=[komentarPage(ctx),...blockPages(ctx,L.sikap,sg.slice(0,3),'sikap'),...blockPages(ctx,L.sikap,sg.slice(3),'sikap')];
- const rest=[...blockPages(ctx,L.kogu,kognitifGroups(ctx,'umum'),'kognitif'),...blockPages(ctx,L.kogd,kognitifGroups(ctx,'diniyah'),'kognitif'),...blockPages(ctx,L.psik,psikGroups(ctx),'psikomotor'),...nilaiPages(ctx)];
- const numbered=[...first.map((html,i)=>[html,i+1]),...rest.map((html,i)=>[html,first.length+TAHFIZH_PAGES+i+1])];
- return numbered.map(([html,no])=>`<section class="rpv-paper srp-page" data-student-id="${esc(ctx.student.id||'')}" data-page-no="${no}">${html}<div class="srp-foot"><img src="${FOOTER}" alt=""></div><div class="srp-pno">${esc(L.page(no,ctx.student.name))}</div></section>`).join('');
+ const rest=[...blockPages(ctx,L.kogu,kognitifGroups(ctx,'umum'),'kognitif'),...blockPages(ctx,L.kogd,kognitifGroups(ctx,'diniyah'),'kognitif'),...blockPages(ctx,L.psik,psikGroups(ctx),'psikomotor'),...nilaiPages(ctx)].map(h=>[h,'']).concat(ikmPages(ctx).map(h=>[h,'ikm']));
+ const numbered=[...first.map((html,i)=>[html,i+1,'']),...rest.map(([html,part],i)=>[html,first.length+TAHFIZH_PAGES+i+1,part])];
+ return numbered.map(([html,no,part])=>`<section class="rpv-paper srp-page" data-student-id="${esc(ctx.student.id||'')}" data-page-no="${no}"${part?` data-part="${part}"`:''}>${html}<div class="srp-foot"><img src="${FOOTER}" alt=""></div><div class="srp-pno">${esc(L.page(no,ctx.student.name))}</div></section>`).join('');
 }
 
 /* Ambil data cetak satu kelas lalu tempelkan ke tiap laporan siswa. */
@@ -253,11 +345,11 @@ async function attach(reports,{academicYear,semester,classId}){
  try{const r=await fetch(`${SUPABASE_URL}/functions/v1/admin-academic-period/semester-report`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify({action:'print_data',academic_year:academicYear,semester_no:semester,class_id:classId}),signal:ctl.signal});d=await r.json().catch(()=>({}));if(!r.ok||!d.success)throw new Error(d.error||`Data Rapor Semester gagal dimuat (HTTP ${r.status}).`)}
  catch(e){if(e?.name==='AbortError')throw new Error('Server Rapor Semester terlalu lama merespons.');throw e}finally{clearTimeout(timer)}
  const by=new Map((d.students||[]).map(s=>[String(s.id),s]));
- for(const r of list){r.semester_print={academic_year:d.academic_year,semester_no:d.semester_no,class:d.class,subjects:d.subjects||[],student:by.get(String(r.student?.id))||{academic:{},entry:null}}}
+ for(const r of list){r.semester_print={academic_year:d.academic_year,semester_no:d.semester_no,kkm:d.kkm,class:d.class,subjects:d.subjects||[],student:by.get(String(r.student?.id))||{academic:{},entry:null}}}
  return reports;
 }
 
 window.cqSemesterPagesHtml=pagesHtml;
 window.cqSemesterAttach=attach;
-window.__cqSemesterInternals={terbilang,tpGrade,classify,paginate,subjectName};
+window.__cqSemesterInternals={terbilang,tpGrade,classify,paginate,subjectName,ikmEval,capaian,ikmLetter,tpPhrase,ekskulPredikat};
 })();

@@ -148,7 +148,7 @@
             try{
               if(typeof window.renderSemesterReportWalas!=='function'){
                 if(!window.__cqSemesterReportLoad)window.__cqSemesterReportLoad=new Promise(function(resolve,reject){
-                  const script=document.createElement('script');script.src='semester-report-walas.js?v=20261118-semester1';
+                  const script=document.createElement('script');script.src='semester-report-walas.js?v=20261119-ikm1';
                   script.onload=function(){if(typeof window.renderSemesterReportWalas==='function')resolve();else reject(Error('Modul Rapor Semester belum siap.'))};
                   script.onerror=function(){script.remove();reject(Error('Modul Rapor Semester gagal dimuat. Periksa koneksi lalu klik menu kembali.'))};
                   document.head.appendChild(script);

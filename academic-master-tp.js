@@ -93,8 +93,19 @@
     if(!isAcademic()){if(container)container.innerHTML='<div class="card">Menu ini khusus Kabid Akademik.</div>';return}
     css();
     container=container||document.getElementById('content');if(!container)return;
-    container.innerHTML=`<div class="aktp"><div class="aktp-head"><div><h2>Master Tujuan Pembelajaran</h2><div class="aktp-sub">Kelola TP kelas 1–6: upload Excel (versi Indonesia dan English) atau tambah/edit satu per satu.</div></div></div><div id="aktp-upload"></div><div id="aktp-status" class="aktp-status">Memuat master TP...</div><div class="aktp-grid"><div class="aktp-card"><div class="aktp-row"><div class="aktp-field"><label>Semester</label><select id="aktp-sem"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div><div class="aktp-field"><label>Kelas</label><select id="aktp-grade">${[1,2,3,4,5,6].map(n=>`<option value="${n}">Kelas ${n}</option>`).join('')}</select></div><div class="aktp-field"><label>Mapel</label><select id="aktp-subject"></select></div></div><div id="aktp-list" class="aktp-table"><div class="aktp-empty">Memuat...</div></div></div><div id="aktp-form" class="aktp-card"><h3 id="aktp-form-title" style="margin:0 0 5px">Tambah TP</h3><div class="aktp-note">Edit teks/topik aman karena ID TP tetap. Jika urutan TP yang sudah memiliki nilai diubah, sistem akan memberi peringatan karena posisi TP di Legger ikut berubah.</div><div class="aktp-field"><label>Urutan TP</label><input id="aktp-order" inputmode="numeric" placeholder="Contoh: 5"></div><div class="aktp-field" style="margin-top:9px"><label>Topik / Materi</label><input id="aktp-topic" placeholder="Materi atau topik"></div><div class="aktp-field" style="margin-top:9px"><label>Tujuan Pembelajaran</label><textarea id="aktp-desc" placeholder="Tuliskan tujuan pembelajaran..."></textarea></div><div class="aktp-field" style="margin-top:9px"><label>Tujuan Pembelajaran (English) — dipakai di rapor bahasa Inggris</label><textarea id="aktp-desc-en" style="min-height:90px" placeholder="Students are able to... (kosongkan bila belum ada; rapor English memakai teks Indonesia)"></textarea></div><div style="display:flex;gap:8px;margin-top:10px"><button id="aktp-save" class="aktp-btn">Simpan TP</button><button id="aktp-cancel" class="aktp-btn alt" style="display:none">Batal Edit</button></div></div></div></div>`;
+    container.innerHTML=`<div class="aktp"><div class="aktp-head"><div><h2>Master Tujuan Pembelajaran</h2><div class="aktp-sub">Kelola TP kelas 1–6: tempel banyak TP dari Excel/Word, upload Excel (Indonesia & English), atau tambah/edit satu per satu. Mapel tiap kelas dan KKM diatur di Alat Master TP.</div></div></div><div id="aktp-upload"></div><div id="aktp-status" class="aktp-status">Memuat master TP...</div><div class="aktp-grid"><div class="aktp-card"><div class="aktp-row"><div class="aktp-field"><label>Semester</label><select id="aktp-sem"><option value="1">Semester 1</option><option value="2">Semester 2</option></select></div><div class="aktp-field"><label>Kelas</label><select id="aktp-grade">${[1,2,3,4,5,6].map(n=>`<option value="${n}">Kelas ${n}</option>`).join('')}</select></div><div class="aktp-field"><label>Mapel</label><select id="aktp-subject"></select></div></div><div id="aktp-list" class="aktp-table"><div class="aktp-empty">Memuat...</div></div></div><div id="aktp-form" class="aktp-card"><h3 id="aktp-form-title" style="margin:0 0 5px">Tambah TP</h3><div class="aktp-note">Edit teks/topik aman karena ID TP tetap. Jika urutan TP yang sudah memiliki nilai diubah, sistem akan memberi peringatan karena posisi TP di Legger ikut berubah.</div><div class="aktp-field"><label>Urutan TP</label><input id="aktp-order" inputmode="numeric" placeholder="Contoh: 5"></div><div class="aktp-field" style="margin-top:9px"><label>Topik / Materi</label><input id="aktp-topic" placeholder="Materi atau topik"></div><div class="aktp-field" style="margin-top:9px"><label>Tujuan Pembelajaran</label><textarea id="aktp-desc" placeholder="Tuliskan tujuan pembelajaran..."></textarea></div><div class="aktp-field" style="margin-top:9px"><label>Tujuan Pembelajaran (English) — dipakai di rapor bahasa Inggris</label><textarea id="aktp-desc-en" style="min-height:90px" placeholder="Students are able to... (kosongkan bila belum ada; rapor English memakai teks Indonesia)"></textarea></div><div style="display:flex;gap:8px;margin-top:10px"><button id="aktp-save" class="aktp-btn">Simpan TP</button><button id="aktp-cancel" class="aktp-btn alt" style="display:none">Batal Edit</button></div></div></div></div>`;
     try{
+      await loadBoot();
+      S.semester=+S.boot.active_semester||1;S.grade=1;document.getElementById('aktp-sem').value=String(S.semester);document.getElementById('aktp-grade').value='1';fillSubjectOptions();
+      document.getElementById('aktp-sem').onchange=async e=>{S.semester=+e.target.value;clearForm();await loadList()};
+      document.getElementById('aktp-grade').onchange=async e=>{S.grade=+e.target.value;S.subjectId='';fillSubjectOptions();clearForm();await loadList()};
+      document.getElementById('aktp-subject').onchange=async e=>{S.subjectId=e.target.value;clearForm();await loadList()};
+      document.getElementById('aktp-save').onclick=()=>save(false);document.getElementById('aktp-cancel').onclick=clearForm;
+      if(typeof window.cqTpUploadPanel==='function')window.cqTpUploadPanel(document.getElementById('aktp-upload'),{semester:S.semester,onDone:async kind=>{if(kind==='subjects'){await loadBoot();fillSubjectOptions()}await loadList()}});
+      await loadList();
+    }catch(e){status(e.message,true)}
+  };
+  async function loadBoot(){
       S.boot=await api({action:'bootstrap'});
       // Backend lama menyembunyikan Tajwid dari bootstrap. Pulihkan hanya master subject
       // yang memang sudah ada agar dapat dipilih untuk membuat TP; tidak mengubah nilai.
@@ -110,15 +121,7 @@
       tajwidGrades.forEach(x=>{if(!have.has(+x.grade_level))tajwid.grades.push(x)});
       tajwid.grades.sort((a,b)=>+a.grade_level-+b.grade_level);
       S.boot.subjects.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'id'));
-      S.semester=+S.boot.active_semester||1;S.grade=1;document.getElementById('aktp-sem').value=String(S.semester);document.getElementById('aktp-grade').value='1';fillSubjectOptions();
-      document.getElementById('aktp-sem').onchange=async e=>{S.semester=+e.target.value;clearForm();await loadList()};
-      document.getElementById('aktp-grade').onchange=async e=>{S.grade=+e.target.value;S.subjectId='';fillSubjectOptions();clearForm();await loadList()};
-      document.getElementById('aktp-subject').onchange=async e=>{S.subjectId=e.target.value;clearForm();await loadList()};
-      document.getElementById('aktp-save').onclick=()=>save(false);document.getElementById('aktp-cancel').onclick=clearForm;
-      if(typeof window.cqTpUploadPanel==='function')window.cqTpUploadPanel(document.getElementById('aktp-upload'),{semester:S.semester,onDone:()=>loadList()});
-      await loadList();
-    }catch(e){status(e.message,true)}
-  };
+  }
 
   function install(){
     enforceScope();

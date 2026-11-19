@@ -150,13 +150,13 @@
     primeDashboardRole(r);
 
     if(['guru','walas','partner','guru_partner','pengabdian','pimpinan'].includes(r)){
-      add('./academic-sidebar-order.js?v=20261118-semester1','__cqAcademicSidebarOrderRoleLazy',false);
+      add('./academic-sidebar-order.js?v=20261119-ikm1','__cqAcademicSidebarOrderRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','pimpinan','admin'].includes(r)){
       add('./academic-teacher-report.js?v=20261025-period2','__cqAcademicTeacherReportRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','kegiatan'].includes(r)){
-      add('./kabid-role-scope-fix.js?v=20261119-upload1','__cqKabidRoleScopeRoleLazy',false);
+      add('./kabid-role-scope-fix.js?v=20261119-tools1','__cqKabidRoleScopeRoleLazy',false);
     }
 
     if(['akademik','kabid_akademik','academic'].includes(r)){
