@@ -52,17 +52,20 @@ async function partnerOf(classId:string,p:any){
 const PERIOD_RANK:Record<string,number>={SEMESTER:3,PAS:3,PTS:1};
 async function ekskulByStudent(p:any,ids:string[]){
  const out=new Map<string,any[]>();if(!ids.length)return out;
- const [mem,ass,ext,extAss]=await Promise.all([
+ const [mem,ass,ext,extAss,pram]=await Promise.all([
   all(()=>db.from('extracurricular_members').select('id,student_id,extracurricular_id,status').eq('academic_year_id',p.year.id).in('student_id',ids).order('id',{ascending:true})),
   all(()=>db.from('extracurricular_assessments').select('id,student_id,extracurricular_id,assessment_period,activity_grade,skill_grade,competition_grade,final_rating,final_remarks').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids).order('id',{ascending:true})),
   all(()=>db.from('extracurricular_external_students').select('id,student_id,activity_name,institution_name').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).eq('is_active',true).in('student_id',ids).order('id',{ascending:true})),
-  all(()=>db.from('extracurricular_external_assessments').select('id,student_id,external_student_id,assessment_period,activity_grade,skill_grade,competition_grade').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids).order('id',{ascending:true}))]);
+  all(()=>db.from('extracurricular_external_assessments').select('id,student_id,external_student_id,assessment_period,activity_grade,skill_grade,competition_grade').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids).order('id',{ascending:true})),
+  // Pramuka wajib: nilai dari Pembina Pramuka (tabel terpisah, bukan anggota ekskul). Gagal baca = baris Pramuka kosong.
+  db.from('pramuka_assessments').select('student_id,grade').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids).then((r:any)=>r.error?[]:(r.data||[]))]);
  const eids=[...new Set([...mem,...ass].map((x:any)=>text(x.extracurricular_id)).filter(Boolean))];
  const names=new Map<string,string>();if(eids.length){for(const e of await rows(db.from('extracurriculars').select('id,name').in('id',eids)))names.set(text(e.id),text(e.name))}
  const best=new Map<string,any>();const keep=(k:string,a:any)=>{const o=best.get(k);if(!o||(PERIOD_RANK[text(a.assessment_period).toUpperCase()]||0)>=(PERIOD_RANK[text(o.assessment_period).toUpperCase()]||0))best.set(k,a)};
  for(const a of ass)keep(`${a.student_id}|${a.extracurricular_id}`,a);for(const a of extAss)keep(`${a.student_id}|x${a.external_student_id}`,a);
  const push=(sid:string,item:any)=>{if(!out.has(sid))out.set(sid,[]);const list=out.get(sid)!;if(!list.some((x:any)=>x.key===item.key))list.push(item)};
  const grades=(a:any)=>({activity:text(a?.activity_grade).toUpperCase(),skill:text(a?.skill_grade).toUpperCase(),competition:text(a?.competition_grade).toUpperCase(),rating:text(a?.final_rating),remarks:text(a?.final_remarks)});
+ for(const r of pram){const g=text(r.grade).toUpperCase();if(g)push(text(r.student_id),{key:'pramuka',name:'Pramuka',external:false,activity:'',skill:'',competition:'',rating:g,remarks:''})}
  for(const m of mem){if(low(m.status)!=='aktif')continue;const k=`${m.student_id}|${m.extracurricular_id}`;push(text(m.student_id),{key:text(m.extracurricular_id),name:names.get(text(m.extracurricular_id))||'Ekstrakurikuler',external:false,...grades(best.get(k))})}
  for(const a of ass){push(text(a.student_id),{key:text(a.extracurricular_id),name:names.get(text(a.extracurricular_id))||'Ekstrakurikuler',external:false,...grades(best.get(`${a.student_id}|${a.extracurricular_id}`))})}
  for(const e of ext){const nm=text(e.activity_name)||'Ekstrakurikuler luar sekolah';push(text(e.student_id),{key:'x'+text(e.id),name:nm,institution:text(e.institution_name),external:true,...grades(best.get(`${e.student_id}|x${e.id}`))})}
@@ -86,7 +89,7 @@ async function academic(cls:any,p:any,studentIds:string[]){
  const sc=new Map<string,number|null>();for(const r of scores){const type=text(r.assessment_type).toUpperCase();const k=type==='TP'?`${r.student_id}|${r.subject_id}|TP|${r.learning_objective_id}`:`${r.student_id}|${r.subject_id}|${type}`;sc.set(k,num(r.score))}
  const get=(k:string)=>sc.has(k)?sc.get(k)!:null;
  const byStudent=new Map<string,any>();
- for(const sid of studentIds){const per:Record<string,any>={};for(const s of outSubjects){const tasks=TASKS.map(t=>get(`${sid}|${s.id}|${t}`)),tp=s.objectives.map((o:any)=>get(`${sid}|${s.id}|TP|${o.id}`)),wwp=get(`${sid}|${s.id}|WWP`),asas=get(`${sid}|${s.id}|ASAS`);const missing=tasks.filter(x=>x===null).length+tp.filter((x:any)=>x===null).length+(wwp===null?1:0)+(asas===null?1:0);per[s.id]={final:finalScore(tasks,tp,wwp,asas),missing,tp}}byStudent.set(sid,per)}
+ for(const sid of studentIds){const per:Record<string,any>={};for(const s of outSubjects){const tasks=TASKS.map(t=>get(`${sid}|${s.id}|${t}`)),tp=s.objectives.map((o:any)=>get(`${sid}|${s.id}|TP|${o.id}`)),wwp=get(`${sid}|${s.id}|WWP`),asas=get(`${sid}|${s.id}|ASAS`);const missing=tasks.filter(x=>x===null).length+tp.filter((x:any)=>x===null).length+(wwp===null?1:0)+(asas===null?1:0);per[s.id]={final:finalScore(tasks,tp,wwp,asas),missing,tp,tasks,wwp,asas}}byStudent.set(sid,per)}
  return{subjects:outSubjects,byStudent};
 }
 
