@@ -24,7 +24,33 @@ const GRADES=new Set(['A','B','C','D']);
 const KEY=/^[a-z0-9_]{1,40}$/;
 function fail(message:string):never{throw new Error('VALIDATION:'+message)}
 function gradeMap(v:any,label:string,max:number){if(v==null)return{};if(typeof v!=='object'||Array.isArray(v))fail(`Format ${label} tidak valid.`);const out:Record<string,string>={};const keys=Object.keys(v);if(keys.length>max)fail(`Isian ${label} terlalu banyak.`);for(const k of keys){if(!KEY.test(k))fail(`Kode ${label} tidak valid.`);const g=text(v[k]).toUpperCase();if(!g)continue;if(!GRADES.has(g))fail(`Nilai ${label} hanya boleh A, B, C, atau D.`);out[k]=g}return out}
-export function cleanEntry(d:any){if(!d||typeof d!=='object'||Array.isArray(d))fail('Format isian tidak valid.');const komentar=typeof d.komentar==='string'||d.komentar==null?text(d.komentar):fail('Komentar harus berupa teks.');if(komentar.length>1500)fail('Komentar maksimal 1500 karakter.');return{kepribadian:gradeMap(d.kepribadian,'kepribadian',10),sikap:gradeMap(d.sikap,'sikap',80),psikomotor:gradeMap(d.psikomotor,'psikomotorik',80),komentar}}
+// Rapor IKM: kesehatan (TB/BB + kondisi), prestasi (maks. 3), keputusan naik kelas (semester 2).
+function measure(v:any,label:string,min:number,max:number){if(v==null||text(v)==='')return'';const n=Number(String(v).replace(',','.'));if(!Number.isFinite(n)||n<min||n>max)fail(`${label} harus angka ${min}–${max}.`);return String(Math.round(n*10)/10)}
+function shortText(v:any,label:string,max:number){if(v==null)return'';if(typeof v!=='string'&&typeof v!=='number')fail(`${label} harus berupa teks.`);const s=text(v);if(s.length>max)fail(`${label} maksimal ${max} karakter.`);return s}
+export function cleanKesehatan(v:any){if(v==null)return{};if(typeof v!=='object'||Array.isArray(v))fail('Format kesehatan tidak valid.');const out:Record<string,string>={tb:measure(v.tb,'Tinggi badan (cm)',30,250),bb:measure(v.bb,'Berat badan (kg)',5,200),pendengaran:shortText(v.pendengaran,'Pendengaran',80),penglihatan:shortText(v.penglihatan,'Penglihatan',80),gigi:shortText(v.gigi,'Gigi',80)};for(const k of Object.keys(out))if(!out[k])delete out[k];return out}
+export function cleanPrestasi(v:any){if(v==null)return[];if(!Array.isArray(v)||v.length>3)fail('Prestasi maksimal 3 baris.');return v.map((p:any)=>{if(!p||typeof p!=='object'||Array.isArray(p))fail('Format prestasi tidak valid.');return{jenis:shortText(p.jenis,'Jenis prestasi',150),keterangan:shortText(p.keterangan,'Keterangan prestasi',250)}}).filter((p:any)=>p.jenis||p.keterangan)}
+export function cleanEntry(d:any){if(!d||typeof d!=='object'||Array.isArray(d))fail('Format isian tidak valid.');const komentar=typeof d.komentar==='string'||d.komentar==null?text(d.komentar):fail('Komentar harus berupa teks.');if(komentar.length>1500)fail('Komentar maksimal 1500 karakter.');const keputusan=text(d.keputusan);if(keputusan&&!['naik','tinggal'].includes(keputusan))fail('Keputusan hanya naik atau tinggal.');return{kepribadian:gradeMap(d.kepribadian,'kepribadian',10),sikap:gradeMap(d.sikap,'sikap',80),psikomotor:gradeMap(d.psikomotor,'psikomotorik',80),komentar,kesehatan:cleanKesehatan(d.kesehatan),prestasi:cleanPrestasi(d.prestasi),...(keputusan?{keputusan}:{})}}
+
+// Ekskul per siswa untuk Rapor IKM: anggota aktif + siswa yang sudah dinilai, ekskul luar sekolah juga ikut.
+const PERIOD_RANK:Record<string,number>={SEMESTER:3,PAS:3,PTS:1};
+async function ekskulByStudent(p:any,ids:string[]){
+ const out=new Map<string,any[]>();if(!ids.length)return out;
+ const [mem,ass,ext,extAss]=await Promise.all([
+  all(()=>db.from('extracurricular_members').select('id,student_id,extracurricular_id,status').eq('academic_year_id',p.year.id).in('student_id',ids).order('id',{ascending:true})),
+  all(()=>db.from('extracurricular_assessments').select('id,student_id,extracurricular_id,assessment_period,activity_grade,skill_grade,competition_grade,final_rating,final_remarks').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids).order('id',{ascending:true})),
+  all(()=>db.from('extracurricular_external_students').select('id,student_id,activity_name,institution_name').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).eq('is_active',true).in('student_id',ids).order('id',{ascending:true})),
+  all(()=>db.from('extracurricular_external_assessments').select('id,student_id,external_student_id,assessment_period,activity_grade,skill_grade,competition_grade').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids).order('id',{ascending:true}))]);
+ const eids=[...new Set([...mem,...ass].map((x:any)=>text(x.extracurricular_id)).filter(Boolean))];
+ const names=new Map<string,string>();if(eids.length){for(const e of await rows(db.from('extracurriculars').select('id,name').in('id',eids)))names.set(text(e.id),text(e.name))}
+ const best=new Map<string,any>();const keep=(k:string,a:any)=>{const o=best.get(k);if(!o||(PERIOD_RANK[text(a.assessment_period).toUpperCase()]||0)>=(PERIOD_RANK[text(o.assessment_period).toUpperCase()]||0))best.set(k,a)};
+ for(const a of ass)keep(`${a.student_id}|${a.extracurricular_id}`,a);for(const a of extAss)keep(`${a.student_id}|x${a.external_student_id}`,a);
+ const push=(sid:string,item:any)=>{if(!out.has(sid))out.set(sid,[]);const list=out.get(sid)!;if(!list.some((x:any)=>x.key===item.key))list.push(item)};
+ const grades=(a:any)=>({activity:text(a?.activity_grade).toUpperCase(),skill:text(a?.skill_grade).toUpperCase(),competition:text(a?.competition_grade).toUpperCase(),rating:text(a?.final_rating),remarks:text(a?.final_remarks)});
+ for(const m of mem){if(low(m.status)!=='aktif')continue;const k=`${m.student_id}|${m.extracurricular_id}`;push(text(m.student_id),{key:text(m.extracurricular_id),name:names.get(text(m.extracurricular_id))||'Ekstrakurikuler',external:false,...grades(best.get(k))})}
+ for(const a of ass){push(text(a.student_id),{key:text(a.extracurricular_id),name:names.get(text(a.extracurricular_id))||'Ekstrakurikuler',external:false,...grades(best.get(`${a.student_id}|${a.extracurricular_id}`))})}
+ for(const e of ext){const nm=text(e.activity_name)||'Ekstrakurikuler luar sekolah';push(text(e.student_id),{key:'x'+text(e.id),name:nm,institution:text(e.institution_name),external:true,...grades(best.get(`${e.student_id}|x${e.id}`))})}
+ return out;
+}
 
 const num=(v:any)=>{if(v===null||v===undefined||text(v)==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
 const avg=(a:number[])=>a.reduce((x,y)=>x+y,0)/a.length;
@@ -57,9 +83,13 @@ export async function handleSemesterReport(req:Request){if(req.method==='OPTIONS
   if(!READ_ALL.some(x=>r.has(x))&&!(await homeroomClassIds(user,p.year.id,p.semester_no)).includes(classId))return reply({success:false,error:'Kelas di luar akses akun ini.'},403);
   const cls=await rows(db.from('classes').select('id,name,grade_level').eq('id',classId).eq('academic_year_id',p.year.id).maybeSingle());if(!cls)return reply({success:false,error:'Kelas tidak ditemukan.'},404);
   const students=await roster(cls.id,p);const ids=students.map((s:any)=>s.id);
-  const [acad,entries]=await Promise.all([academic(cls,p,ids),ids.length?rows(db.from('semester_report_entries').select('student_id,data,version,updated_at').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids)):Promise.resolve([])]);
-  const em=new Map((entries||[]).map((e:any)=>[text(e.student_id),e]));
-  return reply({success:true,academic_year:p.year.name,semester_no:p.semester_no,class:{id:text(cls.id),name:text(cls.name),grade_level:Number(cls.grade_level)||null},subjects:acad.subjects,students:students.map((s:any)=>({...s,entry:em.get(s.id)||null,academic:acad.byStudent.get(s.id)||{}}))});
+  const [acad,entries,eks,prev]=await Promise.all([academic(cls,p,ids),ids.length?rows(db.from('semester_report_entries').select('student_id,data,version,updated_at').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',ids)):Promise.resolve([]),ekskulByStudent(p,ids),
+   // Semester 2 rapor IKM also shows the semester 1 height/weight.
+   p.semester_no===2&&ids.length?rows(db.from('semester_report_entries').select('student_id,data').eq('academic_year_id',p.year.id).eq('semester_no',1).in('student_id',ids)):Promise.resolve([])]);
+  const em=new Map((entries||[]).map((e:any)=>[text(e.student_id),e]));const pm=new Map((prev||[]).map((e:any)=>[text(e.student_id),e.data?.kesehatan||{}]));
+  // KKM satuan pendidikan diatur Akademik per tahun ajaran; 70 bila belum diatur.
+  const kk=await db.from('academic_year_settings').select('kkm').eq('academic_year_id',p.year.id).maybeSingle();const kkm=!kk.error&&kk.data&&Number.isFinite(Number(kk.data.kkm))?Number(kk.data.kkm):70;
+  return reply({success:true,academic_year:p.year.name,semester_no:p.semester_no,kkm,class:{id:text(cls.id),name:text(cls.name),grade_level:Number(cls.grade_level)||null},subjects:acad.subjects,students:students.map((s:any)=>({...s,entry:em.get(s.id)||null,academic:acad.byStudent.get(s.id)||{},ekskul:eks.get(s.id)||[],kesehatan_s1:pm.get(s.id)||null}))});
  }
  // Input walas: hanya semester aktif dan kelas walas sendiri.
  const p=await activePeriod();const ids=await homeroomClassIds(user,p.year.id,p.semester_no);
