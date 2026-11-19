@@ -92,7 +92,35 @@ const LEGEND={
  psikomotor:{id:'A = Sangat aktif;  B = Aktif sesekali;  C = Pasif;  D = Tidak mengikuti',en:'A = Very active;  B = Occasionally active;  C = Passive;  D = Did not participate'},
  kepribadian:{id:'A = Sangat baik;  B = Baik;  C = Cukup;  D = Perlu bimbingan',en:'A = Excellent;  B = Good;  C = Fair;  D = Needs guidance'}
 };
-window.CQ_SEMESTER_CATALOG={KEPRIBADIAN,SIKAP,PSIKOMOTOR,LEGEND,GRADES};
+/* ---------- Kokurikuler (PjBL) per jenjang: 2 dimensi profil lulusan, skor 1-4 ----------
+   Sumber: Rubrik_PjBL_Dimensi_Profil_Lulusan.xlsx. Komentar mengikuti rumus "Generator komentar" di file itu:
+   skor 3-4 = kekuatan ("sudah baik"/"sangat baik ... dengan mampu ..."), skor 1-2 = "masih perlu berlatih dalam ...". */
+const KOKU_SCALE={4:{id:'Sangat Baik',en:'Very Good'},3:{id:'Baik',en:'Good'},2:{id:'Cukup',en:'Fair'},1:{id:'Perlu Bimbingan',en:'Needs Guidance'}};
+const KOKURIKULER={
+ 1:{id:'Smart HydroTech Garden (Berkebun Tanpa Tanah, Belajar Bersyukur pada Tumbuhan)',en:'Smart HydroTech Garden (Soil-free Gardening, Learning Gratitude for Plants)',dims:[
+  {id:'Penalaran Kritis',en:'critical reasoning',kuat:'membandingkan kangkung yang ditanam di tanah dan secara hidroponik dari berbagai aspek beserta alasannya',latih:'menjelaskan sebab-akibat pertumbuhan kangkung berdasarkan data pengamatan',kuat_en:'comparing water spinach grown in soil and hydroponically from several aspects with reasons',latih_en:'explaining the causes of water spinach growth based on observation data'},
+  {id:'Kolaborasi',en:'collaboration',kuat:'bekerja sama dalam menanam dan merawat kangkung serta menghargai pendapat teman',latih:'berbagi tugas dan menghargai pendapat teman dalam menanam dan merawat kangkung',kuat_en:"working together to plant and care for water spinach and respecting friends' opinions",latih_en:"sharing tasks and respecting friends' opinions while planting and caring for water spinach"}]},
+ 2:{id:'Aqua Farm (Merawat Ikan, Belajar Tanggung Jawab)',en:'Aqua Farm (Caring for Fish, Learning Responsibility)',dims:[
+  {id:'Keimanan dan Ketakwaan',en:'faith and piety',kuat:'mengungkapkan rasa syukur dan memperlakukan ikan lele sebagai ciptaan Allah dengan penuh kasih sayang',latih:'menumbuhkan rasa syukur dan kepedulian terhadap ikan lele sebagai ciptaan Allah',kuat_en:"expressing gratitude and treating catfish lovingly as Allah's creation",latih_en:"growing gratitude and care for catfish as Allah's creation"},
+  {id:'Kemandirian',en:'independence',kuat:'melaksanakan tugas perawatan ikan secara rutin dan bertanggung jawab',latih:'melaksanakan tugas perawatan ikan secara rutin tanpa diingatkan',kuat_en:'carrying out fish-care duties routinely and responsibly',latih_en:'carrying out fish-care duties routinely without reminders'}]},
+ 3:{id:'Every Drop Matters (Setiap Tetes Air Berharga)',en:'Every Drop Matters',dims:[
+  {id:'Penalaran Kritis',en:'critical reasoning',kuat:'menjelaskan pentingnya air bersih dan angin bagi makhluk hidup beserta alasannya',latih:'menjelaskan pentingnya air bersih dan angin dengan alasan yang tepat',kuat_en:'explaining the importance of clean water and wind for living things with reasons',latih_en:'explaining the importance of clean water and wind with sound reasons'},
+  {id:'Kewargaan',en:'citizenship',kuat:'menerapkan perilaku hemat air dan mengajak teman menjaga lingkungan',latih:'menerapkan perilaku hemat air dan terlibat dalam aksi peduli lingkungan',kuat_en:'saving water and inviting friends to care for the environment',latih_en:'saving water and taking part in environmental care activities'}]},
+ 4:{id:'Young Scientists Explore (Menjadi Ilmuwan Cilik yang Berpikir seperti Ulil Albab)',en:'Young Scientists Explore (Thinking like Ulil Albab)',dims:[
+  {id:'Penalaran Kritis',en:'critical reasoning',kuat:'merumuskan pertanyaan sains dari kejadian sehari-hari dan menalar jawabannya berdasarkan bukti',latih:'merumuskan pertanyaan sains dan menalar jawabannya berdasarkan bukti percobaan',kuat_en:'forming science questions from everyday events and reasoning answers from evidence',latih_en:'forming science questions and reasoning answers from experimental evidence'},
+  {id:'Kolaborasi',en:'collaboration',kuat:'bekerja sama dalam percobaan kelompok dan menghargai pendapat teman',latih:'berbagi tugas dan menghargai pendapat teman dalam kerja kelompok',kuat_en:"working together in group experiments and respecting friends' opinions",latih_en:"sharing tasks and respecting friends' opinions in group work"}]},
+ 5:{id:'Healthy Food Through Fermentation (Makanan Sehat dari Proses Fermentasi yang Halal & Thoyyib)',en:'Healthy Food Through Fermentation (Halal & Thoyyib)',dims:[
+  {id:'Kesehatan',en:'health',kuat:'memilih makanan fermentasi yang sehat, halal, dan thayyib serta menjaga kebersihan saat membuatnya',latih:'menjaga kebersihan diri dan alat serta memilih bahan yang sehat, halal, dan thayyib',kuat_en:'choosing healthy, halal and thayyib fermented food and keeping clean while making it',latih_en:'keeping self and tools clean and choosing healthy, halal and thayyib ingredients'},
+  {id:'Penalaran Kritis',en:'critical reasoning',kuat:'menjelaskan pengertian fermentasi dan peran mikroorganisme secara sederhana',latih:'menjelaskan pengertian fermentasi dan peran mikroorganisme dengan alasan yang tepat',kuat_en:'explaining fermentation and the role of microorganisms simply',latih_en:'explaining fermentation and the role of microorganisms with sound reasons'}]},
+ 6:{id:'Smart City (Berinovasi dan Berteknologi)',en:'Smart City (Innovation and Technology)',dims:[
+  {id:'Komunikasi',en:'communication',kuat:'mempresentasikan hasil proyek secara runtut, percaya diri, dan menarik',latih:'mempresentasikan hasil proyek secara runtut dan percaya diri',kuat_en:'presenting project results in an orderly, confident and engaging way',latih_en:'presenting project results in an orderly and confident way'},
+  {id:'Kreativitas',en:'creativity',kuat:'menghasilkan gagasan inovatif dan media visual yang menarik',latih:'mengembangkan gagasan inovatif dan media visual yang menarik',kuat_en:'producing innovative ideas and engaging visual media',latih_en:'developing innovative ideas and engaging visual media'}]}
+};
+function kokuComment(name,grade,scores,lang){const p=KOKURIKULER[Number(grade)];if(!p)return'';const a=Number(scores?.a),b=Number(scores?.b);if(!(a>=1&&a<=4)||!(b>=1&&b<=4))return'';const[A,B]=p.dims,nm=String(name||'').trim();
+ if(lang==='en'){const lv=s=>s===4?'very good':'good';if(a>=3&&b>=3)return`${nm} shows ${lv(a)} ${A.en} in ${A.kuat_en}, as well as ${lv(b)} ${B.en} in ${B.kuat_en}.`;if(a>=3)return`${nm} shows ${lv(a)} ${A.en} in ${A.kuat_en}, and still needs practice in ${B.latih_en}.`;if(b>=3)return`${nm} shows ${lv(b)} ${B.en} in ${B.kuat_en}, and still needs practice in ${A.latih_en}.`;return`${nm} still needs practice in ${A.latih_en}, as well as in ${B.latih_en}.`}
+ const lv=s=>s===4?'sangat baik':'sudah baik';if(a>=3&&b>=3)return`Ananda ${nm} ${lv(a)} dalam ${A.id.toLowerCase()} dengan mampu ${A.kuat}, serta ${lv(b)} dalam ${B.id.toLowerCase()} dengan mampu ${B.kuat}.`;
+ if(a>=3)return`Ananda ${nm} ${lv(a)} dalam ${A.id.toLowerCase()} dengan mampu ${A.kuat}, dan masih perlu berlatih dalam ${B.latih}.`;if(b>=3)return`Ananda ${nm} ${lv(b)} dalam ${B.id.toLowerCase()} dengan mampu ${B.kuat}, dan masih perlu berlatih dalam ${A.latih}.`;return`Ananda ${nm} masih perlu berlatih dalam ${A.latih}, serta dalam ${B.latih}.`}
+window.CQ_SEMESTER_CATALOG={KEPRIBADIAN,SIKAP,PSIKOMOTOR,LEGEND,GRADES,KOKURIKULER,KOKU_SCALE,kokuComment};
 
 /* ---------- Mapel ---------- */
 const SUBJECTS=[
@@ -132,13 +160,13 @@ const T={
   nilai:'NILAI RAPOR',psik:'PENILAIAN PSIKOMOTORIK',kogu:'PENILAIAN KOGNITIF UMUM',kogd:'PENILAIAN KOGNITIF DINIYAH',sikap:'PENILAIAN SIKAP',kom:'KOMENTAR UMUM',
   lphb:'LAPORAN PENILAIAN HASIL BELAJAR SISWA',no:'NO',subject:'MATA PELAJARAN',kktp:'KKTP',score:'NILAI',num:'ANGKA',words:'HURUF',
   pai:'Pendidikan Agama Islam dan Budi Pekerti',mulok:'Muatan Lokal',kepribadian:'KEPRIBADIAN',value:'NILAI',absence:'KETIDAKHADIRAN',days:'HARI',sick:'Sakit',excused:'Izin',unexcused:'Tanpa Keterangan',
-  parent:'Orang Tua / Wali',homeroom:'Wali Kelas',principal:'Kepala Sekolah',page:(i,n)=>`Halaman ${i}${n?` | ${n}`:''}`,noComment:'',noTp:'Tujuan pembelajaran belum diatur.',noSubject:'Belum ada mata pelajaran untuk kelompok ini.',
+  parent:'Orang Tua / Wali',homeroom:'Wali Kelas',principal:'Kepala Sekolah',partner:'Guru Partner',page:(i,n)=>`Halaman ${i}${n?` | ${n}`:''}`,noComment:'',noTp:'Tujuan pembelajaran belum diatur.',noSubject:'Belum ada mata pelajaran untuk kelompok ini.',
   masehi:d=>d?new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'long',year:'numeric'}).format(d)+' M':'-',hijriSuffix:' H',incomplete:'Nilai belum lengkap'},
  en:{sem:n=>Number(n)===2?'II (Two)':'I (One)',year:'Academic Year',name:'Name',nameLong:'Student Name',cls:'Class',semL:'Semester',school:'School',
   nilai:'SEMESTER REPORT CARD',psik:'PSYCHOMOTOR ASSESSMENT',kogu:'COGNITIVE ASSESSMENT: GENERAL SUBJECTS',kogd:'COGNITIVE ASSESSMENT: ISLAMIC STUDIES',sikap:'ATTITUDE ASSESSMENT',kom:'GENERAL COMMENTS',
   lphb:'STUDENT LEARNING ACHIEVEMENT REPORT',no:'NO',subject:'SUBJECT',kktp:'KKTP',score:'SCORE',num:'NUMBER',words:'IN WORDS',
   pai:'Islamic Studies',mulok:'Local Content Subjects',kepribadian:'PERSONALITY',value:'RATING',absence:'ABSENCES',days:'DAYS',sick:'Illness',excused:'Excused',unexcused:'Unexcused',
-  parent:'Parent / Guardian',homeroom:'Homeroom Teacher',principal:'Principal',page:(i,n)=>`Page ${i}${n?` | ${n}`:''}`,noComment:'',noTp:'Learning objectives have not been set.',noSubject:'No subjects in this group yet.',
+  parent:'Parent / Guardian',homeroom:'Homeroom Teacher',principal:'Principal',partner:'Partner Teacher',page:(i,n)=>`Page ${i}${n?` | ${n}`:''}`,noComment:'',noTp:'Learning objectives have not been set.',noSubject:'No subjects in this group yet.',
   masehi:d=>d?new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'long',year:'numeric'}).format(d)+' CE':'-',hijriSuffix:' AH',incomplete:'Incomplete scores'}
 };
 // Rapor Tahfizh (3 lembar) dicetak terpisah tetapi nomor halamannya disisakan setelah halaman Sikap/Adab.
@@ -185,22 +213,28 @@ const RAPOR_CSS=`
 .srp-sec{font-weight:700;font-size:9pt;line-height:1.3;margin:4mm 0 1.5mm}.srp-sub{font-weight:700;font-size:8pt;margin:2.5mm 0 1mm}
 .srp-ikm td,.srp-ikm th{vertical-align:middle}.srp-ikm td.cap{text-align:left;font-size:7.5pt;line-height:1.3;padding:1.2mm 2mm}.srp-ikm td.nob{border-top:0;border-bottom:0}
 .srp-soon{height:14mm;text-align:center;font-style:italic;color:#666}
+.srp-koku{padding:2mm 3mm;line-height:1.4}.srp-koku-p{font-size:8pt}.srp-koku-d{font-size:7.5pt;color:#444;margin:.6mm 0 1mm}.srp-koku-c{font-size:8pt;text-align:justify}
 .srp-half{width:64%}.srp-absrow{display:grid;grid-template-columns:64% 1fr;column-gap:5mm;align-items:center}.srp-absrow .srp-half{width:100%}
 .srp-dec{text-align:center;line-height:1.6;font-size:8pt}.srp-dec div,.srp-dec b{font-size:8pt}
 .srp-pno{position:absolute;right:14mm;bottom:27.5mm;max-width:120mm;text-align:right;font-size:7.5pt;line-height:1.3;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2mm;border-right:2px solid #b5174f}
 `;
 function hardenCss(css){return css.replace(/([^{}]+)\{([^{}]*)\}/g,(m,sel,decl)=>{const sels=sel.split(',').map(x=>x.trim()).filter(Boolean);const all=[...sels,...sels.map(x=>'#app-screen#app-screen .content '+x)];const d=decl.split(';').map(x=>x.trim()).filter(Boolean).map(x=>/!important$/.test(x)?x:x+'!important').join(';');return'\n'+all.join(',')+'{'+d+'}'})}
-function injectStyles(){if(document.getElementById('cq-semester-print-style'))return;const s=document.createElement('style');s.id='cq-semester-print-style';s.textContent=hardenCss(RAPOR_CSS);document.head.appendChild(s)}
+// Cetak ke printer = tanda tangan basah: gambar tanda tangan elektronik disembunyikan. Simpan PDF (html2canvas)
+// memakai tampilan layar, jadi tanda tangan elektronik tetap ada di file PDF.
+const PRINT_CSS=`@media print{.srp-page .srp-sign img,#app-screen#app-screen .content .srp-page .srp-sign img{display:none!important;visibility:hidden!important}}`;
+function injectStyles(){if(document.getElementById('cq-semester-print-style'))return;const s=document.createElement('style');s.id='cq-semester-print-style';s.textContent=hardenCss(RAPOR_CSS)+'\n'+PRINT_CSS;document.head.appendChild(s)}
 
 /* ---------- Bagian halaman ---------- */
 function headHtml(ctx,title){const L=T[ctx.lang],st=ctx.student;return`<div class="srp-title">${esc(title)}</div>
 <div class="srp-id"><div class="srp-kv l"><span>${L.name}</span><span>:</span><span class="v">${esc(st.name||'')}</span><span>${L.cls}</span><span>:</span><span class="v">${esc(ctx.className||'-')}</span></div><img src="${LOGO}" alt=""><div class="srp-kv r"><span>${L.semL}</span><span>:</span><span>${esc(L.sem(ctx.semester))}</span><span>${L.year}</span><span>:</span><span>${esc(ctx.year||'-')}</span></div></div>`}
 function boxes(selected){return GRADES.map(g=>`<td class="c"><span class="srp-box${selected===g?' on':''}" aria-label="${g}${selected===g?' ✓':''}"></span></td>`).join('')}
-function signHtml(ctx,third){const L=T[ctx.lang],tr=ctx.teachers||{};let d=null;if(ctx.printDate){const x=new Date(ctx.printDate+'T00:00:00');if(!Number.isNaN(x.getTime()))d=x}
+// third==='partner': halaman Komentar ditandatangani Guru Partner (bukan Kepala Sekolah).
+// Gambar tanda tangan elektronik hanya untuk Simpan PDF; saat dicetak ke printer gambar disembunyikan (tanda tangan basah).
+function signHtml(ctx,third){const L=T[ctx.lang],tr=ctx.teachers||{},pt=ctx.partner||{};let d=null;if(ctx.printDate){const x=new Date(ctx.printDate+'T00:00:00');if(!Number.isNaN(x.getTime()))d=x}
  const hijri=String(ctx.hijri||'').trim();const hijriLine=hijri?`Depok, ${esc(hijri)}${/\b(H|AH|M|CE)$/i.test(hijri)?'':L.hijriSuffix}`:'';
  const img=u=>u?`<img crossorigin="anonymous" src="${esc(u)}" alt="">`:'';
  return`<div class="srp-sign-area"><div class="srp-date">${hijriLine?`<div><u>${hijriLine}</u></div><div>${esc(L.masehi(d))}</div>`:`<div><u>Depok, ${esc(L.masehi(d))}</u></div>`}</div>
-<div class="srp-sign"><div>${L.parent}<div class="line"></div></div><div>${L.homeroom}${img(tr.homeroom_signature_url)}<div class="name">${esc(tr.homeroom||'_______________')}</div></div><div>${L.principal}${img(tr.principal_signature_url)}<div class="name">${esc(tr.principal||'_______________')}</div></div></div></div>`}
+<div class="srp-sign"><div>${L.parent}<div class="line"></div></div><div>${L.homeroom}${img(tr.homeroom_signature_url)}<div class="name">${esc(tr.homeroom||'_______________')}</div></div>${third==='partner'?`<div>${L.partner}${img(pt.signature_url)}<div class="name">${esc(pt.name||'_______________')}</div></div>`:`<div>${L.principal}${img(tr.principal_signature_url)}<div class="name">${esc(tr.principal||'_______________')}</div></div>`}</div></div>`}
 
 // Returns 1 page, or 2 when the subject table is too long (then Kepribadian, Ketidakhadiran and signatures move to page 2 with the standard header).
 // Measured in Chrome with the CQlass theme loaded: table starts at 61mm, header 11.5mm, one-line row 5.75mm, bottom block 73mm;
@@ -234,7 +268,7 @@ function kognitifGroups(ctx,kind){const acad=ctx.academic||{};return ctx.subject
 function sikapGroups(ctx){const v=ctx.entry?.sikap||{};return SIKAP.map(c=>({code:c.code,title:c[ctx.lang].toUpperCase(),rows:c.items.map(([k,id,en])=>({label:ctx.lang==='en'?en:id,grade:v[k]||''}))}))}
 function psikGroups(ctx){const v=ctx.entry?.psikomotor||{};return PSIKOMOTOR.map(c=>({code:c.code,title:c[ctx.lang].toUpperCase(),rows:c.groups.flatMap(g=>g.items.map(([k,id,en],i)=>({subhead:i===0?g[ctx.lang]:'',label:ctx.lang==='en'?en:id,grade:v[k]||''})))}))}
 function blockPages(ctx,title,groups,legendKey){const L=T[ctx.lang];if(!groups.length)return[headHtml(ctx,title)+`<p class="muted">${L.noSubject}</p>`];return paginate(gradeBlocks(groups,ctx),206).map(p=>headHtml(ctx,title)+p.map(b=>b.html).join('')+`<div class="srp-legend">${esc(LEGEND[legendKey][ctx.lang])}</div>`)}
-function komentarPage(ctx){const L=T[ctx.lang],c=String(ctx.entry?.komentar||'').trim();return headHtml(ctx,L.kom)+`<div class="srp-comment"><div class="band"></div><div class="body">${c?esc(c):''}</div><div class="band"></div></div>`+signHtml(ctx)}
+function komentarPage(ctx){const L=T[ctx.lang],c=String(ctx.entry?.komentar||'').trim();return headHtml(ctx,L.kom)+`<div class="srp-comment"><div class="band"></div><div class="body">${c?esc(c):''}</div><div class="band"></div></div>`+signHtml(ctx,'partner')}
 
 /* ---------- Rapor IKM (sheet XDESK) ---------- */
 // Nilai dan capaian mengikuti rumus Excel XDESK/DESKRIP: PAI = rata-rata Akidah, Fikih, Adab, Arab, Hadits, Siroh;
@@ -269,12 +303,12 @@ function ekskulPredikat(e){const r=String(e.rating||'').trim().toUpperCase();if(
 function ikmEkskul(ctx){const list=[...(ctx.ekskul||[])];let i=list.findIndex(e=>/pramuka|scout/i.test(e.name||''));const pr=i>=0?list.splice(i,1)[0]:{name:'Pramuka',wajib:true};pr.name=ctx.lang==='en'?'Scouting (Pramuka)':'Pramuka';return[pr,...list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'id'))]}
 const IKM_T={
  id:{title:'NILAI RAPOR',kkm:k=>`A. Kriteria Ketuntasan Minimal Satuan Pendidikan = ${k}`,cont:'LAPORAN PENILAIAN HASIL BELAJAR SISWA',final:'NILAI AKHIR',prestasi:'PRESTASI',capaian:'CAPAIAN KOMPETENSI',mulok:'Muatan Lokal',
-  koku:'B. Kokurikuler',kokuH:'Kokurikuler',soon:'Segera hadir — penilaian kokurikuler sedang disiapkan.',eks:'C. Ekstrakurikuler',eksH:'Ekstrakurikuler',pred:'Predikat',ket:'Keterangan',external:'luar sekolah',
+  koku:'B. Kokurikuler',kokuH:'Kokurikuler',soon:'Segera hadir — penilaian kokurikuler sedang disiapkan.',notGraded:'Belum dinilai.',eks:'C. Ekstrakurikuler',eksH:'Ekstrakurikuler',pred:'Predikat',ket:'Keterangan',external:'luar sekolah',
   tbbb:'D. Tinggi dan Berat Badan',aspek:'Aspek yang dinilai',tb:'Tinggi Badan',bb:'Berat Badan',cm:'cm',kg:'kg',kes:'E. Kondisi Kesehatan',fisik:'Aspek Fisik',dengar:'Pendengaran',lihat:'Penglihatan',gigi:'Gigi',
   pres:'F. Prestasi',jenis:'Jenis Prestasi',absen:'G. Ketidakhadiran',absenH:'Ketidakhadiran',day:n=>`${n} hari`,keputusan:'Keputusan:',dasar:'Berdasarkan pencapaian seluruh kompetensi, peserta didik dinyatakan:',naik:(r,w)=>`Naik ke Kelas : ${r} (${w})`,tinggal:(r,w)=>`Tinggal di Kelas : ${r} (${w})`,lulus:'LULUS',belumLulus:'BELUM LULUS',
   kar:'H. Karakter dan Kedisiplinan',karA:'1. Rekap Pelanggaran',level:'Tingkat',inc:'Jumlah Kejadian',minor:'Ringan',moderate:'Sedang',severe:'Berat',vtot:p=>`Total Poin Pelanggaran: ${p} Poin`,karB:'2. Penghargaan dan Pembinaan',cat:'Kategori',pts:'Poin',award:'Penghargaan / Teladan',guided:'Poin berkurang melalui pembinaan',ftot:p=>`Total Poin Akhir: ${p} Poin`},
  en:{title:'SEMESTER REPORT',kkm:k=>`A. School Minimum Mastery Criterion = ${k}`,cont:'STUDENT LEARNING ACHIEVEMENT REPORT',final:'FINAL SCORE',prestasi:'GRADE',capaian:'COMPETENCY ACHIEVEMENT',mulok:'Local Content Subjects',
-  koku:'B. Co-curricular',kokuH:'Co-curricular',soon:'Coming soon — the co-curricular assessment is being prepared.',eks:'C. Extracurricular Activities',eksH:'Extracurricular',pred:'Grade',ket:'Remarks',external:'outside school',
+  koku:'B. Co-curricular',kokuH:'Co-curricular',soon:'Coming soon — the co-curricular assessment is being prepared.',notGraded:'Not yet assessed.',eks:'C. Extracurricular Activities',eksH:'Extracurricular',pred:'Grade',ket:'Remarks',external:'outside school',
   tbbb:'D. Height and Weight',aspek:'Aspect',tb:'Height',bb:'Weight',cm:'cm',kg:'kg',kes:'E. Health Condition',fisik:'Physical Aspect',dengar:'Hearing',lihat:'Vision',gigi:'Teeth',
   pres:'F. Achievements',jenis:'Achievement',absen:'G. Absences',absenH:'Absence',day:n=>`${n} day${Number(n)===1?'':'s'}`,keputusan:'Decision:',dasar:'Based on the achievement of all competencies, the student is declared:',naik:(r,w)=>`Promoted to Grade : ${r} (${w})`,tinggal:(r,w)=>`Retained in Grade : ${r} (${w})`,lulus:'GRADUATED',belumLulus:'NOT YET GRADUATED',
   kar:'H. Character and Discipline',karA:'1. Disciplinary Record Summary',level:'Level',inc:'Incidents',minor:'Minor',moderate:'Moderate',severe:'Severe',vtot:p=>`Total Violation Points: ${p} Points`,karB:'2. Merit and Guidance Record',cat:'Category',pts:'Points',award:'Achievement / Role Model Award',guided:'Points deducted through guidance',ftot:p=>`Final Total Points: ${p} Points`}
@@ -308,7 +342,10 @@ function ikmPages(ctx){const L=T[ctx.lang],K=IKM_T[ctx.lang],st=ctx.student,en=c
  const g=Number(ctx.gradeLevel)||0,stay=(ctx.entry||{}).keputusan==='tinggal';
  const decision=Number(ctx.semester)===2?`<div class="srp-dec"><b>${esc(K.keputusan)}</b><div>${esc(K.dasar)}</div><b>${g>=6?esc(stay?K.belumLulus:K.lulus):g?esc(stay?K.tinggal(ROMAN[g],GRADE_WORD[ctx.lang][g]):K.naik(ROMAN[g+1],GRADE_WORD[ctx.lang][g+1])):'-'}</b></div>`:'';
  const blocks=[
-  {h:26,html:`<div class="srp-sec">${esc(K.koku)}</div><table class="srp-t"><thead><tr class="hd"><th>${esc(K.kokuH)}</th></tr></thead><tbody><tr><td class="srp-soon">${esc(K.soon)}</td></tr></tbody></table>`},
+  (()=>{const proj=KOKURIKULER[g],sc=(ctx.entry||{}).kokurikuler||{},cm=kokuComment(st.name,g,sc,ctx.lang);
+   const dimLine=proj?proj.dims.map((d,i)=>{const v=Number(i?sc.b:sc.a);return`${en?d.en.replace(/^./,c=>c.toUpperCase()):d.id}: ${v>=1&&v<=4?`${v} (${KOKU_SCALE[v][ctx.lang]})`:'-'}`}).join(' · '):'';
+   const body=proj?`<div class="srp-koku-p"><b>${esc(en?proj.en:proj.id)}</b></div><div class="srp-koku-d">${esc(dimLine)}</div><div class="srp-koku-c">${cm?esc(cm):`<span class="muted">${esc(K.notGraded)}</span>`}</div>`:`<span class="muted">${esc(K.notGraded)}</span>`;
+   return{h:30+Math.ceil(cm.length/120)*4,html:`<div class="srp-sec">${esc(K.koku)}</div><table class="srp-t"><thead><tr class="hd"><th>${esc(K.kokuH)}</th></tr></thead><tbody><tr><td class="srp-koku">${body}</td></tr></tbody></table>`}})(),
   {h:14+eks.length*5.2,html:`<div class="srp-sec">${esc(K.eks)}</div>`+small(`<th>${L.no}</th><th>${esc(K.eksH)}</th><th>${esc(K.pred)}</th><th>${esc(K.ket)}</th>`,eksRows,'<colgroup><col style="width:9%"><col style="width:45%"><col style="width:14%"><col></colgroup>')},
   {h:26,html:`<div class="srp-sec">${esc(K.tbbb)}</div><table class="srp-t srp-half"><colgroup><col style="width:9%"><col style="width:45%"><col><col></colgroup><thead><tr class="hd"><th rowspan="2">${L.no}</th><th rowspan="2">${esc(K.aspek)}</th><th colspan="2">${L.semL}</th></tr><tr class="hd"><th>1</th><th>2</th></tr></thead><tbody><tr><td class="c">1</td><td>${esc(K.tb)}</td><td class="c">${unit(s1.tb,K.cm)}</td><td class="c">${unit(s2.tb,K.cm)}</td></tr><tr><td class="c">2</td><td>${esc(K.bb)}</td><td class="c">${unit(s1.bb,K.kg)}</td><td class="c">${unit(s2.bb,K.kg)}</td></tr></tbody></table>`},
   {h:27,html:`<div class="srp-sec">${esc(K.kes)}</div>`+small(`<th>${L.no}</th><th>${esc(K.fisik)}</th><th>${esc(K.ket)}</th>`,[[K.dengar,kes.pendengaran],[K.lihat,kes.penglihatan],[K.gigi,kes.gigi]].map(([l,v],i)=>`<tr><td class="c">${i+1}</td><td>${esc(l)}</td><td class="c">${dash(v)}</td></tr>`).join(''),'<colgroup><col style="width:9%"><col style="width:55%"><col></colgroup>')},
@@ -326,7 +363,7 @@ function pagesHtml(report,opts){
  injectStyles();const sp=report?.semester_print;if(!sp)throw new Error('Data Rapor Semester belum dimuat.');
  const lang=opts?.lang==='en'?'en':'id';
  const ctx={lang,student:report.student||{},className:report.class?.name||sp.class?.name||'',semester:report.semester_no||sp.semester_no,year:report.academic_year||sp.academic_year,teachers:report.teachers||{},attendance:report.attendance||{},subjects:sp.subjects||[],academic:sp.student?.academic||{},entry:sp.student?.entry?.data||{},printDate:opts?.printDate||'',hijri:opts?.hijri||'',
-  points:report.points||{},ekskul:sp.student?.ekskul||[],kesehatanS1:sp.student?.kesehatan_s1||{},gradeLevel:sp.class?.grade_level||report.class?.grade_level||null,kkm:Number.isFinite(Number(sp.kkm))&&sp.kkm!==null&&sp.kkm!==''?Number(sp.kkm):IKM_KKM};
+  points:report.points||{},ekskul:sp.student?.ekskul||[],kesehatanS1:sp.student?.kesehatan_s1||{},gradeLevel:sp.class?.grade_level||report.class?.grade_level||null,kkm:Number.isFinite(Number(sp.kkm))&&sp.kkm!==null&&sp.kkm!==''?Number(sp.kkm):IKM_KKM,partner:sp.partner||null};
  const L=T[lang];
  // Urutan cetak sekolah: 1 Komentar, 2-3 Sikap/Adab, 4-6 Tahfizh (dicetak terpisah), Kognitif mulai hal. 7, Psikomotorik, Nilai, lalu IKM (menyusul).
  // Seperti sheet XSIK: lembar 1 = kategori A-C, lembar 2 = D-F.
@@ -345,7 +382,9 @@ async function attach(reports,{academicYear,semester,classId}){
  try{const r=await fetch(`${SUPABASE_URL}/functions/v1/admin-academic-period/semester-report`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY,'x-session-token':token},body:JSON.stringify({action:'print_data',academic_year:academicYear,semester_no:semester,class_id:classId}),signal:ctl.signal});d=await r.json().catch(()=>({}));if(!r.ok||!d.success)throw new Error(d.error||`Data Rapor Semester gagal dimuat (HTTP ${r.status}).`)}
  catch(e){if(e?.name==='AbortError')throw new Error('Server Rapor Semester terlalu lama merespons.');throw e}finally{clearTimeout(timer)}
  const by=new Map((d.students||[]).map(s=>[String(s.id),s]));
- for(const r of list){r.semester_print={academic_year:d.academic_year,semester_no:d.semester_no,kkm:d.kkm,class:d.class,subjects:d.subjects||[],student:by.get(String(r.student?.id))||{academic:{},entry:null}}}
+ // Tanda tangan Guru Partner dibersihkan latarnya seperti tanda tangan rapor lain.
+ if(d.partner?.signature_url&&typeof cleanStoredTeacherSignature==='function'){try{d.partner.signature_url=await cleanStoredTeacherSignature(d.partner.signature_url)}catch(_){}}
+ for(const r of list){r.semester_print={academic_year:d.academic_year,semester_no:d.semester_no,kkm:d.kkm,partner:d.partner||null,class:d.class,subjects:d.subjects||[],student:by.get(String(r.student?.id))||{academic:{},entry:null}}}
  return reports;
 }
 
