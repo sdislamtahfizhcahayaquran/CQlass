@@ -17,6 +17,37 @@ const TABS=[['kepribadian','Kepribadian'],['sikap','Sikap'],['psikomotor','Psiko
 // Rapor IKM: tinggi/berat badan dan kondisi kesehatan diisi walas.
 const KES=[['tb','Tinggi badan (cm)','num',30,250],['bb','Berat badan (kg)','num',5,200],['pendengaran','Pendengaran','text'],['penglihatan','Penglihatan','text'],['gigi','Gigi','text']];
 
+/* Download nilai seluruh mapel satu kelas (data sama dengan rapor: print_data). Nilai kosong tetap kosong. */
+const r2=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?'':Math.round(Number(v)*100)/100;
+const mean=a=>{const v=a.filter(x=>x!==null&&x!==undefined&&x!=='').map(Number).filter(Number.isFinite);return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
+function scoreSheets(pd){
+ const subs=pd.subjects||[],studs=pd.students||[],kkm=Number(pd.kkm)||70;
+ const sum={head:['No','NIS','Nama Siswa',...subs.map(s=>s.name),'Jumlah','Rata-rata','Mapel Belum Lengkap','Mapel di Bawah KKM'],rows:[]};
+ studs.forEach((st,i)=>{const fs=subs.map(s=>{const f=st.academic?.[s.id]?.final;return f===null||f===undefined?'':Number(f)});const got=fs.filter(x=>x!=='');
+  sum.rows.push([i+1,st.nis||'',st.name,...fs,got.length?got.reduce((a,b)=>a+b,0):'',r2(mean(got)),fs.length-got.length,got.filter(x=>x<kkm).length])});
+ const avgRow=['','','Rata-rata kelas',...subs.map((_,j)=>r2(mean(sum.rows.map(r=>r[3+j])))),'','','',''];
+ const det={head:['No','NIS','Nama Siswa'],groups:[],rows:[]};
+ for(const s of subs){const tp=(s.objectives||[]).map((_,k)=>'TP'+(k+1));const cols=['T1','T2','T3','T4','T5','RT',...tp,'RTP','WWP','ASAS','NA'];det.groups.push({name:s.name,from:det.head.length+1,width:cols.length});det.head.push(...cols)}
+ studs.forEach((st,i)=>{const row=[i+1,st.nis||'',st.name];for(const s of subs){const a=st.academic?.[s.id]||{},n=(s.objectives||[]).length;const t=[0,1,2,3,4].map(k=>r2(a.tasks?.[k])),p=Array.from({length:n},(_,k)=>r2(a.tp?.[k]));row.push(...t,r2(mean(t)),...p,r2(mean(p)),r2(a.wwp),r2(a.asas),r2(a.final))}det.rows.push(row)});
+ return{kkm,sum,avgRow,det};
+}
+async function downloadScores(pd){
+ const ExcelJS=window.ExcelJS||await new Promise((ok,bad)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';x.onload=()=>ok(window.ExcelJS);x.onerror=()=>bad(Error('Pustaka Excel gagal dimuat.'));document.head.appendChild(x)});
+ const{kkm,sum,avgRow,det}=scoreSheets(pd);const cls=pd.class?.name||'Kelas',info=`Kelas ${cls} · Tahun Ajaran ${pd.academic_year} · Semester ${pd.semester_no} · KKM ${kkm}`;
+ const wb=new ExcelJS.Workbook(),thin={style:'thin',color:{argb:'FFC9D9D6'}},box={top:thin,bottom:thin,left:thin,right:thin};
+ function sheet(name,title,head,rows,opts={}){const ws=wb.addWorksheet(name,{views:[{state:'frozen',xSplit:3,ySplit:opts.groups?4:3}],pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+  ws.addRow([title]);ws.addRow([info]);ws.getRow(1).font={bold:true,size:14,color:{argb:'FF0D7377'}};ws.getRow(2).font={size:10,color:{argb:'FF5F756D'}};
+  if(opts.groups){const g=ws.addRow([]);for(const x of opts.groups){g.getCell(x.from).value=x.name;ws.mergeCells(3,x.from,3,x.from+x.width-1)}g.eachCell(c=>{c.font={bold:true};c.alignment={horizontal:'center'};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE7F2ED'}}})}
+  const h=ws.addRow(head);h.height=opts.groups?20:48;h.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0D7377'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=box});
+  for(const r of rows){const x=ws.addRow(r);x.eachCell({includeEmpty:true},(c,ci)=>{c.border=box;if(ci>3)c.alignment={horizontal:'center'};if(opts.na&&opts.na(ci)&&typeof c.value==='number'&&c.value<kkm)c.font={bold:true,color:{argb:'FFB3261E'}}})}
+  ws.getColumn(1).width=5;ws.getColumn(2).width=12;ws.getColumn(3).width=Math.min(45,Math.max(24,...rows.map(r=>String(r[2]||'').length+3)));for(let c=4;c<=head.length;c++)ws.getColumn(c).width=opts.groups?7:12;return ws}
+ const ws1=sheet('Nilai Akhir',`NILAI AKHIR SEMUA MAPEL — ${cls}`,sum.head,[...sum.rows,avgRow],{na:ci=>ci>3&&ci<=3+(pd.subjects||[]).length});ws1.lastRow.font={bold:true};
+ const naCols=new Set(det.groups.map(g=>g.from+g.width-1));sheet('Detail Komponen',`DETAIL NILAI PER KOMPONEN — ${cls}`,det.head,det.rows,{groups:det.groups,na:ci=>naCols.has(ci)});
+ const note=wb.addWorksheet('Keterangan');[['Keterangan'],['NA dihitung sama seperti di rapor: Tugas 10% + rata-rata TP 30% + WWP 10% + ASAS 50%, dibulatkan.'],['NA kosong = komponen nilai belum lengkap (Tugas 1–5, semua TP, WWP, ASAS).'],[`Angka merah = di bawah KKM (${kkm}).`],['Sumber: nilai yang diinput guru mapel di CQlass saat file ini diunduh.']].forEach(r=>note.addRow(r));note.getColumn(1).width=100;note.getRow(1).font={bold:true};
+ const blob=new Blob([await wb.xlsx.writeBuffer()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Nilai_${String(cls).replace(/[^\w-]+/g,'_')}_${String(pd.academic_year).replace('/','-')}_Sem${pd.semester_no}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},5000);
+}
+window.__cqWalasScoreSheets=scoreSheets;window.__cqWalasDownloadScores=downloadScores;
+
 window.renderSemesterReportWalas=async function(content){
  if(typeof currentUser==='undefined'||currentUser?.role!=='walas'){content.textContent='Akses khusus wali kelas.';return}
  const mountId=String(Date.now())+Math.random();content.dataset.semesterMount=mountId;
@@ -74,7 +105,7 @@ window.renderSemesterReportWalas=async function(content){
 @media(max-width:600px){#cq-semester .card{padding:14px}#cq-semester .sr-name{min-width:150px}}
 </style>
 <div class="page-title">Input Rapor Semester</div><div class="page-sub">${esc(boot.academic_year)} · Semester ${esc(boot.semester_no)} · Nilai akademik dan kognitif diambil otomatis dari nilai guru mapel.</div>
-<div class="card"><div class="sr-row"><label class="sr-field">Kelas<select id="sr-class">${boot.classes.map(c=>`<option value="${esc(c.id)}" ${c.id===classId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><span class="sr-chip">${complete} dari ${students.length} siswa lengkap</span></div></div>
+<div class="card"><div class="sr-row"><label class="sr-field">Kelas<select id="sr-class">${boot.classes.map(c=>`<option value="${esc(c.id)}" ${c.id===classId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><span class="sr-chip">${complete} dari ${students.length} siswa lengkap</span><button type="button" class="btn" id="sr-dl" style="margin-left:auto">Download Nilai Semua Mapel (Excel)</button></div></div>
 <div class="card"><div class="sr-tabs" role="tablist">${TABS.map(([id,l])=>`<button type="button" role="tab" aria-selected="${tab===id}" data-tab="${id}">${l}</button>`).join('')}</div>
 ${tab==='komentar'?commentsHtml():tab==='kokurikuler'?kokuHtml():tab==='kesehatan'?kesehatanHtml():tab==='prestasi'?prestasiHtml():gridHtml(sec)}</div>
 <div class="card sr-actions"><button type="button" class="btn btn-primary" id="sr-save" ${busy?'disabled':''}>Simpan${dirty.size?` (${dirty.size} siswa)`:''}</button><span class="sr-msg" id="sr-msg" role="status" aria-live="polite">${esc(message||(dirty.size?'Ada perubahan yang belum disimpan.':'Semua perubahan sudah tersimpan.'))}</span></div></div>`;
@@ -118,6 +149,9 @@ ${tab==='komentar'?commentsHtml():tab==='kokurikuler'?kokuHtml():tab==='kesehata
   content.querySelectorAll('input.sr-p').forEach(el=>el.oninput=()=>{const s=students[Number(el.dataset.r)],d=dataOf(s.id),i=Number(el.dataset.pi);const pr=[0,1,2].map(j=>({jenis:'',keterangan:'',...((Array.isArray(d.prestasi)?d.prestasi:[])[j]||{})}));pr[i][el.dataset.pf]=el.value;d.prestasi=pr;markDirty(s.id)});
   content.querySelectorAll('select[data-kp]').forEach(el=>el.onchange=()=>{const s=students[Number(el.dataset.kp)];dataOf(s.id).keputusan=el.value;markDirty(s.id)});
   q('#sr-save').onclick=save;
+  q('#sr-dl').onclick=async function(){const b=this,l=b.textContent;b.disabled=true;b.textContent='Menyiapkan Excel…';
+   try{const pd=await api('print_data',{academic_year:boot.academic_year,semester_no:boot.semester_no,class_id:classId});if(!alive())return;await downloadScores(pd)}
+   catch(e){alert('Download gagal: '+(e.name==='AbortError'?'waktu tunggu habis, coba lagi.':e.message))}finally{b.disabled=false;b.textContent=l}};
  }
  async function save(){if(busy)return;if(content.querySelector('input.sr-g[aria-invalid="true"],input.sr-h[aria-invalid="true"],input.sr-k[aria-invalid="true"]')){message='Perbaiki sel berwarna merah dulu.';draw();return}if(!dirty.size){message='Tidak ada perubahan untuk disimpan.';draw();return}
   busy=true;const btn=content.querySelector('#sr-save');if(btn){btn.disabled=true;btn.textContent='Menyimpan…'}
