@@ -33,6 +33,8 @@ export function cleanPrestasi(v:any){if(v==null)return[];if(!Array.isArray(v)||v
 export function cleanKoku(v:any){if(v==null)return{};if(typeof v!=='object'||Array.isArray(v))fail('Format kokurikuler tidak valid.');const out:Record<string,number>={};for(const k of ['a','b']){const s=text(v[k]);if(!s)continue;const n=Number(s);if(!Number.isInteger(n)||n<1||n>4)fail('Skor kokurikuler hanya 1, 2, 3, atau 4.');out[k]=n}return out}
 export function cleanEntry(d:any){if(!d||typeof d!=='object'||Array.isArray(d))fail('Format isian tidak valid.');const komentar=typeof d.komentar==='string'||d.komentar==null?text(d.komentar):fail('Komentar harus berupa teks.');if(komentar.length>1500)fail('Komentar maksimal 1500 karakter.');const keputusan=text(d.keputusan);if(keputusan&&!['naik','tinggal'].includes(keputusan))fail('Keputusan hanya naik atau tinggal.');return{kepribadian:gradeMap(d.kepribadian,'kepribadian',10),sikap:gradeMap(d.sikap,'sikap',80),psikomotor:gradeMap(d.psikomotor,'psikomotorik',80),komentar,kesehatan:cleanKesehatan(d.kesehatan),prestasi:cleanPrestasi(d.prestasi),kokurikuler:cleanKoku(d.kokurikuler),...(keputusan?{keputusan}:{})}}
 
+// Rubrik kokurikuler hasil upload Akademik untuk periode & jenjang; null = pakai rubrik bawaan di tampilan.
+async function kokuRubricFor(p:any,grade:number){if(!grade)return null;try{const r=await db.from('kokurikuler_rubrics').select('data').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).eq('grade_level',grade).maybeSingle();return r.error?null:(r.data?.data||null)}catch(_){return null}}
 // Guru Partner utama kelas (tanda tangan halaman Komentar). Gagal membaca tidak boleh menggagalkan cetak.
 async function partnerOf(classId:string,p:any){
  try{
@@ -104,8 +106,8 @@ export async function handleSemesterReport(req:Request){if(req.method==='OPTIONS
   const em=new Map((entries||[]).map((e:any)=>[text(e.student_id),e]));const pm=new Map((prev||[]).map((e:any)=>[text(e.student_id),e.data?.kesehatan||{}]));
   // KKM satuan pendidikan diatur Akademik per tahun ajaran; 70 bila belum diatur.
   const kk=await db.from('academic_year_settings').select('kkm').eq('academic_year_id',p.year.id).maybeSingle();const kkm=!kk.error&&kk.data&&Number.isFinite(Number(kk.data.kkm))?Number(kk.data.kkm):70;
-  const partner=await partnerOf(cls.id,p);
-  return reply({success:true,academic_year:p.year.name,semester_no:p.semester_no,kkm,partner,class:{id:text(cls.id),name:text(cls.name),grade_level:Number(cls.grade_level)||null},subjects:acad.subjects,students:students.map((s:any)=>({...s,entry:em.get(s.id)||null,academic:acad.byStudent.get(s.id)||{},ekskul:eks.get(s.id)||[],kesehatan_s1:pm.get(s.id)||null}))});
+  const [partner,kokurikuler_rubric]=await Promise.all([partnerOf(cls.id,p),kokuRubricFor(p,Number(cls.grade_level)||0)]);
+  return reply({success:true,academic_year:p.year.name,semester_no:p.semester_no,kkm,partner,kokurikuler_rubric,class:{id:text(cls.id),name:text(cls.name),grade_level:Number(cls.grade_level)||null},subjects:acad.subjects,students:students.map((s:any)=>({...s,entry:em.get(s.id)||null,academic:acad.byStudent.get(s.id)||{},ekskul:eks.get(s.id)||[],kesehatan_s1:pm.get(s.id)||null}))});
  }
  // Input walas: hanya semester aktif dan kelas walas sendiri.
  const p=await activePeriod();const ids=await homeroomClassIds(user,p.year.id,p.semester_no);
@@ -115,7 +117,7 @@ export async function handleSemesterReport(req:Request){if(req.method==='OPTIONS
  const classId=text(b.class_id);if(!classes.some((c:any)=>c.id===classId))return reply({success:false,error:'Kelas di luar penugasan walas.'},403);
  const students=await roster(classId,p);const allowed=new Set(students.map((s:any)=>s.id));
  const load=async()=>allowed.size?await rows(db.from('semester_report_entries').select('student_id,data,version,updated_at').eq('academic_year_id',p.year.id).eq('semester_no',p.semester_no).in('student_id',[...allowed])):[];
- if(action==='load')return reply({success:true,students,entries:await load()});
+ if(action==='load'){const cg=await rows(db.from('classes').select('grade_level').eq('id',classId).maybeSingle());return reply({success:true,students,entries:await load(),kokurikuler_rubric:await kokuRubricFor(p,Number(cg?.grade_level)||0)})}
  if(b.academic_year_id!==p.year.id||Number(b.semester_no)!==p.semester_no)return reply({success:false,error:'Periode berubah. Muat ulang halaman.'},409);
  const list=Array.isArray(b.entries)?b.entries:fail('Format isian tidak valid.');if(list.length>100)fail('Isian terlalu banyak.');
  const seen=new Set<string>();const clean=list.map((e:any)=>{const sid=text(e?.student_id);if(!allowed.has(sid)||seen.has(sid))fail('Siswa tidak valid atau berulang.');seen.add(sid);return{student_id:sid,version:Number(e.version)||0,data:cleanEntry(e.data)}});
