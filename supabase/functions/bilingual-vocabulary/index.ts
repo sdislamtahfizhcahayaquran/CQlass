@@ -1,4 +1,4 @@
-// CQlass Bilingual Vocabulary — v7: follows the active semester, can read other
+// CQlass Bilingual Vocabulary — v7.1: follows the active semester, can read other
 // periods, and lets Kabid Akademik/Admin manage categories per semester.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -97,7 +97,7 @@ async function roster(s: any, p: any, classIds: string[]) {
   const ids = [...new Set((e || []).map((x: any) => x.student_id))];
   if (!ids.length) return [];
   const sm = new Map<string, any>();
-  for (let i = 0; i < ids.length; i += 500) { const { data: st, error: se } = await s.from("students").select("id,nis,full_name").in("id", ids.slice(i, i + 500)); if (se) throw se; for (const x of st || []) sm.set(x.id, x); }
+  for (let i = 0; i < ids.length; i += 100) { const { data: st, error: se } = await s.from("students").select("id,nis,full_name").in("id", ids.slice(i, i + 100)); if (se) throw se; for (const x of st || []) sm.set(x.id, x); }
   return (e || []).map((x: any) => ({ student_id: x.student_id, class_id: x.class_id, nis: sm.get(x.student_id)?.nis || "", name: sm.get(x.student_id)?.full_name || "" })).filter((x: any) => x.name);
 }
 async function progress(s: any, p: any, classIds: string[]) {
@@ -252,8 +252,9 @@ Deno.serve(async req => {
     return json({ success: false, error: "action_not_found" }, 404);
   } catch (e) {
     if (e instanceof Fail) return json({ success: false, error: e.code, ...e.extra }, e.status);
-    const m = e instanceof Error ? e.message : "internal_error";
-    console.error("bilingual-v7", m);
+    // Supabase query errors are plain objects, not Error instances.
+    const m = e instanceof Error ? e.message : txt((e as any)?.message) || "internal_error";
+    console.error("bilingual-v7", m, JSON.stringify(e));
     return json({ success: false, error: m }, 500);
   }
 });
