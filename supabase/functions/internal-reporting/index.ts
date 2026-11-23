@@ -29,7 +29,7 @@ async function rolesFor(s:any,account:any){const roles:string[]=[];if(lo(account
 async function reporterMeta(s:any,account:any){let name=t(account.username)||"Pengguna",kelas="";if(account.teacher_id){const[{data:teacher,error:te},{data:wa,error:we}]=await Promise.all([s.from("teachers").select("full_name").eq("id",account.teacher_id).maybeSingle(),s.from("report_class_assignments").select("class_id").eq("homeroom_teacher_id",account.teacher_id).order("updated_at",{ascending:false}).limit(1)]);if(te)throw te;if(we)throw we;if(teacher?.full_name)name=t(teacher.full_name);const classId=wa?.[0]?.class_id;if(classId){const{data:c,error:ce}=await s.from("classes").select("name,code").eq("id",classId).maybeSingle();if(ce)throw ce;kelas=t(c?.name||c?.code)}}return{name,kelas}}
 function decodeBase64(v:string){const raw=atob(v),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return bytes}
 async function uploadPhoto(s:any,accountId:string,b64:string,mime:string){const bytes=decodeBase64(b64);if(bytes.byteLength>MAX_BYTES)throw new Error("photo_too_large");if(!ALLOWED.has(mime))throw new Error("photo_type_invalid");const ext=mime==="image/png"?"png":mime==="image/webp"?"webp":"jpg",now=new Date(),folder=`${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}`,path=`${accountId}/${folder}/${crypto.randomUUID()}.${ext}`;const{error}=await s.storage.from(BUCKET).upload(path,bytes,{contentType:mime,upsert:false,cacheControl:"3600"});if(error)throw error;return path}
-async function signedPhoto(s:any,path:any){const p=t(path);if(!p)return"";const{data,error}=await s.storage.from(BUCKET).createSignedUrl(p,3600);if(error)return"";return data?.signedUrl||""}
+async function signedPhoto(s:any,path:any,expires=3600){const p=t(path);if(!p)return"";const{data,error}=await s.storage.from(BUCKET).createSignedUrl(p,expires);if(error)return"";return data?.signedUrl||""}
 async function addSignedPhotos(s:any,rows:any[]){return await Promise.all((rows||[]).map(async r=>({...r,photo_signed_url:await signedPhoto(s,r.photo_url)})))}
 function canHandle(roles:string[],type:string){if(roles.includes("admin")||roles.includes("pimpinan"))return true;if(type==="SAPRAS")return roles.includes("sapras");if(type==="SARAN_MASUKAN")return roles.includes("kesiswaan");return false}
 function ticketPrefix(type:string){return type==="SAPRAS"?"SPR":"SMN"}
@@ -55,7 +55,8 @@ Deno.serve(async req=>{
       const{data,error}=await s.from("internal_reports").insert(row).select("*").single();if(error){if(photoPath)await s.storage.from(BUCKET).remove([photoPath]);throw error}
       const targetRole=type==="SAPRAS"?"sapras":"kesiswaan",title=type==="SAPRAS"?"Laporan Sapras Baru":"Saran & Masukan Baru",who=`${meta.name}${meta.kelas?` · ${meta.kelas}`:""}`;
       await notify({action:"send_to_role",role:targetRole,title,body:`${who}: ${reportPreview(description)}`,type:type==="SAPRAS"?"internal_report_sapras":"internal_report_feedback",priority:"high",target_url:"./",reference_type:"internal_report",reference_id:data.id});
-      return j({success:true,report:{...data,reporter_name:meta.name,photo_signed_url:await signedPhoto(s,data.photo_url)}});
+      // photo_share_url: link 30 hari untuk disertakan di pesan WhatsApp ke petugas Sapras.
+      return j({success:true,report:{...data,reporter_name:meta.name,photo_signed_url:await signedPhoto(s,data.photo_url),photo_share_url:await signedPhoto(s,data.photo_url,30*24*3600)}});
     }
     if(action==="mine"){
       const{data,error}=await s.from("internal_reports").select("*").eq("reporter_account_id",me.account.id).order("created_at",{ascending:false}).limit(100);if(error)throw error;return j({success:true,reports:await addSignedPhotos(s,data||[])});
