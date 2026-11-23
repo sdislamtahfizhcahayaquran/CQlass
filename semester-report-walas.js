@@ -48,6 +48,50 @@ async function downloadScores(pd){
 }
 window.__cqWalasScoreSheets=scoreSheets;window.__cqWalasDownloadScores=downloadScores;
 
+/* Rekap Nilai Rapor (sheet RN) + Ranking (sheet RANK) untuk dicetak walas dan dikoreksi Kabid Akademik.
+   Nilai = NA rapor (sama dengan halaman Nilai). Ranking = jumlah NA per kelas, nilai sama -> ranking sama (RANK Excel).
+   Siswa yang nilainya belum lengkap tidak diranking supaya tidak menyesatkan. */
+const RN_ORDER=['akidah','fikih','adab','hadits','siroh','pkn','indo','mtk','ipas','ipa','ips','sbdp','pjok','arab','inggris','sunda','tajwid'];
+const RN_PAI=new Set(['akidah','fikih','adab','hadits','siroh']);
+function rekapModel(pd){
+ const I=window.__cqSemesterInternals||{},cls=s=>(I.classify?I.classify(s).key:'')||'';const kkm=Number(pd.kkm)||70;
+ const rank=k=>{const i=RN_ORDER.indexOf(k);return i<0?100:i};
+ const subs=[...(pd.subjects||[])].sort((a,b)=>rank(cls(a))-rank(cls(b))||(a.sort_order||999)-(b.sort_order||999));
+ const studs=pd.students||[];
+ const val=(st,s)=>{const f=st.academic?.[s.id]?.final;return f===null||f===undefined||f===''?null:Math.round(Number(f))};
+ const rows=subs.map(s=>{const vals=studs.map(st=>val(st,s));const got=vals.filter(v=>v!==null);return{id:s.id,name:s.name,pai:RN_PAI.has(cls(s)),vals,avg:got.length?Math.round(got.reduce((a,b)=>a+b,0)/got.length*100)/100:null}});
+ const people=studs.map((st,i)=>{const vals=subs.map(s=>val(st,s));const got=vals.filter(v=>v!==null);return{no:i+1,id:st.id,nis:st.nis||'',name:st.name,total:got.reduce((a,b)=>a+b,0),avg:got.length?Math.round(got.reduce((a,b)=>a+b,0)/got.length*100)/100:null,missing:vals.length-got.length,below:got.filter(v=>v<kkm).length}});
+ const ranked=people.filter(p=>!p.missing&&subs.length);for(const p of people)p.rank=p.missing||!subs.length?null:1+ranked.filter(q=>q.total>p.total).length;
+ return{kkm,subs,rows,people,complete:ranked.length};
+}
+function rekapHtml(pd,opt={}){
+ const m=rekapModel(pd),e=esc,cls=pd.class?.name||'',sem=Number(pd.semester_no)===2?'Genap':'Ganjil',n=m.people.length;
+ const cell=v=>v===null?'<td class="c miss">–</td>':`<td class="c${v<m.kkm?' low':''}">${v}</td>`;
+ let no=0,paiHead=false;const body=m.rows.map(r=>{let pre='';if(r.pai&&!paiHead){paiHead=true;no++;pre=`<tr class="grp"><td class="c">${no}</td><td colspan="${n+3}">Pendidikan Agama Islam</td></tr>`}const num=r.pai?'':String(++no);
+  return pre+`<tr><td class="c">${num}</td><td class="sub${r.pai?' in':''}">${e(r.name)}</td><td class="c">${m.kkm}</td>${r.vals.map(cell).join('')}<td class="c b">${r.avg===null?'–':r.avg}</td></tr>`}).join('');
+ const totals=`<tr class="tot"><td></td><td>JUMLAH</td><td></td>${m.people.map(p=>`<td class="c">${p.missing?`<span class="miss">${p.total||'–'}</span>`:p.total}</td>`).join('')}<td></td></tr><tr class="tot"><td></td><td>RANKING</td><td></td>${m.people.map(p=>`<td class="c">${p.rank??'–'}</td>`).join('')}<td></td></tr>`;
+ const sign=`<div class="sign"><div><div>Dibuat oleh,</div><div>Wali Kelas</div><div class="sp"></div><div class="nm">${e(opt.walas||'(..............................)')}</div></div><div><div>Diperiksa oleh,</div><div>Kabid Akademik</div><div class="sp"></div><div class="nm">(..............................)</div></div></div>`;
+ const head=t=>`<div class="hd"><div class="t">${t} ${e(cls)}</div><div>Semester ${sem} Tahun Akademik ${e(pd.academic_year||'')}</div><div>SD Islam Tahfizh Cahaya Quran</div></div>`;
+ const byRank=[...m.people].sort((a,b)=>(a.rank??1e9)-(b.rank??1e9)||a.no-b.no);
+ const rankRows=byRank.map(p=>`<tr><td class="c">${p.no}</td><td>${e(p.name)}</td><td class="c">${e(p.nis)}</td><td class="c">${p.total||'–'}</td><td class="c">${p.avg??'–'}</td><td class="c b">${p.rank??'–'}</td><td>${p.missing?`Belum lengkap: ${p.missing} mapel`:p.below?`${p.below} mapel di bawah KKM`:''}</td></tr>`).join('');
+ return`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Rekap Nilai ${e(cls)}</title><style>
+@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}:root{color-scheme:light}body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;font-size:9.5pt}
+.page{page-break-after:always}.page:last-child{page-break-after:auto}.hd{text-align:center;margin-bottom:8px}.hd .t{font-weight:bold;font-size:13pt}
+table{border-collapse:collapse;width:100%}table.rn{table-layout:fixed;font-size:8.5pt}table.rn td{padding:2px 1px}th,td{border:1px solid #333;padding:2px 3px}th{background:#e8efe9}.c{text-align:center}.b{font-weight:bold}
+th.nm{height:150px;vertical-align:bottom;padding:4px 0}th.nm div{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;margin:0 auto;font-weight:normal;font-size:8pt;max-height:146px;overflow:hidden}
+td.sub{padding:2px 4px!important;line-height:1.15}td.sub.in{padding-left:12px!important}.grp td{font-weight:bold;background:#f6f6f6}.tot td{font-weight:bold;background:#eef3ef}table.rn .tot td.c{font-size:7.5pt;letter-spacing:-.2px}
+.low{color:#b3261e;font-weight:bold}.miss{color:#9a6a00;font-weight:bold}.note{font-size:8.5pt;margin-top:6px}
+.sign{display:flex;justify-content:space-between;margin:14px 40px 0;text-align:center}.sign .sp{height:52px}.sign .nm{font-weight:bold}
+.rank{max-width:190mm;margin:0 auto}.toolbar{position:sticky;top:0;background:#fff;padding:8px;border-bottom:1px solid #ccc;display:flex;gap:8px;align-items:center;font-family:sans-serif}
+@media print{.toolbar{display:none}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}.grp td,.tot td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body><div class="toolbar"><button onclick="print()">Cetak</button><span>Kertas A4 landscape. Angka merah = di bawah KKM (${m.kkm}); "–" = nilai rapor belum lengkap.</span></div>
+<div class="page">${head('Rekapitulasi Nilai Raport')}<table class="rn"><thead><tr><th style="width:22px">No</th><th style="width:118px">Mata Pelajaran</th><th style="width:30px">KKM</th>${m.people.map(p=>`<th class="nm"><div>${e(p.name)}</div></th>`).join('')}<th style="width:38px">Rata2</th></tr></thead><tbody>${body}${totals}</tbody></table>
+<div class="note">KKM satuan pendidikan ${m.kkm}. Nilai = nilai akhir rapor (Tugas 10% + rata-rata TP 30% + WWP 10% + ASAS 50%). Ranking = jumlah nilai; siswa dengan nilai belum lengkap tidak diranking.</div>${sign}</div>
+<div class="page rank">${head('Ranking Kelas')}<table><thead><tr><th style="width:34px">Absen</th><th>Nama Siswa</th><th style="width:70px">NIS</th><th style="width:60px">Jumlah</th><th style="width:60px">Rata-rata</th><th style="width:60px">Ranking</th><th style="width:150px">Catatan</th></tr></thead><tbody>${rankRows}</tbody></table>
+<div class="note">${m.complete} dari ${n} siswa sudah lengkap dan diranking.</div>${sign}</div></body></html>`;
+}
+window.__cqWalasRekap={rekapModel,rekapHtml};
+
 window.renderSemesterReportWalas=async function(content){
  if(typeof currentUser==='undefined'||currentUser?.role!=='walas'){content.textContent='Akses khusus wali kelas.';return}
  const mountId=String(Date.now())+Math.random();content.dataset.semesterMount=mountId;
@@ -105,7 +149,7 @@ window.renderSemesterReportWalas=async function(content){
 @media(max-width:600px){#cq-semester .card{padding:14px}#cq-semester .sr-name{min-width:150px}}
 </style>
 <div class="page-title">Input Rapor Semester</div><div class="page-sub">${esc(boot.academic_year)} · Semester ${esc(boot.semester_no)} · Nilai akademik dan kognitif diambil otomatis dari nilai guru mapel.</div>
-<div class="card"><div class="sr-row"><label class="sr-field">Kelas<select id="sr-class">${boot.classes.map(c=>`<option value="${esc(c.id)}" ${c.id===classId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><span class="sr-chip">${complete} dari ${students.length} siswa lengkap</span><button type="button" class="btn" id="sr-dl" style="margin-left:auto">Download Nilai Semua Mapel (Excel)</button></div></div>
+<div class="card"><div class="sr-row"><label class="sr-field">Kelas<select id="sr-class">${boot.classes.map(c=>`<option value="${esc(c.id)}" ${c.id===classId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><span class="sr-chip">${complete} dari ${students.length} siswa lengkap</span><button type="button" class="btn" id="sr-rekap" style="margin-left:auto">Cetak Rekap Nilai &amp; Ranking</button><button type="button" class="btn" id="sr-dl">Download Nilai Semua Mapel (Excel)</button></div></div>
 <div class="card"><div class="sr-tabs" role="tablist">${TABS.map(([id,l])=>`<button type="button" role="tab" aria-selected="${tab===id}" data-tab="${id}">${l}</button>`).join('')}</div>
 ${tab==='komentar'?commentsHtml():tab==='kokurikuler'?kokuHtml():tab==='kesehatan'?kesehatanHtml():tab==='prestasi'?prestasiHtml():gridHtml(sec)}</div>
 <div class="card sr-actions"><button type="button" class="btn btn-primary" id="sr-save" ${busy?'disabled':''}>Simpan${dirty.size?` (${dirty.size} siswa)`:''}</button><span class="sr-msg" id="sr-msg" role="status" aria-live="polite">${esc(message||(dirty.size?'Ada perubahan yang belum disimpan.':'Semua perubahan sudah tersimpan.'))}</span></div></div>`;
@@ -149,6 +193,10 @@ ${tab==='komentar'?commentsHtml():tab==='kokurikuler'?kokuHtml():tab==='kesehata
   content.querySelectorAll('input.sr-p').forEach(el=>el.oninput=()=>{const s=students[Number(el.dataset.r)],d=dataOf(s.id),i=Number(el.dataset.pi);const pr=[0,1,2].map(j=>({jenis:'',keterangan:'',...((Array.isArray(d.prestasi)?d.prestasi:[])[j]||{})}));pr[i][el.dataset.pf]=el.value;d.prestasi=pr;markDirty(s.id)});
   content.querySelectorAll('select[data-kp]').forEach(el=>el.onchange=()=>{const s=students[Number(el.dataset.kp)];dataOf(s.id).keputusan=el.value;markDirty(s.id)});
   q('#sr-save').onclick=save;
+  q('#sr-rekap').onclick=async function(){const b=this,l=b.textContent;const w=window.open('','_blank');if(!w){alert('Izinkan pop-up untuk CQlass agar halaman cetak bisa dibuka.');return}
+   w.document.write('<p style="font-family:sans-serif;padding:20px">Menyiapkan rekap nilai…</p>');b.disabled=true;b.textContent='Menyiapkan…';
+   try{const pd=await api('print_data',{academic_year:boot.academic_year,semester_no:boot.semester_no,class_id:classId});w.document.open();w.document.write(rekapHtml(pd,{walas:currentUser?.nama||''}));w.document.close()}
+   catch(e){w.document.body.textContent='Rekap gagal dimuat: '+(e.name==='AbortError'?'waktu tunggu habis, coba lagi.':e.message)}finally{b.disabled=false;b.textContent=l}};
   q('#sr-dl').onclick=async function(){const b=this,l=b.textContent;b.disabled=true;b.textContent='Menyiapkan Excel…';
    try{const pd=await api('print_data',{academic_year:boot.academic_year,semester_no:boot.semester_no,class_id:classId});if(!alive())return;await downloadScores(pd)}
    catch(e){alert('Download gagal: '+(e.name==='AbortError'?'waktu tunggu habis, coba lagi.':e.message))}finally{b.disabled=false;b.textContent=l}};
