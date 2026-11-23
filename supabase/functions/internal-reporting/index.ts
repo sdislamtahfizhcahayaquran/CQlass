@@ -42,6 +42,14 @@ Deno.serve(async req=>{
   if(req.method!=="POST")return j({success:false,error:"method_not_allowed"},405);
   let b:any={};try{b=await req.json()}catch{return j({success:false,error:"invalid_json"},400)}
   try{
+    // Shortlink foto (f/?kode): kode = 12 karakter hex awal dari UUID nama file foto. Publik, tanpa sesi.
+    if(lo(b.action)==="photo_link"){
+      const code=lo(b.code);if(!/^[0-9a-f]{12}$/.test(code))return j({success:false,error:"invalid_code"},400);
+      const s0=db(),pattern=`%/${code.slice(0,8)}-${code.slice(8,12)}-%`;
+      const{data:rows,error}=await s0.from("internal_reports").select("photo_url").like("photo_url",pattern).limit(1);if(error)throw error;
+      const url=rows?.[0]?.photo_url?await signedPhoto(s0,rows[0].photo_url,3600):"";if(!url)return j({success:false,error:"not_found"},404);
+      return j({success:true,url});
+    }
     const s=db(),me=await auth(s,req,b);if(!me)return j({success:false,error:"forbidden"},403);
     const roles=await rolesFor(s,me.account),action=lo(b.action||"mine");
     if(action==="create"){
@@ -55,8 +63,7 @@ Deno.serve(async req=>{
       const{data,error}=await s.from("internal_reports").insert(row).select("*").single();if(error){if(photoPath)await s.storage.from(BUCKET).remove([photoPath]);throw error}
       const targetRole=type==="SAPRAS"?"sapras":"kesiswaan",title=type==="SAPRAS"?"Laporan Sapras Baru":"Saran & Masukan Baru",who=`${meta.name}${meta.kelas?` · ${meta.kelas}`:""}`;
       await notify({action:"send_to_role",role:targetRole,title,body:`${who}: ${reportPreview(description)}`,type:type==="SAPRAS"?"internal_report_sapras":"internal_report_feedback",priority:"high",target_url:"./",reference_type:"internal_report",reference_id:data.id});
-      // photo_share_url: link 30 hari untuk disertakan di pesan WhatsApp ke petugas Sapras.
-      return j({success:true,report:{...data,reporter_name:meta.name,photo_signed_url:await signedPhoto(s,data.photo_url),photo_share_url:await signedPhoto(s,data.photo_url,30*24*3600)}});
+      return j({success:true,report:{...data,reporter_name:meta.name,photo_signed_url:await signedPhoto(s,data.photo_url)}});
     }
     if(action==="mine"){
       const{data,error}=await s.from("internal_reports").select("*").eq("reporter_account_id",me.account.id).order("created_at",{ascending:false}).limit(100);if(error)throw error;return j({success:true,reports:await addSignedPhotos(s,data||[])});

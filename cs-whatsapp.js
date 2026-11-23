@@ -56,10 +56,17 @@
     }finally{URL.revokeObjectURL(url)}
   }
 
+  /* Shortlink foto: <situs>/f/?<12 hex awal UUID nama file> (lihat f/index.html). */
+  function photoShortLink(report){
+    const m=/\/([0-9a-f]{8})-([0-9a-f]{4})-[0-9a-f-]+\.\w+$/i.exec(String(report?.photo_url||''));
+    if(!m)return '';
+    try{return new URL('f/?'+(m[1]+m[2]).toLowerCase(),location.href.replace(/[?#].*$/,'').replace(/[^/]*$/,'')).href}catch(_){return ''}
+  }
+
   function waLink(report){
     const u=user()||{},t=TOPICS[report.report_type]||TOPICS.SARAN_MASUKAN;
     const who=[report.reporter_name||u.nama||u.name||u.username||'',u.role?String(u.role).toUpperCase():''].filter(Boolean).join(' · ');
-    const detail=[`No. Tiket: *${report.ticket_no||'-'}*`,who&&`Dari: ${who}`,report.location&&`Lokasi: ${report.location}`,`Isi: ${report.description||''}`,report.requested_action&&`Harapan: ${report.requested_action}`,(report.photo_share_url||report.photo_signed_url)&&`Foto: ${report.photo_share_url||report.photo_signed_url}`].filter(Boolean);
+    const detail=[`No. Tiket: *${report.ticket_no||'-'}*`,who&&`Dari: ${who}`,report.location&&`Lokasi: ${report.location}`,`Isi: ${report.description||''}`,report.requested_action&&`Harapan: ${report.requested_action}`,photoShortLink(report)&&`Foto: ${photoShortLink(report)}`].filter(Boolean);
     const text=`Assalamu'alaikum, Tim Sapras.\nSaya baru mengirim *${t.label}* lewat CQlass.\n\n${detail.join('\n')}`;
     return `https://wa.me/${SAPRAS_WA_NUMBER}?text=${encodeURIComponent(text)}`;
   }

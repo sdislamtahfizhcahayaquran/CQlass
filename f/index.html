@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Foto Laporan — Salam CQ</title>
+<style>
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f1faf7;font:500 15px/1.5 Inter,system-ui,sans-serif;color:#163b3b}
+  .box{background:#fff;border:1px solid #d7e9e5;border-radius:18px;padding:26px 24px;max-width:340px;margin:16px;text-align:center;box-shadow:0 12px 32px rgba(20,60,58,.1)}
+  b{display:block;font-size:16px;margin-bottom:4px}
+  .sp{width:28px;height:28px;border:3px solid #cfe8e3;border-top-color:#0c8279;border-radius:50%;margin:0 auto 12px;animation:r 0.8s linear infinite}
+  @keyframes r{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="box" id="box"><div class="sp"></div><b>Membuka foto laporan…</b><span>Mohon tunggu sebentar.</span></div>
+<script>
+(function(){
+  var API='https://lmglkxzemtvxcgktiord.supabase.co/functions/v1/internal-reporting';
+  var KEY='sb_publishable_3HyNVUYXakILMKo2SK-DJw_ka7-Yx93';
+  var code=(location.search||'').replace(/^\?/,'').split('&')[0].toLowerCase();
+  function fail(msg){document.getElementById('box').innerHTML='<b>Foto tidak dapat dibuka</b><span>'+msg+'</span>'}
+  if(!/^[0-9a-f]{12}$/.test(code))return fail('Link foto tidak valid.');
+  fetch(API,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},body:JSON.stringify({action:'photo_link',code:code})})
+    .then(function(r){return r.json()})
+    .then(function(d){if(d&&d.success&&d.url)location.replace(d.url);else fail('Foto tidak ditemukan atau sudah dihapus.')})
+    .catch(function(){fail('Periksa koneksi internet lalu coba lagi.')});
+})();
+</script>
+</body>
+</html>
