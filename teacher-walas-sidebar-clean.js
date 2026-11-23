@@ -190,8 +190,8 @@
         ensureReport('academic-ranking-report','Ranking',rankingRender);
         ensureReport('timesheet','Timesheet',window.renderTeacherTimesheet);
         ensureReport('laporan-promosi','Promosi Socmed',window.renderPromotionReport);
-        const feedback=reports.items.find(x=>x&&x.id==='internal-feedback');
-        if(feedback){feedback.roles=[...new Set([...(feedback.roles||[]),...TEACHER_ROLES])];feedback.label='Saran & Masukan'}
+        // Saran & Masukan / laporan Sapras dipindah ke tombol CS WhatsApp (cs-whatsapp.js).
+        reports.items=reports.items.filter(x=>!(x&&x.id==='internal-feedback'));
         const order=['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'];
         reports.items.sort((a,b)=>{const ai=order.indexOf(String(a?.id||'')),bi=order.indexOf(String(b?.id||''));return(ai<0?99:ai)-(bi<0?99:bi)});
       }

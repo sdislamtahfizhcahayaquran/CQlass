@@ -103,9 +103,8 @@
         if(!it||!Array.isArray(it.roles))continue;
         if(!['timesheet','laporan-promosi','internal-feedback','academic-ranking-report'].includes(String(it.id||''))) it.roles=it.roles.filter(r=>r!=='walas');
       }
-      let feedback=g.items.find(x=>x&&x.id==='internal-feedback');
-      if(!feedback){feedback={id:'internal-feedback',label:'Saran & Masukan',roles:['walas'],built:true,render:renderReporter};g.items.push(feedback)}
-      else Object.assign(feedback,{label:'Saran & Masukan',roles:['walas'],built:true,render:renderReporter});
+      // Menu Saran & Masukan (termasuk laporan kerusakan Sapras) dihapus; diganti tombol CS WhatsApp (cs-whatsapp.js).
+      g.items=g.items.filter(x=>!(x&&x.id==='internal-feedback'));
 
       let inbox=g.items.find(x=>x&&x.id==='internal-report-inbox');
       if(!inbox){inbox={id:'internal-report-inbox',label:'Laporan Masuk',roles:['sapras'],built:true,render:renderInbox};g.items.push(inbox)}
