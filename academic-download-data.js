@@ -84,7 +84,7 @@ root.renderAcademicDownloadData=async function(c){
   if(f.kind==='rpp'){const d=await req('rpp-lp-manager','archive_report',p);periodCheck(d,p);return [sheet('Dokumen RPP',['File','Guru','Kelas','Mapel','Tanggal Upload','Status'],filterRows(d.rows||[],f,'uploaded_at').map(x=>[x.original_filename||'',x.teacher_name||'',x.class_name||'',x.subject_name||'',x.uploaded_at||x.created_at||'',x.content_status||'']))];}
   if(f.kind==='lp'){const d=await req('rpp-lp-manager','report',p);periodCheck(d,p);return [sheet('Target & Pelaksanaan LP',['Guru','Kelas','Mapel','Periode','Target LP','Progres (%)','Status RPP','Pelaksanaan'],filterRows(d.rows||[],f,'').map(x=>[x.teacher_name||'',x.class_name||'',x.subject_name||'',x.period_label||'Minggu '+(x.week_no||''),x.target_text||'',num(x.progress_percent),x.rpp_status||'',x.execution_status||'']))];}
   if(f.kind==='bilingual'){
-   progress('Memuat data Bilingual...');const d=await req('bilingual-vocabulary','report',{});periodCheck(d,p);return bilingualSheets(bilingualClasses(d,f.className));
+   progress('Memuat data Bilingual...');const d=await req('bilingual-vocabulary','report',{academic_year:p.academic_year,semester_no:p.semester_no});periodCheck(d,p);return bilingualSheets(bilingualClasses(d,f.className));
   }
   const d=await req('pjbl','history');return [sheet('Log PjBL',['Tanggal Pencatatan','Kelas','Pekan','Realisasi','Kendala','Tindak Lanjut','Pencatat','Status'],filterRows(d.rows||[],f,'logged_at').map(x=>[x.logged_at||'',x.class_name||'',x.week_no||'',x.actual_activity||'',x.obstacle||'',x.suggestion||'',x.recorded_by_name||'',x.actual_activity?'Tercatat':'Belum lengkap']))];
  }
