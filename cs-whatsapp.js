@@ -16,8 +16,8 @@
   const API=BASE+'/functions/v1/internal-reporting';
 
   const TOPICS={
-    SAPRAS:{label:'Laporan Kerusakan / Sapras',hint:'Tersimpan di web, lalu lanjut WA ke Sapras',icon:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4Z"/>',desc:'Jelaskan kerusakan/kondisi dan lokasinya...',ask:'Perbaikan atau tindak lanjut yang diharapkan...'},
-    SARAN_MASUKAN:{label:'Keluhan, Saran & Masukan',hint:'Cukup dikirim di web, tercatat di rekap',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',desc:'Tuliskan saran, masukan, atau kendala Anda...',ask:'Solusi yang diharapkan (opsional)...'}
+    SAPRAS:{label:'Laporan Kerusakan / Sapras',hint:'Fasilitas rusak, hilang, atau perlu ditambah',icon:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4Z"/>',desc:'Jelaskan kerusakan/kondisi dan lokasinya...',ask:'Perbaikan atau tindak lanjut yang diharapkan...'},
+    SARAN_MASUKAN:{label:'Keluhan, Saran & Masukan',hint:'Sampaikan keluhan, saran, atau masukan',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',desc:'Tuliskan saran, masukan, atau kendala Anda...',ask:'Solusi yang diharapkan (opsional)...'}
   };
   const STATUS={DILAPORKAN:['Menunggu','new'],TERKIRIM:['Menunggu','new'],DIPROSES:['Diproses','process'],SELESAI:['Selesai','done'],TIDAK_DITINDAKLANJUTI:['Tidak ditindaklanjuti','muted']};
   const statusOf=s=>STATUS[String(s||'').toUpperCase()]||[String(s||'-'),'muted'];
@@ -166,13 +166,13 @@
   function head(title,sub,back){return `<div class="cq-cs-head">${back?`<button class="cq-cs-back" data-cs-go="menu" aria-label="Kembali">${ICON_BACK}</button>`:''}<div><b>${esc(title)}</b><span>${esc(sub)}</span></div></div>`}
 
   function viewMenu(){
-    return head('Salam CQ','Ada yang bisa kami bantu? Laporan Sapras diteruskan ke WhatsApp; keluhan & saran cukup di web.')+
+    return head('Salam CQ','Ada yang bisa kami bantu?')+
       `<div class="cq-cs-body">${Object.entries(TOPICS).map(([k,t])=>`<button class="cq-cs-item" data-cs-topic="${k}"><span class="cq-cs-ic">${svg(t.icon)}</span><span><b>${esc(t.label)}</b><small>${esc(t.hint)}</small></span></button>`).join('')}
-      <div class="cq-cs-sep"></div><button class="cq-cs-item" data-cs-go="history"><span class="cq-cs-ic">${ICON_HIST}</span><span><b>Riwayat laporan saya</b><small>Lihat nomor tiket dan status tindak lanjut</small></span></button></div>`;
+      <div class="cq-cs-sep"></div><button class="cq-cs-item" data-cs-go="history"><span class="cq-cs-ic">${ICON_HIST}</span><span><b>Riwayat laporan saya</b><small>Lihat status laporan Anda</small></span></button></div>`;
   }
   function viewForm(){
     const t=TOPICS[ui.type];
-    return head(t.label,'Isi di sini dulu, tersimpan sebagai rekap.',true)+
+    return head(t.label,'Ceritakan sejelas mungkin, ya.',true)+
       `<div class="cq-cs-body">
         <div class="cq-cs-f"><label>Lokasi <small>(opsional)</small></label><input type="text" id="cq-cs-loc" maxlength="200" placeholder="Contoh: Kelas 4A, Toilet lantai 2" value="${esc(ui.location)}"></div>
         <div class="cq-cs-f"><label>Deskripsi <i>*</i></label><textarea id="cq-cs-desc" maxlength="4000" placeholder="${esc(t.desc)}">${esc(ui.description)}</textarea></div>
@@ -180,15 +180,15 @@
         <div class="cq-cs-f"><label>Foto <small>(opsional)</small></label><input id="cq-cs-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
           <label class="cq-cs-up" for="cq-cs-file">${ui.photo?`<img src="${ui.photo.preview}" alt="">`:`<span class="cq-cs-ic">${svg('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/>')}</span>`}<span>${ui.photo?'<b>Foto siap dikirim</b><br><small>Klik untuk ganti</small>':'Pilih / ambil foto'}</span></label></div>
         <button class="cq-cs-btn primary" id="cq-cs-send" ${ui.busy?'disabled':''}>${ui.busy?'Menyimpan...':(ui.type==='SAPRAS'?'Kirim & Lanjut ke WhatsApp':'Kirim')}</button>
-        <div class="cq-cs-note">${ui.type==='SAPRAS'?'Laporan disimpan di CQlass dengan nomor tiket, lalu diteruskan ke WhatsApp petugas Sapras.':'Disimpan di CQlass dengan nomor tiket dan ditindaklanjuti tim. Status bisa dicek di Riwayat.'}</div>
+        
       </div>`;
   }
   function viewDone(){
     const r=ui.last||{};
     const sapras=r.report_type==='SAPRAS';
-    return head('Laporan tersimpan',sapras?'Lanjutkan ke WhatsApp petugas Sapras.':'Terima kasih atas masukannya.',true)+
-      `<div class="cq-cs-body"><div class="cq-cs-done"><div class="ok">${ICON_OK}</div><h4>Terima kasih!</h4><div style="font-size:12px;color:#5f7775">Laporan Anda sudah tercatat di CQlass.</div><div class="cq-cs-ticket">${esc(r.ticket_no||'-')}</div>
-        ${sapras?`<a class="cq-cs-btn wa" href="${esc(waLink(r))}" target="_blank" rel="noopener" data-cs-wa>${ICON_WA} Lanjut ke WhatsApp Sapras</a>`:'<div class="cq-cs-note" style="margin-bottom:6px">Status tindak lanjut bisa dicek di menu Riwayat laporan saya.</div>'}
+    return head('Laporan terkirim',sapras?'Satu langkah lagi, ya.':'Terima kasih atas masukannya.',true)+
+      `<div class="cq-cs-body"><div class="cq-cs-done"><div class="ok">${ICON_OK}</div><h4>Terima kasih!</h4><div style="font-size:12px;color:#5f7775">Laporan Anda sudah kami terima.</div><div class="cq-cs-ticket">${esc(r.ticket_no||'-')}</div>
+        ${sapras?`<a class="cq-cs-btn wa" href="${esc(waLink(r))}" target="_blank" rel="noopener" data-cs-wa>${ICON_WA} Lanjut ke WhatsApp Sapras</a>`:'<div class="cq-cs-note" style="margin-bottom:6px">Insyaallah segera kami tindak lanjuti.</div>'}
         <button class="cq-cs-btn soft" data-cs-go="menu">Selesai</button></div></div>`;
   }
   function viewHistory(){
@@ -196,7 +196,7 @@
     const body=rows==null?'<div class="cq-cs-note" style="text-align:center;padding:18px">Memuat riwayat...</div>':
       !rows.length?'<div class="cq-cs-note" style="text-align:center;padding:18px">Belum ada laporan yang dikirim.</div>':
       rows.map(r=>{const[l,c]=statusOf(r.status);return `<div class="cq-cs-row"><div class="cq-cs-row-top"><b>${esc(r.ticket_no||'Laporan')}</b><span class="cq-cs-badge ${c}">${esc(l)}</span></div><div style="font-size:10.5px;color:#7a908e">${esc(fmtDate(r.created_at))} · ${esc((TOPICS[r.report_type]||{}).label||r.report_type)}</div><p>${esc(r.description)}</p>${r.resolution_note?`<p><b>Tindak lanjut:</b> ${esc(r.resolution_note)}</p>`:''}</div>`}).join('');
-    return head('Riwayat laporan saya','Status tindak lanjut dari tim.',true)+`<div class="cq-cs-body">${body}</div>`;
+    return head('Riwayat laporan saya','Laporan yang pernah Anda kirim.',true)+`<div class="cq-cs-body">${body}</div>`;
   }
 
   function syncDraft(){
