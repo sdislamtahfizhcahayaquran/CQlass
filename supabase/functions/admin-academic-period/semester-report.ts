@@ -75,8 +75,12 @@ async function ekskulByStudent(p:any,ids:string[]){
 const num=(v:any)=>{if(v===null||v===undefined||text(v)==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
 const avg=(a:number[])=>a.reduce((x,y)=>x+y,0)/a.length;
 const TASKS=['TUGAS_1','TUGAS_2','TUGAS_3','TUGAS_4','TUGAS_5'];
-// Same rule as the CQlass legger: final score only when Tugas 1-5, every TP, WWP and ASAS are filled.
-export function finalScore(tasks:(number|null)[],tps:(number|null)[],wwp:number|null,asas:number|null){if(!tps.length||tasks.some(x=>x===null)||tps.some(x=>x===null)||wwp===null||asas===null)return null;return Math.round(avg(tasks as number[])*.10+avg(tps as number[])*.30+wwp*.10+asas*.50)}
+// Sistem penilaian (sama dengan cq-scoring.js): nilai murni = Tugas 10% + rata-rata TP 30% + WWP 20% + ASAS 40%,
+// hanya bila minimal 1 Tugas (rata-rata tugas yang terisi), semua TP, WWP dan ASAS terisi. Nilai rapor = dibulatkan, akhiran 4/9 naik 1, minimal 77, maksimal 96.
+const r2=(n:number)=>Math.round(n*100)/100;
+export function rawScore(tasks:(number|null)[],tps:(number|null)[],wwp:number|null,asas:number|null){const t=tasks.filter(x=>x!==null) as number[];if(!tps.length||!t.length||tps.some(x=>x===null)||wwp===null||asas===null)return null;return r2(avg(t)*.10+avg(tps as number[])*.30+wwp*.20+asas*.40)}
+export function raporScore(raw:number|null){if(raw===null||raw===undefined)return null;let n=Math.round(raw);if(n%10===4||n%10===9)n+=1;return Math.max(77,Math.min(96,n))}
+export function finalScore(tasks:(number|null)[],tps:(number|null)[],wwp:number|null,asas:number|null){return raporScore(rawScore(tasks,tps,wwp,asas))}
 async function academic(cls:any,p:any,studentIds:string[]){
  const grade=Number(cls.grade_level)||null;if(!grade||!studentIds.length)return{subjects:[],byStudent:new Map()};
  const subjects=await rows(db.from('subjects').select('id,code,name,sort_order').eq('is_active',true).eq('grade_level',grade).order('sort_order',{ascending:true}));
@@ -89,7 +93,10 @@ async function academic(cls:any,p:any,studentIds:string[]){
  const sc=new Map<string,number|null>();for(const r of scores){const type=text(r.assessment_type).toUpperCase();const k=type==='TP'?`${r.student_id}|${r.subject_id}|TP|${r.learning_objective_id}`:`${r.student_id}|${r.subject_id}|${type}`;sc.set(k,num(r.score))}
  const get=(k:string)=>sc.has(k)?sc.get(k)!:null;
  const byStudent=new Map<string,any>();
- for(const sid of studentIds){const per:Record<string,any>={};for(const s of outSubjects){const tasks=TASKS.map(t=>get(`${sid}|${s.id}|${t}`)),tp=s.objectives.map((o:any)=>get(`${sid}|${s.id}|TP|${o.id}`)),wwp=get(`${sid}|${s.id}|WWP`),asas=get(`${sid}|${s.id}|ASAS`);const missing=tasks.filter(x=>x===null).length+tp.filter((x:any)=>x===null).length+(wwp===null?1:0)+(asas===null?1:0);per[s.id]={final:finalScore(tasks,tp,wwp,asas),missing,tp,tasks,wwp,asas}}byStudent.set(sid,per)}
+ for(const sid of studentIds){const per:Record<string,any>={};for(const s of outSubjects){const tasks=TASKS.map(t=>get(`${sid}|${s.id}|${t}`)),tp=s.objectives.map((o:any)=>get(`${sid}|${s.id}|TP|${o.id}`)),wwp=get(`${sid}|${s.id}|WWP`),asas=get(`${sid}|${s.id}|ASAS`);const missing=tasks.filter(x=>x===null).length+tp.filter((x:any)=>x===null).length+(wwp===null?1:0)+(asas===null?1:0);const raw=rawScore(tasks,tp,wwp,asas);per[s.id]={final:raporScore(raw),raw,missing,tp,tasks,wwp,asas}}byStudent.set(sid,per)}
+ // Kelas 1-3 tidak punya mapel Pendidikan Pancasila: di rapor nilainya diambil dari Adab/Akhlak.
+ if(grade<=3&&!outSubjects.some((s:any)=>/pancasila|\bpkn\b|kewarganegaraan/i.test(s.name))){const adab=outSubjects.find((s:any)=>/adab|akhlak/i.test(s.name));
+  if(adab){const v={...adab,id:'pkn-from-adab',code:'PKN',name:'Pendidikan Pancasila',virtual_from:adab.id};outSubjects.push(v);for(const per of byStudent.values())if(per[adab.id])per[v.id]={...per[adab.id],from:adab.id}}}
  return{subjects:outSubjects,byStudent};
 }
 

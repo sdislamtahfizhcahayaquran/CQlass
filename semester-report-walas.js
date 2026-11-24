@@ -17,76 +17,86 @@ const TABS=[['kepribadian','Kepribadian'],['sikap','Sikap'],['psikomotor','Psiko
 // Rapor IKM: tinggi/berat badan dan kondisi kesehatan diisi walas.
 const KES=[['tb','Tinggi badan (cm)','num',30,250],['bb','Berat badan (kg)','num',5,200],['pendengaran','Pendengaran','text'],['penglihatan','Penglihatan','text'],['gigi','Gigi','text']];
 
-/* Download nilai seluruh mapel satu kelas (data sama dengan rapor: print_data). Nilai kosong tetap kosong. */
+/* Download nilai seluruh mapel satu kelas (data sama dengan rapor: print_data). Nilai kosong tetap kosong.
+   Sheet 1 Nilai Rapor, sheet 2 Nilai Murni, sheet 3 Legger (format legger sekolah, cq-legger-export.js). */
 const r2=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?'':Math.round(Number(v)*100)/100;
 const mean=a=>{const v=a.filter(x=>x!==null&&x!==undefined&&x!=='').map(Number).filter(Number.isFinite);return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
+const SI=()=>window.__cqSemesterInternals||{};
+// Mapel untuk rekap/ringkasan: PKN ganda cukup sekali; PKN kelas 1-3 (dari Akhlak) ikut. Legger hanya mapel asli.
+const rekapSubjects=pd=>(SI().uniqueSubjects||(x=>x))(pd.subjects||[]);
+const leggerSubjects=pd=>rekapSubjects(pd).filter(s=>!s.virtual_from);
+const kktpOf=s=>(SI().kktpFor?SI().kktpFor(s,[]):'-');
+const kktpMinOf=(s,kkm)=>{const k=SI().kktpMin?SI().kktpMin(s,[]):null;return k==null?kkm:k};
+const FORMULA=()=>window.CQ_SCORE?window.CQ_SCORE.text:'Tugas 10% + TP 30% + WWP 20% + ASAS 40%';
 function scoreSheets(pd){
- const subs=pd.subjects||[],studs=pd.students||[],kkm=Number(pd.kkm)||70;
- const sum={head:['No','NIS','Nama Siswa',...subs.map(s=>s.name),'Jumlah','Rata-rata','Mapel Belum Lengkap','Mapel di Bawah KKM'],rows:[]};
- studs.forEach((st,i)=>{const fs=subs.map(s=>{const f=st.academic?.[s.id]?.final;return f===null||f===undefined?'':Number(f)});const got=fs.filter(x=>x!=='');
-  sum.rows.push([i+1,st.nis||'',st.name,...fs,got.length?got.reduce((a,b)=>a+b,0):'',r2(mean(got)),fs.length-got.length,got.filter(x=>x<kkm).length])});
- const avgRow=['','','Rata-rata kelas',...subs.map((_,j)=>r2(mean(sum.rows.map(r=>r[3+j])))),'','','',''];
- const det={head:['No','NIS','Nama Siswa'],groups:[],rows:[]};
- for(const s of subs){const tp=(s.objectives||[]).map((_,k)=>'TP'+(k+1));const cols=['T1','T2','T3','T4','T5','RT',...tp,'RTP','WWP','ASAS','NA'];det.groups.push({name:s.name,from:det.head.length+1,width:cols.length});det.head.push(...cols)}
- studs.forEach((st,i)=>{const row=[i+1,st.nis||'',st.name];for(const s of subs){const a=st.academic?.[s.id]||{},n=(s.objectives||[]).length;const t=[0,1,2,3,4].map(k=>r2(a.tasks?.[k])),p=Array.from({length:n},(_,k)=>r2(a.tp?.[k]));row.push(...t,r2(mean(t)),...p,r2(mean(p)),r2(a.wwp),r2(a.asas),r2(a.final))}det.rows.push(row)});
- return{kkm,sum,avgRow,det};
+ const subs=rekapSubjects(pd),studs=pd.students||[],kkm=Number(pd.kkm)||70;
+ const summary=key=>{const head=['No','NIS','Nama Siswa',...subs.map(s=>s.name),'Jumlah','Rata-rata','Mapel Belum Lengkap','Mapel di Bawah KKTP'],rows=[];
+  studs.forEach((st,i)=>{const fs=subs.map(s=>{const f=st.academic?.[s.id]?.[key];return f===null||f===undefined?'':Number(f)});const got=fs.filter(x=>x!=='');
+   rows.push([i+1,st.nis||'',st.name,...fs,got.length?Math.round(got.reduce((a,b)=>a+b,0)*100)/100:'',r2(mean(got)),fs.length-got.length,fs.filter((x,j)=>x!==''&&x<kktpMinOf(subs[j],kkm)).length])});
+  return{head,rows,avg:['','','Rata-rata kelas',...subs.map((_,j)=>r2(mean(rows.map(r=>r[3+j])))),'','','','']}};
+ const ls=leggerSubjects(pd);
+ const legger=window.CQ_LEGGER?window.CQ_LEGGER.sheetModel(pd.class?.name||'',ls.map(s=>({name:s.name,tpCount:(s.objectives||[]).length})),studs.map(st=>({nis:st.nis,name:st.name,scores:ls.map(s=>st.academic?.[s.id]||null)}))):null;
+ return{kkm,subs,rapor:summary('final'),murni:summary('raw'),legger};
 }
 async function downloadScores(pd){
- const ExcelJS=window.ExcelJS||await new Promise((ok,bad)=>{const x=document.createElement('script');x.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';x.onload=()=>ok(window.ExcelJS);x.onerror=()=>bad(Error('Pustaka Excel gagal dimuat.'));document.head.appendChild(x)});
- const{kkm,sum,avgRow,det}=scoreSheets(pd);const cls=pd.class?.name||'Kelas',info=`Kelas ${cls} · Tahun Ajaran ${pd.academic_year} · Semester ${pd.semester_no} · KKM ${kkm}`;
- const wb=new ExcelJS.Workbook(),thin={style:'thin',color:{argb:'FFC9D9D6'}},box={top:thin,bottom:thin,left:thin,right:thin};
- function sheet(name,title,head,rows,opts={}){const ws=wb.addWorksheet(name,{views:[{state:'frozen',xSplit:3,ySplit:opts.groups?4:3}],pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
-  ws.addRow([title]);ws.addRow([info]);ws.getRow(1).font={bold:true,size:14,color:{argb:'FF0D7377'}};ws.getRow(2).font={size:10,color:{argb:'FF5F756D'}};
-  if(opts.groups){const g=ws.addRow([]);for(const x of opts.groups){g.getCell(x.from).value=x.name;ws.mergeCells(3,x.from,3,x.from+x.width-1)}g.eachCell(c=>{c.font={bold:true};c.alignment={horizontal:'center'};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE7F2ED'}}})}
-  const h=ws.addRow(head);h.height=opts.groups?20:48;h.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0D7377'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=box});
-  for(const r of rows){const x=ws.addRow(r);x.eachCell({includeEmpty:true},(c,ci)=>{c.border=box;if(ci>3)c.alignment={horizontal:'center'};if(opts.na&&opts.na(ci)&&typeof c.value==='number'&&c.value<kkm)c.font={bold:true,color:{argb:'FFB3261E'}}})}
-  ws.getColumn(1).width=5;ws.getColumn(2).width=12;ws.getColumn(3).width=Math.min(45,Math.max(24,...rows.map(r=>String(r[2]||'').length+3)));for(let c=4;c<=head.length;c++)ws.getColumn(c).width=opts.groups?7:12;return ws}
- const ws1=sheet('Nilai Akhir',`NILAI AKHIR SEMUA MAPEL — ${cls}`,sum.head,[...sum.rows,avgRow],{na:ci=>ci>3&&ci<=3+(pd.subjects||[]).length});ws1.lastRow.font={bold:true};
- const naCols=new Set(det.groups.map(g=>g.from+g.width-1));sheet('Detail Komponen',`DETAIL NILAI PER KOMPONEN — ${cls}`,det.head,det.rows,{groups:det.groups,na:ci=>naCols.has(ci)});
- const note=wb.addWorksheet('Keterangan');[['Keterangan'],['NA dihitung sama seperti di rapor: Tugas 10% + rata-rata TP 30% + WWP 10% + ASAS 50%, dibulatkan.'],['NA kosong = komponen nilai belum lengkap (Tugas 1–5, semua TP, WWP, ASAS).'],[`Angka merah = di bawah KKM (${kkm}).`],['Sumber: nilai yang diinput guru mapel di CQlass saat file ini diunduh.']].forEach(r=>note.addRow(r));note.getColumn(1).width=100;note.getRow(1).font={bold:true};
- const blob=new Blob([await wb.xlsx.writeBuffer()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Nilai_${String(cls).replace(/[^\w-]+/g,'_')}_${String(pd.academic_year).replace('/','-')}_Sem${pd.semester_no}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},5000);
+ const{subs,rapor,murni,legger}=scoreSheets(pd);const cls=pd.class?.name||'Kelas',info=`Kelas ${cls} · Tahun Ajaran ${pd.academic_year} · Semester ${pd.semester_no}`;
+ const kmin=subs.map(s=>kktpMinOf(s,Number(pd.kkm)||70));
+ const extra=(wb)=>{const thin={style:'thin',color:{argb:'FFC9D9D6'}},box={top:thin,bottom:thin,left:thin,right:thin};
+  const sheet=(name,title,t,note)=>{const ws=wb.addWorksheet(name,{views:[{state:'frozen',xSplit:3,ySplit:4}],pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+   ws.addRow([title]);ws.addRow([info+' · '+note]);ws.addRow(['','','KKTP',...subs.map(kktpOf)]);ws.getRow(1).font={bold:true,size:14,color:{argb:'FF0D7377'}};ws.getRow(2).font={size:10,color:{argb:'FF5F756D'}};ws.getRow(3).font={size:9,italic:true};
+   const h=ws.addRow(t.head);h.height=48;h.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0D7377'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=box});
+   for(const r of [...t.rows,t.avg]){const x=ws.addRow(r);x.eachCell({includeEmpty:true},(c,ci)=>{c.border=box;if(ci>3)c.alignment={horizontal:'center'};const j=ci-4;if(j>=0&&j<subs.length&&typeof c.value==='number'&&c.value<kmin[j])c.font={bold:true,color:{argb:'FFB3261E'}}})}
+   ws.lastRow.font={bold:true};ws.getColumn(1).width=5;ws.getColumn(2).width=12;ws.getColumn(3).width=Math.min(45,Math.max(24,...t.rows.map(r=>String(r[2]||'').length+3)));for(let c=4;c<=t.head.length;c++)ws.getColumn(c).width=12};
+  sheet('Nilai Rapor',`NILAI RAPOR SEMUA MAPEL — ${cls}`,rapor,'nilai yang tercetak di rapor (dibulatkan, akhiran 4/9 naik 1, minimal 77, maksimal 96)');
+  sheet('Nilai Murni',`NILAI MURNI SEMUA MAPEL — ${cls}`,murni,`nilai murni = ${FORMULA()}, sebelum aturan rapor`)};
+ return window.CQ_LEGGER.download(`Nilai_${String(cls).replace(/[^\w-]+/g,'_')}_${String(pd.academic_year).replace('/','-')}_Sem${pd.semester_no}.xlsx`,legger?[legger]:[],extra);
 }
 window.__cqWalasScoreSheets=scoreSheets;window.__cqWalasDownloadScores=downloadScores;
 
 /* Rekap Nilai Rapor (sheet RN) + Ranking (sheet RANK) untuk dicetak walas dan dikoreksi Kabid Akademik.
-   Nilai = NA rapor (sama dengan halaman Nilai). Ranking = jumlah NA per kelas, nilai sama -> ranking sama (RANK Excel).
-   Siswa yang nilainya belum lengkap tidak diranking supaya tidak menyesatkan. */
+   Nilai = nilai rapor (sama dengan halaman Nilai); kotak centang di halaman cetak bisa menampilkan nilai murni.
+   Kolom KKTP = rentang KKTP rapor PTS; angka merah = di bawah batas bawah KKTP.
+   Ranking = jumlah nilai rapor per kelas, nilai sama -> ranking sama (RANK Excel). Siswa yang nilainya belum lengkap tidak diranking. */
 const RN_ORDER=['akidah','fikih','adab','hadits','siroh','pkn','indo','mtk','ipas','ipa','ips','sbdp','pjok','arab','inggris','sunda','tajwid'];
 const RN_PAI=new Set(['akidah','fikih','adab','hadits','siroh']);
 function rekapModel(pd){
- const I=window.__cqSemesterInternals||{},cls=s=>(I.classify?I.classify(s).key:'')||'';const kkm=Number(pd.kkm)||70;
+ const I=SI(),cls=s=>(I.classify?I.classify(s).key:'')||'';const kkm=Number(pd.kkm)||70;
  const rank=k=>{const i=RN_ORDER.indexOf(k);return i<0?100:i};
- const subs=[...(pd.subjects||[])].sort((a,b)=>rank(cls(a))-rank(cls(b))||(a.sort_order||999)-(b.sort_order||999));
+ const subs=[...rekapSubjects(pd)].sort((a,b)=>rank(cls(a))-rank(cls(b))||(a.sort_order||999)-(b.sort_order||999));
  const studs=pd.students||[];
- const val=(st,s)=>{const f=st.academic?.[s.id]?.final;return f===null||f===undefined||f===''?null:Math.round(Number(f))};
- const rows=subs.map(s=>{const vals=studs.map(st=>val(st,s));const got=vals.filter(v=>v!==null);return{id:s.id,name:s.name,pai:RN_PAI.has(cls(s)),vals,avg:got.length?Math.round(got.reduce((a,b)=>a+b,0)/got.length*100)/100:null}});
- const people=studs.map((st,i)=>{const vals=subs.map(s=>val(st,s));const got=vals.filter(v=>v!==null);return{no:i+1,id:st.id,nis:st.nis||'',name:st.name,total:got.reduce((a,b)=>a+b,0),avg:got.length?Math.round(got.reduce((a,b)=>a+b,0)/got.length*100)/100:null,missing:vals.length-got.length,below:got.filter(v=>v<kkm).length}});
+ const val=(st,s,key)=>{const f=st.academic?.[s.id]?.[key];return f===null||f===undefined||f===''?null:Number(f)};
+ const avg2=a=>{const g=a.filter(v=>v!==null);return g.length?Math.round(g.reduce((x,y)=>x+y,0)/g.length*100)/100:null};
+ const rows=subs.map(s=>{const vals=studs.map(st=>val(st,s,'final')),raw=studs.map(st=>val(st,s,'raw'));
+  return{id:s.id,name:(I.subjectName?I.subjectName(s,'id'):s.name),pai:RN_PAI.has(cls(s)),kktp:kktpOf(s),min:kktpMinOf(s,kkm),vals,raw,avg:avg2(vals),avgRaw:avg2(raw)}});
+ const people=studs.map((st,i)=>{const vals=subs.map(s=>val(st,s,'final'));const got=vals.filter(v=>v!==null);return{no:i+1,id:st.id,nis:st.nis||'',name:st.name,total:got.reduce((a,b)=>a+b,0),avg:avg2(vals),missing:vals.length-got.length,below:vals.filter((v,j)=>v!==null&&v<rows[j].min).length}});
  const ranked=people.filter(p=>!p.missing&&subs.length);for(const p of people)p.rank=p.missing||!subs.length?null:1+ranked.filter(q=>q.total>p.total).length;
  return{kkm,subs,rows,people,complete:ranked.length};
 }
 function rekapHtml(pd,opt={}){
  const m=rekapModel(pd),e=esc,cls=pd.class?.name||'',sem=Number(pd.semester_no)===2?'Genap':'Ganjil',n=m.people.length;
- const cell=v=>v===null?'<td class="c miss">–</td>':`<td class="c${v<m.kkm?' low':''}">${v}</td>`;
+ const fmt=v=>v===null?'–':String(Math.round(v*100)/100);
+ const cell=(v,raw,min)=>v===null&&raw===null?'<td class="c miss">–</td>':`<td class="c${v!==null&&v<min?' low':''}"><span class="vr">${v===null?'–':v}</span><span class="vm${raw!==null&&raw<min?' low':''}">${fmt(raw)}</span></td>`;
  let no=0,paiHead=false;const body=m.rows.map(r=>{let pre='';if(r.pai&&!paiHead){paiHead=true;no++;pre=`<tr class="grp"><td class="c">${no}</td><td colspan="${n+3}">Pendidikan Agama Islam</td></tr>`}const num=r.pai?'':String(++no);
-  return pre+`<tr><td class="c">${num}</td><td class="sub${r.pai?' in':''}">${e(r.name)}</td><td class="c">${m.kkm}</td>${r.vals.map(cell).join('')}<td class="c b">${r.avg===null?'–':r.avg}</td></tr>`}).join('');
+  return pre+`<tr><td class="c">${num}</td><td class="sub${r.pai?' in':''}">${e(r.name)}</td><td class="c kk">${e(r.kktp)}</td>${r.vals.map((v,j)=>cell(v,r.raw[j],r.min)).join('')}<td class="c b"><span class="vr">${fmt(r.avg)}</span><span class="vm">${fmt(r.avgRaw)}</span></td></tr>`}).join('');
  const totals=`<tr class="tot"><td></td><td>JUMLAH</td><td></td>${m.people.map(p=>`<td class="c">${p.missing?`<span class="miss">${p.total||'–'}</span>`:p.total}</td>`).join('')}<td></td></tr><tr class="tot"><td></td><td>RANKING</td><td></td>${m.people.map(p=>`<td class="c">${p.rank??'–'}</td>`).join('')}<td></td></tr>`;
  const sign=`<div class="sign"><div><div>Dibuat oleh,</div><div>Wali Kelas</div><div class="sp"></div><div class="nm">${e(opt.walas||'(..............................)')}</div></div><div><div>Diperiksa oleh,</div><div>Kabid Akademik</div><div class="sp"></div><div class="nm">(..............................)</div></div></div>`;
  const head=t=>`<div class="hd"><div class="t">${t} ${e(cls)}</div><div>Semester ${sem} Tahun Akademik ${e(pd.academic_year||'')}</div><div>SD Islam Tahfizh Cahaya Quran</div></div>`;
  const byRank=[...m.people].sort((a,b)=>(a.rank??1e9)-(b.rank??1e9)||a.no-b.no);
- const rankRows=byRank.map(p=>`<tr><td class="c">${p.no}</td><td>${e(p.name)}</td><td class="c">${e(p.nis)}</td><td class="c">${p.total||'–'}</td><td class="c">${p.avg??'–'}</td><td class="c b">${p.rank??'–'}</td><td>${p.missing?`Belum lengkap: ${p.missing} mapel`:p.below?`${p.below} mapel di bawah KKM`:''}</td></tr>`).join('');
+ const rankRows=byRank.map(p=>`<tr><td class="c">${p.no}</td><td>${e(p.name)}</td><td class="c">${e(p.nis)}</td><td class="c">${p.total||'–'}</td><td class="c">${p.avg??'–'}</td><td class="c b">${p.rank??'–'}</td><td>${p.missing?`Belum lengkap: ${p.missing} mapel`:p.below?`${p.below} mapel di bawah KKTP`:''}</td></tr>`).join('');
  return`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Rekap Nilai ${e(cls)}</title><style>
 @page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}:root{color-scheme:light}body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;font-size:9.5pt}
 .page{page-break-after:always}.page:last-child{page-break-after:auto}.hd{text-align:center;margin-bottom:8px}.hd .t{font-weight:bold;font-size:13pt}
 table{border-collapse:collapse;width:100%}table.rn{table-layout:fixed;font-size:8.5pt}table.rn td{padding:2px 1px}th,td{border:1px solid #333;padding:2px 3px}th{background:#e8efe9}.c{text-align:center}.b{font-weight:bold}
 th.nm{height:150px;vertical-align:bottom;padding:4px 0}th.nm div{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;margin:0 auto;font-weight:normal;font-size:8pt;max-height:146px;overflow:hidden}
-td.sub{padding:2px 4px!important;line-height:1.15}td.sub.in{padding-left:12px!important}.grp td{font-weight:bold;background:#f6f6f6}.tot td{font-weight:bold;background:#eef3ef}table.rn .tot td.c{font-size:7.5pt;letter-spacing:-.2px}
+td.sub{padding:2px 4px!important;line-height:1.15}td.sub.in{padding-left:12px!important}td.kk{font-size:7pt;letter-spacing:-.2px}.grp td{font-weight:bold;background:#f6f6f6}.tot td{font-weight:bold;background:#eef3ef}table.rn .tot td.c{font-size:7.5pt;letter-spacing:-.2px}
 .low{color:#b3261e;font-weight:bold}.miss{color:#9a6a00;font-weight:bold}.note{font-size:8.5pt;margin-top:6px}
+.vm{display:none}body.murni .vm{display:inline}body.murni .vr{display:none}body.murni table.rn td.c{font-size:7pt}
 .sign{display:flex;justify-content:space-between;margin:14px 40px 0;text-align:center}.sign .sp{height:52px}.sign .nm{font-weight:bold}
-.rank{max-width:190mm;margin:0 auto}.toolbar{position:sticky;top:0;background:#fff;padding:8px;border-bottom:1px solid #ccc;display:flex;gap:8px;align-items:center;font-family:sans-serif}
+.rank{max-width:190mm;margin:0 auto}.toolbar{position:sticky;top:0;background:#fff;padding:8px;border-bottom:1px solid #ccc;display:flex;gap:8px;align-items:center;font-family:sans-serif;flex-wrap:wrap}
 @media print{.toolbar{display:none}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}.grp td,.tot td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-</style></head><body><div class="toolbar"><button onclick="print()">Cetak</button><span>Kertas A4 landscape. Angka merah = di bawah KKM (${m.kkm}); "–" = nilai rapor belum lengkap.</span></div>
-<div class="page">${head('Rekapitulasi Nilai Raport')}<table class="rn"><thead><tr><th style="width:22px">No</th><th style="width:118px">Mata Pelajaran</th><th style="width:30px">KKM</th>${m.people.map(p=>`<th class="nm"><div>${e(p.name)}</div></th>`).join('')}<th style="width:38px">Rata2</th></tr></thead><tbody>${body}${totals}</tbody></table>
-<div class="note">KKM satuan pendidikan ${m.kkm}. Nilai = nilai akhir rapor (Tugas 10% + rata-rata TP 30% + WWP 10% + ASAS 50%). Ranking = jumlah nilai; siswa dengan nilai belum lengkap tidak diranking.</div>${sign}</div>
+</style></head><body><div class="toolbar"><button onclick="print()">Cetak</button><label><input type="checkbox" onchange="document.body.classList.toggle('murni',this.checked)"> Tampilkan nilai murni</label><span>Kertas A4 landscape. Angka merah = di bawah batas bawah KKTP; "–" = nilai rapor belum lengkap. Jumlah dan ranking selalu dari nilai rapor.</span></div>
+<div class="page">${head('Rekapitulasi Nilai Raport')}<table class="rn"><thead><tr><th style="width:22px">No</th><th style="width:112px">Mata Pelajaran</th><th style="width:40px">KKTP</th>${m.people.map(p=>`<th class="nm"><div>${e(p.name)}</div></th>`).join('')}<th style="width:38px">Rata2</th></tr></thead><tbody>${body}${totals}</tbody></table>
+<div class="note">KKTP = rentang KKTP rapor PTS. Nilai = nilai rapor (${e(FORMULA())}; dibulatkan, akhiran 4/9 naik 1, minimal 77, maksimal 96). Ranking = jumlah nilai rapor; siswa dengan nilai belum lengkap tidak diranking.</div>${sign}</div>
 <div class="page rank">${head('Ranking Kelas')}<table><thead><tr><th style="width:34px">Absen</th><th>Nama Siswa</th><th style="width:70px">NIS</th><th style="width:60px">Jumlah</th><th style="width:60px">Rata-rata</th><th style="width:60px">Ranking</th><th style="width:150px">Catatan</th></tr></thead><tbody>${rankRows}</tbody></table>
 <div class="note">${m.complete} dari ${n} siswa sudah lengkap dan diranking.</div>${sign}</div></body></html>`;
 }

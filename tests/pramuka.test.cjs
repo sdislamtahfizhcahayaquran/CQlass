@@ -44,7 +44,7 @@ const call=async(b,token=true)=>{const r=await ctx.handlePramuka(new Request('ht
  roles=[];username='admin';assert.equal((await call({})).status,200,'admin account may open it');
  console.log('PASS pramuka route: add-on role access, roster, validation, versioning.');
  // auth-user: add-on role never becomes the primary login role.
- const a=fs.readFileSync('supabase/functions/auth-user/index.ts','utf8');const fn=a.match(/function rolePriority[\s\S]*?\n}\nfunction choosePrimaryRole[\s\S]*?\n}/)[0];
+ const a=fs.readFileSync('supabase/functions/auth-user/index.ts','utf8');const fn=a.replace(/\r\n/g,'\n').match(/function rolePriority[\s\S]*?\n}\nfunction choosePrimaryRole[\s\S]*?\n}/)[0];
  const actx={};vm.createContext(actx);vm.runInContext(stripTypeScriptTypes(fn),actx);
  assert.equal(actx.choosePrimaryRole(['pembina_pramuka','walas','guru']),'walas');assert.equal(actx.choosePrimaryRole(['pembina_pramuka','guru']),'guru');
  assert.equal(actx.choosePrimaryRole(['sapras','guru']),'sapras','other custom roles unchanged');

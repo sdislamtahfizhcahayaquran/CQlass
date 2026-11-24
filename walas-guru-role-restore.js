@@ -71,7 +71,7 @@
   function ensureTeacherWalasStack(){
     if(!isTeacher())return false;
     stripLegacyRequestFromModel();
-    loadOnce('teacher-walas-sidebar-clean.js?v=20261123-cswa1','__cqTeacherWalasSidebarClean',rerender);
+    loadOnce('teacher-walas-sidebar-clean.js?v=20261124-nilai1','__cqTeacherWalasSidebarClean',rerender);
     loadOnce('internal-report-center.js?v=20261123-cswa1','__cqInternalReportCenter',rerender);
     setTimeout(rerender,120);
     return true;

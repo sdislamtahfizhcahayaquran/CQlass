@@ -74,7 +74,8 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  const pd=await (await call({action:'print_data',academic_year:'2026/2027',semester_no:1,class_id:'class'})).json();
  assert.equal(pd.success,true);const mtk=pd.subjects.find(s=>s.id==='s-mtk');assert.equal(mtk.kktp_min,75);assert.equal(mtk.kktp_max,78);
  const budi=pd.students.find(s=>s.id==='st1');
- assert.equal(budi.academic['s-mtk'].final,Math.round(80*.1+80*.3+80*.1+90*.5));assert.deepEqual(budi.academic['s-mtk'].tp,[90,70]);
+ // Rumus baru: Tugas 10% + TP 30% + WWP 20% + ASAS 40% = 8+24+16+36 = 84 murni -> rapor 85 (akhiran 4 naik 1).
+ assert.equal(budi.academic['s-mtk'].raw,84);assert.equal(budi.academic['s-mtk'].final,85);assert.deepEqual(budi.academic['s-mtk'].tp,[90,70]);
  assert.equal(budi.academic['s-arab'].final,null,'incomplete subject has no final score');assert.equal(budi.entry.data.komentar,'Ananda rajin.');
  assert.equal(pd.students.find(s=>s.id==='st2').entry,null);
  assert.deepEqual(budi.ekskul.map(e=>[e.name,e.rating]),[['Pramuka','B']],'Pramuka grade from Pembina Pramuka joins the ekskul list');
@@ -93,18 +94,18 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  const report={student:{id:'st1',name:'Budi',nis:'1',nisn:'11'},class:{name:'4A'},semester_no:1,academic_year:'2026/2027',report_type:'SEMESTER',teachers:{homeroom:'Bu Walas',principal:'Pak Kepsek'},attendance:{sick:2,excused:1,unexcused:0}};
  report.semester_print={subjects:pd.subjects,student:budi};
  const id=win.cqSemesterPagesHtml(report,{lang:'id',printDate:'2026-12-19',hijri:'28 Jumadil Akhir 1448'});
- for(const s of ['NILAI RAPOR','Matematika','Sembilan puluh dua'.slice(0,0)+I.terbilang(budi.academic['s-mtk'].final,'id'),'Muatan Lokal','PENILAIAN KOGNITIF UMUM','PENILAIAN KOGNITIF DINIYAH','Bilangan cacah','Mufradat','PENILAIAN SIKAP','PENILAIAN PSIKOMOTORIK','Pekan bahasa','KOMENTAR UMUM','Ananda rajin.','Depok, 28 Jumadil Akhir 1448 H','19 Desember 2026 M','Bu Walas','Pak Kepsek','Nilai belum lengkap'])assert(id.includes(s),'ID page contains '+s);
+ for(const s of ['NILAI RAPOR','Matematika','Sembilan puluh dua'.slice(0,0)+I.terbilang(budi.academic['s-mtk'].final,'id'),'Muatan Lokal','PENILAIAN INTRAKURIKULER','Bilangan cacah','Mufradat','PENILAIAN SIKAP','PENILAIAN KOKURIKULER','Pekan bahasa','PROJECT BASED LEARNING (PjBL)','KEGIATAN PjBL','KOMENTAR UMUM','Ananda rajin.','Depok, 28 Jumadil Akhir 1448 H','19 Desember 2026 M','Bu Walas','Pak Kepsek','Nilai belum lengkap'])assert(id.includes(s),'ID page contains '+s);
  const pages=(id.match(/class="rpv-paper srp-page"/g)||[]).length;assert(pages>=6,'expected at least 6 A4 pages, got '+pages);
  const noIkm=h=>h.split('<section').filter(s=>!s.includes('data-part="ikm"')).join('<section');
  const nums=[...id.matchAll(/data-page-no="(\d+)"/g)].map(m=>Number(m[1]));const titles=[...noIkm(id).matchAll(/<div class="srp-title">([^<]+)<\/div>/g)].map(m=>m[1]);
  assert.equal(titles[0],'KOMENTAR UMUM');assert.equal(titles[1],'PENILAIAN SIKAP');assert.equal(titles[titles.length-1],'NILAI RAPOR','Nilai is the last page before IKM');
- assert.deepEqual(nums.slice(0,3),[1,2,3],'Komentar 1, Sikap/Adab 2-3');assert.equal(nums[3],7,'Kognitif starts at page 7 (Tahfizh 4-6 printed separately)');assert.equal(titles[3],'PENILAIAN KOGNITIF UMUM');
+ assert.deepEqual(nums.slice(0,3),[1,2,3],'Komentar 1, Sikap/Adab 2-3');assert.equal(nums[3],7,'Intrakurikuler starts at page 7 (Tahfizh 4-6 printed separately)');assert.equal(titles[3],'PENILAIAN INTRAKURIKULER');
  const many={...report,semester_print:{subjects:Array.from({length:24},(_,i)=>({id:'m'+i,name:'Mapel '+i,sort_order:i,kktp_min:75,kktp_max:75,objectives:[]})),student:{academic:{},entry:null}}};
  const mt=[...noIkm(win.cqSemesterPagesHtml(many,{lang:'id'})).matchAll(/<div class="srp-title">([^<]+)<\/div>/g)].map(m=>m[1]);
  assert.deepEqual(mt.slice(-2),['NILAI RAPOR','NILAI RAPOR'],'long subject list splits Nilai into 2 pages, both with header');
  assert.equal(titles.filter(t=>t==='NILAI RAPOR').length,1,'short subject list keeps Nilai on 1 page');
  assert(id.includes('Halaman 7 | Budi'),'footer shows page number and student name');assert(id.includes('Halaman 7')&&id.includes('rapor-semester-logo.png')&&id.includes('rapor-semester-footer.jpg'),'page number, logo and footer present');
- assert.equal((id.match(/srp-box on/g)||[]).length,2+1+1+1,'checked boxes: 2 MTK TP + 1 Arab TP + 1 sikap + 1 psikomotor');
+ assert.equal((id.match(/srp-box on/g)||[]).length,2+1+1,'checked boxes: 2 MTK TP + 1 sikap + 1 kokurikuler; Arab TP stays empty until WWP/ASAS are filled');
  const en=win.cqSemesterPagesHtml(report,{lang:'en',printDate:'2026-12-19',hijri:''});
  for(const s of ['SEMESTER REPORT CARD','Mathematics','Arabic Language','Local Content Subjects','Language Week','GENERAL COMMENTS','Homeroom Teacher','Principal','19 December 2026 CE','Incomplete scores'])assert(en.includes(s),'EN page contains '+s);
  assert(!en.includes('Matematika'),'EN uses English subject names');
@@ -121,15 +122,16 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
   semester_print:{subjects:pd.subjects,class:{grade_level:4},student:{...budi,ekskul:[{name:'Robotic',activity:'A',skill:'B'},{name:'Pramuka',activity:'B',skill:'B'},{name:'Renang',external:true,institution:'Klub Tirta',activity:'A',skill:'A'}]}}};
  const ik=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'id'}));
  assert(ik.length>0,'IKM pages exist');assert(id.lastIndexOf('data-part="ikm"')>id.lastIndexOf('LAPORAN PENILAIAN HASIL BELAJAR SISWA</div>\n<table class="srp-t"><colgroup><col style="width:7%">'),'IKM comes after Nilai');
- for(const s of ['A. Kriteria Ketuntasan Minimal Satuan Pendidikan = 70','CAPAIAN KOMPETENSI','B. Kokurikuler','Belum dinilai.','C. Ekstrakurikuler','D. Tinggi dan Berat Badan','125.5 cm','30 kg','E. Kondisi Kesehatan','F. Prestasi','Juara 1 Tahfizh','Tingkat kota','G. Ketidakhadiran','2 hari','H. Karakter dan Kedisiplinan','Total Poin Pelanggaran: 10 Poin','Total Poin Akhir: 15 Poin','Klub Tirta'])assert(ik.includes(s),'IKM contains '+s);
- const mtkFinal=budi.academic['s-mtk'].final;assert(ik.includes(`<td class="c">${mtkFinal}</td><td class="c">${I.ikmLetter(mtkFinal)}</td>`),'Matematika final score and grade');assert.equal(I.ikmLetter(90),'A');assert.equal(I.ikmLetter(80),'B');assert.equal(I.ikmLetter(65),'C');assert.equal(I.ikmLetter(64),'D');
- assert(ik.includes('Ananda Budi sangat baik dalam bilangan cacah dan cukup baik dalam pecahan.'),'capaian uses highest and lowest TP');
+ for(const s of ['A. Intrakurikuler','CAPAIAN KOMPETENSI','<span>Fase</span><span>:</span><span class="v">B</span>','B. Kokurikuler','Belum dinilai.','C. Ekstrakurikuler','D. Tinggi dan Berat Badan','125.5 cm','30 kg','E. Kondisi Kesehatan','F. Prestasi','Juara 1 Tahfizh','Tingkat kota','G. Ketidakhadiran','2 hari','H. Karakter dan Kedisiplinan','Total Poin Pelanggaran: 10 Poin','Total Poin Akhir: 15 Poin','Klub Tirta'])assert(ik.includes(s),'IKM contains '+s);
+ const mtkFinal=budi.academic['s-mtk'].final;assert(ik.includes(`<td class="c">${mtkFinal}</td><td class="c">${I.ikmLetter(mtkFinal)}</td>`),'Matematika final score and grade');assert.equal(I.ikmLetter(89),'A');assert.equal(I.ikmLetter(88),'B');assert.equal(I.ikmLetter(82),'B');assert.equal(I.ikmLetter(81),'C');assert.equal(I.ikmLetter(75),'C');assert.equal(I.ikmLetter(74),'D');
+ // Nilai per TP: TP1 90 -> 8+27+16+36=87 (B), TP2 70 -> 8+21+16+36=81 (C).
+ assert(ik.includes('Ananda Budi baik dalam bilangan cacah dan cukup baik dalam pecahan.'),'capaian uses highest and lowest per-TP score');
  assert(ik.indexOf('>Pramuka<')<ik.indexOf('>Robotic<'),'Pramuka listed first');assert(!ik.includes('Keputusan:'),'no promotion decision in semester 1');
  assert.equal(I.tpPhrase('Peserta didik mampu memahami teks.','id'),'memahami teks');assert.equal(I.tpPhrase('Students are able to read.','en'),'read');
  const s2=ikmOf(win.cqSemesterPagesHtml({...ikmReport,semester_no:2,semester_print:{...ikmReport.semester_print,student:{...ikmReport.semester_print.student,kesehatan_s1:{tb:'120',bb:'28'}}}},{lang:'id'}));
  assert(s2.includes('Naik ke Kelas : V (Lima)')&&s2.includes('120 cm')&&s2.includes('125.5 cm'),'semester 2: promotion and both semesters of height');
  const g6=ikmOf(win.cqSemesterPagesHtml({...ikmReport,semester_no:2,semester_print:{...ikmReport.semester_print,class:{grade_level:6}}},{lang:'id'}));assert(g6.includes('LULUS'),'grade 6 graduates');
- const ikEn=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'en'}));for(const s of ['Not yet assessed.','Scouting (Pramuka)','Budi shows excellent achievement in','Final Total Points: 15 Points'])assert(ikEn.includes(s),'EN IKM contains '+s);
+ const ikEn=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'en'}));for(const s of ['Not yet assessed.','Scouting (Pramuka)','A. Intracurricular','Budi shows good achievement in','Final Total Points: 15 Points'])assert(ikEn.includes(s),'EN IKM contains '+s);
  // Kokurikuler: komentar sama persis dengan "Generator komentar" di Rubrik_PjBL_Dimensi_Profil_Lulusan.xlsx.
  const KC=win.CQ_SEMESTER_CATALOG.kokuComment;
  assert.equal(KC('Putra',1,{a:2,b:2},'id'),'Ananda Putra masih perlu berlatih dalam menjelaskan sebab-akibat pertumbuhan kangkung berdasarkan data pengamatan, serta dalam berbagi tugas dan menghargai pendapat teman dalam menanam dan merawat kangkung.');
@@ -145,5 +147,5 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  assert(sg.split('<section').some(s=>s.includes('PENILAIAN SIKAP')===false&&s.includes('Kepala Sekolah')),'other pages keep the principal');
  assert(/@media print\{[^}]*\.srp-sign img[^}]*display:none/.test(store.get('cq-semester-print-style').textContent),'printer output hides e-signatures (wet signature)');
  console.log('PASS kokurikuler comments (Excel generator), Guru Partner signature on Komentar, no e-signature when printing.');
- console.log('PASS rapor IKM: KKM 70 table, capaian from highest/lowest TP, Pramuka first, kesehatan, prestasi, absences, character points, semester 2 decision, English.');
+ console.log('PASS rapor IKM: A. Intrakurikuler + Fase, capaian from highest/lowest TP, Pramuka first, kesehatan, prestasi, absences, character points, semester 2 decision, English.');
 })().catch(e=>{console.error(e);process.exitCode=1});

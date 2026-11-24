@@ -68,9 +68,9 @@ const call=async b=>{const r=await ctx.__handler(new Request('https://x.invalid'
  const store=new Map();const w={document:{getElementById:id=>store.get(id)||null,createElement:()=>({}),head:{appendChild:el=>{if(el.id)store.set(el.id,el)}}}};w.window=w;
  const pctx=vm.createContext({...w,Intl,Date,Number,String,Math,Array,Object,Map,Set,Error,RegExp,JSON});vm.runInContext(fs.readFileSync('semester-report-print.js','utf8'),pctx);
  const rep={student:{id:'a',name:'Ani'},class:{name:'4A'},semester_no:1,academic_year:'2026/2027',teachers:{},attendance:{},semester_print:{kkm:75,subjects:[{id:'m',name:'Matematika',kktp_min:null,kktp_max:null,objectives:[{id:'o',description:'Bilangan'}]}],student:{academic:{m:{final:80,tp:[80]}},entry:null}}};
- const h=w.cqSemesterPagesHtml(rep,{lang:'id'});assert(h.includes('Kriteria Ketuntasan Minimal Satuan Pendidikan = 75'),'IKM shows configured KKM');assert(h.includes('<td class="c">75</td><td class="c">80</td>'),'Nilai KKTP column falls back to KKM');
- const h2=w.cqSemesterPagesHtml({...rep,semester_print:{...rep.semester_print,kkm:undefined}},{lang:'id'});assert(h2.includes('Satuan Pendidikan = 70'),'default 70 when not configured');
- console.log('PASS KKM in print: IKM title and KKTP fallback.');
+ // 2026-11-24: IKM bagian A berjudul "A. Intrakurikuler" (tanpa angka KKM); kolom KKTP Nilai memakai rentang KKTP rapor PTS.
+ const h=w.cqSemesterPagesHtml(rep,{lang:'id'});assert(h.includes('A. Intrakurikuler')&&!h.includes('Kriteria Ketuntasan Minimal'),'IKM section A title');assert(h.includes('<td class="c">76 - 79</td><td class="c">80</td>'),'Nilai KKTP = PTS range for Matematika');
+ console.log('PASS KKTP in print: IKM section A title, Nilai KKTP = PTS range.');
  // Rubrik upload menggantikan rubrik bawaan; tanpa frasa English, rapor English memakai kalimat Indonesia.
  const KC=w.CQ_SEMESTER_CATALOG.kokuComment,up={id:'Proyek Baru',dims:[{id:'Kolaborasi',kuat:'bekerja sama',latih:'berbagi tugas'},{id:'Kreativitas',kuat:'membuat ide',latih:'mengembangkan ide'}]};
  assert.equal(KC('Ani',1,{a:4,b:1},'id',up),'Ananda Ani sangat baik dalam kolaborasi dengan mampu bekerja sama, dan masih perlu berlatih dalam mengembangkan ide.');
