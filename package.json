@@ -1,0 +1,13 @@
+{
+  "name": "cqlass",
+  "private": true,
+  "description": "CQlass SDIT Cahaya Qur'an. Situs statis (GitHub Pages); package.json ini hanya untuk menjalankan tes di komputer.",
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "devDependencies": {
+    "exceljs": "4.4.0",
+    "jsdom": "^29.1.1",
+    "xlsx": "0.18.5"
+  }
+}

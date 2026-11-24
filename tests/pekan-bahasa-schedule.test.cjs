@@ -13,7 +13,7 @@ function backend(username='dila',category='PEKAN_BAHASA'){
   then(ok,bad){const data=(tables[this.name]||[]).filter(x=>this.filters.every(f=>f(x)));if(this.patch)data.forEach(x=>Object.assign(x,this.patch));return Promise.resolve({data:this.one?data[0]||null:data,error:null}).then(ok,bad)}
  }
  const ctx={createClient:()=>({from:n=>new Q(n)}),Deno:{env:{get:()=>''},serve:f=>handler=f},crypto,TextEncoder,Request,Response,console:{error(){}},Date,Map,Set,Uint8Array,atob};vm.createContext(ctx);
- vm.runInContext(stripTypeScriptTypes(fs.readFileSync('supabase/functions/activity-report/index.ts','utf8').replace(/^import .*\n/,'')),ctx);
+ vm.runInContext(stripTypeScriptTypes(fs.readFileSync('supabase/functions/activity-report/index.ts','utf8').replace(/^import .*\r?\n/,'')),ctx);
  return {event,call:async body=>{const r=await handler(new Request('https://test',{method:'POST',headers:{'x-session-token':'session'},body:JSON.stringify({event_id:'event',...body})}));return {status:r.status,...await r.json()}}};
 }
 for(const username of ['dila','saad'])test(username+' saves PIC and valid scope; legacy client preserves both',async()=>{

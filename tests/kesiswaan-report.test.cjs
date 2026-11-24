@@ -17,7 +17,7 @@ test('XLSX round trip preserves all rows, styles, filters, text names and leadin
  data.violations=Array.from({length:121},(_,i)=>({id:i,date:'2026-10-01',class_id:'a',class_name:'1A Banin',student_name:'=1+1',violation_name:'Contoh',points:1}));
  const wb=await workbook(ExcelJS,data,filter),buffer=await wb.xlsx.writeBuffer(),loaded=new ExcelJS.Workbook();await loaded.xlsx.load(buffer);
  assert.equal(loaded.worksheets.length,7);const abs=loaded.getWorksheet('Absensi');assert.equal(abs.getCell('B7').value,'=1+1');assert.equal(abs.getCell('B7').type,ExcelJS.ValueType.String);assert.equal(abs.getCell('C7').value,'0012');assert.equal(abs.getCell('J7').numFmt,'0.0%');assert.equal(abs.getCell('B7').font.name,'Tahoma');assert.equal(abs.views[0].ySplit,6);assert.equal(abs.pageSetup.orientation,'landscape');assert.equal(loaded.getWorksheet('Kedisiplinan').rowCount,127);assert.ok(abs.autoFilter);
- fs.writeFileSync('/tmp/cq-report-qa.xlsx',buffer);
+ fs.writeFileSync(require('node:path').join(require('node:os').tmpdir(),'cq-report-qa.xlsx'),buffer);
 });
 function backend(rows={},failTable=''){
  let handler,reads=0;
@@ -27,7 +27,7 @@ function backend(rows={},failTable=''){
   then(resolve,reject){reads++;if(this.name===failTable)return Promise.resolve({data:null,error:Error('read failed')}).then(resolve,reject);let data=(rows[this.name]||[]).filter(x=>this.filters.every(f=>f(x)));data=data.slice().sort((a,b)=>{for(const k of this.orders){const c=String(a[k]).localeCompare(String(b[k]));if(c)return c}return 0}).slice(this.start,this.end+1);return Promise.resolve({data:this.single?data[0]||null:data,error:null}).then(resolve,reject)}
  }
  const context={createClient:()=>({from:name=>new Q(name)}),Deno:{env:{get:()=> 'test'},serve:f=>handler=f},crypto:require('node:crypto').webcrypto,TextEncoder,Response,Request,console,Intl,Date};
- const source=fs.readFileSync('supabase/functions/student-affairs-center/index.ts','utf8').replace(/^import .*\n/gm,'');
+ const source=fs.readFileSync('supabase/functions/student-affairs-center/index.ts','utf8').replace(/^import .*\r?\n/gm,'');
  const exportSource=fs.readFileSync('supabase/functions/student-affairs-center/report-export.ts','utf8').replace('export async function','async function');
  vm.createContext(context);vm.runInContext(stripTypeScriptTypes('(function(){'+exportSource+';globalThis.reportExport=reportExport;})();'),context);vm.runInContext(stripTypeScriptTypes(source)+'\nglobalThis.runReport=b=>reportExport(sb,b);',context);
  return {context,handler,reads:()=>reads};

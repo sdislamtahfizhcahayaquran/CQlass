@@ -2,7 +2,7 @@ const fs=require('node:fs'),cp=require('node:child_process'),assert=require('nod
 const {stripTypeScriptTypes}=require('node:module');
 const tracked=new Set(cp.execFileSync('git',['ls-files'],{encoding:'utf8'}).trim().split('\n').filter(f=>fs.existsSync(f)));
 for(const f of tracked){
- if(f.endsWith('.ts'))cp.execFileSync(process.execPath,['--check','--input-type=module'],{input:stripTypeScriptTypes(fs.readFileSync(f,'utf8')),stdio:'pipe'});
+ if(f.endsWith('.ts'))cp.execFileSync(process.execPath,['--check','--input-type=module'],{input:stripTypeScriptTypes(fs.readFileSync(f,'utf8'),{mode:'transform'}),stdio:'pipe'});
  if(f.endsWith('.html')){const dom=new JSDOM(fs.readFileSync(f,'utf8'));for(const script of dom.window.document.querySelectorAll('script:not([src])'))if(!script.type||['text/javascript','module'].includes(script.type))cp.execFileSync(process.execPath,['--check','--input-type='+ (script.type==='module'?'module':'commonjs')],{input:script.textContent,stdio:'pipe'});dom.window.close()}
  if(/\.(js|cjs)$/.test(f))cp.execFileSync(process.execPath,['--check',f],{stdio:'pipe'});
  if(!/\.(js|html|css)$/.test(f))continue;
@@ -28,5 +28,7 @@ for(const role of ['kabid_quran','guru','admin','walas']){
  const items=w.MODULE_GROUPS.flatMap(g=>g.items);assert.equal(items.length,role==='kabid_quran'?7:0);assert.equal(new Set(items.map(x=>x.id)).size,items.length);assert.equal(w.document.getElementById('content').style.visibility,'');
  if(role==='kabid_quran'){for(const it of items){it.render();const path=w.document.querySelector('iframe').getAttribute('src').split('?')[0];assert(tracked.has(path),path)}}dom.window.close();
 }
-const dom=new JSDOM('<div id="content"></div>',{runScripts:'outside-only'}),w=dom.window;w.currentUser={role:'akademik'};let route;w.setActiveModule=id=>route=id;w.eval(fs.readFileSync('academic-download-data.js','utf8'));w.renderAcademicDownloadData(w.document.getElementById('content'));w.document.querySelector('[data-dl="Nilai"]').click();assert.equal(route,'legger-live');assert(!fs.readFileSync('academic-download-data.js','utf8').includes('getLeggerNilai'));dom.window.close();
-console.log('PASS: repository JS syntax and tracked dependencies; 15 roles avoid duplicate eager loaders; one Partner loader; native Quran menu/reveal intact; score download uses Monitoring Nilai route.');
+const dom=new JSDOM('<div id="content"></div>',{runScripts:'outside-only'}),w=dom.window;w.currentUser={role:'akademik'};let route;w.setActiveModule=id=>route=id;w.eval(fs.readFileSync('academic-download-data.js','utf8'));w.renderAcademicDownloadData(w.document.getElementById('content'));
+// Sejak 2026-11-02 Download Data memakai kategori + preview (bukan tombol per jenis); Leger Nilai diambil dari Supabase, bukan Apps Script.
+assert(w.document.querySelector('#ad-kind option[value="nilai"]'),'Leger Nilai category available');assert(!fs.readFileSync('academic-download-data.js','utf8').includes('getLeggerNilai'));dom.window.close();
+console.log('PASS: repository JS syntax and tracked dependencies; 15 roles avoid duplicate eager loaders; one Partner loader; native Quran menu/reveal intact; score download offers the Leger Nilai category without Apps Script.');
