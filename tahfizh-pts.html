@@ -73,5 +73,5 @@ async function loadRoster(){const seq=++periodRequest,cid=el('kelas').value,sem=
 async function save(){const cid=el('kelas').value;if(!loadedPeriod||loadedPeriod.class_id!==cid||loadedPeriod.semester_no!==Number(el('semester').value)||loadedPeriod.academic_year_id!==boot?.academic_year_id)return setStatus('Muat ulang siswa pada periode terpilih sebelum menyimpan.',true);commit(document.activeElement);const items=[...el('tbody').querySelectorAll('tr')].map(tr=>{const o={student_id:tr.dataset.id};tr.querySelectorAll('[data-k]').forEach(x=>o[x.dataset.k]=x.value.trim());return o});if(!items.length)return;const b=el('save');try{b.disabled=true;b.textContent='Menyimpan...';const j=await api({action:'save',...loadedPeriod,items});setStatus(j.message+` Terverifikasi: ${j.verified} siswa.`);b.textContent='Tersimpan ✓';setTimeout(()=>b.textContent='Simpan Semua ke Supabase',1600);await loadRoster()}catch(e){setStatus(e.message,true);b.textContent='Simpan Semua ke Supabase'}finally{b.disabled=false}}
 el('load').onclick=loadRoster;el('save').onclick=save;el('kelas').onchange=updateMaterialInfo;el('semester').onchange=()=>init(Number(el('semester').value));init();
 </script>
-<script defer src="image-zoom.js?v=20261124-zoom1"></script></body>
+<script defer src="image-zoom.js?v=20261124-zoom2"></script></body>
 </html>
