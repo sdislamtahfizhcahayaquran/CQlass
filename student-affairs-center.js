@@ -24,7 +24,13 @@ const caseStatus=x=>{const s=String(x.handlingStatus||'').toLowerCase();if(s==='
 const caseStatusLabel=s=>({belum_ditangani:'Belum Ditangani',dalam_penanganan:'Dalam Penanganan',eskalasi:'Eskalasi',selesai:'Sudah Ditangani'}[s]||s);
 async function caseData(){
   const own=await api('list',{kind:'affairs',record_type:'kasus',start_date:caseState.from,end_date:caseState.to});
-  const rep=await api('report',{start_date:caseState.from,end_date:caseState.to});
+  // Kasus walas diambil lewat RPC ringan; aksi 'report' memuat semua sesi Morning Talk dan gagal (Bad Request) untuk rentang panjang.
+  let rep;
+  try{
+    const h=headers(),base=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
+    const r=await fetch(base+'/rest/v1/rpc/kesiswaan_case_notes',{method:'POST',headers:h,body:JSON.stringify({p_token:h['x-session-token']||'',p_from:caseState.from||null,p_to:caseState.to||null})});
+    const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.message||d.error||'case_notes_failed');rep=d;
+  }catch(_){rep=await api('report',{start_date:caseState.from,end_date:caseState.to})}
   const a=(own.rows||[]).map(x=>({id:x.id,source:'kesiswaan',sourceLabel:'Temuan Kesiswaan',date:x.record_date,student:x.students?.full_name||'-',classId:x.class_id,className:x.classes?.name||[x.classes?.grade_level,x.classes?.rombel,x.classes?.gender_group].filter(Boolean).join(' ')||'-',title:x.title||'-',detail:x.description||'',follow:x.follow_up||'',handlingStatus:x.status||'belum_ditangani',urgent:['tinggi','darurat'].includes(String(x.priority||'').toLowerCase()),priority:x.priority||'normal',escalation:x.escalation_to||''}));
   const b=(rep.cases||[]).map(x=>({id:x.id,source:'walas',sourceLabel:'Laporan Guru/Walas',date:x.incident_date||x.date,student:x.student_name||'-',classId:x.class_id,className:x.class_name||'-',title:x.main_problem||x.category||'Kasus siswa',detail:x.summary||x.story||'',follow:x.student_affairs_follow_up||'',handlingStatus:x.student_affairs_status||'belum_ditangani',urgent:!!x.urgent||/tinggi|darurat|urgent/i.test(String(x.attention_level||'')),priority:x.attention_level||'',escalation:x.escalation_to||''}));
   caseState.rows=[...a,...b].sort((x,y)=>String(y.date||'').localeCompare(String(x.date||'')));
