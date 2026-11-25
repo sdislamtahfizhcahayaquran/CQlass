@@ -53,7 +53,9 @@
         });
 
         if(i>0)pdf.addPage('a4','portrait');
-        pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,210,297,undefined,'SLOW');
+        // PNG tetap lossless (gambar identik); kompresi FAST jauh lebih cepat daripada SLOW, file sedikit lebih besar.
+        pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,210,297,undefined,'FAST');
+        try{window.cqPdfProgress?.(i+1,pages.length)}catch(_){}
         canvas.width=1;
         canvas.height=1;
       }
