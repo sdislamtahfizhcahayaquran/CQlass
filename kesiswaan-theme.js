@@ -140,6 +140,20 @@ ${C} .cqk-meta{font-size:13px}
 ${C} .cq-role-hero,${C} .rd-hero{display:none!important}
 
 
+/* ---------- baris tab menu (subnav) ---------- */
+${C} > .cqk-subnav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  margin:-4px 0 18px;padding:10px 12px;border-radius:14px;background:rgba(12,40,48,.94);backdrop-filter:blur(8px);
+  border:1px solid rgba(45,212,191,.22);box-shadow:0 10px 24px -14px rgba(12,40,48,.6)}
+${C} > .cqk-subnav .cqk-subnav-title{display:flex;align-items:center;gap:8px;color:#fff;font-family:var(--k-display);font-size:15px;padding:0 6px 0 4px}
+${C} > .cqk-subnav .cqk-subnav-title .cqk-i{color:var(--k-cahaya)}
+${C} > .cqk-subnav .cqk-subnav-tabs{display:flex;gap:6px;flex-wrap:wrap}
+${C} > .cqk-subnav .cqk-subtab{position:relative;border:1px solid rgba(207,230,227,.18);background:transparent;color:#BFD6D3;border-radius:999px;
+  padding:8px 16px;font:500 14px/1 var(--k-font);cursor:pointer;min-height:38px;transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
+${C} > .cqk-subnav .cqk-subtab:hover{color:#fff;border-color:rgba(45,212,191,.55);background:rgba(45,212,191,.08)}
+${C} > .cqk-subnav .cqk-subtab.active{color:var(--k-malam);background:var(--k-cahaya);border-color:var(--k-cahaya);font-weight:600;box-shadow:0 0 16px rgba(45,212,191,.55)}
+${C} > .cqk-subnav .cqk-subtab:focus-visible{outline:2px solid var(--k-cahaya);outline-offset:2px}
+@media (max-width:640px){${C} > .cqk-subnav{gap:8px}${C} > .cqk-subnav .cqk-subnav-tabs{overflow-x:auto;flex-wrap:nowrap;width:100%}${C} > .cqk-subnav .cqk-subtab{white-space:nowrap}}
+
 /* ================= interaksi futuristik (palet tetap: Malam · Zamrud · Cahaya) ================= */
 /* garis cahaya di bawah header: gradasi tetap, satu sapuan saat halaman dibuka */
 ${P} .topbar{position:relative}
@@ -206,7 +220,7 @@ ${C} .cqk-row.urgent .cqk-av{box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(200,67,47,
 
 
 /* riak cahaya pada klik — hanya di role Kesiswaan */
-const FX_SEL='.cqk-btn,.btn,.sac-btn,.kd-load,.krek-btn,.ksr2-btn,.kcv-btn,.cqi-btn,.late-primary,.cqk-card,.cqk-strip-i,#sidebar .cqk-nav,.ksr2-tab,.cqir-tabs button,.late-tabs button';
+const FX_SEL='.cqk-subtab,.cqk-btn,.btn,.sac-btn,.kd-load,.krek-btn,.ksr2-btn,.kcv-btn,.cqi-btn,.late-primary,.cqk-card,.cqk-strip-i,#sidebar .cqk-nav,.ksr2-tab,.cqir-tabs button,.late-tabs button';
 document.addEventListener('pointerdown',e=>{
   if(!document.body.classList.contains('cq-kes-ui'))return;
   if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;

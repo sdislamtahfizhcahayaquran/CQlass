@@ -45,11 +45,27 @@ test('SALAM selesai lewat student-affairs-center tanpa menghapus PIC/target/cata
  dom.window.close();
 });
 
-test('Sidebar Kesiswaan: ada Pengingat, tanpa menu kembar/placeholder, menu jarang di Lainnya', ()=>{
- const {w,dom}=setup();const ids=[...w.document.querySelectorAll('#sidebar [data-kes-nav]')].map(x=>x.dataset.kesNav);
- assert.ok(ids.includes('kes-pengingat'));assert.ok(!ids.includes('kes-laporan-kelas'));assert.ok(!ids.includes('kes-controlling-mt'));assert.ok(!ids.includes('kes-perizinan'));
- w.document.querySelector('[data-kes-more]').click();
- assert.ok([...w.document.querySelectorAll('#sidebar [data-kes-nav]')].some(x=>x.dataset.kesNav==='kes-perizinan'));
+test('Sidebar Kesiswaan: 6 menu, tab per menu, menu dobel/kosong tidak tampil', ()=>{
+ const {w,dom}=setup();
+ const hubs=[...w.document.querySelectorAll('#sidebar [data-kes-hub]')].map(x=>x.dataset.kesHub);
+ assert.deepEqual(hubs,['beranda','kasus','salam','surat','monitor','laporan']);
+ const routes=w.__cqKesHubs.flatMap(h=>h.tabs.map(t=>t[0]));
+ for(const gone of ['kes-laporan-kelas','kes-controlling-mt','kes-perizinan','kes-muhadhoroh','kes-program','kes-prestasi'])assert.ok(!routes.includes(gone),gone);
+ assert.equal(new Set(routes).size,routes.length,'tidak ada halaman dobel');
+ // buka menu Kasus Siswa -> tab pertama aktif, baris tab muncul di atas konten
+ w.renderKesiswaanCases=null;w.document.querySelector('[data-kes-hub="kasus"]').click();
+ assert.equal(w.activeModule,'kes-pendampingan');
+ const sub=w.document.querySelector('#content > .cqk-subnav');assert.ok(sub);
+ assert.deepEqual([...sub.querySelectorAll('[data-kes-route]')].map(b=>b.dataset.kesRoute),['kes-pendampingan','kes-kebutuhan','kes-masalah-kelas','kes-rekap-masalah']);
+ dom.window.close();
+});
+
+test('Baris tab dipasang ulang bila modul menggambar ulang #content', async()=>{
+ const {w,dom}=setup();w.document.querySelector('[data-kes-hub="salam"]').click();
+ const c=w.document.getElementById('content');c.innerHTML='<div>modul menggambar ulang</div>';await tick();
+ assert.ok(c.firstElementChild.classList.contains('cqk-subnav'));
+ c.querySelector('[data-kes-route="kes-salam-rekap"]').click();assert.equal(w.activeModule,'kes-salam-rekap');
+ assert.equal(c.querySelector('.cqk-subtab.active').dataset.kesRoute,'kes-salam-rekap');
  dom.window.close();
 });
 
