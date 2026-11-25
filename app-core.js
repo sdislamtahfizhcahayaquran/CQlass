@@ -826,7 +826,8 @@ MODULE_GROUPS.push({
 });
 
 // Dashboard utama untuk Walas, Kesiswaan, dan Pimpinan.
-const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas','pimpinan'], built: true, render: renderDashboard };
+// Guru juga punya Dashboard (role-dashboard menyiapkan "Dashboard Guru"), jadi semua guru mulai dari Dashboard saat login.
+const DASHBOARD_MODULE = { id: 'dashboard', label: 'Dashboard', roles: ['walas','pimpinan','guru'], built: true, render: renderDashboard };
 
 function findModuleByIdV2(id) {
   if (id === 'dashboard') return DASHBOARD_MODULE;
@@ -848,6 +849,8 @@ let openGroupId = null;
 let bellIntervalId = null;
 
 function enterApp(){
+  // Mulai dari Dashboard dengan semua sub-menu sidebar tertutup (juga saat ganti akun tanpa memuat ulang halaman).
+  openGroupId = null;
   if(currentUser) saveAuthSession(getAuthToken(),localStorage.getItem(AUTH_STORAGE.EXPIRES)||'',currentUser);
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
