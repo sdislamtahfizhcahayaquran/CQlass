@@ -31,7 +31,8 @@
     'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c),
     'kes-laporan-kelas':c=>window.renderKesiswaanProblemRecap?.(c),
     'kes-cover-rapor':c=>window.renderKesiswaanCoverRapor?.(c),
-    'kes-pengingat':c=>window.renderKesiswaanReminders?.(c)
+    'kes-pengingat':c=>window.renderKesiswaanReminders?.(c),
+    'kes-surat':c=>window.renderKesiswaanLetters?.(c)
   };
 
   function renderControllingMt(content){
@@ -46,7 +47,7 @@
     {id:'beranda',label:'Beranda',icon:'bell',badge:true,tabs:[['kes-pengingat','Pengingat']]},
     {id:'kasus',label:'Kasus Siswa',icon:'heartHand',tabs:[['kes-pendampingan','Kasus & Pendampingan'],['kes-kebutuhan','Kebutuhan Khusus'],['kes-masalah-kelas','Masalah Kelas'],['kes-rekap-masalah','Rekap Masalah']]},
     {id:'salam',label:'SALAM CQ',icon:'chat',tabs:[['kes-salam-cq','Pesan Masuk'],['kes-salam-rekap','Rekap']]},
-    {id:'surat',label:'Surat & Dokumen',icon:'mailClock',tabs:[['kes-rekap-keterlambatan','Keterlambatan & SP'],['kes-cover-rapor','Cover Rapor']]},
+    {id:'surat',label:'Surat & Dokumen',icon:'mailClock',tabs:[['kes-surat','Buat Surat'],['kes-rekap-keterlambatan','Keterlambatan & SP'],['kes-cover-rapor','Cover Rapor']]},
     {id:'monitor',label:'Monitoring Walas',icon:'monitor',tabs:[['rekap-input-poin','Input Poin'],['kes-pemantauan-harian','Pemantauan Harian'],['kesiswaan-rekapan','Rekap per Kelas']]},
     {id:'laporan',label:'Laporan',icon:'report',tabs:[['laporan-kesiswaan-super','Laporan Lengkap'],['dashboard','Statistik'],['laporan-promosi','Promosi Socmed']]}
   ];
