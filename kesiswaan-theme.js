@@ -1,4 +1,4 @@
-/* CQlass — Tema "Ruang Pantau Cahaya" khusus role Kabid Kesiswaan.
+/* CQlass — Tema "Ruang Pantau Cahaya" khusus role Kabid Kesiswaan (warna asli CQlass: putih + toska, aksen cahaya).
    Hanya aktif saat role kesiswaan/kabid_kesiswaan (body.cq-kes-ui); role lain tidak tersentuh.
    Lexend (mudah dibaca) untuk teks & isian, Space Grotesk untuk judul & angka.
    Dokumen cetak (surat keterlambatan, cover rapor) tidak diubah: tetap Tahoma. */
@@ -32,37 +32,35 @@ function css(){
   s.textContent=`
 ${P}{
   --k-malam:#0C2830;--k-malam-2:#123642;--k-malam-3:#1B4651;
-  --k-zamrud:#0B7A64;--k-zamrud-2:#09624F;--k-cahaya:#2DD4BF;--k-cahaya-soft:rgba(45,212,191,.22);
+  --k-zamrud:#0A6E6E;--k-zamrud-2:#085C5C;--k-cahaya:#2DD4BF;--k-cahaya-soft:rgba(45,212,191,.22);
   --k-kertas:#F2F6F6;--k-tinta:#12302F;--k-tinta-2:#4A6766;--k-garis:#D9E5E4;--k-garis-2:#E7EFEE;
   --k-amber:#D9911A;--k-merah:#C8432F;
   --k-font:'Lexend','Plus Jakarta Sans',system-ui,sans-serif;--k-display:'Space Grotesk','Lexend',system-ui,sans-serif;
   background:var(--k-kertas);
 }
-/* ---------- kerangka: topbar + rel navigasi ---------- */
-${P} .topbar{background:var(--k-malam)!important;border-bottom:1px solid rgba(45,212,191,.18)!important;box-shadow:0 1px 0 rgba(0,0,0,.2)!important;color:#E6F4F2!important;font-family:var(--k-font)!important}
+/* ---------- kerangka: warna asli CQlass (putih + toska) dengan aksen cahaya ---------- */
+${P} .topbar{background:linear-gradient(100deg,#085C5C 0%,var(--k-zamrud) 45%,#0E8478 100%)!important;color:#fff!important;border-bottom:0!important;box-shadow:0 6px 22px -10px rgba(10,110,110,.65)!important;font-family:var(--k-font)!important}
 ${P} .topbar .topbar-title{color:#fff!important;font-family:var(--k-display)!important;letter-spacing:-.01em}
-${P} .topbar .topbar-title span{color:#8FB8B4!important;font-family:var(--k-font)!important}
-${P} .topbar #user-name{color:#E6F4F2!important;font-weight:500}
-${P} .topbar .role-badge{background:rgba(45,212,191,.12)!important;color:var(--k-cahaya)!important;border:1px solid rgba(45,212,191,.35)!important;font-family:var(--k-font)!important;font-weight:600!important;text-transform:none!important;letter-spacing:0!important}
-${P} .topbar .account-btn,${P} .topbar .logout-btn,${P} .topbar .bell-btn{background:transparent!important;color:#CFE6E3!important;border:1px solid rgba(207,230,227,.25)!important;border-radius:9px!important;font-family:var(--k-font)!important}
-${P} .topbar .account-btn:hover,${P} .topbar .logout-btn:hover,${P} .topbar .bell-btn:hover{border-color:var(--k-cahaya)!important;color:#fff!important}
-${P} #sidebar,${P} .sidebar{background:linear-gradient(180deg,var(--k-malam) 0%,#0A222A 100%)!important;background-image:linear-gradient(180deg,var(--k-malam) 0%,#0A222A 100%)!important;border-right:1px solid rgba(45,212,191,.14)!important;color:#CFE3E1}
+${P} .topbar .topbar-title span{color:#CFEDEA!important;font-family:var(--k-font)!important}
+${P} .topbar #user-name{color:#fff!important;font-weight:500}
+${P} .topbar .role-badge{background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(184,255,243,.55)!important;font-family:var(--k-font)!important;font-weight:600!important;text-transform:none!important;letter-spacing:0!important;box-shadow:0 0 14px -2px rgba(45,212,191,.7)}
+${P} .topbar :is(.account-btn,.logout-btn,.bell-btn){background:rgba(255,255,255,.1)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;font-family:var(--k-font)!important;border-radius:9px!important;transition:box-shadow .2s,border-color .2s,background .2s}
+${P} .topbar :is(.account-btn,.logout-btn,.bell-btn):hover{background:rgba(255,255,255,.2)!important;border-color:#B8FFF3!important;box-shadow:0 0 0 3px rgba(184,255,243,.25)!important}
+${P} #sidebar,${P} .sidebar{background:linear-gradient(180deg,#FFFFFF 0%,#F1FAF7 100%)!important;background-image:linear-gradient(180deg,#FFFFFF 0%,#F1FAF7 100%)!important;border-right:1px solid #DCEBE8!important;color:#2C4A48}
 @media (min-width:861px){${P} .sidebar{width:252px!important;flex:none}}
 ${P} #sidebar .cqk-side{font-family:var(--k-font);padding:16px 12px 28px}
-${P} #sidebar .cqk-nav{position:relative;color:#BFD6D3;font-family:var(--k-font);font-weight:400;font-size:14px;border-radius:10px;min-height:42px}
-${P} #sidebar .cqk-nav .cqk-i{opacity:.75}
-${P} #sidebar .cqk-nav:hover{background:rgba(45,212,191,.08);color:#fff}
+${P} #sidebar .cqk-nav{position:relative;color:#2C4A48;font-family:var(--k-font);font-weight:400;font-size:14.5px;border-radius:11px;min-height:44px}
+${P} #sidebar .cqk-nav .cqk-i{opacity:.8;color:var(--k-zamrud)}
+${P} #sidebar .cqk-nav:hover{background:#EAF5F3;color:#0B5E5A}
 ${P} #sidebar .cqk-nav:focus-visible{outline:2px solid var(--k-cahaya);outline-offset:1px}
-${P} #sidebar .cqk-nav.active{background:linear-gradient(90deg,rgba(45,212,191,.20),rgba(45,212,191,.04));color:#fff;font-weight:600;box-shadow:none}
-${P} #sidebar .cqk-nav.active .cqk-i{opacity:1;color:var(--k-cahaya)}
-/* garis cahaya: satu-satunya efek "menyala", menandai posisi Anda */
-${P} #sidebar .cqk-nav.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--k-cahaya);box-shadow:0 0 12px 2px rgba(45,212,191,.75)}
+/* menu aktif: toska bergradasi yang berpendar */
+${P} #sidebar .cqk-nav.active{background:linear-gradient(135deg,var(--k-zamrud) 0%,#0E8F84 60%,#14A89A 100%);color:#fff;font-weight:600;box-shadow:0 8px 20px -8px rgba(10,110,110,.6),0 0 0 1px rgba(45,212,191,.35)}
+${P} #sidebar .cqk-nav.active .cqk-i{opacity:1;color:#fff}
+${P} #sidebar .cqk-nav.active::before{content:'';position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:#B8FFF3;box-shadow:0 0 10px 2px rgba(45,212,191,.9)}
 @media (prefers-reduced-motion:no-preference){${P} #sidebar .cqk-nav.active::before{animation:cqk-lamp .7s ease-out 1}}
 @keyframes cqk-lamp{from{opacity:0;transform:scaleY(.3)}to{opacity:1;transform:none}}
-${P} #sidebar .cqk-sec{color:#6F9793;font-size:12px;font-weight:500;letter-spacing:.02em;text-transform:none;margin:18px 12px 6px}
-${P} #sidebar .cqk-more{color:#6F9793}${P} #sidebar .cqk-more span{text-transform:none;letter-spacing:.02em;font-size:12px;font-weight:500}
-${P} #sidebar .cqk-badge{background:var(--k-merah)!important;color:#fff!important;font-family:var(--k-display)}
-${P} #sidebar .cqk-nav.active .cqk-badge{background:#fff!important;color:var(--k-merah)!important}
+${P} #sidebar .cqk-badge{background:#C8432F!important;color:#fff!important;font-family:var(--k-display);box-shadow:0 0 10px rgba(200,67,47,.45)}
+${P} #sidebar .cqk-nav.active .cqk-badge{background:#fff!important;color:#C8432F!important}
 
 /* ---------- area kerja ---------- */
 ${P} .content,${P} #content{background-color:var(--k-kertas)!important;background-image:radial-gradient(rgba(11,122,100,.07) 1px,transparent 1px)!important;background-size:22px 22px!important;color:var(--k-tinta);font-family:var(--k-font);font-size:15px;line-height:1.55}
@@ -110,7 +108,7 @@ ${C} :is(button,a,[tabindex]):focus-visible{outline:2px solid var(--k-cahaya)!im
 
 /* tab */
 ${C} :is(.ksr2-tab,.cqir-tabs button,.late-tabs button,.bi-tab){font-family:var(--k-font)!important;font-size:14px!important;font-weight:500!important;border-radius:999px!important}
-${C} :is(.ksr2-tab.active,.ksr2-tab[aria-selected=true],.cqir-tabs button.active,.late-tabs button[aria-selected=true],.late-tabs button.active){background:var(--k-malam)!important;color:#fff!important;border-color:var(--k-malam)!important}
+${C} :is(.ksr2-tab.active,.ksr2-tab[aria-selected=true],.cqir-tabs button.active,.late-tabs button[aria-selected=true],.late-tabs button.active){background:linear-gradient(135deg,var(--k-zamrud),#12A094)!important;color:#fff!important;border-color:transparent!important}
 
 /* tabel: lega, header jelas, baris menyala saat disorot */
 ${C} table${PRINT}{border-collapse:separate!important;border-spacing:0!important;font-size:14px!important;font-variant-numeric:tabular-nums}
@@ -129,7 +127,7 @@ ${P} :is(.sac-box,.kcv-modal-box,.cqi){border-radius:16px!important;font-family:
 ${P} :is(.sac-box h2,.cqi-h h2){font-family:var(--k-display)!important;font-weight:600!important}
 
 /* Pengingat & strip dashboard memakai palet yang sama */
-${C} .cqk-head h1 .cqk-hico{background:var(--k-malam);color:var(--k-cahaya)}
+${C} .cqk-head h1 .cqk-hico{background:linear-gradient(135deg,var(--k-zamrud),#12A094);color:#fff;box-shadow:0 0 14px rgba(45,212,191,.5)}
 ${C} .cqk-card.active{border-color:var(--k-zamrud)!important;box-shadow:0 0 0 3px var(--k-cahaya-soft)!important}
 ${C} .cqk-row:hover{background:#FAFDFC}
 ${C} .cqk-name-btn{font-family:var(--k-font);font-weight:600;font-size:15px}
@@ -142,15 +140,16 @@ ${C} .cq-role-hero,${C} .rd-hero{display:none!important}
 
 /* ---------- baris tab menu (subnav) ---------- */
 ${C} > .cqk-subnav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  margin:-4px 0 18px;padding:10px 12px;border-radius:14px;background:rgba(12,40,48,.94);backdrop-filter:blur(8px);
-  border:1px solid rgba(45,212,191,.22);box-shadow:0 10px 24px -14px rgba(12,40,48,.6)}
-${C} > .cqk-subnav .cqk-subnav-title{display:flex;align-items:center;gap:8px;color:#fff;font-family:var(--k-display);font-size:15px;padding:0 6px 0 4px}
-${C} > .cqk-subnav .cqk-subnav-title .cqk-i{color:var(--k-cahaya)}
+  margin:-4px 0 18px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);
+  border:1px solid rgba(45,212,191,.35);box-shadow:0 10px 26px -16px rgba(10,110,110,.55),inset 0 1px 0 #fff}
+${C} > .cqk-subnav::after{content:'';position:absolute;left:16px;right:16px;bottom:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--k-cahaya),transparent);opacity:.7}
+${C} > .cqk-subnav .cqk-subnav-title{display:flex;align-items:center;gap:8px;color:var(--k-tinta);font-family:var(--k-display);font-size:15px;padding:0 6px 0 4px}
+${C} > .cqk-subnav .cqk-subnav-title .cqk-i{color:var(--k-zamrud)}
 ${C} > .cqk-subnav .cqk-subnav-tabs{display:flex;gap:6px;flex-wrap:wrap}
-${C} > .cqk-subnav .cqk-subtab{position:relative;border:1px solid rgba(207,230,227,.18);background:transparent;color:#BFD6D3;border-radius:999px;
+${C} > .cqk-subnav .cqk-subtab{position:relative;border:1px solid #D3E6E3;background:#fff;color:#2C4A48;border-radius:999px;
   padding:8px 16px;font:500 14px/1 var(--k-font);cursor:pointer;min-height:38px;transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
-${C} > .cqk-subnav .cqk-subtab:hover{color:#fff;border-color:rgba(45,212,191,.55);background:rgba(45,212,191,.08)}
-${C} > .cqk-subnav .cqk-subtab.active{color:var(--k-malam);background:var(--k-cahaya);border-color:var(--k-cahaya);font-weight:600;box-shadow:0 0 16px rgba(45,212,191,.55)}
+${C} > .cqk-subnav .cqk-subtab:hover{color:var(--k-zamrud);border-color:var(--k-cahaya);box-shadow:0 0 0 3px var(--k-cahaya-soft)}
+${C} > .cqk-subnav .cqk-subtab.active{color:#fff;background:linear-gradient(135deg,var(--k-zamrud),#12A094);border-color:transparent;font-weight:600;box-shadow:0 6px 16px -6px rgba(10,110,110,.6),0 0 14px rgba(45,212,191,.45)}
 ${C} > .cqk-subnav .cqk-subtab:focus-visible{outline:2px solid var(--k-cahaya);outline-offset:2px}
 @media (max-width:640px){${C} > .cqk-subnav{gap:8px}${C} > .cqk-subnav .cqk-subnav-tabs{overflow-x:auto;flex-wrap:nowrap;width:100%}${C} > .cqk-subnav .cqk-subtab{white-space:nowrap}}
 
