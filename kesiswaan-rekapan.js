@@ -8,30 +8,8 @@
   const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvxcgktiord.supabase.co');
   const API=BASE+'/functions/v1/student-affairs-center';
   const UKS_API=BASE+'/functions/v1/uks-duty';
-  const WALAS={
-    '03985f8c-bec2-4d14-b64f-da1452bd5857':'Adek Afrisilia, S.Hum.',
-    '3227ac78-8c2f-4b41-a33e-8a9feadedb2f':'Muhammad Ilham, M.Pd.',
-    '0954658b-1145-47c7-80e2-72a0266c6dd4':'Desyifa Fauziah, S.Kom.',
-    '74fcd604-75a4-432b-8a78-ab7a2c68d9fa':'Dimas Hudda Satriani, S.Pd.',
-    'd9c1b839-1141-40c1-beab-56f7bd46aa30':'Mulya Widianti, S.Hum',
-    '23a912da-5497-4b58-b079-425d09f77371':'Hafizh Maulana S., S.Sos',
-    '29ee5d4b-0c58-4f36-971e-e59bec30a088':'Devita Irmayani, S.Pd.',
-    '177e4442-72e0-4f26-a0b3-4ce194731523':'M. Faris Aufarinsan, Lc',
-    '4ab7c126-94fe-44e3-8fae-1b22d2735d18':'Karina Vega Irawan, S.Pd.',
-    '8db93779-b0c1-47d6-a67e-f8632d93d4b6':'Yazid Abdurrohman, S.Pd.',
-    'd4dd18d2-1582-4c0a-8354-10e2b7e9ce60':'Najwa Azka Khairani, S.Pd.',
-    '31c7c96f-c0f2-49a8-95ab-6bba7e8e6acf':'Faaruq Ibrahim, S.Pd.',
-    'd6d00d82-3c49-41b5-976f-27b8398f8b2a':'Dianita Priliasari, S.Pd.',
-    '0e91ad73-707c-454f-81c1-b15b77356a31':'M. Luthfi Taufiqurrahman, S.H',
-    '02e8083c-eb84-4ead-95c0-4fa20c35969a':'Salma Khoirunisa, S.Pd.',
-    '2739e845-671e-4d6b-bc7d-9c346551a548':'Arif Hidayat',
-    'ab5dcf6d-fa2a-4b4a-8a98-48c0fb0992d1':'Aghista Putri Amelia, S.Pd.',
-    '2bd4fe85-c28e-452f-988b-7b339d53bf64':'Ahmad Naufal Ekasukma, S.Ag.',
-    'f962edc7-f012-4914-9675-0a89738a94bf':'Zeni Hardiyanita, S.Pd.',
-    'a654db89-312e-480b-9acc-6068fc2cdfe2':"Muhammad Sa'ad Salim, S.Sos.",
-    '2272ba1a-9a4e-447a-9996-8a4232b4d792':'Dila Nur Azizah, S.Pd.',
-    '4fa0f6ad-e5b2-4a13-bf64-fd798c8e4da5':'Abdurrokhman, M.Pd.'
-  };
+  const HOMEROOM_RPC=BASE+'/rest/v1/rpc/kesiswaan_homerooms';
+  // Nama walas diambil dari penugasan walas di Admin (report_class_assignments) lewat backend.
   const S={from:'',to:'',data:null,selected:null,uksSchedule:[],uksStatuses:[],timesheet:[],loadId:0};
 
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -158,7 +136,7 @@
     const d=S.data||{},classes=d.classes||[],roster=d.roster||[],att=d.attendance||[],rw=d.rewards||[],vi=d.violations||[],uks=d.uks||[];
     return classes.map(c=>{
       const cid=String(c.id),students=roster.filter(x=>String(x.class_id)===cid),a=att.filter(x=>String(x.class_id)===cid),r=rw.filter(x=>String(x.class_id)===cid),v=vi.filter(x=>String(x.class_id)===cid);
-      return{...c,walas:WALAS[cid]||'Belum ditetapkan',students,a,r,v,uks};
+      return{...c,walas:String((S.homerooms||{})[cid]||'').trim()||'Belum ditetapkan',students,a,r,v,uks};
     }).sort((a,b)=>Number(a.grade_level)-Number(b.grade_level)||String(a.name).localeCompare(String(b.name),'id',{numeric:true}));
   }
   function dateKey(value){return String(value||'').slice(0,10)}
@@ -341,13 +319,15 @@
     body.innerHTML='<div class="krek-loading">Memuat rekapan Kesiswaan…</div>';
     try{
       const range={start_date:S.from,end_date:S.to};
-      const [report,schedule,timesheet]=await Promise.all([
+      const [report,schedule,timesheet,homeroom]=await Promise.all([
         post({action:'report',...range}),
         postUks({action:'schedule',...range}),
-        post({action:'timesheet_recap',...range})
+        post({action:'timesheet_recap',...range}),
+        request(HOMEROOM_RPC,{p_token:token()}).catch(()=>({homerooms:{}}))
       ]);
       if(loadId!==S.loadId)return;
       S.data=report;
+      S.homerooms=homeroom.homerooms||{};
       S.uksSchedule=schedule.schedule||[];
       S.uksStatuses=schedule.duty_statuses||[];
       S.timesheet=timesheet.rows||[];

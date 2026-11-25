@@ -30,7 +30,8 @@
     'kesiswaan-rekapan':c=>window.renderKesiswaanRekapan?.(c),
     'kes-rekap-masalah':c=>window.renderKesiswaanProblemRecap?.(c),
     'kes-laporan-kelas':c=>window.renderKesiswaanProblemRecap?.(c),
-    'kes-cover-rapor':c=>window.renderKesiswaanCoverRapor?.(c)
+    'kes-cover-rapor':c=>window.renderKesiswaanCoverRapor?.(c),
+    'kes-pengingat':c=>window.renderKesiswaanReminders?.(c)
   };
 
   function renderControllingMt(content){
@@ -38,68 +39,55 @@
     content.innerHTML='<div class="card" style="max-width:1100px;margin:auto"><div style="font-size:12px;font-weight:800;color:#58718a;margin-bottom:6px">LAYANAN KESISWAAN</div><h1 style="margin:0 0 8px;font-size:24px">Controlling MT</h1><p style="margin:0 0 16px;color:#687b8e">Monitoring pelaksanaan Morning Talk oleh Kabid Kesiswaan. Target minimal 1 kali setiap pekan.</p><div style="padding:14px;border:1px solid #dce6f0;border-radius:12px;background:#f8fbfd"><strong>Standar controlling</strong><div style="margin-top:7px;color:#58718a;font-size:13px;line-height:1.6">Tanggal pelaksanaan · kelas · wali kelas/guru · status pelaksanaan MT · catatan/temuan · tindak lanjut · foto opsional.</div></div></div>';
   }
 
+  /* Sidebar bergaya admin: ikon SVG, judul seksi, menu jarang dipakai di "Lainnya".
+     Rute lama (kes-laporan-kelas, kes-controlling-mt, uks-duty-inbox, kes-laporan-masuk) tetap terdaftar. */
+  const MENU=[
+    {items:[['dashboard','Dashboard','dashboard'],['kes-pengingat','Pengingat','bell',true]]},
+    {title:'Layanan Siswa',items:[
+      ['kes-pendampingan','Pendampingan Siswa','heartHand'],
+      ['kes-salam-cq','SALAM CQ','chat'],
+      ['kes-salam-rekap','Rekap SALAM CQ','inbox'],
+      ['kes-kebutuhan','Kebutuhan Siswa','users'],
+      ['kes-masalah-kelas','Masalah Umum Kelas','grid']
+    ]},
+    {title:'Administrasi',items:[
+      ['kes-rekap-keterlambatan','Keterlambatan & Surat','mailClock'],
+      ['kes-cover-rapor','Cover Rapor','idCard']
+    ]},
+    {title:'Laporan',items:[
+      ['laporan-kesiswaan-super','Laporan Kesiswaan','report'],
+      ['kes-rekap-masalah','Rekapan Masalah Kelas & Siswa','alertList'],
+      ['kesiswaan-rekapan','Rekap Kesiswaan','table'],
+      ['rekap-input-poin','Monitoring Input','monitor'],
+      ['kes-pemantauan-harian','Pemantauan Harian','eye'],
+      ['laporan-promosi','Promosi Socmed','megaphone']
+    ]}
+  ];
+  const MORE=[
+    ['kes-perizinan','Perizinan & Kepulangan','door'],
+    ['kes-muhadhoroh','Petugas Muhadhoroh','mic'],
+    ['kes-program','Program Kesiswaan / SPARQ','flag'],
+    ['kes-prestasi','Prestasi Siswa','trophy']
+  ];
+  function moreOpen(){try{return localStorage.getItem('cq_kes_more')==='1'}catch(_){return false}}
   function renderKesiswaanSidebarOnly(){
     if(!['kesiswaan','kabid_kesiswaan'].includes(role()))return false;
     const sidebar=document.getElementById('sidebar');if(!sidebar)return true;
-    sidebar.innerHTML='';
-    const direct=(id,label)=>{
-      const el=document.createElement('div');
-      el.className='nav-item'+((typeof activeModule!=='undefined'&&activeModule===id)?' active':'');
-      el.innerHTML='<span>'+label+'</span>';
-      el.onclick=()=>{if(typeof setActiveModule==='function')setActiveModule(id)};
-      sidebar.appendChild(el);
-    };
-    direct('dashboard','Dashboard');
-    const groups=[
-      {id:'kes-layanan',label:'Layanan',items:[
-        ['kes-pendampingan','Pendampingan Siswa'],
-        ['kes-masalah-kelas','Masalah Umum Kelas'],
-        ['kes-kebutuhan','Kebutuhan Siswa'],
-        ['kes-salam-cq','SALAM CQ']
-      ]},
-      {id:'kes-administrasi',label:'Administrasi',items:[
-        ['kes-perizinan','Perizinan & Kepulangan'],
-        ['kes-cover-rapor','Cover Rapor']
-      ]},
-      {id:'kes-kegiatan',label:'Kegiatan Siswa',items:[
-        ['kes-muhadhoroh','Petugas Muhadhoroh'],
-        ['kes-program','Program Kesiswaan / SPARQ'],
-        ['kes-prestasi','Prestasi Siswa']
-      ]},
-      {id:'kes-laporan',label:'Laporan',items:[
-        ['laporan-kesiswaan-super','Laporan Kesiswaan'],
-        ['kes-laporan-kelas','Laporan Kelas'],
-        ['kes-rekap-masalah','Rekapan Masalah Kelas & Siswa'],
-        ['rekap-input-poin','Monitoring Input'],
-        ['kes-pemantauan-harian','Pemantauan Harian'],
-        ['kes-controlling-mt','Controlling MT'],
-        ['laporan-promosi','Promosi Socmed']
-      ]},
-      {id:'kes-rekap',label:'Rekap',items:[
-        ['kesiswaan-rekapan','Rekap Kesiswaan'],
-        ['kes-rekap-keterlambatan','Rekap Keterlambatan'],
-        ['kes-salam-rekap','Rekap SALAM CQ']
-      ]}
-    ];
-    groups.forEach(g=>{
-      const active=g.items.some(x=>x[0]===activeModule);
-      const isOpen=openGroupId===g.id||active||(g.id==='kes-laporan'&&openGroupId==null);
-      const head=document.createElement('div');
-      head.className='nav-group-head'+(isOpen?' open':'');
-      head.innerHTML='<span>'+g.label+'</span><svg class="nav-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
-      head.onclick=()=>{openGroupId=openGroupId===g.id?null:g.id;renderKesiswaanSidebarOnly()};
-      sidebar.appendChild(head);
-      if(!isOpen)return;
-      const sub=document.createElement('div');sub.className='nav-group-items';
-      g.items.forEach(([id,label])=>{
-        const el=document.createElement('div');
-        el.className='nav-item nav-item-sub'+(activeModule===id?' active':'');
-        el.innerHTML='<span>'+label+'</span>';
-        el.onclick=()=>{openGroupId=g.id;if(typeof setActiveModule==='function')setActiveModule(id)};
-        sub.appendChild(el);
-      });
-      sidebar.appendChild(sub);
-    });
+    if(typeof window.cqKesReminderCss==='function')window.cqKesReminderCss();
+    const ic=(n)=>typeof window.cqKesIcon==='function'?window.cqKesIcon(n,18):'';
+    const cur=typeof activeModule!=='undefined'?activeModule:'';
+    const btn=([id,label,i,badge])=>'<button type="button" class="cqk-nav'+(cur===id?' active':'')+'" data-kes-nav="'+id+'" title="'+label+'">'+ic(i)+'<span>'+label+'</span>'+(badge?'<b class="cqk-badge" data-cqk-badge hidden></b>':'')+'</button>';
+    const open=moreOpen()||MORE.some(x=>x[0]===cur);
+    sidebar.innerHTML='<nav class="cqk-side" aria-label="Menu Kesiswaan">'+
+      MENU.map(g=>(g.title?'<div class="cqk-sec">'+g.title+'</div>':'')+g.items.map(btn).join('')).join('')+
+      '<button type="button" class="cqk-more'+(open?' open':'')+'" data-kes-more="1"><span>Lainnya</span><small>'+(open?'':'4 menu')+'</small>'+(typeof window.cqKesIcon==='function'?window.cqKesIcon('chevron',14):'')+'</button>'+
+      (open?MORE.map(btn).join(''):'')+
+    '</nav>';
+    sidebar.querySelectorAll('[data-kes-nav]').forEach(el=>el.onclick=()=>{if(typeof setActiveModule==='function')setActiveModule(el.dataset.kesNav)});
+    const more=sidebar.querySelector('[data-kes-more]');
+    if(more)more.onclick=()=>{try{localStorage.setItem('cq_kes_more',moreOpen()?'0':'1')}catch(_){}renderKesiswaanSidebarOnly()};
+    if(typeof window.cqKesUpdateBadges==='function')window.cqKesUpdateBadges();
+    if(typeof window.cqKesReminderLoad==='function')window.cqKesReminderLoad(false).catch(()=>{});
     return true;
   }
 
@@ -120,7 +108,7 @@
           activeModule='dashboard';renderKesiswaanSidebarOnly();
           const content=document.getElementById('content');
           if(content)content.innerHTML='<div class="rd-shell" id="rd-root"><div class="rd-card"><span class="spinner"></span> Memuat dashboard...</div></div>';
-          if(typeof window.renderKesiswaanDashboardV1==='function')return window.renderKesiswaanDashboardV1({role:'kesiswaan'});
+          if(typeof window.renderKesiswaanDashboardV1==='function'){const out=window.renderKesiswaanDashboardV1({role:'kesiswaan'});if(content&&typeof window.cqKesReminderStrip==='function')window.cqKesReminderStrip(content);return out}
           if(content)content.innerHTML='<div class="empty-state">Dashboard Kesiswaan belum dapat dimuat.</div>';
           return;
         }

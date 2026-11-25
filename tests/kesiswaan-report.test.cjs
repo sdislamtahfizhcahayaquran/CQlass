@@ -59,6 +59,6 @@ test('UI blocks stale export, keeps one sidebar route, and recovers after a requ
  w.document.getElementById('ksr2-apply').click();pending.shift()(fixture());await settle();assert.equal(w.document.getElementById('ksr2-excel').disabled,false);
  w.activeModule='laporan-kesiswaan-super';w.openGroupId='kes-laporan';w.renderSidebar=()=>{};w.setActiveModule=()=>{};w.enterApp=()=>{};
  w.eval(fs.readFileSync('kesiswaan-navigation.js','utf8'));w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
- assert.equal([...w.document.querySelectorAll('#sidebar .nav-item span')].filter(x=>x.textContent==='Laporan Kesiswaan').length,1);
+ assert.equal([...w.document.querySelectorAll('#sidebar .cqk-nav span')].filter(x=>x.textContent==='Laporan Kesiswaan').length,1);assert.equal([...w.document.querySelectorAll('#sidebar [data-kes-nav]')].filter(x=>x.dataset.kesNav==='kes-laporan-kelas').length,0);
  w.currentUser={role:'walas'};w.renderKesiswaanSuperReport();assert.match(w.document.getElementById('content').textContent,/tidak memiliki akses/);dom.window.close();
 });
