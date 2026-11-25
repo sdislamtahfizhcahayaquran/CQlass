@@ -56,7 +56,7 @@ ${P} #sidebar .cqk-nav:focus-visible{outline:2px solid var(--k-cahaya);outline-o
 ${P} #sidebar .cqk-nav.active{background:linear-gradient(90deg,rgba(45,212,191,.20),rgba(45,212,191,.04));color:#fff;font-weight:600;box-shadow:none}
 ${P} #sidebar .cqk-nav.active .cqk-i{opacity:1;color:var(--k-cahaya)}
 /* garis cahaya: satu-satunya efek "menyala", menandai posisi Anda */
-${P} #sidebar .cqk-nav.active::before{content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--k-cahaya);box-shadow:0 0 12px 2px rgba(45,212,191,.75)}
+${P} #sidebar .cqk-nav.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--k-cahaya);box-shadow:0 0 12px 2px rgba(45,212,191,.75)}
 @media (prefers-reduced-motion:no-preference){${P} #sidebar .cqk-nav.active::before{animation:cqk-lamp .7s ease-out 1}}
 @keyframes cqk-lamp{from{opacity:0;transform:scaleY(.3)}to{opacity:1;transform:none}}
 ${P} #sidebar .cqk-sec{color:#6F9793;font-size:12px;font-weight:500;letter-spacing:.02em;text-transform:none;margin:18px 12px 6px}
@@ -139,10 +139,84 @@ ${C} .cqk-meta{font-size:13px}
 /* hero gedung bawaan dashboard disembunyikan agar langsung ke data */
 ${C} .cq-role-hero,${C} .rd-hero{display:none!important}
 
+
+/* ================= interaksi futuristik (palet tetap: Malam · Zamrud · Cahaya) ================= */
+/* garis cahaya di bawah header: gradasi tetap, satu sapuan saat halaman dibuka */
+${P} .topbar{position:relative}
+${P} .topbar::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--k-zamrud) 20%,var(--k-cahaya) 50%,var(--k-zamrud) 80%,transparent);background-size:200% 100%;opacity:.9;pointer-events:none}
+@media (prefers-reduced-motion:no-preference){${P} .topbar::after{animation:cqk-sweep 2.4s ease-out 1}}
+@keyframes cqk-sweep{from{background-position:100% 0;opacity:0}to{background-position:0 0;opacity:.9}}
+
+/* riak cahaya saat diklik (dibuat oleh JS di bawah) */
+${P} .cqk-fx{position:relative;overflow:hidden;isolation:isolate}
+${P} .cqk-ripple{position:absolute;border-radius:50%;pointer-events:none;z-index:0;transform:scale(0);opacity:.55;
+  background:radial-gradient(circle,rgba(45,212,191,.55) 0%,rgba(45,212,191,.18) 45%,transparent 70%);animation:cqk-ripple .6s ease-out forwards}
+@keyframes cqk-ripple{to{transform:scale(1);opacity:0}}
+${P} .cqk-fx>*:not(.cqk-ripple){position:relative;z-index:1}
+
+/* tekan: sedikit mengecil */
+${P} :is(.cqk-btn,.btn,.sac-btn,.kd-load,.krek-btn,.ksr2-btn,.kcv-btn,.cqi-btn,.late-primary,.cqk-card,.cqk-strip-i,#sidebar .cqk-nav):active{transform:scale(.97)}
+${P} :is(.cqk-btn,.btn,.sac-btn,.kd-load,.krek-btn,.ksr2-btn,.kcv-btn,.cqi-btn,.late-primary,.cqk-card,.cqk-strip-i,#sidebar .cqk-nav){transition:transform .12s ease,box-shadow .2s ease,border-color .2s ease,background .2s ease}
+
+/* tombol utama: gradasi zamrud → cahaya, berpendar saat disorot */
+${C} :is(.btn,.kd-load,.late-primary,.sac-btn.primary,.krek-btn.primary,.ksr2-btn.primary,.kcv-btn.primary,.cqk-btn.primary)${PRINT},${P} :is(.cqi-btn.primary,.sac-modal .sac-btn.primary){
+  background:linear-gradient(135deg,var(--k-zamrud) 0%,#0E8F78 55%,#14A892 100%)!important;border-color:transparent!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 8px rgba(11,122,100,.25)!important}
+${C} :is(.btn,.kd-load,.late-primary,.sac-btn.primary,.krek-btn.primary,.ksr2-btn.primary,.kcv-btn.primary,.cqk-btn.primary):hover,${P} .cqi-btn.primary:hover{
+  background:linear-gradient(135deg,var(--k-zamrud-2) 0%,var(--k-zamrud) 55%,#12A08B 100%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 3px var(--k-cahaya-soft),0 6px 18px rgba(11,122,100,.35)!important}
+/* tombol sekunder: tepi menyala saat disorot */
+${C} :is(.cqk-btn:not(.primary):not(.ghost),.sac-btn:not(.primary),.krek-btn:not(.primary),.ksr2-btn:not(.primary),.kcv-btn:not(.primary)):hover{border-color:var(--k-cahaya)!important;box-shadow:0 0 0 3px var(--k-cahaya-soft)!important;color:var(--k-zamrud)!important}
+
+/* kartu angka & kartu pengingat: terangkat + tepi cahaya saat disorot */
+${C} :is(.cqk-card,.cqk-strip-i,.kd-kpi,.ksr2-kpi,.pia-kpi,.cqir-stat){position:relative}
+${C} :is(.cqk-card,.cqk-strip-i,.kd-kpi,.ksr2-kpi,.pia-kpi,.cqir-stat):hover{transform:translateY(-2px);border-color:rgba(45,212,191,.7)!important;box-shadow:0 0 0 1px rgba(45,212,191,.35),0 10px 24px -10px rgba(11,122,100,.45)!important}
+/* kartu yang dipilih: garis cahaya di atas + latar gelap tipis */
+${C} .cqk-card.active{background:linear-gradient(180deg,#F3FFFC,#fff 60%)!important}
+${C} .cqk-card.active::before{content:'';position:absolute;left:14px;right:14px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--k-cahaya);box-shadow:0 0 12px 1px rgba(45,212,191,.8)}
+${C} .cqk-card .ico{transition:transform .2s ease}${C} .cqk-card:hover .ico{transform:scale(1.08)}
+
+/* baris siswa yang sedang dibuka: garis cahaya di kiri */
+${C} .cqk-row{position:relative}
+${C} .cqk-row:has(.cqk-panel-d){background:linear-gradient(90deg,rgba(45,212,191,.06),transparent 40%)}
+${C} .cqk-row:has(.cqk-panel-d)::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--k-cahaya);box-shadow:0 0 10px rgba(45,212,191,.7)}
+${C} .cqk-panel-d{border-color:rgba(45,212,191,.35)!important;background:linear-gradient(180deg,#F5FCFB,#FAFDFD)!important}
+
+/* judul panel: aksen garis gradasi pendek */
+${C} .cqk-ph h2::after{content:'';display:block;width:36px;height:3px;border-radius:3px;margin-top:6px;background:linear-gradient(90deg,var(--k-zamrud),var(--k-cahaya))}
+
+/* menu samping: tepi cahaya halus saat disorot */
+${P} #sidebar .cqk-nav:hover{box-shadow:inset 0 0 0 1px rgba(45,212,191,.22)}
+
+/* tab aktif: menyala */
+${C} :is(.ksr2-tab.active,.ksr2-tab[aria-selected=true],.cqir-tabs button.active,.late-tabs button[aria-selected=true],.late-tabs button.active){box-shadow:0 0 0 3px var(--k-cahaya-soft)!important}
+
+/* baris tabel: sorot dengan garis cahaya tipis */
+${C} table${PRINT} tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--k-cahaya)}
+
+/* avatar inisial: cincin cahaya */
+${C} .cqk-av{box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(45,212,191,.35)}
+${C} .cqk-row.urgent .cqk-av{box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(200,67,47,.35)}
+
+@media (prefers-reduced-motion:reduce){${P} *{animation:none!important;transition:none!important}${C} :is(.cqk-card,.cqk-strip-i,.kd-kpi,.ksr2-kpi,.pia-kpi,.cqir-stat):hover{transform:none}}
+
 @media (max-width:760px){${C}{font-size:15px}}
 `;
   document.head.appendChild(s);
 }
+
+
+/* riak cahaya pada klik — hanya di role Kesiswaan */
+const FX_SEL='.cqk-btn,.btn,.sac-btn,.kd-load,.krek-btn,.ksr2-btn,.kcv-btn,.cqi-btn,.late-primary,.cqk-card,.cqk-strip-i,#sidebar .cqk-nav,.ksr2-tab,.cqir-tabs button,.late-tabs button';
+document.addEventListener('pointerdown',e=>{
+  if(!document.body.classList.contains('cq-kes-ui'))return;
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const el=e.target.closest?.(FX_SEL);if(!el||el.disabled)return;
+  el.classList.add('cqk-fx');
+  const r=el.getBoundingClientRect(),size=Math.max(r.width,r.height)*2.2;
+  const dot=document.createElement('span');dot.className='cqk-ripple';
+  dot.style.cssText=`width:${size}px;height:${size}px;left:${e.clientX-r.left-size/2}px;top:${e.clientY-r.top-size/2}px`;
+  el.appendChild(dot);setTimeout(()=>dot.remove(),650);
+},{passive:true});
 
 function apply(){
   const on=isKes();
