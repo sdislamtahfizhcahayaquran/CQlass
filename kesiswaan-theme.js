@@ -46,7 +46,8 @@ ${P} .topbar #user-name{color:#fff!important;font-weight:500}
 ${P} .topbar .role-badge{background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(184,255,243,.55)!important;font-family:var(--k-font)!important;font-weight:600!important;text-transform:none!important;letter-spacing:0!important;box-shadow:0 0 14px -2px rgba(45,212,191,.7)}
 ${P} .topbar :is(.account-btn,.logout-btn,.bell-btn){background:rgba(255,255,255,.1)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;font-family:var(--k-font)!important;border-radius:9px!important;transition:box-shadow .2s,border-color .2s,background .2s}
 ${P} .topbar :is(.account-btn,.logout-btn,.bell-btn):hover{background:rgba(255,255,255,.2)!important;border-color:#B8FFF3!important;box-shadow:0 0 0 3px rgba(184,255,243,.25)!important}
-${P} #sidebar,${P} .sidebar{background:linear-gradient(180deg,#FFFFFF 0%,#F1FAF7 100%)!important;background-image:linear-gradient(180deg,#FFFFFF 0%,#F1FAF7 100%)!important;border-right:1px solid #DCEBE8!important;color:#2C4A48}
+/* latar sidebar (termasuk ornamen sulur di bawah) tetap dari tema CQlass bersama; hanya warna teks */
+${P} #sidebar,${P} .sidebar{color:#2C4A48}
 @media (min-width:861px){${P} .sidebar{width:252px!important;flex:none}}
 ${P} #sidebar .cqk-side{font-family:var(--k-font);padding:16px 12px 28px}
 ${P} #sidebar .cqk-nav{position:relative;color:#2C4A48;font-family:var(--k-font);font-weight:400;font-size:14.5px;border-radius:11px;min-height:44px}
@@ -64,12 +65,13 @@ ${P} #sidebar .cqk-nav.active .cqk-badge{background:#fff!important;color:#C8432F
 
 /* ---------- area kerja ---------- */
 ${P} .content,${P} #content{background-color:var(--k-kertas)!important;background-image:radial-gradient(rgba(11,122,100,.07) 1px,transparent 1px)!important;background-size:22px 22px!important;color:var(--k-tinta);font-family:var(--k-font);font-size:15px;line-height:1.55}
-${C} :is(div,span,p,li,td,th,label,small,b,strong,a,button,input,select,textarea,h1,h2,h3,h4,h5)${PRINT}{font-family:var(--k-font)}
-${C} :is(h1,h2)${PRINT}{font-family:var(--k-display)!important;letter-spacing:-.015em;color:var(--k-tinta)}
+${C} :is(div,span,p,li,td,th,label,small,b,strong,a,button,input,select,textarea,h1,h2,h3,h4,h5)${PRINT}{font-family:var(--k-font)!important}
+${P} #sidebar :is(.cqk-nav,.cqk-nav span,.cqk-sec){font-family:var(--k-font)!important}
+${C} :is(h1,h2)${PRINT}:not(#x){font-family:var(--k-display)!important;letter-spacing:-.015em;color:var(--k-tinta)}
 ${C} h1${PRINT}{font-size:clamp(22px,2.2vw,28px)!important;font-weight:700!important;line-height:1.2}
 ${C} h2${PRINT}{font-size:18px!important;font-weight:600!important}
 ${C} :is(h3,h4)${PRINT}{color:var(--k-tinta)}
-${C} :is(.kd-title,.kd-boxhead b,.krek-boxhead b,.kcv-title,.sac-head h2,.cqir-panel h2,.walas-card-head h2,.pr-card h2,.rd-card-title){font-family:var(--k-display)!important;font-weight:600!important;letter-spacing:-.01em;color:var(--k-tinta)!important}
+${C} :is(.kd-title,.kd-boxhead b,.krek-boxhead b,.kcv-title,.sac-head h2,.cqir-panel h2,.walas-card-head h2,.pr-card h2,.rd-card-title):not(#x){font-family:var(--k-display)!important;font-weight:600!important;letter-spacing:-.01em;color:var(--k-tinta)!important}
 ${C} :is(.kd-sub,.krek-sub,.ksr2-sub,.kcv-sub,.rd-card-sub){color:var(--k-tinta-2)!important;font-size:13.5px!important}
 /* label & judul kecil: tidak lagi HURUF KAPITAL semua */
 ${C} :is(label,.cqk-panel-d h4,.cqk-form label,.kd-field label,.krek-field label,.pia-field label,.sac-field label,.ksr2-eyebrow,.cqi label,th)${PRINT}{text-transform:none!important;letter-spacing:0!important}
@@ -80,7 +82,7 @@ ${C} .cqk-panel-d h4{font-size:13px;font-weight:600;color:var(--k-zamrud)}
 ${C} :is(.card,.kd-card,.kd-box,.sac-card,.sac-box,.krek-card,.krek-box,.ksr2-grid>div,.kcv-card,.kc-card,.cqir-panel,.pr-card,.cdp-panel,.walas-card,.cqk-panel,.cqk-strip,.kd-filter,.krek-filter,.pia-filter,.ksr2-filter,.late-filters){background:#fff!important;border:1px solid var(--k-garis)!important;border-radius:14px!important;box-shadow:0 1px 0 rgba(12,40,48,.04)!important}
 ${C} :is(.kd-kpi,.ksr2-kpi,.pia-kpi,.cqir-stat,.cqk-card){background:#fff!important;border:1px solid var(--k-garis)!important;border-radius:14px!important;box-shadow:none!important}
 /* angka besar: Space Grotesk, tabular */
-${C} :is(.kd-kpi b,.ksr2-kpi b,.ksr2-kpi strong,.pia-kpi b,.pia-kpi strong,.cqir-stat b,.cqir-stat strong,.cqk-card b,.cqk-strip-i b,.rd-kpis b){font-family:var(--k-display)!important;font-weight:600!important;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--k-tinta)}
+${C} :is(.kd-kpi b,.ksr2-kpi b,.ksr2-kpi strong,.pia-kpi b,.pia-kpi strong,.cqir-stat b,.cqir-stat strong,.cqk-card b,.cqk-strip-i b,.rd-kpis b):not(#x){font-family:var(--k-display)!important;font-weight:600!important;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--k-tinta)}
 
 /* kolom isian: tinggi 44px, teks 15px, sorot cahaya saat aktif */
 ${C} :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]),select,textarea)${PRINT},
@@ -130,7 +132,8 @@ ${P} :is(.sac-box h2,.cqi-h h2){font-family:var(--k-display)!important;font-weig
 ${C} .cqk-head h1 .cqk-hico{background:linear-gradient(135deg,var(--k-zamrud),#12A094);color:#fff;box-shadow:0 0 14px rgba(45,212,191,.5)}
 ${C} .cqk-card.active{border-color:var(--k-zamrud)!important;box-shadow:0 0 0 3px var(--k-cahaya-soft)!important}
 ${C} .cqk-row:hover{background:#FAFDFC}
-${C} .cqk-name-btn{font-family:var(--k-font);font-weight:600;font-size:15px}
+${C} .cqk-name-btn{font-family:var(--k-font)!important;font-weight:600!important;font-size:15px!important;min-height:0!important;padding:0!important;line-height:1.3!important;text-align:left}
+${C} .cqk-card{font-size:14px!important}${C} .cqk-card span{font-size:13px!important}${C} .cqk-card small{font-size:11.5px!important;font-weight:400!important}
 ${C} .cqk-detail{font-size:14px}
 ${C} .cqk-meta{font-size:13px}
 
