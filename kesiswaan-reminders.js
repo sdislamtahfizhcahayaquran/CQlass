@@ -12,7 +12,7 @@ const BASE=(typeof SUPABASE_URL!=='undefined'?SUPABASE_URL:'https://lmglkxzemtvx
 const SAC=BASE+'/functions/v1/student-affairs-center';
 const RPC=BASE+'/rest/v1/rpc/';
 const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const S={data:null,tab:'',q:'',cls:'',showDone:false,loading:null,loadedAt:0,open:''};
+const S={data:null,tab:'',q:'',cls:'',showDone:false,loading:null,loadedAt:0,open:'',expanded:'',details:{},busy:''};
 
 /* ---------- ikon SVG (garis, mengikuti gaya admin) ---------- */
 const P={
@@ -47,6 +47,8 @@ const P={
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   chartBar:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   chevron:'<path d="m6 9 6 6 6-6"/>',
+  upload:'<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/>',
+  printer:'<path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/>',
   inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6Z"/>',
 };
 const icon=(n,size=18)=>`<svg class="cqk-i" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${P[n]||P.bell}</svg>`;
@@ -148,6 +150,21 @@ function css(){
 .cqk-foot{padding:10px 14px;border-top:1px solid #edf3f2;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#6b8584}
 .cqk-err{padding:16px;border:1px solid #f3cfcb;background:#fdf3f2;color:#9b2c22;border-radius:12px}
 @media(max-width:640px){.cqk-row{grid-template-columns:32px minmax(0,1fr)}.cqk-act{grid-column:2/3;flex-direction:row;flex-wrap:wrap;align-items:center}.cqk-av{width:32px;height:32px}.cqk-ackform{grid-column:1/3}.cqk-search input{width:120px}}
+/* rincian di dalam kartu */
+.cqk-name-btn{all:unset;cursor:pointer;font-weight:800;font-size:14px;color:#16343a}.cqk-name-btn:hover{color:#0a6e6e;text-decoration:underline}
+.cqk-panel-d{grid-column:1/-1;background:#f7fbfa;border:1px solid #dcebe8;border-radius:12px;padding:12px 14px;margin-top:2px}
+.cqk-panel-d h4{margin:12px 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5f7a79}.cqk-panel-d h4:first-child{margin-top:0}
+.cqk-kv{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px}.cqk-kv b{color:#16343a}
+.cqk-tbl{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff}.cqk-tbl th,.cqk-tbl td{border:1px solid #e3ecea;padding:6px 8px;text-align:left;vertical-align:top}.cqk-tbl th{background:#eef6f5;font-size:11.5px}
+.cqk-days{display:flex;flex-wrap:wrap;gap:4px}.cqk-day{font-size:11px;border-radius:7px;padding:3px 6px;background:#e3f5ea;color:#1e7a46}.cqk-day.Sakit{background:#e9f1fd;color:#245b98}.cqk-day.Izin{background:#fff5df;color:#94610f}.cqk-day.Alfa{background:#fdecec;color:#b03a2e}.cqk-day.Terlambat{background:#fff0e5;color:#c25e12}
+.cqk-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.cqk-form .full{grid-column:1/-1}
+@media(max-width:700px){.cqk-form{grid-template-columns:1fr}}
+.cqk-form label{display:block;font-size:11px;font-weight:800;color:#5f7a79;text-transform:uppercase;margin-bottom:3px}
+.cqk-form input,.cqk-form select,.cqk-form textarea{width:100%;box-sizing:border-box;border:1px solid #cfe2df;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;background:#fff}
+.cqk-form textarea{min-height:70px}
+.cqk-pre{white-space:pre-wrap;font-size:12.5px;line-height:1.5;background:#fff;border:1px solid #e3ecea;border-radius:9px;padding:9px 11px;max-height:260px;overflow:auto}
+.cqk-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cqk-letter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid #e3ecea;border-radius:10px;padding:8px 10px;margin-top:6px}
 /* strip ringkas di dashboard */
 .cqk-strip{max-width:1240px;margin:0 auto 14px;background:#fff;border:1px solid #dfeae8;border-radius:14px;padding:12px 14px;font-family:'Plus Jakarta Sans',Inter,system-ui,sans-serif;color:#16343a}
 .cqk-strip-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
@@ -229,15 +246,14 @@ function rowSalam(x){
 
 function actions(tab,x){
   const k=E(x.key);
-  if(tab==='late')return `<button class="cqk-btn primary" data-goto="kes-rekap-keterlambatan">${icon('mailClock',15)} Terbitkan surat</button>`;
+  if(tab==='late')return S.expanded===x.key?'':`<button class="cqk-btn primary" data-expand="${k}">${icon('mailClock',15)} Terbitkan surat</button>`;
   if(tab==='salam'){
     const b=[];if(x.status==='diterima')b.push(`<button class="cqk-btn" data-salam="${E(x.id)}" data-st="diproses">${icon('clock',15)} Proses</button>`);
     b.push(`<button class="cqk-btn primary" data-salam="${E(x.id)}" data-st="selesai">${icon('check',15)} Selesai</button>`);
-    b.push(`<button class="cqk-btn ghost" data-goto="kes-salam-cq">${icon('arrow',14)} Buka</button>`);return b.join('');
+    return b.join('');
   }
   const out=[];
-  if(tab==='walas_reports')out.push(`<button class="cqk-btn ghost" data-goto="kes-pendampingan">${icon('arrow',14)} Buka Pendampingan</button>`);
-  if(tab==='walas_reports'&&x.forwarded)return out.join('');
+  if(tab==='walas_reports'&&x.forwarded)return S.expanded===x.key?'':`<button class="cqk-btn primary" data-expand="${k}">${icon('check',15)} Tindak lanjuti</button>`;
   if(x.acked)out.unshift(`<button class="cqk-btn ghost" data-undo="${k}">${icon('undo',14)} Batalkan</button>`);
   else out.unshift(`<button class="cqk-btn primary" data-ack="${k}">${icon('check',15)} ${tab==='walas_reports'?'Tandai dibaca':'Sudah ditangani'}</button>`);
   return out.join('');
@@ -248,7 +264,65 @@ function rowHtml(tab,x){
   const name=r.name||x.student_name, meta=r.meta||`${E(x.class_name)}${x.walas?' · Walas '+E(x.walas):''}${x.nis?' · NIS '+E(x.nis):''}`;
   const done=x.acked?`<div class="cqk-chips">${chip(icon('check',12)+' Ditangani '+fmtDate(x.acked_at)+(x.ack_note?' · '+E(x.ack_note):''),'green')}</div>`:'';
   const form=S.open===x.key?`<div class="cqk-ackform"><input id="cqk-note" maxlength="300" placeholder="Catatan singkat (boleh dikosongkan)"><div class="cqk-quick">${(QUICK[tab]||[]).map(q=>`<button type="button" data-q="${E(q)}">${E(q)}</button>`).join('')}</div><button class="cqk-btn primary" data-save="${E(x.key)}">${icon('check',15)} Simpan</button><button class="cqk-btn ghost" data-cancel="1">Batal</button></div>`:'';
-  return `<div class="cqk-row${r.urgent?' urgent':''}${x.acked?' done':''}"><div class="cqk-av">${E(initials(name))}</div><div><div class="cqk-name">${E(name)}</div><div class="cqk-meta">${meta}</div><div class="cqk-detail">${r.detail}</div><div class="cqk-chips">${r.chips}</div>${done}</div><div class="cqk-act">${actions(tab,x)}</div>${form}</div>`;
+  const open=S.expanded===x.key;
+  const panel=open?`<div class="cqk-panel-d" data-panel="${E(x.key)}">${detailHtml(tab,x)}</div>`:'';
+  return `<div class="cqk-row${r.urgent?' urgent':''}${x.acked?' done':''}"><div class="cqk-av">${E(initials(name))}</div><div><div class="cqk-name"><button type="button" class="cqk-name-btn" data-expand="${E(x.key)}" aria-expanded="${open}">${E(name)}</button></div><div class="cqk-meta">${meta}</div><div class="cqk-detail">${r.detail}</div><div class="cqk-chips">${r.chips}</div>${done}</div><div class="cqk-act"><button class="cqk-btn ghost" data-expand="${E(x.key)}">${icon('chevron',14)} ${open?'Tutup':'Rincian'}</button>${actions(tab,x)}</div>${form}${panel}</div>`;
+}
+
+
+/* ---------- rincian siswa (dibuka di dalam kartu) ---------- */
+function loadDetail(sid,force){
+  if(!sid)return Promise.resolve(null);
+  if(!force&&S.details[sid])return Promise.resolve(S.details[sid]);
+  return call(RPC+'kesiswaan_student_detail',{p_token:token(),p_student:sid}).then(d=>(S.details[sid]=d));
+}
+const STATUS_LABEL={belum_ditangani:'Belum ditangani',dalam_penanganan:'Dalam penanganan',eskalasi:'Eskalasi',selesai:'Selesai'};
+function violTable(d,limit){
+  const v=d.violations||[];if(!v.length)return '<div class="cqk-meta">Belum ada pelanggaran tercatat.</div>';
+  return `<table class="cqk-tbl"><tr><th>Tanggal</th><th>Pelanggaran</th><th>Kategori</th><th>Poin</th><th>Dicatat oleh</th></tr>${v.slice(0,limit).map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${E(x.name)}${x.note?`<div class="cqk-meta">${E(x.note)}</div>`:''}</td><td>${E(x.category||'-')}</td><td>${E(x.points??'')}</td><td>${E(x.by||'-')}</td></tr>`).join('')}</table>${v.length>limit?`<div class="cqk-meta" style="margin-top:4px">Menampilkan ${limit} dari ${d.violation_total} pelanggaran terakhir.</div>`:''}`;
+}
+function historyList(d){
+  const items=[...(d.affairs||[]).map(a=>({date:a.date,t:`${a.title}`,s:a.status,k:a.type==='kasus'?'Pendampingan Kesiswaan':a.type})),...(d.case_notes||[]).map(n=>({date:n.date,t:n.main_problem||n.summary||n.category||'Catatan walas',s:n.kes_status||n.status,k:'Laporan walas'}))].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  if(!items.length)return '<div class="cqk-meta">Belum ada riwayat pendampingan / wawancara.</div>';
+  return `<table class="cqk-tbl"><tr><th>Tanggal</th><th>Jenis</th><th>Catatan</th><th>Status</th></tr>${items.slice(0,8).map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${E(x.k)}</td><td>${E(x.t)}</td><td>${E(STATUS_LABEL[x.s]||x.s||'-')}</td></tr>`).join('')}</table>`;
+}
+function daysStrip(list){return list.length?`<div class="cqk-days">${list.map(a=>`<span class="cqk-day ${E(a.status)}" title="${E(a.status)}">${fmtDate(a.date)} · ${E(a.status)}</span>`).join('')}</div>`:'<div class="cqk-meta">Belum ada data.</div>'}
+function interviewBtn(x){return x.student_id?`<button class="cqk-btn" data-interview="${E(x.key)}">${icon('upload',15)} Upload hasil wawancara</button>`:''}
+
+function detailHtml(tab,x){
+  if(tab==='salam')return salamPanel(x);
+  const d=S.details[x.student_id];
+  if(!d)return `<div class="cqk-meta"><span class="spinner"></span> Memuat rincian…</div>`;
+  if(d.error)return `<div class="cqk-err">${E(d.error)}</div>`;
+  const st=d.student||{};
+  const head=`<div class="cqk-kv"><span>Kelas <b>${E(st.class_name||x.class_name||'-')}</b></span><span>Walas <b>${E(st.walas||x.walas||'-')}</b></span>${st.nis?`<span>NIS <b>${E(st.nis)}</b></span>`:''}<span>Total pelanggaran <b>${E(d.violation_total)}</b></span><span>Reward bulan ini <b>${E(d.rewards_month)} poin</b></span></div>`;
+  if(tab==='absent')return `<h4>Identitas</h4>${head}<h4>Kehadiran Morning Talk 30 hari terakhir</h4>${daysStrip(d.attendance||[])}<h4>Riwayat pendampingan</h4>${historyList(d)}<div class="cqk-actions">${interviewBtn(x)}</div>`;
+  if(tab==='walas_call'||tab==='kesiswaan_call')return `<h4>Identitas</h4>${head}<h4>Tahap pembinaan</h4><div class="cqk-kv"><span>Saldo <b>${E(x.balance)} poin</b></span><span>Tahap <b>${E(x.stage||x.reason||'-')}</b></span>${x.next_points?`<span>Berikutnya <b>${E(x.next_points)} poin</b> (${E(x.next_stage)})</span>`:''}</div>${x.action?`<div class="cqk-detail">${E(x.action)}</div>`:''}<h4>Riwayat pelanggaran</h4>${violTable(d,12)}<h4>Riwayat pendampingan & wawancara</h4>${historyList(d)}<div class="cqk-actions">${interviewBtn(x)}</div>`;
+  if(tab==='late')return latePanel(x,d,head);
+  if(tab==='walas_reports')return casePanel(x,d,head);
+  return head;
+}
+
+function latePanel(x,d,head){
+  const issued=Object.assign({},x.issued||{});(d.late_letters||[]).forEach(l=>{issued[l.kind]=l.number});
+  const due=(x.due||[]).filter(l=>!issued[l.kind]);
+  const lettersDone=(d.late_letters||[]).map(l=>`<div class="cqk-letter">${icon('check',15)} <b>${E(String(l.kind).toUpperCase()==='SPO'?'Pemanggilan Orang Tua':String(l.kind).toUpperCase().replace('SP','SP '))}</b> No. ${E(l.number)} · terbit ${fmtDate(l.issued_on)} ${l.printed_at?chip('Sudah dicetak','green'):chip('Belum dicetak','amber')}<button class="cqk-btn" data-print="${E(l.number)}">${icon('printer',15)} Cetak</button></div>`).join('');
+  const forms=due.map(l=>`<div class="cqk-letter" data-letter="${E(l.kind)}"><b>${E(l.label)}</b>${l.min?`<span class="cqk-meta">ambang ${E(l.min)} kali</span>`:''}${l.kind==='spo'?`<div class="cqk-form" style="width:100%"><div><label>Tanggal pertemuan</label><input type="date" data-mdate min="${E(S.data?.today||'')}"></div><div><label>Jam</label><input type="time" data-mtime value="08:00"></div><div><label>Tempat</label><input data-mplace maxlength="160" value="Ruang Kesiswaan"></div></div>`:''}<button class="cqk-btn primary" data-issue="${E(x.key)}" data-kind="${E(l.kind)}">${icon('mailClock',15)} Terbitkan ${E(l.label)}</button></div>`).join('');
+  return `<h4>Identitas</h4>${head}<h4>Tanggal terlambat semester ini (${(d.late_dates||[]).length} kali)</h4>${daysStrip((d.late_dates||[]).slice().reverse().map(z=>({date:z.date,status:'Terlambat'})))}<h4>Surat</h4>${forms||'<div class="cqk-meta">Semua surat yang memenuhi ambang sudah terbit.</div>'}${lettersDone}`;
+}
+
+function casePanel(x,d,head){
+  const n=(d.case_notes||[]).find(c=>String(c.id)===String(x.id))||{};
+    const body=[['Masalah utama',n.main_problem],['Kronologi',n.story],['Tindakan awal walas',n.initial_action],['Ringkasan',n.summary],['Saran walas',n.final_suggestion],['Risiko keselamatan',n.safety_risk]].filter(z=>String(z[1]||'').trim()).map(([k,v])=>`<h4>${E(k)}</h4><div class="cqk-pre">${E(v)}</div>`).join('');
+  return `<h4>Identitas</h4>${head}${body||'<div class="cqk-meta">Isi laporan kosong.</div>'}${n.kes_follow_up?`<h4>Tindak lanjut Kesiswaan sebelumnya</h4><div class="cqk-pre">${E(n.kes_follow_up)}</div>`:''}
+  <h4>Tindak lanjut Kesiswaan</h4><div class="cqk-form" data-caseform="${E(x.key)}"><div><label>Status</label><select data-cstatus>${['dalam_penanganan','eskalasi','selesai'].map(v=>`<option value="${v}" ${(n.kes_status||'dalam_penanganan')===v?'selected':''}>${STATUS_LABEL[v]}</option>`).join('')}</select></div><div><label>Eskalasi ke (bila eskalasi)</label><select data-cesc><option value="">—</option><option>Kepala Sekolah</option><option>Konselor</option></select></div><div></div><div class="full"><label>Catatan tindak lanjut</label><textarea data-cnote maxlength="2000" placeholder="Mis. siswa sudah dipanggil, orang tua dihubungi, kesepakatan…">${E(n.kes_follow_up||'')}</textarea></div></div>
+  <div class="cqk-actions"><button class="cqk-btn primary" data-case-save="${E(x.key)}">${icon('check',15)} Simpan tindak lanjut</button>${interviewBtn(x)}</div>`;
+}
+
+function salamPanel(x){
+  const st=[['diterima','Belum diproses'],['diproses','Sedang diproses'],['butuh_koordinasi','Butuh koordinasi'],['selesai','Selesai']];
+  return `<h4>Pesan lengkap</h4><div class="cqk-pre">${E(x.message||'-')}</div><div class="cqk-kv" style="margin-top:6px"><span>Tiket <b>${E(x.ticket_code||'-')}</b></span><span>Jenis <b>${E(x.message_type||'-')}</b></span><span>Topik <b>${E(x.topic||'-')}</b></span><span>Masuk <b>${fmtDate(x.created_at)}</b></span></div>
+  <h4>Tindak lanjut</h4><div class="cqk-form" data-salamform="${E(x.key)}"><div><label>Status</label><select data-sstatus>${st.map(([v,l])=>`<option value="${v}" ${x.status===v?'selected':''}>${l}</option>`).join('')}</select></div><div><label>PIC</label><input data-spic maxlength="120" value="${E(x.pic||'')}" placeholder="Nama penanggung jawab"></div><div><label>Target selesai</label><input type="date" data-starget value="${E(String(x.target_follow_up||'').slice(0,10))}"></div><div class="full"><label>Catatan / jawaban untuk orang tua</label><textarea data-snote maxlength="2000">${E(x.follow_up_note||'')}</textarea></div></div><div class="cqk-actions"><button class="cqk-btn primary" data-salam-save="${E(x.key)}">${icon('check',15)} Simpan</button></div>`;
 }
 
 function ruleText(tab){
@@ -257,8 +331,8 @@ function ruleText(tab){
     walas_call:`Saldo poin ${r.walas_points||50}–${(r.kesiswaan_points||100)-1}: Proses 1 oleh wali kelas. Pastikan walas sudah memanggil siswa / menghubungi orang tua.`,
     kesiswaan_call:`Saldo poin ≥ ${r.kesiswaan_points||100}, atau ada pelanggaran berat/DO (langsung tahap Kesiswaan). Muncul lagi otomatis saat naik ke tahap berikutnya.`,
     late:`Ambang per semester: ${(r.late_letters||[]).map(x=>`${x.label} ${x.min}x`).join(' · ')}. Hilang otomatis setelah suratnya diterbitkan.`,
-    walas_reports:'Catatan pendampingan dari walas yang belum selesai ditindaklanjuti. Yang diteruskan ke Kesiswaan selesai dari menu Pendampingan Siswa.',
-    salam:'Pesan SALAM CQ dari orang tua yang statusnya belum selesai.'}[tab]||'';
+    walas_reports:'Catatan pendampingan dari walas yang belum selesai. Klik nama siswa untuk membaca laporannya dan mengisi tindak lanjut langsung di sini.',
+    salam:'Pesan SALAM CQ dari orang tua yang statusnya belum selesai. Klik nama untuk membaca pesan lengkap dan mengisi tindak lanjut.'}[tab]||'';
 }
 
 function draw(content){
@@ -271,7 +345,7 @@ function draw(content){
   const when=new Intl.DateTimeFormat('id-ID',{dateStyle:'full',timeZone:'Asia/Jakarta'}).format(new Date());
   content.innerHTML=`<div class="cqk">
   <div class="cqk-head"><div><h1><span class="cqk-hico">${icon('bell',20)}</span>Pengingat Kesiswaan</h1><p>${E(when)} · Tahun ajaran ${E(d.period?.year||'')} semester ${E(d.period?.semester_no||'')} · dihitung otomatis dari data CQlass</p></div>
-  <button class="cqk-btn" id="cqk-refresh">${icon('refresh',15)} Muat ulang</button></div>
+  <div class="cqk-tools"><button class="cqk-btn primary" id="cqk-upload">${icon('upload',15)} Upload Wawancara (Word)</button><button class="cqk-btn" id="cqk-refresh">${icon('refresh',15)} Muat ulang</button></div></div>
   <div class="cqk-cards">${TABS.map(x=>{const n=openCount(x.id);return `<button type="button" class="cqk-card tone-${x.tone}${x.id===S.tab?' active':''}${n?'':' zero'}" data-tab="${x.id}"><div class="ico">${icon(x.icon,18)}</div><b>${n}</b><span>${E(x.label)}</span><small>${E(x.sub)}</small></button>`}).join('')}</div>
   <section class="cqk-panel"><div class="cqk-ph"><div><h2>${icon(t.icon,18)} ${E(t.label)}</h2><div class="rule">${E(ruleText(S.tab))}</div></div>
    <div class="cqk-tools"><label class="cqk-search">${icon('search',15)}<input id="cqk-q" placeholder="Cari nama / kelas" value="${E(S.q)}"></label>
@@ -296,10 +370,89 @@ function bind(content){
   const note=content.querySelector('#cqk-note');if(note)note.onkeydown=e=>{if(e.key==='Enter')content.querySelector('[data-save]')?.click();if(e.key==='Escape'){S.open='';draw(content)}};
   content.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>ack(content,b,b.dataset.undo,true,''));
   content.querySelectorAll('[data-salam]').forEach(b=>b.onclick=()=>salam(content,b));
+  const up=content.querySelector('#cqk-upload');if(up)up.onclick=()=>openInterview(content,null);
+  content.querySelectorAll('[data-expand]').forEach(b=>b.onclick=()=>toggle(content,b.dataset.expand));
+  content.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>printLetter(content,Number(b.dataset.print)));
+  content.querySelectorAll('[data-issue]').forEach(b=>b.onclick=()=>issueLetter(content,b));
+  content.querySelectorAll('[data-case-save]').forEach(b=>b.onclick=()=>saveCase(content,b));
+  content.querySelectorAll('[data-salam-save]').forEach(b=>b.onclick=()=>saveSalam(content,b));
+  content.querySelectorAll('[data-interview]').forEach(b=>b.onclick=()=>openInterview(content,findItem(b.dataset.interview)));
 }
 
 function toast(m,err){if(typeof showToast==='function')showToast(m,err);else if(err)console.warn(m)}
 function setCount(tab){const list=S.data[tab]||[];S.data.counts[tab]=list.filter(x=>!x.acked).length;updateBadges()}
+
+
+function findItem(key){for(const t of TABS){const x=(S.data?.[t.id]||[]).find(y=>y.key===key);if(x)return x}return null}
+function tabOf(key){return TABS.find(t=>(S.data?.[t.id]||[]).some(y=>y.key===key))?.id||''}
+async function toggle(content,key){
+  S.expanded=S.expanded===key?'':key;S.open='';
+  const x=findItem(key);draw(content);
+  if(S.expanded&&x&&x.student_id&&tabOf(key)!=='salam'&&!S.details[x.student_id]){
+    try{await loadDetail(x.student_id)}catch(e){S.details[x.student_id]={error:e.message}}
+    if(content.isConnected)draw(content);
+  }
+  content.querySelector(`[data-panel="${CSS.escape(key)}"]`)?.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+async function refreshDetail(content,sid){try{await loadDetail(sid,true)}catch(_){}if(content.isConnected)draw(content)}
+function printLetter(content,number){
+  if(!window.cqKesLateLetters){toast('Modul surat keterlambatan belum termuat. Muat ulang halaman.',true);return}
+  const x=findItem(S.expanded);
+  window.cqKesLateLetters.print([number],()=>{if(x)refreshDetail(content,x.student_id)}).catch(e=>toast(e.message,true));
+}
+async function issueLetter(content,btn){
+  const x=findItem(btn.dataset.issue),kind=btn.dataset.kind,d=x&&S.details[x.student_id];
+  if(!x||!d)return;
+  if(!window.cqKesLateLetters){toast('Modul surat keterlambatan belum termuat. Muat ulang halaman.',true);return}
+  const box=btn.closest('[data-letter]'),body={kind,student_id:x.student_id,semester_id:d.late_period_id};
+  if(kind==='spo'){body.meeting_date=box.querySelector('[data-mdate]').value;body.meeting_time=box.querySelector('[data-mtime]').value;body.meeting_place=box.querySelector('[data-mplace]').value.trim();
+    if(!body.meeting_date||!body.meeting_time||!body.meeting_place){toast('Lengkapi tanggal, jam, dan tempat pertemuan.',true);return}}
+  btn.disabled=true;btn.textContent='Menerbitkan…';
+  try{
+    const r=await window.cqKesLateLetters.issue(body);
+    x.issued=Object.assign({},x.issued,{[kind]:r.number});x.due=(x.due||[]).filter(l=>l.kind!==kind);
+    toast(`Surat No. ${r.number} terbit. Klik Cetak untuk mencetak.`);
+    await loadDetail(x.student_id,true).catch(()=>{});
+    if(!x.due.length){x.acked=true;S.data.counts.late=(S.data.late||[]).filter(y=>!y.acked&&(y.due||[]).length).length;updateBadges()}
+  }catch(e){toast(e.message,true)}
+  draw(content);
+}
+async function saveCase(content,btn){
+  const x=findItem(btn.dataset.caseSave),f=content.querySelector(`[data-caseform="${CSS.escape(btn.dataset.caseSave)}"]`);if(!x||!f)return;
+  const status=f.querySelector('[data-cstatus]').value,esc=f.querySelector('[data-cesc]').value,note=f.querySelector('[data-cnote]').value.trim();
+  if(status==='eskalasi'&&!esc){toast('Pilih tujuan eskalasi.',true);return}
+  btn.disabled=true;
+  try{
+    await call(SAC,{action:'case_followup',id:x.id,source:'walas',status,follow_up:note,escalation_to:status==='eskalasi'?esc:''});
+    toast('Tindak lanjut tersimpan.');
+    if(status==='selesai'){S.data.walas_reports=S.data.walas_reports.filter(y=>y!==x);S.expanded='';setCount('walas_reports')}
+    else await loadDetail(x.student_id,true).catch(()=>{});
+  }catch(e){toast(e.message,true)}
+  draw(content);
+}
+async function saveSalam(content,btn){
+  const x=findItem(btn.dataset.salamSave),f=content.querySelector(`[data-salamform="${CSS.escape(btn.dataset.salamSave)}"]`);if(!x||!f)return;
+  const row={status:f.querySelector('[data-sstatus]').value,pic:f.querySelector('[data-spic]').value.trim(),target_follow_up:f.querySelector('[data-starget]').value,follow_up_note:f.querySelector('[data-snote]').value.trim()};
+  btn.disabled=true;
+  try{
+    await call(SAC,{action:'salam_followup',id:x.id,...row});
+    Object.assign(x,row);toast('SALAM CQ tersimpan.');
+    if(row.status==='selesai'){S.data.salam=S.data.salam.filter(y=>y!==x);S.expanded=''}
+    S.data.counts.salam=S.data.salam.length;updateBadges();
+  }catch(e){toast(e.message,true)}
+  draw(content);
+}
+function openInterview(content,x){
+  if(typeof window.cqKesInterviewImport!=='function'){toast('Modul wawancara belum termuat. Muat ulang halaman.',true);return}
+  window.cqKesInterviewImport({student_id:x?.student_id||null,onSaved:async(row,sid,title)=>{
+    delete S.details[sid];
+    // pengingat panggilan/absen siswa ini otomatis ditandai sudah ditangani
+    for(const t of ['kesiswaan_call','walas_call','absent']){const it=(S.data?.[t]||[]).find(y=>y.student_id===sid&&!y.acked);
+      if(it){try{await post({action:'reminder_ack',key:it.key,note:('Wawancara tersimpan: '+title).slice(0,300)});it.acked=true;it.acked_at=new Date().toISOString();it.ack_note='Wawancara tersimpan';setCount(t)}catch(_){}}}
+    if(S.expanded&&findItem(S.expanded)?.student_id===sid)await loadDetail(sid,true).catch(()=>{});
+    if(content.isConnected)draw(content);
+  }});
+}
 
 async function ack(content,btn,key,undo,note){
   btn.disabled=true;

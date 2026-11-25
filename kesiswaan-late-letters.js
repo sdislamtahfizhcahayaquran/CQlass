@@ -538,4 +538,10 @@
     };
     load();
   };
+
+  // Dipakai Pusat Pengingat agar surat bisa diterbitkan & dicetak langsung dari kartu siswa.
+  window.cqKesLateLetters = {
+    issue: body => api({ ...body, action: 'issue' }),
+    print: (numbers, onConfirmed) => print(numbers, onConfirmed || (() => {}), false)
+  };
 })();
