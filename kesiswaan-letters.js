@@ -126,13 +126,15 @@ function printLetters(page,letters){
   const title=letters.length===1?letters[0].number_label:`${KINDS[letters[0].kind]?.label||'Surat'} (${letters.length} surat)`;
   page.document.open();
   page.document.write(`<!doctype html><html lang="id"><meta charset="utf-8"><title>${E(title)}</title><style>
-    @page{size:A4;margin:52mm 20mm 29mm}
-    body{margin:0 auto;max-width:174mm}
-    .kop,.footer{display:block;height:auto;max-width:none;margin:0}.kop{width:205.3mm}.footer{width:178.8mm}
+    @page{size:A4;margin:0}
+    html,body{margin:0;padding:0}
     ${LETTER_CSS}
-    .bar{font:14px system-ui;margin-bottom:5mm;display:flex;gap:8px;align-items:center}.bar button{font:600 14px system-ui;padding:8px 14px;border-radius:8px;border:1px solid #0A6E6E;background:#0A6E6E;color:#fff;cursor:pointer}
-    @media screen{body{padding:8mm;max-width:none;background:#eef2f3}.letter{box-sizing:border-box;position:relative;clip-path:inset(0);width:210mm;min-height:297mm;margin:0 auto 6mm;padding:52mm 20mm 29mm;background:#fff;box-shadow:0 0 0 1px #d0d5dd}.kop,.footer{position:absolute}.kop{left:6.7mm;top:-1.46mm}.footer{left:18mm;bottom:.3mm}}
-    @media print{.bar{display:none}.letter+.letter{break-before:page}.kop,.footer{position:fixed}.kop{left:-13.3mm;top:-53.46mm}.footer{left:-2mm;bottom:-28.7mm}}
+    .letter{box-sizing:border-box;position:relative;overflow:hidden;width:210mm;height:297mm;margin:0 auto;padding:52mm 20mm 29mm;background:#fff}
+    .kop,.footer{position:absolute;display:block;height:auto;max-width:none;margin:0}
+    .kop{width:205.3mm;left:6.7mm;top:-1.46mm}.footer{width:178.8mm;left:18mm;bottom:.3mm}
+    .bar{font:14px system-ui;margin:0 auto 5mm;width:210mm;display:flex;gap:8px;align-items:center}.bar button{font:600 14px system-ui;padding:8px 14px;border-radius:8px;border:1px solid #0A6E6E;background:#0A6E6E;color:#fff;cursor:pointer}
+    @media screen{body{padding:8mm 0;background:#eef2f3}.letter{margin-bottom:6mm;box-shadow:0 0 0 1px #d0d5dd}}
+    @media print{.bar{display:none}.letter{break-after:page;page-break-after:always}.letter:last-child{break-after:auto;page-break-after:auto}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style><div class="bar"><button onclick="print()">Cetak / Simpan PDF</button><span>${letters.length} surat · ukuran A4</span></div>
   ${letters.map(l=>`<div class="letter"><img class="kop" alt="" src="${E(header)}"><main class="ls-sheet">${body(l.kind,{...l.payload,number_label:l.number_label,issued_on:l.issued_on})}</main><img class="footer" alt="" src="${E(footer)}"></div>`).join('')}
   </html>`);
@@ -292,5 +294,5 @@ window.renderKesiswaanLetters=async function(content){
     root.innerHTML='';draw();
   }catch(e){content.innerHTML=`<div class="kl"><div class="kl-err">${E(e.message)}</div></div>`}
 };
-window.__cqKesLetterBody=body;
+window.__cqKesLetterBody=body;window.__cqKesPrintLetters=printLetters;
 })();
