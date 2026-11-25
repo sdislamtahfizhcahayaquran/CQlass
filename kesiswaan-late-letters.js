@@ -188,8 +188,8 @@
     pdf.save(filename.replaceAll('/', '_') + '.pdf');
   }
 
-  async function print(numbers, confirmed, download = false) {
-    const page = window.open('', '_blank');
+  async function print(numbers, confirmed, download = false, preopened = null) {
+    const page = preopened || window.open('', '_blank');
     if (!page) throw Error('Izinkan tab baru untuk membuka surat.');
     page.opener = null;
     page.document.body.textContent = 'Memuat surat…';
@@ -542,6 +542,6 @@
   // Dipakai Pusat Pengingat agar surat bisa diterbitkan & dicetak langsung dari kartu siswa.
   window.cqKesLateLetters = {
     issue: body => api({ ...body, action: 'issue' }),
-    print: (numbers, onConfirmed) => print(numbers, onConfirmed || (() => {}), false)
+    print: (numbers, onConfirmed, page) => print(numbers, onConfirmed || (() => {}), false, page || null)
   };
 })();
