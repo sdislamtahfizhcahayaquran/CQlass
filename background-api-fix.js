@@ -150,7 +150,7 @@
     primeDashboardRole(r);
 
     if(['guru','walas','partner','guru_partner','pengabdian','pimpinan'].includes(r)){
-      add('./academic-sidebar-order.js?v=20261124-nilai1','__cqAcademicSidebarOrderRoleLazy',false);
+      add('./academic-sidebar-order.js?v=20261127-kes1','__cqAcademicSidebarOrderRoleLazy',false);
     }
     if(['akademik','kabid_akademik','academic','pimpinan','admin'].includes(r)){
       add('./academic-teacher-report.js?v=20261025-period2','__cqAcademicTeacherReportRoleLazy',false);

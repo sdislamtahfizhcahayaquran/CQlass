@@ -65,9 +65,10 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
  assert.equal((await call(ikmData({prestasi:[{jenis:'a'},{jenis:'b'},{jenis:'c'},{jenis:'d'}]}))).status,400,'more than 3 achievements rejected');
  assert.equal((await call(ikmData({keputusan:'lompat'}))).status,400,'unknown decision rejected');
  assert.equal((await call(ikmData({kokurikuler:{a:5}}))).status,400,'kokurikuler score 5 rejected');
- assert.equal((await call(ikmData({kesehatan:{tb:'125,5',bb:'30',pendengaran:'Baik',gigi:''},prestasi:[{jenis:'Juara 1 Tahfizh',keterangan:'Tingkat kota'},{jenis:'',keterangan:''}],keputusan:'naik'}))).status,200);
+ assert.equal((await call(ikmData({kesehatan:{tb:'125,5',bb:'30',pendengaran:'b',gigi:''},prestasi:[{jenis:'Juara 1 Tahfizh',keterangan:'Tingkat kota'},{jenis:'',keterangan:''}],keputusan:'naik'}))).status,200);
  const plain=v=>JSON.parse(JSON.stringify(v));
- assert.deepEqual(plain(entries[0].data.kesehatan),{tb:'125.5',bb:'30',pendengaran:'Baik'},'decimal comma accepted, empty fields dropped');
+ assert.deepEqual(plain(entries[0].data.kesehatan),{tb:'125.5',bb:'30',pendengaran:'B'},'decimal comma accepted, empty fields dropped, health grade uppercased');
+assert.equal((await call(ikmData({kesehatan:{gigi:'Baik'}}))).status,400,'health condition must be A-D');
  assert.deepEqual(plain(entries[0].data.prestasi),[{jenis:'Juara 1 Tahfizh',keterangan:'Tingkat kota'}],'empty achievement rows dropped');assert.equal(entries[0].data.keputusan,'naik');assert.equal(entries[0].version,3);
 
  // Data cetak: nilai akhir mengikuti rumus legger, TP dibaca lebih dari 1000 baris.
@@ -122,7 +123,7 @@ const call=(b,token=true)=>ctx.handleSemesterReport(new Request('https://test.in
   semester_print:{subjects:pd.subjects,class:{grade_level:4},student:{...budi,ekskul:[{name:'Robotic',activity:'A',skill:'B'},{name:'Pramuka',activity:'B',skill:'B'},{name:'Renang',external:true,institution:'Klub Tirta',activity:'A',skill:'A'}]}}};
  const ik=ikmOf(win.cqSemesterPagesHtml(ikmReport,{lang:'id'}));
  assert(ik.length>0,'IKM pages exist');assert(id.lastIndexOf('data-part="ikm"')>id.lastIndexOf('LAPORAN PENILAIAN HASIL BELAJAR SISWA</div>\n<table class="srp-t"><colgroup><col style="width:7%">'),'IKM comes after Nilai');
- for(const s of ['A. Intrakurikuler','CAPAIAN KOMPETENSI','<span>Fase</span><span>:</span><span class="v">B</span>','B. Kokurikuler','Belum dinilai.','C. Ekstrakurikuler','D. Tinggi dan Berat Badan','125.5 cm','30 kg','E. Kondisi Kesehatan','F. Prestasi','Juara 1 Tahfizh','Tingkat kota','G. Ketidakhadiran','2 hari','H. Karakter dan Kedisiplinan','Total Poin Pelanggaran: 10 Poin','Total Poin Akhir: 15 Poin','Klub Tirta'])assert(ik.includes(s),'IKM contains '+s);
+ for(const s of ['A. Intrakurikuler','CAPAIAN KOMPETENSI','<span>Fase</span><span>:</span><span class="v">B</span>','B. Kokurikuler','Belum dinilai.','C. Ekstrakurikuler','D. Tinggi dan Berat Badan','125.5 cm','30 kg','E. Kondisi Kesehatan','A = Sangat baik;  B = Baik;  C = Cukup;  D = Kurang baik','F. Prestasi','Juara 1 Tahfizh','Tingkat kota','G. Ketidakhadiran','2 hari','H. Karakter dan Kedisiplinan','Total Poin Pelanggaran: 10 Poin','Total Poin Akhir: 15 Poin','Klub Tirta'])assert(ik.includes(s),'IKM contains '+s);
  const mtkFinal=budi.academic['s-mtk'].final;assert(ik.includes(`<td class="c">${mtkFinal}</td><td class="c">${I.ikmLetter(mtkFinal)}</td>`),'Matematika final score and grade');assert.equal(I.ikmLetter(89),'A');assert.equal(I.ikmLetter(88),'B');assert.equal(I.ikmLetter(82),'B');assert.equal(I.ikmLetter(81),'C');assert.equal(I.ikmLetter(75),'C');assert.equal(I.ikmLetter(74),'D');
  // Nilai per TP: TP1 90 -> 8+27+16+36=87 (B), TP2 70 -> 8+21+16+36=81 (C).
  assert(ik.includes('Ananda Budi baik dalam bilangan cacah dan cukup baik dalam pecahan.'),'capaian uses highest and lowest per-TP score');
