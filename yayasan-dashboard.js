@@ -161,6 +161,7 @@
     }
     const students = academic.students.map((student,index) => ({...student,no:index + 1}))
       .filter(student => student.name.toLocaleLowerCase('id-ID').includes(search.trim().toLocaleLowerCase('id-ID')));
+    academicSyncTaskColumns([...scores.values()], objectives); // kolom Tugas sebanyak TP
     const headers = ['No','Nama Siswa',...ACADEMIC_COMPONENTS.map((_,i) => 'T' + (i + 1)),
       'RT',...objectives.map(o => o.code),'RTP','WWP','ASAS','NA','Pred.','Status'];
     const className = overview.classes.find(c => c.id === classId)?.name;

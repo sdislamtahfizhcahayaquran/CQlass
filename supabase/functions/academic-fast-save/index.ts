@@ -5,7 +5,8 @@ const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,
 const txt=(v:unknown)=>String(v??"").trim();
 const low=(v:unknown)=>txt(v).toLowerCase();
 const upper=(v:unknown)=>txt(v).toUpperCase();
-const allowedComponents=new Set(["TUGAS_1","TUGAS_2","TUGAS_3","TUGAS_4","TUGAS_5","WWP","ASAS"]);
+// Tugas 1-10: jumlah kolom Tugas mengikuti jumlah TP (maksimal 10).
+const allowedComponents=new Set([...Array.from({length:10},(_,i)=>"TUGAS_"+(i+1)),"WWP","ASAS"]);
 
 function serviceKey(){
   const packed=Deno.env.get("SUPABASE_SECRET_KEYS");

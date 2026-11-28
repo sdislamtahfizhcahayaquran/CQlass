@@ -1,7 +1,7 @@
 /* CQlass — "Download & Cek Nilai" untuk guru mapel / bidang studi (juga walas yang mengajar mapel).
    1) Download legger mapel yang diampu, untuk semua kelas yang diajar (1 file, 1 sheet per kelas; format legger sekolah).
    2) Cek Deskripsi Rapor: narasi Rapor IKM yang akan tercetak per siswa + peringatan:
-      - nilai belum lengkap (huruf per TP dan narasi baru muncul setelah Tugas 1-5, TP, WWP, ASAS terisi);
+      - nilai belum lengkap (huruf per TP dan narasi baru muncul setelah minimal 1 Tugas, semua TP, WWP, ASAS terisi);
       - huruf TP terbaik = huruf TP terendah (harus ada minimal 1 TP terbaik dan 1 TP terendah dengan huruf berbeda, mis. A dan B).
    Data dari academic-scores (bootstrap = penugasan guru sendiri, load = nilai per penugasan). Rumus dari cq-scoring.js. */
 (function(){
@@ -10,7 +10,8 @@ const MOD='guru-nilai-tools',ROLES=['guru','walas','guru_partner','partner','tah
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
 const S=()=>window.CQ_SCORE;
-const TASKS=['TUGAS_1','TUGAS_2','TUGAS_3','TUGAS_4','TUGAS_5'];
+// Semua Tugas (maksimal 10); jumlah kolom legger ditentukan cq-legger-export.js (sebanyak TP).
+const TASKS=Array.from({length:10},(_,i)=>'TUGAS_'+(i+1));
 function user(){try{return typeof currentUser!=='undefined'?currentUser:null}catch(_){return null}}
 function allowed(){const u=user();return!!u&&ROLES.includes(norm(u.role))}
 function isActive(){try{return activeModule===MOD}catch(_){return false}}
@@ -83,7 +84,7 @@ async function render(content){
 ${!list.length?'<div class="card">Belum ada mapel yang ditugaskan kepada Anda pada semester ini.</div>':tab==='download'?`<div class="card"><div class="row"><b>Pilih kelas dan mapel</b><label><input type="checkbox" id="gnt-all" ${pick.size===list.length?'checked':''}> Pilih semua</label></div>
 <div class="list">${list.map(a=>`<label><input type="checkbox" data-pick="${esc(a.id)}" ${pick.has(a.id)?'checked':''}> ${esc(a.subject_name)} — ${esc(a.class_name)}</label>`).join('')}</div>
 <div class="row"><button type="button" class="btn btn-primary" id="gnt-dl" ${pick.size?'':'disabled'}>Download Excel (${pick.size})</button><span class="msg" id="gnt-msg">${esc(msg)}</span></div>
-<div class="sub" style="margin:10px 0 0">Satu sheet per kelas, kolom per mapel: Tugas 1–5, Rata Tugas, TP, Rata KD, WWP, Asas, Nilai Murni, Nilai Rapor, Predikat.</div></div>`
+<div class="sub" style="margin:10px 0 0">Satu sheet per kelas, kolom per mapel: Tugas (sebanyak TP), Rata Tugas, TP, Rata KD, WWP, Asas, Nilai Murni, Nilai Rapor, Predikat.</div></div>`
 :`<div class="card"><div class="row"><select id="gnt-cek">${list.map(a=>`<option value="${esc(a.id)}" ${a.id===cekId?'selected':''}>${esc(a.subject_name)} — ${esc(a.class_name)}</option>`).join('')}</select><button type="button" class="btn" id="gnt-run">Cek</button><span class="msg">${esc(msg)}</span></div>
 ${counts?`<div class="chips" style="margin-top:12px"><span class="ok">${counts.ok} siap</span><span class="same">${counts.same} huruf TP terbaik = terendah</span><span class="inc">${counts.inc} belum lengkap</span></div>`:''}</div>
 ${cek?`<div class="card wrap"><table><thead><tr><th>Siswa</th><th>Huruf per TP</th><th>Nilai Rapor</th><th>Narasi yang akan tercetak di Rapor IKM</th></tr></thead><tbody>${cek.map(r=>`<tr class="${r.status}"><td>${esc(r.name)}</td><td class="lt">${r.letters.map((l,i)=>`TP${i+1}:${l||'–'}`).join(' ')}</td><td>${r.rapor??'–'}${r.raw!=null?` <small>(murni ${r.raw})</small>`:''}</td><td>${r.text?esc(r.text):''}${r.warn?`<div class="w ${r.status==='incomplete'?'inc':'same'}" style="padding:4px 8px;border-radius:6px;margin-top:4px">⚠ ${esc(r.warn)}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:''}`}</div>`;

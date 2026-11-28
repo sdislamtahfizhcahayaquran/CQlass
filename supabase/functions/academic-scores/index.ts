@@ -30,15 +30,9 @@ const SCHOOL_UNIT_CODE = "SD";
 const DEFAULT_ACADEMIC_YEAR = "2026/2027";
 const DEFAULT_SEMESTER = 1;
 
-const NON_TP_COMPONENTS = [
-  "TUGAS_1",
-  "TUGAS_2",
-  "TUGAS_3",
-  "TUGAS_4",
-  "TUGAS_5",
-  "WWP",
-  "ASAS",
-] as const;
+// Tugas 1-10: jumlah kolom Tugas di halaman input mengikuti jumlah TP (maksimal 10).
+const TASK_COMPONENTS = Array.from({ length: 10 }, (_, i) => `TUGAS_${i + 1}`);
+const NON_TP_COMPONENTS: readonly string[] = [...TASK_COMPONENTS, "WWP", "ASAS"];
 
 const READ_ALL_ROLES = ["admin", "pimpinan", "akademik"];
 
@@ -985,13 +979,7 @@ Deno.serve(async (req: Request) => {
         can_edit: assignment.can_edit,
 
         components: {
-          tugas: [
-            "TUGAS_1",
-            "TUGAS_2",
-            "TUGAS_3",
-            "TUGAS_4",
-            "TUGAS_5",
-          ],
+          tugas: TASK_COMPONENTS.slice(0, Math.max(1, objectives.length)),
           tp: objectives,
           other: ["WWP", "ASAS"],
         },
@@ -1003,7 +991,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ------------------------------------------------------------------------
-    // SAVE COMPONENT: Tugas 1-5 / WWP / ASAS
+    // SAVE COMPONENT: Tugas 1-10 / WWP / ASAS
     // ------------------------------------------------------------------------
     if (action === "save_component") {
       if (!assignment.can_edit) {

@@ -3,6 +3,7 @@
                   (minimal 1 Tugas terisi; semua TP, WWP dan ASAS wajib terisi).
    Nilai per TP = rata-rata Tugas x 10% + nilai TP itu x 30% + WWP x 20% + ASAS x 40%   (huruf Penilaian Intrakurikuler & narasi IKM).
    Nilai rapor  = nilai murni dibulatkan; berakhiran 4 atau 9 dinaikkan 1; minimal 77, maksimal 96.
+   Kolom Tugas  = sebanyak jumlah TP (minimal 1, maksimal 10); kolom Tugas yang sudah berisi nilai tetap tampil.
    Huruf        = A 89-96, B 82-88, C 75-81, D < 75. Huruf per TP minimal C (sejalan dengan nilai rapor minimal 77).
    Rumus yang sama ada di supabase/functions/admin-academic-period/semester-report.ts (tes memastikan keduanya sama). */
 (function(){
@@ -18,9 +19,15 @@ function complete(tasks,tps,wwp,asas){const p=(tps||[]).map(num);return filled(t
 function raw(tasks,tps,wwp,asas){if(!complete(tasks,tps,wwp,asas))return null;return r2(avg(filled(tasks))*W.tugas+avg(tps.map(num))*W.tp+num(wwp)*W.wwp+num(asas)*W.asas)}
 function rapor(x){const n0=num(x);if(n0===null)return null;let n=Math.round(n0);if(n%10===4||n%10===9)n+=1;return Math.max(MIN,Math.min(MAX,n))}
 function tpScore(tasks,tp,wwp,asas){const t=filled(tasks);if(!t.length||num(tp)===null||num(wwp)===null||num(asas)===null)return null;return r2(avg(t)*W.tugas+num(tp)*W.tp+num(wwp)*W.wwp+num(asas)*W.asas)}
+// Jumlah kolom Tugas: sebanyak TP, minimal 1, maksimal 10, dan tidak kurang dari Tugas terakhir yang sudah terisi.
+const MAX_TASKS=10;
+const taskKeys=n=>Array.from({length:Math.max(0,Math.min(MAX_TASKS,n|0))},(_,i)=>'TUGAS_'+(i+1));
+function taskCount(tpCount,highestFilled){return Math.min(MAX_TASKS,Math.max(1,Number(tpCount)||0,Number(highestFilled)||0))}
+// Tugas terakhir yang terisi dari daftar nilai tugas (array per siswa).
+function highestTask(lists){let h=0;for(const t of lists||[])(t||[]).forEach((v,i)=>{if(num(v)!==null&&i+1>h)h=i+1});return h}
 function letter(x){const n=num(x);if(n===null)return'';return n>=89?'A':n>=82?'B':n>=75?'C':'D'}
 // Huruf per TP (Intrakurikuler & narasi IKM): minimal C.
 function tpLetter(x){const l=letter(x);return l==='D'?'C':l}
-window.CQ_SCORE=Object.freeze({W,MIN,MAX,num,complete,raw,rapor,tpScore,letter,tpLetter,
+window.CQ_SCORE=Object.freeze({W,MIN,MAX,MAX_TASKS,num,complete,raw,rapor,tpScore,letter,tpLetter,taskKeys,taskCount,highestTask,
  text:'Tugas 10% + TP 30% + WWP 20% + ASAS 40%',rules:'Nilai rapor: dibulatkan, angka akhir 4/9 dinaikkan 1, minimal 77, maksimal 96.'});
 })();

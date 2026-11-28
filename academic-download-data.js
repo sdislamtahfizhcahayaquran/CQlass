@@ -11,8 +11,11 @@ const pred=v=>v===null?'':v>=89?'A':v>=82?'B':v>=75?'C':'D';
 function sheet(name,headers,rows){return {name,headers,rows};}
 function normalized(load){
  const objectives=load.objectives||load.components?.tp||[];
- const students=(load.students||[]).map(s=>{
-  const tasks=[1,2,3,4,5].map(i=>num(s.components?.['TUGAS_'+i]?.score));
+ // Kolom Tugas sebanyak TP (minimal 1, maksimal 10); Tugas yang sudah terisi tetap ikut.
+ const all10=(load.students||[]).map(s=>Array.from({length:10},(_,i)=>num(s.components?.['TUGAS_'+(i+1)]?.score)));
+ let hi=0;all10.forEach(t=>t.forEach((v,i)=>{if(v!==null&&i+1>hi)hi=i+1}));const taskCount=Math.min(10,Math.max(1,objectives.length,hi));
+ const students=(load.students||[]).map((s,si)=>{
+  const tasks=all10[si].slice(0,taskCount);
   const tp=objectives.map(o=>num((s.tp||[]).find(t=>String(t.learning_objective_id)===String(o.id))?.score));
   const wwp=num(s.components?.WWP?.score),asas=num(s.components?.ASAS?.score),values=[...tasks,...tp,wwp,asas];
   const missing=values.filter(v=>v===null).length;
@@ -20,7 +23,7 @@ function normalized(load){
   const ready=tasks.some(v=>v!==null)&&tp.every(v=>v!==null)&&wwp!==null&&asas!==null;
   const final=ready&&tp.length?avg(tasks)*.1+avg(tp)*.3+wwp*.2+asas*.4:null;
   return {...s,tasks,tp,wwp,asas,missing,final};
- });return {...load,objectives,students};
+ });return {...load,objectives,students,taskCount};
 }
 function scoreSheets(kind,loads){
  const models=loads.map(normalized),summary=[],tpRows=[],priority=[],teachers=[],details=[];
@@ -31,7 +34,7 @@ function scoreSheets(kind,loads){
   m.objectives.forEach((o,i)=>{const values=m.students.map(s=>s.tp[i]).filter(v=>v!==null);tpRows.push([...base,o.code||'TP'+(i+1),o.description||o.topic||'',values.length,m.students.length-values.length,round(avg(values)),values.length?Math.max(...values):null,values.length?Math.min(...values):null,values.length?round(values.filter(v=>v>=75).length/values.length*100):null]);});
   teachers.push([...base,m.students.length,complete,m.students.length-complete,m.objectives.filter((o,i)=>m.students.some(s=>s.tp[i]===null)).length,complete===m.students.length&&m.objectives.length?'Lengkap':'Perlu dilengkapi']);
   for(const s of m.students){const low=s.tp.filter(v=>v!==null&&v<75).length;if(s.missing||low||(s.final!==null&&s.final<75)||!m.objectives.length)priority.push([...base,s.nis||'',s.name||'',s.missing,low,round(s.final),!m.objectives.length?'TP belum tersedia':s.missing?'Lengkapi nilai':'Remedial / tindak lanjut']);}
-  details.push(sheet((a.class_name||'Kelas')+' '+(a.subject_name||'Mapel'),['No','NIS','Nama Siswa','T1','T2','T3','T4','T5','Rata Tugas',...m.objectives.map((o,i)=>o.code||'TP'+(i+1)),'Rata TP','WWP','ASAS','Nilai Akhir','Predikat','Status'],m.students.map((s,i)=>[i+1,String(s.nis||''),s.name||'',...s.tasks,round(avg(s.tasks)),...s.tp,round(avg(s.tp)),s.wwp,s.asas,round(s.final),pred(s.final===null||!root.CQ_SCORE?s.final:root.CQ_SCORE.rapor(s.final)),s.final===null?'Belum lengkap':s.final>=75?'Tuntas':'Belum tuntas'])));
+  details.push(sheet((a.class_name||'Kelas')+' '+(a.subject_name||'Mapel'),['No','NIS','Nama Siswa',...Array.from({length:m.taskCount},(_,i)=>'T'+(i+1)),'Rata Tugas',...m.objectives.map((o,i)=>o.code||'TP'+(i+1)),'Rata TP','WWP','ASAS','Nilai Akhir','Predikat','Status'],m.students.map((s,i)=>[i+1,String(s.nis||''),s.name||'',...s.tasks,round(avg(s.tasks)),...s.tp,round(avg(s.tp)),s.wwp,s.asas,round(s.final),pred(s.final===null||!root.CQ_SCORE?s.final:root.CQ_SCORE.rapor(s.final)),s.final===null?'Belum lengkap':s.final>=75?'Tuntas':'Belum tuntas'])));
  }
  const sum=sheet('Ringkasan',['Kelas','Mapel','Guru','Siswa','Nilai Lengkap','Belum Lengkap','Rata-rata NA','Ketuntasan (%)'],summary);
  if(kind==='nilai'){
